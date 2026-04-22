@@ -18,6 +18,7 @@ export function CitationChip({ index, url, title }: CitationChipProps) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function renderWithCitations(text: string, sources: { index: number; url: string; title: string }[]): string {
   return text.replace(/\[(\d+)\]/g, (_match, idx) => {
     const source = sources[parseInt(idx) - 1]
