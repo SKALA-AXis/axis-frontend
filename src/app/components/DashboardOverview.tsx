@@ -541,14 +541,6 @@ function KeywordCard({ onNavigate }: DashboardOverviewProps) {
             </button>
           ))}
         </div>
-
-        <button
-          onClick={() => onNavigate('rawArticles')}
-          className="absolute bottom-4 right-4 flex items-center gap-2 text-xs font-medium text-black hover:text-blue-600"
-        >
-          원문 보기
-          <Download className="size-4" />
-        </button>
       </div>
     </section>
   );

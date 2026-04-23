@@ -1,4 +1,4 @@
-import { Bookmark, ExternalLink, ChevronRight, AlertCircle, Info, FileText } from 'lucide-react';
+import { Bookmark, ExternalLink, ChevronRight, AlertCircle, Info, FileText, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface Issue {
@@ -16,9 +16,10 @@ interface Issue {
 
 interface IssueCardProps {
   issue: Issue;
+  onDelete?: () => void;
 }
 
-export function IssueCard({ issue }: IssueCardProps) {
+export function IssueCard({ issue, onDelete }: IssueCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(issue.bookmarked_by_me);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -55,6 +56,13 @@ export function IssueCard({ issue }: IssueCardProps) {
   const handleBookmark = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsBookmarked(!isBookmarked);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('이 이슈를 삭제하시겠습니까?')) {
+      onDelete?.();
+    }
   };
 
   return (
@@ -109,16 +117,28 @@ export function IssueCard({ issue }: IssueCardProps) {
             </div>
           </div>
 
-          <button
-            onClick={handleBookmark}
-            className={`p-2 rounded-lg transition-colors ${
-              isBookmarked
-                ? 'bg-orange-100 text-orange-600'
-                : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700'
-            }`}
-          >
-            <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
-          </button>
+          <div className="flex shrink-0 gap-2">
+            {onDelete && (
+              <button
+                onClick={handleDelete}
+                className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                aria-label="이슈 삭제"
+              >
+                <Trash2 size={20} />
+              </button>
+            )}
+            <button
+              onClick={handleBookmark}
+              className={`p-2 rounded-lg transition-colors ${
+                isBookmarked
+                  ? 'bg-orange-100 text-orange-600'
+                  : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700'
+              }`}
+              aria-label="북마크"
+            >
+              <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
+            </button>
+          </div>
         </div>
 
         {isExpanded && (

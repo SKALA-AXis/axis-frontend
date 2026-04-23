@@ -1,4 +1,4 @@
-import { Calendar, Download, Eye } from 'lucide-react';
+import { Calendar, FileText } from 'lucide-react';
 import { useState } from 'react';
 
 const mockBriefings = [
@@ -36,7 +36,10 @@ interface BriefingsViewProps {
 }
 
 export function BriefingsView({ onNavigate }: BriefingsViewProps) {
-  const [selectedBriefing, setSelectedBriefing] = useState(mockBriefings[0]);
+  const [peerFilter, setPeerFilter] = useState('all');
+  const [keywordFilter, setKeywordFilter] = useState('');
+  const [dateRange, setDateRange] = useState('7d');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
@@ -51,18 +54,11 @@ export function BriefingsView({ onNavigate }: BriefingsViewProps) {
             <h2 className="text-lg font-bold text-black">오늘의 브리핑</h2>
             <div className="flex gap-2">
               <button
-                onClick={() => setSelectedBriefing(mockBriefings[0])}
+                onClick={() => onNavigate('reports')}
                 className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2"
               >
-                <Eye size={16} />
-                보기
-              </button>
-              <button
-                onClick={() => onNavigate('reports')}
-                className="px-4 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 flex items-center gap-2"
-              >
-                <Download size={16} />
-                다운로드
+                <FileText size={16} />
+                보고서 열기
               </button>
             </div>
           </div>
@@ -72,10 +68,6 @@ export function BriefingsView({ onNavigate }: BriefingsViewProps) {
               <div>
                 <h3 className="text-xl font-bold text-black mb-2">2026년 4월 22일 Peer Intelligence 브리핑</h3>
                 <p className="text-sm text-neutral-600">총 5건의 이슈 (전략 검토 2건, 영업 공유 3건)</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-neutral-500">발송 완료</p>
-                <p className="text-xs text-neutral-500">08:30 AM</p>
               </div>
             </div>
 
@@ -102,69 +94,95 @@ export function BriefingsView({ onNavigate }: BriefingsViewProps) {
 
         <div className="space-y-4">
           <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-7 space-y-4">
-              <h2 className="text-lg font-bold text-black">과거 브리핑</h2>
-          {mockBriefings.map((briefing) => (
-            <div key={briefing.id} className="bg-white border border-neutral-200 rounded-lg p-6 hover:border-orange-500 transition-colors">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Calendar size={16} className="text-neutral-500" />
-                    <span className="text-sm text-neutral-500">{briefing.date}</span>
-                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">전송 완료</span>
-                  </div>
-                  <h3 className="text-base font-bold text-black mb-2">{briefing.title}</h3>
-                  <p className="text-sm text-neutral-600 mb-3">{briefing.summary}</p>
-                  <div className="flex gap-4">
-                    <span className="text-xs text-neutral-500">긴급 {briefing.urgent_count}건</span>
-                    <span className="text-xs text-neutral-500">주목 {briefing.notable_count}건</span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSelectedBriefing(briefing)}
-                    className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg"
-                  >
-                    <Eye size={18} />
-                  </button>
-                  <button
-                    onClick={() => onNavigate('reports')}
-                    className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg"
-                  >
-                    <Download size={18} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-            </div>
-
-            <div className="col-span-5">
-              <div className="sticky top-8 rounded-xl border border-neutral-200 bg-white p-6">
-                <div className="mb-4 flex items-center gap-2">
-                  <Eye size={18} className="text-orange-600" />
-                  <h2 className="text-lg font-bold text-black">브리핑 상세</h2>
-                </div>
-                <p className="mb-2 text-sm text-neutral-500">{selectedBriefing.date}</p>
-                <h3 className="mb-3 text-base font-bold text-black">{selectedBriefing.title}</h3>
-                <p className="mb-4 text-sm leading-relaxed text-neutral-700">{selectedBriefing.summary}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                    <p className="text-xs text-neutral-600">전략 검토</p>
-                    <p className="text-xl font-bold text-black">{selectedBriefing.urgent_count}</p>
-                  </div>
-                  <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
-                    <p className="text-xs text-neutral-600">영업 공유</p>
-                    <p className="text-xl font-bold text-black">{selectedBriefing.notable_count}</p>
-                  </div>
-                </div>
+            <div className="col-span-12 space-y-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold text-black">과거 브리핑</h2>
                 <button
-                  onClick={() => onNavigate('reports')}
-                  className="mt-5 w-full rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+                  onClick={() => setIsFilterOpen((current) => !current)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    isFilterOpen
+                      ? 'border-orange-500 bg-orange-50 text-orange-700'
+                      : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50'
+                  }`}
+                  aria-expanded={isFilterOpen}
                 >
-                  보고서로 열기
+                  필터
                 </button>
               </div>
+
+              {isFilterOpen && (
+                <div className="rounded-xl border border-neutral-200 bg-white p-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-black">Peer사</label>
+                      <select
+                        value={peerFilter}
+                        onChange={(event) => setPeerFilter(event.target.value)}
+                        className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                      >
+                        <option value="all">전체 Peer사</option>
+                        <option value="samsung_sds">삼성SDS</option>
+                        <option value="lg_cns">LG CNS</option>
+                        <option value="hyundai_autoever">현대오토에버</option>
+                        <option value="naver_cloud">네이버클라우드</option>
+                        <option value="kakao_enterprise">Kakao Enterprise</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-black">키워드</label>
+                      <input
+                        type="text"
+                        value={keywordFilter}
+                        onChange={(event) => setKeywordFilter(event.target.value)}
+                        placeholder="예: Agentic AI, 금융, SDV"
+                        className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-black">기간</label>
+                      <select
+                        value={dateRange}
+                        onChange={(event) => setDateRange(event.target.value)}
+                        className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                      >
+                        <option value="7d">최근 7일</option>
+                        <option value="30d">최근 30일</option>
+                        <option value="90d">최근 90일</option>
+                        <option value="custom">직접 설정</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {mockBriefings.map((briefing) => (
+                <div key={briefing.id} className="bg-white border border-neutral-200 rounded-lg p-6 hover:border-orange-500 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Calendar size={16} className="text-neutral-500" />
+                        <span className="text-sm text-neutral-500">{briefing.date}</span>
+                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">전송 완료</span>
+                      </div>
+                      <h3 className="text-base font-bold text-black mb-2">{briefing.title}</h3>
+                      <p className="text-sm text-neutral-600 mb-3">{briefing.summary}</p>
+                      <div className="flex gap-4">
+                        <span className="text-xs text-neutral-500">긴급 {briefing.urgent_count}건</span>
+                        <span className="text-xs text-neutral-500">주목 {briefing.notable_count}건</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onNavigate('reports')}
+                      className="shrink-0 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
+                    >
+                      <FileText size={16} />
+                      보고서 열기
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

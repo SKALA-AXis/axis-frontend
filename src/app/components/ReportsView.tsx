@@ -10,9 +10,30 @@ const mockPeers = [
 ];
 
 const mockIssuesForReport = [
-  { id: 'IC-001', title: '삼성SDS - 제조/금융 생성형 AI 운영 플랫폼 확대', peer: '삼성SDS', selected: false },
-  { id: 'IC-002', title: 'LG CNS - 금융권 AI+클라우드 보안 패키지 출시', peer: 'LG CNS', selected: false },
-  { id: 'IC-003', title: '현대오토에버 - SDV 데이터 플랫폼 외부 고객 적용', peer: '현대오토에버', selected: false },
+  {
+    id: 'IC-001',
+    title: '삼성SDS - 제조/금융 생성형 AI 운영 플랫폼 확대',
+    peer: '삼성SDS',
+    selected: false,
+    reportSummary:
+      '삼성SDS는 제조·금융 고객 레퍼런스를 기반으로 생성형 AI 운영 플랫폼의 산업 적용 범위를 넓히고 있습니다. 단일 기능 출시보다 고객 업무 프로세스에 AI를 내재화하는 운영 모델을 강조하는 흐름입니다.',
+  },
+  {
+    id: 'IC-002',
+    title: 'LG CNS - 금융권 AI+클라우드 보안 패키지 출시',
+    peer: 'LG CNS',
+    selected: false,
+    reportSummary:
+      'LG CNS는 금융권의 보안·컴플라이언스 요구를 클라우드와 AI 거버넌스 패키지로 묶어 제안하고 있습니다. 규제 산업에서 AI 도입 장벽을 낮추는 통합 운영 메시지가 강화되고 있습니다.',
+  },
+  {
+    id: 'IC-003',
+    title: '현대오토에버 - SDV 데이터 플랫폼 외부 고객 적용',
+    peer: '현대오토에버',
+    selected: false,
+    reportSummary:
+      '현대오토에버는 SDV와 제조 데이터를 연결한 플랫폼 역량을 외부 고객 사례로 확장하고 있습니다. 자동차 SW 경험을 제조 데이터 운영과 디지털 전환 사업으로 넓히는 움직임입니다.',
+  },
 ];
 
 interface ReportsViewProps {
@@ -65,7 +86,6 @@ export function ReportsView({ onNavigate }: ReportsViewProps) {
                 <option value="daily_briefing">일간 브리핑</option>
                 <option value="weekly_monitoring">주간 모니터링</option>
                 <option value="deep_dive">심층 분석</option>
-                <option value="executive_memo">경영진 메모</option>
               </select>
             </div>
 
@@ -113,7 +133,7 @@ export function ReportsView({ onNavigate }: ReportsViewProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-black mb-2">Executive Summary</label>
+              <label className="block text-sm font-bold text-black mb-2">요약</label>
               <textarea
                 value={executiveSummary}
                 onChange={(e) => setExecutiveSummary(e.target.value)}
@@ -123,7 +143,7 @@ export function ReportsView({ onNavigate }: ReportsViewProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-black mb-2">주요 발견사항</label>
+              <label className="block text-sm font-bold text-black mb-2">참고 사항</label>
               <textarea
                 value={keyFindings}
                 onChange={(e) => setKeyFindings(e.target.value)}
@@ -206,23 +226,11 @@ export function ReportsView({ onNavigate }: ReportsViewProps) {
                   })}
                 </div>
               </div>
-
-              {/* Executive Summary */}
-              <div className="mb-8">
-                <h2 className="text-xl font-bold text-black mb-3">Executive Summary</h2>
-                <p className="text-neutral-700 leading-relaxed">{executiveSummary}</p>
-              </div>
-
-              {/* Key Findings */}
-              <div className="mb-8">
-                <h2 className="text-xl font-bold text-black mb-3">주요 발견사항</h2>
-                <div className="whitespace-pre-wrap text-neutral-700 leading-relaxed">{keyFindings}</div>
-              </div>
-
+              
               {/* Selected Issues */}
               {selectedIssues.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-bold text-black mb-3">포함된 이슈</h2>
+                  <h2 className="text-xl font-bold text-black mb-3">이슈 사항</h2>
                   <div className="space-y-2">
                     {selectedIssues.map((issueId) => {
                       const issue = mockIssuesForReport.find((i) => i.id === issueId);
@@ -230,7 +238,7 @@ export function ReportsView({ onNavigate }: ReportsViewProps) {
                         <div key={issueId} className="flex items-start gap-2 p-3 bg-neutral-50 rounded-lg">
                           <CheckSquare size={16} className="text-orange-600 mt-0.5 flex-shrink-0" />
                           <div>
-                            <p className="text-sm font-medium text-black">{issue?.title}</p>
+                            <p className="text-sm font-medium leading-relaxed text-black">{issue?.reportSummary}</p>
                             <p className="text-xs text-neutral-500">{issue?.peer}</p>
                           </div>
                         </div>
@@ -239,6 +247,19 @@ export function ReportsView({ onNavigate }: ReportsViewProps) {
                   </div>
                 </div>
               )}
+            
+
+              {/* Executive Summary */}
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-black mb-3">요약</h2>
+                <p className="text-neutral-700 leading-relaxed">{executiveSummary}</p>
+              </div>
+
+              {/* Key Findings */}
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-black mb-3">참고 사항</h2>
+                <div className="whitespace-pre-wrap text-neutral-700 leading-relaxed">{keyFindings}</div>
+              </div>
 
               {/* Footer */}
               <div className="border-t border-neutral-200 pt-6 mt-12">

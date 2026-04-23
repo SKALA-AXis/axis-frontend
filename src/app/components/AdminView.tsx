@@ -6,9 +6,9 @@ export function AdminView() {
 
   const tabs = [
     { id: 'users', label: '사용자 관리', icon: Users },
-    { id: 'pipeline', label: '파이프라인', icon: Activity },
+    { id: 'pipeline', label: '스케줄러', icon: Activity },
     { id: 'sources', label: '크롤링 소스', icon: Database },
-    { id: 'archives', label: '원문 아카이브', icon: Database },
+    { id: 'api', label: 'API 사용 현황', icon: Activity },
     { id: 'audit', label: '감사 로그', icon: Settings },
     { id: 'system', label: '시스템 설정', icon: Settings },
   ];
@@ -46,7 +46,7 @@ export function AdminView() {
         {activeTab === 'users' && <UserManagement />}
         {activeTab === 'pipeline' && <PipelineManagement />}
         {activeTab === 'sources' && <SourceManagement />}
-        {activeTab === 'archives' && <ArchiveManagement />}
+        {activeTab === 'api' && <ApiUsageView />}
         {activeTab === 'audit' && <AuditLog />}
         {activeTab === 'system' && <SystemSettings />}
       </div>
@@ -55,7 +55,7 @@ export function AdminView() {
 }
 
 function UserManagement() {
-  const [selectedUser, setSelectedUser] = useState<{ name: string; email: string; role: string } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{ name: string; email: string; role: string; status: string } | null>(null);
   const [isInviting, setIsInviting] = useState(false);
 
   const users = [
@@ -128,7 +128,7 @@ function UserManagement() {
       {(isInviting || selectedUser) && (
         <div className="mt-6 rounded-lg border border-orange-200 bg-orange-50 p-5">
           <h3 className="mb-4 font-bold text-black">{isInviting ? '새 사용자 초대' : '사용자 정보 수정'}</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <input
               defaultValue={selectedUser?.name}
               placeholder="이름"
@@ -145,6 +145,12 @@ function UserManagement() {
               <option value="strategist">strategist</option>
               <option value="admin">admin</option>
             </select>
+            <select defaultValue={selectedUser?.status || 'pending_approval'} className="rounded-lg border border-neutral-300 px-3 py-2 text-sm">
+              <option value="active">활성</option>
+              <option value="pending_approval">승인대기</option>
+              <option value="suspended">정지</option>
+              <option value="inactive">비활성</option>
+            </select>
           </div>
           <button className="mt-4 rounded-lg bg-orange-600 px-4 py-2 text-sm text-white hover:bg-orange-700">
             {isInviting ? '초대 저장' : '변경사항 저장'}
@@ -157,6 +163,11 @@ function UserManagement() {
 
 function PipelineManagement() {
   const [manualRun, setManualRun] = useState<string | null>(null);
+  const [pipelineSchedules, setPipelineSchedules] = useState<Record<string, string>>({
+    Collection: '10:15',
+    Analysis: '09:30',
+    Delivery: '08:30',
+  });
 
   const pipelines = [
     { name: 'Collection', status: 'running', lastRun: '2026-04-22 10:15', success: 247, failed: 3 },
@@ -187,17 +198,6 @@ function PipelineManagement() {
               )}
             </div>
 
-            <div className="space-y-2 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">성공</span>
-                <span className="text-green-600 font-medium">{pipeline.success}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">실패</span>
-                <span className="text-red-600 font-medium">{pipeline.failed}</span>
-              </div>
-            </div>
-
             <button
               onClick={() => setManualRun(pipeline.name)}
               className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm"
@@ -209,6 +209,29 @@ function PipelineManagement() {
             )}
           </div>
         ))}
+      </div>
+
+      <div className="bg-white border border-neutral-200 rounded-xl p-6">
+        <h3 className="text-lg font-bold text-black mb-4">자동 실행 시간 설정</h3>
+        <div className="grid grid-cols-3 gap-4">
+          {pipelines.map((pipeline) => (
+            <div key={pipeline.name} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+              <label className="mb-2 block text-sm font-medium text-black">{pipeline.name}</label>
+              <input
+                type="time"
+                value={pipelineSchedules[pipeline.name]}
+                onChange={(event) =>
+                  setPipelineSchedules((current) => ({
+                    ...current,
+                    [pipeline.name]: event.target.value,
+                  }))
+                }
+                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"
+              />
+              <p className="mt-2 text-xs text-neutral-500">스케줄러 자동 실행 기준 시간</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="bg-white border border-neutral-200 rounded-xl p-6">
@@ -321,53 +344,6 @@ function SourceManagement() {
   );
 }
 
-function ArchiveManagement() {
-  const mockArchives = [
-    { id: 1, title: '삼성SDS 제조 AX 레퍼런스', peer: '삼성SDS', status: 'EMBEDDED', collected: '2026-04-22 08:35' },
-    { id: 2, title: 'LG CNS 금융 AI 보안 패키지', peer: 'LG CNS', status: 'CLUSTERED_DUPE', collected: '2026-04-22 07:20' },
-    { id: 3, title: '현대오토에버 SDV 데이터 플랫폼', peer: '현대오토에버', status: 'SKIPPED_QUALITY', collected: '2026-04-21 16:50' },
-  ];
-
-  const statusColors = {
-    EMBEDDED: 'bg-blue-100 text-blue-700',
-    CLUSTERED_DUPE: 'bg-purple-100 text-purple-700',
-    SKIPPED_QUALITY: 'bg-yellow-100 text-yellow-700',
-  };
-
-  return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-6">
-      <h2 className="text-lg font-bold text-black mb-6">원문 아카이브</h2>
-
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-neutral-200">
-              <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">제목</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">Peer사</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">처리 상태</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">수집 시간</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockArchives.map((article) => (
-              <tr key={article.id} className="border-b border-neutral-100 hover:bg-neutral-50">
-                <td className="py-3 px-4 text-sm text-black">{article.title}</td>
-                <td className="py-3 px-4 text-sm text-neutral-600">{article.peer}</td>
-                <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded text-xs ${statusColors[article.status as keyof typeof statusColors]}`}>
-                    {article.status}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-sm text-neutral-500">{article.collected}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function AuditLog() {
   const logs = [
     { id: '1', actor: '박관리', action: 'USER_LOGIN', target: 'System', time: '2026-04-22 10:30', ip: '192.168.1.100' },
@@ -411,14 +387,112 @@ function AuditLog() {
   );
 }
 
-function SystemSettings() {
-  const [saved, setSaved] = useState(false);
+function ApiUsageView() {
+  const apiUsages = [
+    { name: 'OpenAI Responses API', provider: 'OpenAI', todayCalls: 8420, monthlyCalls: 186200, todayCost: 421, monthlyCost: 9310 },
+    { name: 'Naver News Search API', provider: 'Naver', todayCalls: 2460, monthlyCalls: 58420, todayCost: 123, monthlyCost: 2921 },
+    { name: 'DART Open API', provider: 'DART', todayCalls: 980, monthlyCalls: 22480, todayCost: 49, monthlyCost: 1124 },
+    { name: 'Slack Webhook API', provider: 'Slack', todayCalls: 620, monthlyCalls: 17820, todayCost: 31, monthlyCost: 891 },
+  ];
+  const totalTodayCalls = apiUsages.reduce((sum, usage) => sum + usage.todayCalls, 0);
+  const totalMonthlyCalls = apiUsages.reduce((sum, usage) => sum + usage.monthlyCalls, 0);
+  const totalTodayCost = apiUsages.reduce((sum, usage) => sum + usage.todayCost, 0);
+  const totalMonthlyCost = apiUsages.reduce((sum, usage) => sum + usage.monthlyCost, 0);
 
   return (
     <div className="bg-white border border-neutral-200 rounded-xl p-6">
-      <h2 className="text-lg font-bold text-black mb-6">시스템 운영 설정</h2>
+      <h2 className="text-lg font-bold text-black mb-6">API 사용 현황</h2>
+      <div className="mb-6 grid grid-cols-4 gap-3">
+        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+          <p className="text-xs text-neutral-600">오늘 호출 횟수</p>
+          <p className="mt-1 text-2xl font-bold text-black">{totalTodayCalls.toLocaleString('ko-KR')}</p>
+        </div>
+        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+          <p className="text-xs text-neutral-600">월 누적 호출</p>
+          <p className="mt-1 text-2xl font-bold text-black">{totalMonthlyCalls.toLocaleString('ko-KR')}</p>
+        </div>
+        <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+          <p className="text-xs text-neutral-600">오늘 비용</p>
+          <p className="mt-1 text-2xl font-bold text-black">₩{totalTodayCost.toLocaleString('ko-KR')}</p>
+        </div>
+        <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+          <p className="text-xs text-neutral-600">월 누적 비용</p>
+          <p className="mt-1 text-2xl font-bold text-black">₩{totalMonthlyCost.toLocaleString('ko-KR')}</p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-neutral-200">
+              <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">API</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">Provider</th>
+              <th className="text-right py-3 px-4 text-sm font-medium text-neutral-600">오늘 호출</th>
+              <th className="text-right py-3 px-4 text-sm font-medium text-neutral-600">월 누적 호출</th>
+              <th className="text-right py-3 px-4 text-sm font-medium text-neutral-600">오늘 비용</th>
+              <th className="text-right py-3 px-4 text-sm font-medium text-neutral-600">월 누적 비용</th>
+            </tr>
+          </thead>
+          <tbody>
+            {apiUsages.map((usage) => (
+              <tr key={usage.name} className="border-b border-neutral-100 hover:bg-neutral-50">
+                <td className="py-3 px-4 text-sm font-medium text-black">{usage.name}</td>
+                <td className="py-3 px-4 text-sm text-neutral-600">{usage.provider}</td>
+                <td className="py-3 px-4 text-right text-sm text-neutral-700">{usage.todayCalls.toLocaleString('ko-KR')}</td>
+                <td className="py-3 px-4 text-right text-sm text-neutral-700">{usage.monthlyCalls.toLocaleString('ko-KR')}</td>
+                <td className="py-3 px-4 text-right text-sm text-neutral-700">₩{usage.todayCost.toLocaleString('ko-KR')}</td>
+                <td className="py-3 px-4 text-right text-sm font-medium text-black">₩{usage.monthlyCost.toLocaleString('ko-KR')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SystemSettings() {
+  const defaultReasoningPrompt =
+    '이슈의 사업 연관성, 고객군 중복 가능성, 확산 신호를 근거 중심으로 정리하세요. 추정은 명확히 구분하고 원문에서 확인 가능한 내용만 판단 근거로 사용하세요.';
+  const defaultImplicationPrompt =
+    'SK AX 관점에서 전략적 중요도, 시장 영향, 검토 질문을 도출하세요. 경쟁사 메시지와 SK AX의 대응 포인트가 분리되어 보이도록 작성하세요.';
+  const [saved, setSaved] = useState(false);
+  const [settingsView, setSettingsView] = useState<'general' | 'prompts'>('general');
+  const [reasoningPrompt, setReasoningPrompt] = useState(defaultReasoningPrompt);
+  const [implicationPrompt, setImplicationPrompt] = useState(defaultImplicationPrompt);
+
+  const resetPrompts = () => {
+    setReasoningPrompt(defaultReasoningPrompt);
+    setImplicationPrompt(defaultImplicationPrompt);
+  };
+
+  return (
+    <div className="bg-white border border-neutral-200 rounded-xl p-6">
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <h2 className="text-lg font-bold text-black">시스템 설정</h2>
+        <div className="flex rounded-lg border border-neutral-200 bg-neutral-50 p-1">
+          {[
+            { id: 'general', label: '운영 설정' },
+            { id: 'prompts', label: '프롬프트 설정' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setSettingsView(item.id as typeof settingsView)}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                settingsView === item.id
+                  ? 'bg-white text-orange-600 shadow-sm'
+                  : 'text-neutral-600 hover:text-black'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-6">
+        {settingsView === 'general' && (
+        <>
         <div>
           <label className="block text-sm font-medium text-black mb-2">일일 LLM 예산 (KRW)</label>
           <input
@@ -446,15 +520,42 @@ function SystemSettings() {
             className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
           />
         </div>
+        </>
+        )}
 
+        {settingsView === 'prompts' && (
         <div>
-          <label className="block text-sm font-medium text-black mb-2">브리핑 전송 시간</label>
-          <input
-            type="time"
-            defaultValue="08:30"
-            className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
-          />
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-black">프롬프트 설정</h3>
+            <button
+              onClick={resetPrompts}
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            >
+              초기값으로 복원
+            </button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-black mb-2">판단 근거 프롬프트</label>
+              <textarea
+                value={reasoningPrompt}
+                onChange={(event) => setReasoningPrompt(event.target.value)}
+                rows={6}
+                className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-black mb-2">시사점 프롬프트</label>
+              <textarea
+                value={implicationPrompt}
+                onChange={(event) => setImplicationPrompt(event.target.value)}
+                rows={6}
+                className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm"
+              />
+            </div>
+          </div>
         </div>
+        )}
 
         <button
           onClick={() => setSaved(true)}

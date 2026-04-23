@@ -1,7 +1,16 @@
 import { Bell, Plus } from 'lucide-react';
 import { useState } from 'react';
 
-const mockAlertRules = [
+type AlertRule = {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  channels: string[];
+  last_triggered: string;
+};
+
+const mockAlertRules: AlertRule[] = [
   {
     id: 'RULE-001',
     name: '긴급 이슈 즉시 알림',
@@ -47,14 +56,40 @@ const mockAlertHistory = [
   },
 ];
 
+const alertConditionOptions = [
+  '중요도가 긴급인 이슈 발생 시 즉시 알림',
+  'Agentic AI, 제조 AX, 금융 AX 키워드 포함 시 알림',
+  '파트너십, M&A 이벤트 타입 알림',
+  '특정 Peer사 신규 이슈 수집 시 알림',
+  '보고서 생성이 완료되면 알림',
+];
+
+const channelOptions = ['slack', 'email', 'dashboard'];
+
 export function AlertsView() {
   const [activeTab, setActiveTab] = useState<'history' | 'rules'>('history');
-  const [selectedRule, setSelectedRule] = useState<(typeof mockAlertRules)[number] | null>(null);
+  const [selectedRule, setSelectedRule] = useState<AlertRule | null>(null);
+
+  const toggleChannel = (channel: string) => {
+    if (!selectedRule) {
+      return;
+    }
+
+    const nextChannels = selectedRule.channels.includes(channel)
+      ? selectedRule.channels.filter((selectedChannel) => selectedChannel !== channel)
+      : [...selectedRule.channels, channel];
+
+    setSelectedRule({
+      ...selectedRule,
+      channels: nextChannels,
+    });
+  };
+
   const openNewRule = () => {
     setSelectedRule({
       id: 'RULE-NEW',
       name: '새 알림 규칙',
-      description: '키워드와 중요도 조건을 설정하세요',
+      description: alertConditionOptions[0],
       enabled: false,
       channels: ['dashboard'],
       last_triggered: new Date().toISOString(),
@@ -98,7 +133,7 @@ export function AlertsView() {
 
         {activeTab === 'history' && (
           <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-8">
+            <div className="col-span-12">
               <div className="bg-white border border-neutral-200 rounded-xl p-6">
                 <h2 className="text-lg font-bold text-black mb-4">최근 알림 이력</h2>
                 <div className="space-y-3">
@@ -127,30 +162,6 @@ export function AlertsView() {
                 </div>
               </div>
             </div>
-
-            <aside className="col-span-4 space-y-4">
-              <div className="rounded-xl border border-neutral-200 bg-white p-5">
-                <h2 className="mb-4 text-sm font-bold text-black">발송 현황</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-                    <p className="text-xs text-neutral-600">전송 완료</p>
-                    <p className="text-2xl font-bold text-black">2</p>
-                  </div>
-                  <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
-                    <p className="text-xs text-neutral-600">재시도 대기</p>
-                    <p className="text-2xl font-bold text-black">0</p>
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-xl border border-neutral-200 bg-white p-5">
-                <h2 className="mb-3 text-sm font-bold text-black">채널별 발송</h2>
-                <div className="space-y-2 text-sm text-neutral-700">
-                  <div className="flex justify-between"><span>Slack</span><span className="font-bold text-black">1</span></div>
-                  <div className="flex justify-between"><span>Email</span><span className="font-bold text-black">1</span></div>
-                  <div className="flex justify-between"><span>Dashboard</span><span className="font-bold text-black">0</span></div>
-                </div>
-              </div>
-            </aside>
           </div>
         )}
 
@@ -173,7 +184,7 @@ export function AlertsView() {
                             )}
                           </div>
                           <p className="text-sm text-neutral-600 mb-2">{rule.description}</p>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             {rule.channels.map((channel) => (
                               <span key={channel} className="px-2 py-1 bg-orange-50 text-orange-700 text-xs rounded border border-orange-200">
                                 {channel}
@@ -205,20 +216,42 @@ export function AlertsView() {
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-black">설명</label>
-                    <textarea
-                      value={selectedRule.description}
-                      onChange={(e) => setSelectedRule({ ...selectedRule, description: e.target.value })}
-                      rows={3}
-                      className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm"
-                    />
+                    <label className="mb-2 block text-sm font-medium text-black">알림 조건</label>
+                    <div className="flex flex-wrap gap-2">
+                      {alertConditionOptions.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => setSelectedRule({ ...selectedRule, description: option })}
+                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                            selectedRule.description === option
+                              ? 'border-orange-500 bg-orange-50 text-orange-700'
+                              : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+                          }`}
+                          aria-pressed={selectedRule.description === option}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedRule.channels.map((channel) => (
-                      <span key={channel} className="rounded border border-orange-200 bg-orange-50 px-2 py-1 text-xs text-orange-700">
-                        {channel}
-                      </span>
-                    ))}
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-black">발송 채널</label>
+                    <div className="flex flex-wrap gap-2">
+                      {channelOptions.map((channel) => (
+                        <button
+                          key={channel}
+                          onClick={() => toggleChannel(channel)}
+                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                            selectedRule.channels.includes(channel)
+                              ? 'border-orange-500 bg-orange-50 text-orange-700'
+                              : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+                          }`}
+                          aria-pressed={selectedRule.channels.includes(channel)}
+                        >
+                          {channel}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button className="flex-1 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700">
@@ -237,7 +270,7 @@ export function AlertsView() {
                 <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-8 text-center">
                   <p className="font-bold text-black">새 규칙을 추가해보세요</p>
                   <p className="mt-2 text-sm text-neutral-600">
-                    Peer사, 키워드, 중요도 조건에 따라 알림 발송 기준을 설정할 수 있습니다.
+                    알림 조건과 발송 채널을 선택해 알림 발송 기준을 설정할 수 있습니다.
                   </p>
                   <button
                     onClick={openNewRule}
