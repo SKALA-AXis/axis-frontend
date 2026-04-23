@@ -6,7 +6,10 @@ import {
   Download,
   FileText,
   Minus,
+  Send,
+  Sparkles,
   TrendingUp,
+  X,
 } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from './ui/badge';
@@ -223,7 +226,7 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
           </div>
         </div>
       </div>
-      <FloatingAiChat onNavigate={onNavigate} />
+      <FloatingAiChat />
     </div>
   );
 }
@@ -358,34 +361,135 @@ function DashboardHeader({ onNavigate }: DashboardOverviewProps) {
   );
 }
 
-function FloatingAiChat({ onNavigate }: DashboardOverviewProps) {
+function FloatingAiChat() {
+  const [isOpen, setIsOpen] = useState(false);
   const [isBubbleVisible, setIsBubbleVisible] = useState(false);
+  const [query, setQuery] = useState('');
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
+    {
+      role: 'assistant',
+      content: '안녕하세요. AXIS입니다. Peer사 동향이나 전략 검토 포인트를 질문해 주세요.',
+    },
+  ]);
+
+  const handleSend = () => {
+    const trimmedQuery = query.trim();
+
+    if (!trimmedQuery) {
+      return;
+    }
+
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      { role: 'user', content: trimmedQuery },
+      {
+        role: 'assistant',
+        content:
+          '요청하신 내용을 기준으로 최근 Peer사 이슈, SK AX 영향도, 후속 검토 포인트를 함께 정리해드릴게요.',
+      },
+    ]);
+    setQuery('');
+  };
 
   return (
     <div className="fixed bottom-6 right-10 z-40 flex flex-col items-end gap-3">
-      <div
-        className={`pointer-events-none w-64 rounded-2xl bg-white p-5 shadow-xl transition-all duration-200 ${
-          isBubbleVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
-        }`}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-lg font-bold text-neutral-900">AXIS</p>
-          <span className="text-2xl leading-none text-neutral-700">×</span>
+      {isOpen ? (
+        <section className="mb-2 flex h-[460px] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl">
+          <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-red-600">
+                <Sparkles className="size-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-black">AXIS AI</h2>
+                <p className="text-xs text-neutral-500">대화형 전략 검색</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="flex size-8 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-black"
+              aria-label="AI 채팅 패널 닫기"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 space-y-3 overflow-y-auto bg-neutral-50 px-4 py-4">
+            {messages.map((message, index) => (
+              <div
+                key={`${message.role}-${index}`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                    message.role === 'user'
+                      ? 'bg-orange-600 text-white'
+                      : 'border border-neutral-200 bg-white text-neutral-800'
+                  }`}
+                >
+                  {message.content}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-neutral-100 bg-white p-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    handleSend();
+                  }
+                }}
+                placeholder="질문을 입력하세요"
+                className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+              />
+              <button
+                type="button"
+                onClick={handleSend}
+                className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-orange-600 text-white transition-colors hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100"
+                aria-label="메시지 전송"
+              >
+                <Send className="size-4" />
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <div
+          className={`pointer-events-none w-64 rounded-2xl bg-white p-5 shadow-xl transition-all duration-200 ${
+            isBubbleVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+          }`}
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-lg font-bold text-neutral-900">AXIS</p>
+            <span className="text-2xl leading-none text-neutral-700">×</span>
+          </div>
+          <p className="text-base leading-relaxed text-neutral-800">
+            안녕하세요! AXIS입니다. 무엇을 도와드릴까요?
+          </p>
         </div>
-        <p className="text-base leading-relaxed text-neutral-800">
-          안녕하세요! AXIS입니다. 무엇을 도와드릴까요?
-        </p>
-      </div>
+      )}
 
       <button
         type="button"
-        onClick={() => onNavigate('search')}
+        onClick={() => {
+          setIsOpen((current) => !current);
+          setIsBubbleVisible(false);
+        }}
         onMouseEnter={() => setIsBubbleVisible(true)}
         onMouseLeave={() => setIsBubbleVisible(false)}
         onFocus={() => setIsBubbleVisible(true)}
         onBlur={() => setIsBubbleVisible(false)}
-        className="flex size-16 items-center justify-center rounded-full bg-black shadow-xl transition-transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-orange-200"
-        aria-label="AI 대화형 검색 열기"
+        className={`flex size-16 items-center justify-center rounded-full shadow-xl transition-transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-orange-200 ${
+          isOpen ? 'bg-orange-600' : 'bg-black'
+        }`}
+        aria-label={isOpen ? 'AI 채팅 패널 닫기' : 'AI 채팅 패널 열기'}
+        aria-expanded={isOpen}
       >
         <span className="relative block size-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600">
           <span className="absolute bottom-0 left-1.5 size-3 -skew-x-12 bg-red-600" />
