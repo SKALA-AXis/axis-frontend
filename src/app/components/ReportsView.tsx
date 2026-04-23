@@ -41,7 +41,7 @@ interface ReportsViewProps {
 }
 
 export function ReportsView({ onNavigate }: ReportsViewProps) {
-  const [reportTitle, setReportTitle] = useState('주간 Peer사 동향 보고서');
+  const [reportTitle, setReportTitle] = useState('Peer사 동향 보고서');
   const [reportType, setReportType] = useState('weekly_monitoring');
   const [selectedPeers, setSelectedPeers] = useState<string[]>(['samsung_sds', 'lg_cns']);
   const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
