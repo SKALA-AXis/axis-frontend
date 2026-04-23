@@ -236,7 +236,7 @@ function PeerStockCard() {
     <section className="rounded-xl border border-neutral-200 bg-white p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-black">Peer사 증감률 추이</h2>
+          <h2 className="text-sm font-bold text-black">Peer사 주가 증감률 추이</h2>
           <p className="mt-1 text-xs text-neutral-500">09:00 기준 누적 변동률 · %</p>
         </div>
         <span className="rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700">실시간</span>
