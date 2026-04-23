@@ -87,20 +87,20 @@ const peerSignals = [
 ];
 
 const stockData = [
-  { time: '09:00', skAx: 374000, samsungSds: 176000, lgCns: 66200, hyundaiAutoever: 431000 },
-  { time: '10:00', skAx: 376500, samsungSds: 177500, lgCns: 66800, hyundaiAutoever: 434000 },
-  { time: '11:00', skAx: 378000, samsungSds: 178200, lgCns: 67100, hyundaiAutoever: 436500 },
-  { time: '12:00', skAx: 377000, samsungSds: 179000, lgCns: 67500, hyundaiAutoever: 438000 },
-  { time: '13:00', skAx: 379500, samsungSds: 179500, lgCns: 68100, hyundaiAutoever: 441000 },
-  { time: '14:00', skAx: 381000, samsungSds: 180500, lgCns: 68400, hyundaiAutoever: 442500 },
-  { time: '15:00', skAx: 380000, samsungSds: 180000, lgCns: 68000, hyundaiAutoever: 440000 },
+  { time: '09:00', skAx: 0, samsungSds: 0, lgCns: 0, hyundaiAutoever: 0 },
+  { time: '10:00', skAx: 0.7, samsungSds: 0.9, lgCns: 0.9, hyundaiAutoever: 0.7 },
+  { time: '11:00', skAx: 1.1, samsungSds: 1.3, lgCns: 1.4, hyundaiAutoever: 1.3 },
+  { time: '12:00', skAx: 0.8, samsungSds: 1.7, lgCns: 2.0, hyundaiAutoever: 1.6 },
+  { time: '13:00', skAx: 1.5, samsungSds: 2.0, lgCns: 2.9, hyundaiAutoever: 2.3 },
+  { time: '14:00', skAx: 1.9, samsungSds: 2.6, lgCns: 3.3, hyundaiAutoever: 2.7 },
+  { time: '15:00', skAx: 1.6, samsungSds: 2.3, lgCns: 2.7, hyundaiAutoever: 2.1 },
 ];
 
 const stockPeers = [
-  { key: 'skAx', name: 'SK AX', color: '#dc2626', current: '380,000', change: '+1.6%' },
-  { key: 'samsungSds', name: '삼성SDS', color: '#2563eb', current: '180,000', change: '+2.3%' },
-  { key: 'lgCns', name: 'LG CNS', color: '#14b8a6', current: '68,000', change: '+2.7%' },
-  { key: 'hyundaiAutoever', name: '현대오토에버', color: '#f97316', current: '440,000', change: '+2.1%' },
+  { key: 'skAx', name: 'SK AX', color: '#dc2626', change: '+1.6%' },
+  { key: 'samsungSds', name: '삼성SDS', color: '#2563eb', change: '+2.3%' },
+  { key: 'lgCns', name: 'LG CNS', color: '#14b8a6', change: '+2.7%' },
+  { key: 'hyundaiAutoever', name: '현대오토에버', color: '#f97316', change: '+2.1%' },
 ];
 
 const keywords = [
@@ -236,8 +236,8 @@ function PeerStockCard() {
     <section className="rounded-xl border border-neutral-200 bg-white p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-black">Peer사 현재 주가</h2>
-          <p className="mt-1 text-xs text-neutral-500">장중 추이 · KRW</p>
+          <h2 className="text-sm font-bold text-black">Peer사 증감률 추이</h2>
+          <p className="mt-1 text-xs text-neutral-500">09:00 기준 누적 변동률 · %</p>
         </div>
         <span className="rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700">실시간</span>
       </div>
@@ -249,12 +249,12 @@ function PeerStockCard() {
           <YAxis
             stroke="#737373"
             fontSize={11}
-            tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+            tickFormatter={(value) => `${Number(value).toFixed(1)}%`}
             width={42}
           />
           <Tooltip
             formatter={(value: number, name: string) => [
-              `${Number(value).toLocaleString('ko-KR')}원`,
+              `${Number(value).toFixed(1)}%`,
               stockPeers.find((peer) => peer.key === name)?.name || name,
             ]}
             labelFormatter={(label) => `${label} 기준`}
@@ -282,7 +282,7 @@ function PeerStockCard() {
               <span className="font-medium text-neutral-800">{peer.name}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-neutral-600">{peer.current}원</span>
+              <span className="text-neutral-500">현재</span>
               <span className="font-bold text-green-600">{peer.change}</span>
             </div>
           </div>
