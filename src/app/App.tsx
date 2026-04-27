@@ -4,7 +4,6 @@ import { DashboardOverview } from './components/DashboardOverview';
 import { IssuesView } from './components/IssuesView';
 import { SearchView } from './components/SearchView';
 import { BriefingsView } from './components/BriefingsView';
-import { ReportsView } from './components/ReportsView';
 import { AlertsView } from './components/AlertsView';
 import { SettingsView } from './components/SettingsView';
 import { AdminView } from './components/AdminView';
@@ -26,8 +25,6 @@ export default function App() {
         return <SearchView />;
       case 'briefings':
         return <BriefingsView onNavigate={setActiveView} />;
-      case 'reports':
-        return <ReportsView onNavigate={setActiveView} />;
       case 'alerts':
         return <AlertsView />;
       case 'settings':

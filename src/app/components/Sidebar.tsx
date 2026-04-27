@@ -1,4 +1,4 @@
-import { Home, FileText, Bell, Settings, BarChart3, Database, Users, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
+import { Home, FileText, Bell, Settings, BarChart3, Users, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 interface SidebarProps {
@@ -11,14 +11,12 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
 
   const menuItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard' },
-    { id: 'issues', icon: FileText, label: 'Issues' },
+    { id: 'issues', icon: FileText, label: '동향 카드' },
     { id: 'peers', icon: Users, label: 'Peer사' },
-    { id: 'briefings', icon: BarChart3, label: 'Briefings' },
-    { id: 'reports', icon: Database, label: 'Reports' },
-    { id: 'rawArticles', icon: Database, label: 'Articles' },
-    { id: 'alerts', icon: Bell, label: 'Alerts' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
-    { id: 'admin', icon: Shield, label: 'Admin' },
+    { id: 'briefings', icon: BarChart3, label: '브리핑' },
+    { id: 'alerts', icon: Bell, label: '알림' },
+    { id: 'settings', icon: Settings, label: '설정' },
+    { id: 'admin', icon: Shield, label: '관리' },
   ];
 
   return (
