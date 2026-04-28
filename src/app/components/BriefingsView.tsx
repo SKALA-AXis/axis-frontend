@@ -19,9 +19,9 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
 
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-black mb-2">{uiText.briefings.pageTitle}</h1>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.briefings.pageTitle}</h1>
           <p className="text-neutral-600">{uiText.briefings.pageSubtitle}</p>
         </div>
 
@@ -62,23 +62,23 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
 
         {briefings && activeSnapshot ? (
           <>
-            <div className="bg-white border border-neutral-200 rounded-xl p-6 mb-6">
+            <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
               <div className="mb-4">
                 <h2 className="text-lg font-bold text-black">
                   {briefingType === 'daily' ? uiText.briefings.todayDailyTitle : uiText.briefings.thisWeekTitle}
                 </h2>
               </div>
 
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-                <div className="flex items-start justify-between mb-4">
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 sm:p-6">
+                <div className="mb-4 flex items-start justify-between">
                   <div>
                     <h3 className="text-xl font-bold text-black mb-2">{activeSnapshot.title}</h3>
                     <p className="text-sm text-neutral-600">{activeSnapshot.summary}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-12 gap-6">
-                  <div className="col-span-8 space-y-4">
+                <div className="grid gap-6 lg:grid-cols-12">
+                  <div className="space-y-4 lg:col-span-8">
                     {activeSnapshot.sections.map((section) => (
                       <div key={section.title}>
                         <h4 className="text-sm font-bold text-black mb-2">{section.title}</h4>
@@ -94,7 +94,7 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
                     ))}
                   </div>
 
-                  <div className="col-span-4 rounded-xl border border-orange-200 bg-white p-4">
+                  <div className="rounded-xl border border-orange-200 bg-white p-4 lg:col-span-4">
                     <div className="mb-3 flex items-center gap-2">
                       <ShieldCheck className="size-4 text-orange-600" />
                       <h4 className="text-sm font-bold text-black">{uiText.briefings.evidenceTitle}</h4>
@@ -112,9 +112,9 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-12 gap-6">
-                <div className="col-span-12 space-y-4">
-                  <div className="flex items-center gap-3">
+              <div className="grid gap-6 lg:grid-cols-12">
+                <div className="space-y-4 lg:col-span-12">
+                  <div className="flex flex-wrap items-center gap-3">
                     <h2 className="text-lg font-bold text-black">{uiText.briefings.historyTitle}</h2>
                     <button
                       onClick={() => setIsFilterOpen((current) => !current)}
@@ -131,7 +131,7 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
 
                   {isFilterOpen && (
                     <div className="rounded-xl border border-neutral-200 bg-white p-4">
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid gap-4 md:grid-cols-3">
                         <div>
                           <label className="mb-2 block text-sm font-medium text-black">{uiText.briefings.peerFilter}</label>
                           <select
@@ -177,10 +177,10 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
                   )}
 
                   {briefings.history.map((briefing) => (
-                    <div key={briefing.id} className="bg-white border border-neutral-200 rounded-lg p-6 hover:border-orange-500 transition-colors">
-                      <div className="flex items-start justify-between gap-4">
+                    <div key={briefing.id} className="rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:border-orange-500 sm:p-6">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="mb-2 flex flex-wrap items-center gap-3">
                             <Calendar size={16} className="text-neutral-500" />
                             <span className="text-sm text-neutral-500">{briefing.date}</span>
                             <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
@@ -189,7 +189,7 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
                           </div>
                           <h3 className="text-base font-bold text-black mb-2">{briefing.title}</h3>
                           <p className="text-sm text-neutral-600 mb-3">{briefing.summary}</p>
-                          <div className="flex gap-4">
+                          <div className="flex flex-wrap gap-4">
                             <span className="text-xs text-neutral-500">우선 검토 {briefing.primaryCount}건</span>
                             <span className="text-xs text-neutral-500">관찰 필요 {briefing.watchCount}건</span>
                           </div>

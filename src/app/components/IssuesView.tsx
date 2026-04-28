@@ -93,14 +93,14 @@ export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
 
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-black mb-2">{uiText.issues.pageTitle}</h1>
+          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.issues.pageTitle}</h1>
           <p className="text-neutral-600">{uiText.issues.pageSubtitle}</p>
         </div>
 
         <div className="mb-6 space-y-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <div className="flex-1 relative">
               <input
                 type="text"
@@ -113,7 +113,7 @@ export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
             </div>
             <button
               onClick={() => setIsAddPanelOpen(true)}
-              className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 font-medium"
+              className="flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 font-medium text-white hover:bg-orange-700"
             >
               <Plus size={18} />
               {uiText.issues.addTrend}
@@ -135,7 +135,7 @@ export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
                 </button>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
                   <input
                     type="url"
@@ -162,10 +162,10 @@ export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
             </div>
           )}
 
-          <div className="flex gap-4">
-            <div className="flex gap-2">
+          <div className="flex flex-col gap-4 xl:flex-row">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <span className="text-sm text-neutral-600 py-2">{uiText.issues.peerFilter}</span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {peers.map((peer) => (
                   <button
                     key={peer.id}
@@ -182,9 +182,9 @@ export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <span className="text-sm text-neutral-600 py-2">{uiText.issues.reviewLevelFilter}</span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {importanceOptions.map((option) => (
                   <button
                     key={option.value}
@@ -229,7 +229,7 @@ export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
               />
             ))
           ) : (
-            <div className="bg-white border border-neutral-200 rounded-xl p-12 text-center">
+            <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center sm:p-12">
               <p className="text-neutral-500">{uiText.issues.empty}</p>
             </div>
           )}

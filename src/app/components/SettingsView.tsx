@@ -13,23 +13,23 @@ export function SettingsView() {
 
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-black mb-2">설정</h1>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">설정</h1>
           <p className="text-neutral-600">계정 및 시스템 환경 설정</p>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-3">
-            <div className="bg-white border border-neutral-200 rounded-xl p-4">
-              <nav className="space-y-1">
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-3">
+            <div className="rounded-xl border border-neutral-200 bg-white p-3 sm:p-4">
+              <nav className="flex gap-2 overflow-x-auto lg:block lg:space-y-1">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      className={`flex shrink-0 items-center gap-3 rounded-lg px-4 py-3 transition-colors lg:w-full ${
                         activeTab === tab.id
                           ? 'bg-orange-100 text-orange-700'
                           : 'text-neutral-700 hover:bg-neutral-100'
@@ -44,8 +44,8 @@ export function SettingsView() {
             </div>
           </div>
 
-          <div className="col-span-9">
-            <div className="bg-white border border-neutral-200 rounded-xl p-6">
+          <div className="lg:col-span-9">
+            <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
               {activeTab === 'profile' && <ProfileSettings />}
               {activeTab === 'notifications' && <NotificationSettings />}
               {activeTab === 'security' && <SecuritySettings />}
@@ -67,7 +67,7 @@ function ProfileSettings() {
         <h2 className="text-xl font-bold text-black mb-4">프로필 정보</h2>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-black mb-2">이름</label>
           <input type="text" defaultValue="SK AX User" className="w-full px-4 py-2 border border-neutral-300 rounded-lg" />
@@ -109,19 +109,19 @@ function NotificationSettings() {
       </div>
 
       <div className="space-y-4">
-        <label className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg">
+        <label className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-medium text-black">긴급 이슈 즉시 알림</p>
-            <p className="text-sm text-neutral-600">긴급 중요도 이슈 발생 시 즉시 알림</p>
+            <p className="text-sm text-neutral-600">긴급 중요도 이슈 발생 시 등록된 이메일로 즉시 전송</p>
           </div>
           <input type="checkbox" defaultChecked className="w-5 h-5 text-orange-600 rounded" />
         </label>
 
         <div className="p-4 border border-neutral-200 rounded-lg">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-medium text-black">일간 브리핑</p>
-              <p className="text-sm text-neutral-600">매일 설정한 시간에 브리핑 전송</p>
+              <p className="text-sm text-neutral-600">매일 설정한 시간에 이메일 브리핑 전송</p>
             </div>
             <input type="checkbox" defaultChecked className="w-5 h-5 text-orange-600 rounded" />
           </div>
@@ -136,31 +136,13 @@ function NotificationSettings() {
           </div>
         </div>
 
-        <label className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg">
+        <label className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-medium text-black">주간 요약</p>
-            <p className="text-sm text-neutral-600">매주 월요일 주간 동향 요약</p>
+            <p className="text-sm text-neutral-600">매주 월요일 이메일로 주간 동향 요약 전송</p>
           </div>
           <input type="checkbox" className="w-5 h-5 text-orange-600 rounded" />
         </label>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">알림 채널</label>
-        <div className="space-y-2">
-          <label className="flex items-center gap-2">
-            <input type="checkbox" defaultChecked className="w-4 h-4 text-orange-600 rounded" />
-            <span className="text-sm">이메일</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" defaultChecked className="w-4 h-4 text-orange-600 rounded" />
-            <span className="text-sm">Slack</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" className="w-4 h-4 text-orange-600 rounded" />
-            <span className="text-sm">Dashboard</span>
-          </label>
-        </div>
       </div>
     </div>
   );
@@ -214,28 +196,49 @@ function SecuritySettings() {
 }
 
 function PreferencesSettings() {
+  const defaultReasoningPrompt =
+    '이슈의 사업 연관성, 고객군 중복 가능성, 확산 신호를 근거 중심으로 정리하세요. 추정은 명확히 구분하고 원문에서 확인 가능한 내용만 판단 근거로 사용하세요.';
+  const defaultImplicationPrompt =
+    'SK AX 관점에서 전략적 중요도, 시장 영향, 검토 질문을 도출하세요. 경쟁사 메시지와 SK AX의 대응 포인트가 분리되어 보이도록 작성하세요.';
   const [saved, setSaved] = useState(false);
+  const [reasoningPrompt, setReasoningPrompt] = useState(defaultReasoningPrompt);
+  const [implicationPrompt, setImplicationPrompt] = useState(defaultImplicationPrompt);
+
+  const resetPrompts = () => {
+    setReasoningPrompt(defaultReasoningPrompt);
+    setImplicationPrompt(defaultImplicationPrompt);
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-black mb-4">환경 설정</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xl font-bold text-black">환경 설정</h2>
+        <button
+          onClick={resetPrompts}
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+        >
+          초기값으로 복원
+        </button>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-black mb-2">언어</label>
-        <select className="w-full px-4 py-2 border border-neutral-300 rounded-lg">
-          <option>한국어</option>
-          <option>English</option>
-        </select>
+        <label className="block text-sm font-medium text-black mb-2">판단 근거 프롬프트</label>
+        <textarea
+          value={reasoningPrompt}
+          onChange={(event) => setReasoningPrompt(event.target.value)}
+          rows={6}
+          className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm"
+        />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-black mb-2">시간대</label>
-        <select className="w-full px-4 py-2 border border-neutral-300 rounded-lg">
-          <option>Asia/Seoul (UTC+9)</option>
-          <option>America/New_York (UTC-5)</option>
-        </select>
+        <label className="block text-sm font-medium text-black mb-2">시사점 프롬프트</label>
+        <textarea
+          value={implicationPrompt}
+          onChange={(event) => setImplicationPrompt(event.target.value)}
+          rows={6}
+          className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm"
+        />
       </div>
 
       <button

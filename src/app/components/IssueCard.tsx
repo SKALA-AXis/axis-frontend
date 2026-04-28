@@ -59,10 +59,10 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
 
   return (
     <div className="bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-all hover:shadow-md">
-      <div className="p-6">
-        <div className="flex items-start gap-4">
+      <div className="p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${config.color}`}>
                 <ImportanceIcon size={12} />
                 {config.label}
@@ -91,7 +91,7 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
               ))}
             </ul>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="text-sm text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1"
@@ -109,7 +109,7 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
             </div>
           </div>
 
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 gap-2 sm:justify-end">
             {onDelete && (
               <button
                 onClick={handleDelete}
@@ -158,7 +158,7 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
 
               <div>
                 <h4 className="text-sm font-bold text-black mb-3">{uiText.issueCard.evidenceTitle}</h4>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid gap-3 md:grid-cols-3">
                   {uiText.issueCard.evidenceCards.map((card) => (
                     <div key={card.title} className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
                       <p className="text-sm font-medium text-black">{card.title}</p>

@@ -30,7 +30,7 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
 
   return (
     <div className="relative flex-1 overflow-auto bg-neutral-50">
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <DashboardHeader onNavigate={onNavigate} notificationsCount={dashboard?.notifications.length ?? 0} notifications={dashboard?.notifications ?? []} />
 
         {error && (
@@ -47,9 +47,9 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
 
         {dashboard ? (
           <>
-            <div className="grid grid-cols-12 gap-6">
-              <section className="col-span-8 rounded-xl border border-neutral-200 bg-white p-6">
-                <div className="mb-5 flex items-center justify-between">
+            <div className="grid gap-6 xl:grid-cols-12">
+              <section className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6 xl:col-span-8">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-xs font-bold uppercase text-orange-600">{uiText.dashboard.trendQueueLabel}</p>
                     <h2 className="mt-1 text-lg font-bold text-black">{uiText.dashboard.trendSectionTitle}</h2>
@@ -93,8 +93,8 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
                 </div>
               </section>
 
-              <section className="col-span-4 rounded-xl border border-neutral-200 bg-white p-6">
-                <div className="mb-5 flex items-center justify-between">
+              <section className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6 xl:col-span-4">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-xs font-bold uppercase text-orange-600">{uiText.dashboard.topArticlesLabel}</p>
                     <h2 className="mt-1 text-lg font-bold text-black">{uiText.dashboard.topArticlesTitle}</h2>
@@ -114,14 +114,14 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
                       onClick={() => onNavigate('rawArticles')}
                       className="w-full rounded-lg border border-neutral-200 p-4 text-left transition-colors hover:border-orange-400 hover:bg-orange-50/60"
                     >
-                      <div className="mb-2 flex items-center justify-between gap-3">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                         <span className="rounded bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700">
                           {article.peer}
                         </span>
                         <span className="text-xs text-neutral-500">{article.publishedAt}</span>
                       </div>
                       <p className="text-sm font-bold leading-relaxed text-black">{article.title}</p>
-                      <div className="mt-3 flex items-center justify-between text-xs text-neutral-600">
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
                         <span>{article.source}</span>
                         <span className="rounded bg-orange-50 px-2 py-1 text-orange-700">{article.note}</span>
                       </div>
@@ -131,11 +131,11 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
               </section>
             </div>
 
-            <div className="mt-6 grid grid-cols-12 gap-6">
-              <div className="col-span-7">
+            <div className="mt-6 grid gap-6 xl:grid-cols-12">
+              <div className="xl:col-span-7">
                 <KeywordCard onNavigate={onNavigate} keywords={dashboard.keywords} keywordNewsCount={dashboard.keywordNewsCount} />
               </div>
-              <div className="col-span-5">
+              <div className="xl:col-span-5">
                 <KeywordSearchVolumeCard points={dashboard.keywordSearchPoints} series={dashboard.keywordSeries} />
               </div>
             </div>
@@ -222,7 +222,7 @@ function DashboardHeader({
   return (
     <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
       <div>
-        <h1 className="mb-2 text-3xl font-bold text-black">{uiText.dashboard.pageTitle}</h1>
+        <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.dashboard.pageTitle}</h1>
         <p className="text-neutral-600">
           {uiText.dashboard.pageSubtitle} ·{' '}
           {new Date().toLocaleDateString('ko-KR', {
@@ -249,7 +249,7 @@ function DashboardHeader({
           </Button>
 
           {isNotificationOpen && (
-            <div className="absolute right-0 top-13 z-50 w-80 rounded-xl border border-neutral-200 bg-white p-3 shadow-xl">
+            <div className="absolute right-0 top-13 z-50 w-[calc(100vw-2rem)] max-w-80 rounded-xl border border-neutral-200 bg-white p-3 shadow-xl">
               <div className="flex items-center justify-between px-1 pb-3">
                 <div>
                   <p className="font-bold text-black">알림</p>
@@ -316,7 +316,7 @@ function FloatingAiChat() {
   };
 
   return (
-    <div className="fixed bottom-6 right-10 z-40 flex flex-col items-end gap-3">
+    <div className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3 md:bottom-6 md:right-10">
       {isOpen ? (
         <section className="mb-2 flex h-[460px] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
@@ -385,7 +385,7 @@ function FloatingAiChat() {
         </section>
       ) : (
         <div
-          className={`pointer-events-none w-64 rounded-2xl bg-white p-5 shadow-xl transition-all duration-200 ${
+          className={`pointer-events-none hidden w-64 rounded-2xl bg-white p-5 shadow-xl transition-all duration-200 sm:block ${
             isBubbleVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
           }`}
         >
@@ -431,13 +431,13 @@ function KeywordCard({
 }) {
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5">
-      <div className="mb-3 flex items-baseline gap-2">
+      <div className="mb-3 flex flex-wrap items-baseline gap-2">
         <h2 className="text-sm font-bold text-black">{uiText.dashboard.keywordsTitle}</h2>
         <span className="text-xs text-neutral-500">{uiText.dashboard.keywordsNewsCountLabel}</span>
         <span className="text-base font-bold text-blue-600">{keywordNewsCount}</span>
         <span className="text-xs text-neutral-500">건</span>
       </div>
-      <div className="mb-3 flex items-center gap-4 text-xs">
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs">
         <LegendDot color="bg-orange-500" label="인물" />
         <LegendDot color="bg-teal-500" label="장소" />
         <LegendDot color="bg-blue-600" label="기관" />
@@ -476,7 +476,7 @@ function KeywordCard({
           ))}
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-neutral-500">{uiText.dashboard.keywordsGuide}</p>
         <button
           onClick={() => onNavigate('search')}

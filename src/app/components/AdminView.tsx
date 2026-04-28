@@ -15,21 +15,21 @@ export function AdminView() {
 
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-black mb-2">관리자</h1>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">관리자</h1>
           <p className="text-neutral-600">시스템 운영 및 사용자 관리</p>
         </div>
 
         <div className="mb-6">
-          <div className="flex gap-2 border-b border-neutral-200">
+          <div className="flex gap-2 overflow-x-auto border-b border-neutral-200">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                  className={`flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 transition-colors sm:px-4 ${
                     activeTab === tab.id
                       ? 'border-orange-600 text-orange-600'
                       : 'border-transparent text-neutral-600 hover:text-black'
@@ -66,8 +66,8 @@ function UserManagement() {
   ];
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-bold text-black">사용자 목록</h2>
         <button
           onClick={() => {
@@ -128,7 +128,7 @@ function UserManagement() {
       {(isInviting || selectedUser) && (
         <div className="mt-6 rounded-lg border border-orange-200 bg-orange-50 p-5">
           <h3 className="mb-4 font-bold text-black">{isInviting ? '새 사용자 초대' : '사용자 정보 수정'}</h3>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <input
               defaultValue={selectedUser?.name}
               placeholder="이름"
@@ -177,10 +177,10 @@ function PipelineManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid gap-4 lg:grid-cols-3 lg:gap-6">
         {pipelines.map((pipeline) => (
-          <div key={pipeline.name} className="bg-white border border-neutral-200 rounded-xl p-6">
-            <div className="flex items-start justify-between mb-4">
+          <div key={pipeline.name} className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="text-lg font-bold text-black mb-1">{pipeline.name}</h3>
                 <p className="text-xs text-neutral-500">마지막 실행: {pipeline.lastRun}</p>
@@ -211,9 +211,9 @@ function PipelineManagement() {
         ))}
       </div>
 
-      <div className="bg-white border border-neutral-200 rounded-xl p-6">
+      <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
         <h3 className="text-lg font-bold text-black mb-4">자동 실행 시간 설정</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid gap-4 md:grid-cols-3">
           {pipelines.map((pipeline) => (
             <div key={pipeline.name} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
               <label className="mb-2 block text-sm font-medium text-black">{pipeline.name}</label>
@@ -234,17 +234,17 @@ function PipelineManagement() {
         </div>
       </div>
 
-      <div className="bg-white border border-neutral-200 rounded-xl p-6">
+      <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
         <h3 className="text-lg font-bold text-black mb-4">최근 실행 이력</h3>
         <div className="space-y-2">
-          <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+          <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-black">Collection Pipeline</p>
               <p className="text-xs text-neutral-500">2026-04-22 10:15 - 10:18</p>
             </div>
             <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">성공</span>
           </div>
-          <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+          <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-black">Analysis Pipeline</p>
               <p className="text-xs text-neutral-500">2026-04-22 09:30 - 09:45</p>
@@ -268,8 +268,8 @@ function SourceManagement() {
   ];
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-bold text-black">크롤링 소스</h2>
         <button
           onClick={() => {
@@ -285,9 +285,9 @@ function SourceManagement() {
       <div className="space-y-3">
         {sources.map((source) => (
           <div key={source.id} className="border border-neutral-200 rounded-lg p-4">
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
                   <h3 className="font-bold text-black">{source.name}</h3>
                   <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">
                     Tier {source.tier}
@@ -318,7 +318,7 @@ function SourceManagement() {
       {(isAdding || selectedSource) && (
         <div className="mt-6 rounded-lg border border-orange-200 bg-orange-50 p-5">
           <h3 className="mb-4 font-bold text-black">{isAdding ? '소스 추가' : '소스 설정'}</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <input
               defaultValue={selectedSource?.name}
               placeholder="소스명"
@@ -352,7 +352,7 @@ function AuditLog() {
   ];
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-6">
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
       <h2 className="text-lg font-bold text-black mb-6">감사 로그</h2>
 
       <div className="overflow-x-auto">
@@ -392,7 +392,7 @@ function ApiUsageView() {
     { name: 'OpenAI Responses API', provider: 'OpenAI', todayCalls: 8420, monthlyCalls: 186200, todayCost: 421, monthlyCost: 9310 },
     { name: 'Naver News Search API', provider: 'Naver', todayCalls: 2460, monthlyCalls: 58420, todayCost: 123, monthlyCost: 2921 },
     { name: 'DART Open API', provider: 'DART', todayCalls: 980, monthlyCalls: 22480, todayCost: 49, monthlyCost: 1124 },
-    { name: 'Slack Webhook API', provider: 'Slack', todayCalls: 620, monthlyCalls: 17820, todayCost: 31, monthlyCost: 891 },
+    { name: 'Email Delivery API', provider: 'SMTP', todayCalls: 620, monthlyCalls: 17820, todayCost: 31, monthlyCost: 891 },
   ];
   const totalTodayCalls = apiUsages.reduce((sum, usage) => sum + usage.todayCalls, 0);
   const totalMonthlyCalls = apiUsages.reduce((sum, usage) => sum + usage.monthlyCalls, 0);
@@ -400,9 +400,9 @@ function ApiUsageView() {
   const totalMonthlyCost = apiUsages.reduce((sum, usage) => sum + usage.monthlyCost, 0);
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-6">
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
       <h2 className="text-lg font-bold text-black mb-6">API 사용 현황</h2>
-      <div className="mb-6 grid grid-cols-4 gap-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
           <p className="text-xs text-neutral-600">오늘 호출 횟수</p>
           <p className="mt-1 text-2xl font-bold text-black">{totalTodayCalls.toLocaleString('ko-KR')}</p>
@@ -452,47 +452,15 @@ function ApiUsageView() {
 }
 
 function SystemSettings() {
-  const defaultReasoningPrompt =
-    '이슈의 사업 연관성, 고객군 중복 가능성, 확산 신호를 근거 중심으로 정리하세요. 추정은 명확히 구분하고 원문에서 확인 가능한 내용만 판단 근거로 사용하세요.';
-  const defaultImplicationPrompt =
-    'SK AX 관점에서 전략적 중요도, 시장 영향, 검토 질문을 도출하세요. 경쟁사 메시지와 SK AX의 대응 포인트가 분리되어 보이도록 작성하세요.';
   const [saved, setSaved] = useState(false);
-  const [settingsView, setSettingsView] = useState<'general' | 'prompts'>('general');
-  const [reasoningPrompt, setReasoningPrompt] = useState(defaultReasoningPrompt);
-  const [implicationPrompt, setImplicationPrompt] = useState(defaultImplicationPrompt);
-
-  const resetPrompts = () => {
-    setReasoningPrompt(defaultReasoningPrompt);
-    setImplicationPrompt(defaultImplicationPrompt);
-  };
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-6">
-      <div className="mb-6 flex items-center justify-between gap-4">
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+      <div className="mb-6">
         <h2 className="text-lg font-bold text-black">시스템 설정</h2>
-        <div className="flex rounded-lg border border-neutral-200 bg-neutral-50 p-1">
-          {[
-            { id: 'general', label: '운영 설정' },
-            { id: 'prompts', label: '프롬프트 설정' },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setSettingsView(item.id as typeof settingsView)}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                settingsView === item.id
-                  ? 'bg-white text-orange-600 shadow-sm'
-                  : 'text-neutral-600 hover:text-black'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="space-y-6">
-        {settingsView === 'general' && (
-        <>
         <div>
           <label className="block text-sm font-medium text-black mb-2">일일 LLM 예산 (KRW)</label>
           <input
@@ -515,47 +483,11 @@ function SystemSettings() {
         <div>
           <label className="block text-sm font-medium text-black mb-2">허용 이메일 도메인</label>
           <textarea
-            defaultValue="@sk.com&#10;@skax.com"
+            defaultValue={'@sk.com\n@skax.com'}
             rows={3}
             className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
           />
         </div>
-        </>
-        )}
-
-        {settingsView === 'prompts' && (
-        <div>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-base font-bold text-black">프롬프트 설정</h3>
-            <button
-              onClick={resetPrompts}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-            >
-              초기값으로 복원
-            </button>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-black mb-2">판단 근거 프롬프트</label>
-              <textarea
-                value={reasoningPrompt}
-                onChange={(event) => setReasoningPrompt(event.target.value)}
-                rows={6}
-                className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-black mb-2">시사점 프롬프트</label>
-              <textarea
-                value={implicationPrompt}
-                onChange={(event) => setImplicationPrompt(event.target.value)}
-                rows={6}
-                className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm"
-              />
-            </div>
-          </div>
-        </div>
-        )}
 
         <button
           onClick={() => setSaved(true)}

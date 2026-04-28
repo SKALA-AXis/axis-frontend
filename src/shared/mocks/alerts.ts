@@ -5,9 +5,9 @@ export const mockAlertsData: AlertsData = {
     {
       id: 'RULE-001',
       name: '우선 검토 동향 즉시 알림',
-      description: '검토 수준이 우선 검토인 동향 발생 시 즉시 Slack 알림',
+      description: '검토 수준이 우선 검토인 동향 발생 시 즉시 이메일 알림',
       enabled: true,
-      channels: ['slack', 'email'],
+      channels: ['email'],
       lastTriggered: '2026-04-22T09:15:00Z',
     },
     {
@@ -23,7 +23,7 @@ export const mockAlertsData: AlertsData = {
       name: '파트너십 & M&A',
       description: '파트너십, M&A 이벤트 타입 알림',
       enabled: false,
-      channels: ['dashboard'],
+      channels: ['email'],
       lastTriggered: '2026-04-20T14:20:00Z',
     },
   ],
@@ -32,7 +32,7 @@ export const mockAlertsData: AlertsData = {
       id: 'ALERT-001',
       title: '[전략 검토] 삼성SDS - 제조 AX 레퍼런스 확대',
       message: '삼성SDS가 생성형 AI 운영 플랫폼을 제조/금융 고객 레퍼런스로 확장했습니다.',
-      channel: 'slack',
+      channel: 'email',
       status: 'sent',
       triggeredAt: '2026-04-22T09:15:00Z',
     },
@@ -52,5 +52,5 @@ export const mockAlertsData: AlertsData = {
     '특정 Peer사 신규 동향 수집 시 알림',
     '보고서 생성이 완료되면 알림',
   ],
-  channelOptions: ['slack', 'email', 'dashboard'],
+  channelOptions: ['email'],
 };

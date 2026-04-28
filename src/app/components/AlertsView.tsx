@@ -9,16 +9,6 @@ export function AlertsView() {
   const [activeTab, setActiveTab] = useState<'history' | 'rules'>('history');
   const [selectedRule, setSelectedRule] = useState<AlertRule | null>(null);
 
-  const toggleChannel = (channel: string) => {
-    if (!selectedRule) {
-      return;
-    }
-    const nextChannels = selectedRule.channels.includes(channel)
-      ? selectedRule.channels.filter((selectedChannel) => selectedChannel !== channel)
-      : [...selectedRule.channels, channel];
-    setSelectedRule({ ...selectedRule, channels: nextChannels });
-  };
-
   const openNewRule = () => {
     const fallback = alertsData?.conditionOptions[0] ?? '';
     setSelectedRule({
@@ -26,18 +16,18 @@ export function AlertsView() {
       name: uiText.alerts.newRuleName,
       description: fallback,
       enabled: false,
-      channels: ['dashboard'],
+      channels: ['email'],
       lastTriggered: new Date().toISOString(),
     });
   };
 
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-8">
-        <div className="mb-8">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-black mb-2">{uiText.alerts.pageTitle}</h1>
+              <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.alerts.pageTitle}</h1>
               <p className="text-neutral-600">{uiText.alerts.pageSubtitle}</p>
             </div>
           </div>
@@ -62,9 +52,9 @@ export function AlertsView() {
             </div>
 
             {activeTab === 'history' && (
-              <div className="grid grid-cols-12 gap-6">
-                <div className="col-span-12">
-                  <div className="bg-white border border-neutral-200 rounded-xl p-6">
+              <div className="grid gap-6 lg:grid-cols-12">
+                <div className="lg:col-span-12">
+                  <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
                     <h2 className="text-lg font-bold text-black mb-4">{uiText.alerts.historyTitle}</h2>
                     <div className="space-y-3">
                       {alertsData.history.map((alert) => (
@@ -76,11 +66,11 @@ export function AlertsView() {
                             <div className="flex-1">
                               <h3 className="text-sm font-bold text-black mb-1">{alert.title}</h3>
                               <p className="text-sm text-neutral-600 mb-2">{alert.message}</p>
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">
                                   {alert.status === 'sent' ? uiText.alerts.sent : uiText.alerts.pending}
                                 </span>
-                                <span className="text-xs text-neutral-500">{alert.channel}</span>
+                                <span className="text-xs text-neutral-500">이메일</span>
                                 <span className="text-xs text-neutral-400">· {new Date(alert.triggeredAt).toLocaleString('ko-KR')}</span>
                               </div>
                             </div>
@@ -94,16 +84,16 @@ export function AlertsView() {
             )}
 
             {activeTab === 'rules' && (
-              <div className="grid grid-cols-12 gap-6">
-                <div className="col-span-7">
-                  <div className="bg-white border border-neutral-200 rounded-xl p-6">
+              <div className="grid gap-6 lg:grid-cols-12">
+                <div className="lg:col-span-7">
+                  <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
                     <h2 className="text-lg font-bold text-black mb-4">{uiText.alerts.rulesTitle}</h2>
                     <div className="space-y-3">
                       {alertsData.rules.map((rule) => (
                         <div key={rule.id} className="border border-neutral-200 rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-2">
+                          <div className="mb-2 flex items-start justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="mb-1 flex flex-wrap items-center gap-2">
                                 <h3 className="font-bold text-black">{rule.name}</h3>
                                 {rule.enabled ? (
                                   <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">{uiText.alerts.enabled}</span>
@@ -113,9 +103,7 @@ export function AlertsView() {
                               </div>
                               <p className="text-sm text-neutral-600 mb-2">{rule.description}</p>
                               <div className="flex flex-wrap gap-2">
-                                {rule.channels.map((channel) => (
-                                  <span key={channel} className="px-2 py-1 bg-orange-50 text-orange-700 text-xs rounded border border-orange-200">{channel}</span>
-                                ))}
+                                <span className="rounded border border-orange-200 bg-orange-50 px-2 py-1 text-xs text-orange-700">이메일</span>
                               </div>
                             </div>
                           </div>
@@ -126,9 +114,9 @@ export function AlertsView() {
                   </div>
                 </div>
 
-                <div className="col-span-5">
+                <div className="lg:col-span-5">
                   {selectedRule ? (
-                    <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-6">
+                    <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
                       <h2 className="mb-4 text-lg font-bold text-black">{uiText.alerts.ruleEditorTitle}</h2>
                       <div className="space-y-4">
                         <div>
@@ -149,17 +137,9 @@ export function AlertsView() {
                         </div>
                         <div>
                           <label className="mb-2 block text-sm font-medium text-black">{uiText.alerts.channel}</label>
-                          <div className="flex flex-wrap gap-2">
-                            {alertsData.channelOptions.map((channel) => (
-                              <button key={channel} onClick={() => toggleChannel(channel)} className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                                selectedRule.channels.includes(channel) ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
-                              }`} aria-pressed={selectedRule.channels.includes(channel)}>
-                                {channel}
-                              </button>
-                            ))}
-                          </div>
+                          <p className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">이메일</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row">
                           <button className="flex-1 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700">{uiText.alerts.saveRule}</button>
                           <button onClick={() => setSelectedRule(null)} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">{uiText.common.cancel}</button>
                         </div>

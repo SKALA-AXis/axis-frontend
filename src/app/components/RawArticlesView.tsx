@@ -9,16 +9,16 @@ export function RawArticlesView() {
 
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-black mb-2">{uiText.rawArticles.pageTitle}</h1>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.rawArticles.pageTitle}</h1>
           <p className="text-neutral-600">{uiText.rawArticles.pageSubtitle}</p>
         </div>
 
-        <div className="bg-white border border-neutral-200 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-3">
-              <select className="px-4 py-2 border border-neutral-300 rounded-lg text-sm">
+              <select className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm sm:w-auto">
                 <option>전체 Peer사</option>
                 <option>삼성SDS</option>
                 <option>LG CNS</option>
