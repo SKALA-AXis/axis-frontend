@@ -47,11 +47,11 @@ export function PeersView({ onNavigate: _onNavigate }: PeersViewProps) {
   };
 
   return (
-    <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.peers.pageTitle}</h1>
-          <p className="text-neutral-600">{uiText.peers.pageSubtitle}</p>
+    <div className="axis-page flex-1 overflow-auto">
+      <div className="p-3 sm:p-4 lg:p-5">
+        <div className="axis-page-header">
+          <h1 className="axis-page-title">{uiText.peers.pageTitle}</h1>
+          <p className="axis-page-subtitle">{uiText.peers.pageSubtitle}</p>
         </div>
 
         {error && (
@@ -61,15 +61,15 @@ export function PeersView({ onNavigate: _onNavigate }: PeersViewProps) {
         )}
 
         {isLoading && !peersData ? (
-          <div className="rounded-xl border border-neutral-200 bg-white p-6 text-sm text-neutral-500">{uiText.common.loading}</div>
+          <div className="axis-panel rounded-xl p-6 text-sm text-neutral-500">{uiText.common.loading}</div>
         ) : null}
 
         {peersData ? (
           <>
-            <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-5">
+            <div className="axis-glass mb-6 rounded-xl bg-white/82 p-5">
               <div className="mb-4 flex items-center gap-3">
-                <CalendarRange className="size-5 text-orange-600" />
-                <h2 className="text-lg font-bold text-black">{uiText.peers.basisTitle}</h2>
+                <CalendarRange className="size-5 text-[#d96200]" />
+                <h2 className="axis-section-title">{uiText.peers.basisTitle}</h2>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -80,8 +80,8 @@ export function PeersView({ onNavigate: _onNavigate }: PeersViewProps) {
                       <button
                         key={item}
                         onClick={() => setPeriod(item)}
-                        className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                          period === item ? 'bg-orange-600 text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                        className={`axis-tab ${
+                          period === item ? 'bg-[#ff7f00] text-white' : 'axis-soft-card text-black/70 hover:bg-white/78'
                         }`}
                       >
                         {peersData.periodLabels[item]}
@@ -95,7 +95,7 @@ export function PeersView({ onNavigate: _onNavigate }: PeersViewProps) {
                   <select
                     value={periodValue}
                     onChange={(event) => setPeriodValue(event.target.value)}
-                    className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                    className="axis-input w-full rounded-lg bg-white/92 px-3 py-2 text-sm outline-none"
                   >
                     <option value="2026">2026년</option>
                     <option value="2026 Q2">2026년 2분기</option>
@@ -106,19 +106,19 @@ export function PeersView({ onNavigate: _onNavigate }: PeersViewProps) {
               </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-12">
+            <div className="grid gap-4 lg:grid-cols-12">
               <div className="lg:col-span-3">
-                <div className="bg-white border border-neutral-200 rounded-xl p-4">
+                <div className="axis-panel p-5">
                   <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-sm font-bold text-black">{uiText.peers.peerListTitle}</h2>
-                    <button onClick={() => setIsAddingPeer(true)} className="flex items-center gap-1 rounded-lg bg-orange-600 px-3 py-2 text-xs font-medium text-white hover:bg-orange-700">
+                    <button onClick={() => setIsAddingPeer(true)} className="flex items-center gap-1 rounded-lg bg-[#111111] px-3 py-2 text-xs font-medium text-white hover:bg-[#ff7f00]">
                       <Plus size={14} />
                       {uiText.peers.addPeer}
                     </button>
                   </div>
 
                   {isAddingPeer && (
-                    <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                    <div className="axis-soft-card mb-4 rounded-lg bg-white/88 p-3">
                       <div className="mb-3 flex items-center justify-between">
                         <p className="text-sm font-bold text-black">{uiText.peers.addPeerTitle}</p>
                         <button onClick={() => setIsAddingPeer(false)} className="rounded p-1 text-neutral-500 hover:bg-white hover:text-black">
@@ -126,9 +126,9 @@ export function PeersView({ onNavigate: _onNavigate }: PeersViewProps) {
                         </button>
                       </div>
                       <div className="space-y-3">
-                        <input value={newPeerName} onChange={(e) => setNewPeerName(e.target.value)} placeholder={uiText.peers.companyPlaceholder} className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
-                        <input value={newPeerKeywords} onChange={(e) => setNewPeerKeywords(e.target.value)} placeholder={uiText.peers.keywordPlaceholder} className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
-                        <button onClick={handleAddPeer} disabled={!newPeerName.trim()} className="w-full rounded-lg bg-orange-600 px-3 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-neutral-300">
+                        <input value={newPeerName} onChange={(e) => setNewPeerName(e.target.value)} placeholder={uiText.peers.companyPlaceholder} className="axis-input w-full rounded-lg bg-white/92 px-3 py-2 text-sm" />
+                        <input value={newPeerKeywords} onChange={(e) => setNewPeerKeywords(e.target.value)} placeholder={uiText.peers.keywordPlaceholder} className="axis-input w-full rounded-lg bg-white/92 px-3 py-2 text-sm" />
+                        <button onClick={handleAddPeer} disabled={!newPeerName.trim()} className="w-full rounded-lg bg-[#ff7f00] px-3 py-2 text-sm font-medium text-white hover:bg-[#db6c01] disabled:cursor-not-allowed disabled:bg-neutral-300">
                           {uiText.peers.register}
                         </button>
                       </div>
@@ -138,12 +138,12 @@ export function PeersView({ onNavigate: _onNavigate }: PeersViewProps) {
                   <div className="space-y-2">
                     {peers.map((peer) => (
                       <button key={peer.id} onClick={() => setSelectedPeer(peer)} className={`w-full text-left p-3 rounded-lg transition-colors ${
-                        activePeer?.id === peer.id ? 'bg-orange-100 border border-orange-300' : 'border border-neutral-200 hover:bg-neutral-50'
+                        activePeer?.id === peer.id ? 'border border-[#ff7f00]/20 bg-[#ff7f00]/6' : 'axis-soft-card hover:bg-white/80'
                       }`}>
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-bold text-black">{peer.name}</h3>
                           <span className={`text-xs px-2 py-0.5 rounded ${
-                            peer.priority === 'high' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                            peer.priority === 'high' ? 'bg-[#E1002A]/10 text-[#E1002A]' : 'bg-[#ff7f00]/10 text-[#d96200]'
                           }`}>
                             {peer.priority === 'high' ? uiText.peers.high : uiText.peers.medium}
                           </span>
@@ -158,7 +158,7 @@ export function PeersView({ onNavigate: _onNavigate }: PeersViewProps) {
                 </div>
               </div>
 
-              <div className="space-y-6 lg:col-span-9">
+              <div className="space-y-4 lg:col-span-9">
                 {activePeer ? <PeerIrAnalysis peer={activePeer} period={period} periodValue={periodValue} analyses={peersData.analyses} /> : null}
               </div>
             </div>
@@ -184,7 +184,7 @@ function PeerIrAnalysis({
 
   if (!analysis) {
     return (
-      <section className="rounded-xl border border-dashed border-neutral-300 bg-white p-10 text-center">
+      <section className="axis-panel rounded-xl border-dashed p-10 text-center">
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-neutral-100">
           <Building2 className="size-6 text-neutral-500" />
         </div>
@@ -196,28 +196,28 @@ function PeerIrAnalysis({
 
   return (
     <section className="space-y-6">
-      <div className="rounded-xl border border-neutral-200 bg-white p-6">
+      <div className="axis-panel bg-white/82 p-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">{analysis.source}</span>
-              <span className="rounded bg-orange-50 px-2 py-1 text-xs font-medium text-orange-700">{peer.name}</span>
-              <span className="rounded bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700">{period} · {periodValue}</span>
+              <span className="rounded bg-[#ff7f00]/10 px-2 py-1 text-xs font-medium text-[#d96200]">{analysis.source}</span>
+              <span className="rounded bg-[#ff7f00]/10 px-2 py-1 text-xs font-medium text-[#d96200]">{peer.name}</span>
+              <span className="rounded bg-white/76 px-2 py-1 text-xs font-medium text-black/54">{period} · {periodValue}</span>
             </div>
             <h2 className="text-2xl font-bold text-black">{analysis.title}</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-neutral-700">{analysis.summary}</p>
             <p className="mt-3 text-sm text-neutral-600">{peer.implication}</p>
           </div>
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#ff7f00]">
             <BarChart3 className="size-6 text-white" />
           </div>
         </div>
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 sm:p-5">
+        <div className="axis-soft-card rounded-xl bg-white/86 p-4 sm:p-5">
           <p className="mb-3 text-sm font-bold text-black">{analysis.highlightsTitle}</p>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {analysis.highlights.map((item, index) => (
-              <div key={item} className="rounded-lg border border-blue-100 bg-white p-3">
-                <span className="mb-2 inline-flex size-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">{index + 1}</span>
+              <div key={item} className="axis-soft-card rounded-lg bg-white/92 p-3">
+                <span className="mb-2 inline-flex size-6 items-center justify-center rounded-full bg-[#ff7f00] text-xs font-bold text-white">{index + 1}</span>
                 <p className="text-xs leading-relaxed text-neutral-700">{item}</p>
               </div>
             ))}
@@ -226,7 +226,7 @@ function PeerIrAnalysis({
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {analysis.pillars.map((pillar, index) => (
-          <div key={pillar.name} className="rounded-xl border border-neutral-200 bg-white p-5">
+          <div key={pillar.name} className="axis-panel bg-white/82 p-5">
             <div className="mb-4 flex items-start gap-3">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-sm font-bold text-white">{index + 1}</span>
               <div>
@@ -235,7 +235,7 @@ function PeerIrAnalysis({
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               {pillar.details.map((detail) => (
-                <div key={detail} className="rounded-lg bg-neutral-50 px-3 py-2 text-xs leading-relaxed text-neutral-700">{detail}</div>
+                <div key={detail} className="axis-soft-card rounded-lg bg-white/72 px-3 py-2 text-xs leading-relaxed text-neutral-700">{detail}</div>
               ))}
             </div>
           </div>

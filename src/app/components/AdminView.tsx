@@ -14,11 +14,11 @@ export function AdminView() {
   ];
 
   return (
-    <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">관리자</h1>
-          <p className="text-neutral-600">시스템 운영 및 사용자 관리</p>
+    <div className="axis-page flex-1 overflow-auto">
+      <div className="p-3 sm:p-4 lg:p-5">
+        <div className="axis-page-header">
+          <h1 className="axis-page-title">관리자</h1>
+          <p className="axis-page-subtitle">시스템 운영 및 사용자 관리</p>
         </div>
 
         <div className="mb-6">
@@ -31,7 +31,7 @@ export function AdminView() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 transition-colors sm:px-4 ${
                     activeTab === tab.id
-                      ? 'border-orange-600 text-orange-600'
+                      ? 'border-[#EE7501] text-[#EE7501]'
                       : 'border-transparent text-neutral-600 hover:text-black'
                   }`}
                 >
@@ -66,7 +66,7 @@ function UserManagement() {
   ];
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+    <div className="axis-glass rounded-xl bg-white/82 p-4 sm:p-6">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-bold text-black">사용자 목록</h2>
         <button
@@ -74,7 +74,7 @@ function UserManagement() {
             setIsInviting(true);
             setSelectedUser(null);
           }}
-          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm"
+          className="rounded-lg bg-[#111111] px-4 py-2 text-sm text-white hover:bg-[#EE7501]"
         >
           새 사용자 초대
         </button>

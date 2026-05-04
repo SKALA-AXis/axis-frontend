@@ -1,4 +1,3 @@
-import { Link, Plus, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { Issue as DomainIssue } from '../../entities/issue/model';
 import { useIssues } from '../../features/issues/hooks/useIssues';
@@ -24,144 +23,32 @@ interface IssuesViewProps {
 
 export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
   const { issues: fetchedIssues, isLoading, error } = useIssues();
-  const [manualIssues, setManualIssues] = useState<IssueCardViewModel[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedPeer, setSelectedPeer] = useState('all');
-  const [selectedImportance, setSelectedImportance] = useState('all');
-  const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
-  const [sourceUrl, setSourceUrl] = useState('');
 
-  const issues = useMemo(
-    () => [...manualIssues, ...fetchedIssues.map(mapDomainIssueToViewModel)],
-    [fetchedIssues, manualIssues]
-  );
+  const issues = useMemo(() => fetchedIssues.map(mapDomainIssueToViewModel), [fetchedIssues]);
 
   const filteredIssues = issues.filter((issue) => {
     const matchesPeer = selectedPeer === 'all' || issue.peer_id === selectedPeer;
-    const matchesImportance = selectedImportance === 'all' || issue.importance === selectedImportance;
-    const matchesSearch =
-      searchQuery === '' ||
-      issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      issue.summary_lines.some((line) => line.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesPeer && matchesImportance && matchesSearch;
+    return matchesPeer;
   });
 
   const peers = [
     { id: 'all', name: '전체' },
-    { id: 'samsung_sds', name: '삼성SDS' },
+    { id: 'samsung_sds', name: '삼성 SDS' },
     { id: 'lg_cns', name: 'LG CNS' },
-    { id: 'hyundai_autoever', name: '현대오토에버' },
-    { id: 'naver_cloud', name: '네이버클라우드' },
-    { id: 'kakao_enterprise', name: 'Kakao Enterprise' },
+    { id: 'hyundai_autoever', name: '현대 오토에버' },
+    { id: 'posco_dx', name: '포스코 DX' },
   ];
-
-  const importanceOptions = [
-    { value: 'all', label: '전체' },
-    { value: 'urgent', label: '우선 검토' },
-    { value: 'notable', label: '관찰 필요' },
-    { value: 'reference', label: '배경 참고' },
-  ];
-
-  const handleAddIssue = () => {
-    const trimmedUrl = sourceUrl.trim();
-
-    if (!trimmedUrl) {
-      return;
-    }
-
-    const newIssue: IssueCardViewModel = {
-      id: `IC-MANUAL-${Date.now()}`,
-      peer_id: 'manual',
-      peer_name: uiText.issues.manualPeer,
-      title: uiText.issues.manualTitle,
-      summary_lines: [
-        uiText.issues.manualSummaryOne,
-        uiText.issues.manualSummaryTwo,
-        trimmedUrl,
-      ],
-      importance: 'reference',
-      event_type: 'tech',
-      review_status: 'pending',
-      bookmarked_by_me: false,
-      created_at: new Date().toISOString(),
-    };
-
-    setManualIssues((currentIssues) => [newIssue, ...currentIssues]);
-    setSourceUrl('');
-    setIsAddPanelOpen(false);
-  };
 
   return (
-    <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-6">
-          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.issues.pageTitle}</h1>
-          <p className="text-neutral-600">{uiText.issues.pageSubtitle}</p>
+    <div className="axis-page flex-1 overflow-auto">
+      <div className="p-3 sm:p-4 lg:p-5">
+        <div className="axis-page-header">
+          <h1 className="axis-page-title">{uiText.issues.pageTitle}</h1>
+          <p className="axis-page-subtitle">{uiText.issues.pageSubtitle}</p>
         </div>
 
         <div className="mb-6 space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder={uiText.issues.searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-3 pr-12 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-              <Search size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-            </div>
-            <button
-              onClick={() => setIsAddPanelOpen(true)}
-              className="flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 font-medium text-white hover:bg-orange-700"
-            >
-              <Plus size={18} />
-              {uiText.issues.addTrend}
-            </button>
-          </div>
-
-          {isAddPanelOpen && (
-            <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-base font-bold text-black">{uiText.issues.addTrendTitle}</h2>
-                </div>
-                <button
-                  onClick={() => setIsAddPanelOpen(false)}
-                  className="rounded-lg p-1.5 text-neutral-500 hover:bg-white hover:text-black"
-                  aria-label="동향 추가 패널 닫기"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="relative flex-1">
-                  <input
-                    type="url"
-                    value={sourceUrl}
-                    onChange={(event) => setSourceUrl(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        handleAddIssue();
-                      }
-                    }}
-                    placeholder={uiText.issues.addUrlPlaceholder}
-                    className="w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 pr-11 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                  <Link size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-                </div>
-                <button
-                  onClick={handleAddIssue}
-                  disabled={!sourceUrl.trim()}
-                  className="rounded-lg bg-orange-600 px-5 py-3 text-sm font-medium text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
-                >
-                  {uiText.issues.addAction}
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="flex flex-col gap-4 xl:flex-row">
             <div className="flex flex-col gap-2 sm:flex-row">
               <span className="text-sm text-neutral-600 py-2">{uiText.issues.peerFilter}</span>
@@ -170,32 +57,13 @@ export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
                   <button
                     key={peer.id}
                     onClick={() => setSelectedPeer(peer.id)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                       selectedPeer === peer.id
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                        ? 'bg-[#ff7f00] text-white'
+                        : 'axis-glass text-black/70 hover:bg-white/80'
                     }`}
                   >
                     {peer.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <span className="text-sm text-neutral-600 py-2">{uiText.issues.reviewLevelFilter}</span>
-              <div className="flex flex-wrap gap-2">
-                {importanceOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSelectedImportance(option.value)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      selectedImportance === option.value
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                    }`}
-                  >
-                    {option.label}
                   </button>
                 ))}
               </div>
@@ -205,13 +73,13 @@ export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
 
         <div className="space-y-4">
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="rounded-xl border border-red-200 bg-red-50/90 p-4 text-sm text-red-700">
               {uiText.issues.loadFallback}
             </div>
           )}
 
           {isLoading && (
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 text-sm text-neutral-500">
+            <div className="axis-panel rounded-xl p-4 text-sm text-neutral-500">
               {uiText.issues.loading}
             </div>
           )}
@@ -221,15 +89,10 @@ export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
               <IssueCard
                 key={issue.id}
                 issue={issue}
-                onDelete={
-                  issue.peer_id === 'manual'
-                    ? () => setManualIssues((currentIssues) => currentIssues.filter((currentIssue) => currentIssue.id !== issue.id))
-                    : undefined
-                }
               />
             ))
           ) : (
-            <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center sm:p-12">
+            <div className="axis-panel rounded-xl p-8 text-center sm:p-12">
               <p className="text-neutral-500">{uiText.issues.empty}</p>
             </div>
           )}

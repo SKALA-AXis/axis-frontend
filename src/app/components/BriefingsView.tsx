@@ -18,11 +18,11 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
   const activeSnapshot = briefingType === 'daily' ? briefings?.dailySnapshot : briefings?.weeklySnapshot;
 
   return (
-    <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.briefings.pageTitle}</h1>
-          <p className="text-neutral-600">{uiText.briefings.pageSubtitle}</p>
+    <div className="axis-page flex-1 overflow-auto">
+      <div className="p-3 sm:p-4 lg:p-5">
+        <div className="axis-page-header">
+          <h1 className="axis-page-title">{uiText.briefings.pageTitle}</h1>
+          <p className="axis-page-subtitle">{uiText.briefings.pageSubtitle}</p>
         </div>
 
         {error && (
@@ -34,20 +34,20 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
         <div className="mb-6 flex gap-2">
           <button
             onClick={() => setBriefingType('daily')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
+            className={`axis-tab ${
               briefingType === 'daily'
-                ? 'bg-orange-600 text-white'
-                : 'bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50'
+                ? 'bg-[#ff7f00] text-white'
+                : ''
             }`}
           >
             {uiText.briefings.dailyTab}
           </button>
           <button
             onClick={() => setBriefingType('weekly')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
+            className={`axis-tab ${
               briefingType === 'weekly'
-                ? 'bg-orange-600 text-white'
-                : 'bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50'
+                ? 'bg-[#ff7f00] text-white'
+                : ''
             }`}
           >
             {uiText.briefings.weeklyTab}
@@ -55,21 +55,21 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
         </div>
 
         {isLoading && !briefings ? (
-          <div className="rounded-xl border border-neutral-200 bg-white p-6 text-sm text-neutral-500">
+          <div className="axis-panel rounded-xl p-6 text-sm text-neutral-500">
             {uiText.common.loading}
           </div>
         ) : null}
 
         {briefings && activeSnapshot ? (
           <>
-            <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+            <div className="axis-glass mb-6 rounded-xl bg-white/82 p-4 sm:p-6">
               <div className="mb-4">
-                <h2 className="text-lg font-bold text-black">
+                <h2 className="axis-section-title">
                   {briefingType === 'daily' ? uiText.briefings.todayDailyTitle : uiText.briefings.thisWeekTitle}
                 </h2>
               </div>
 
-              <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 sm:p-6">
+              <div className="axis-soft-card rounded-lg bg-white/90 p-4 sm:p-6">
                 <div className="mb-4 flex items-start justify-between">
                   <div>
                     <h3 className="text-xl font-bold text-black mb-2">{activeSnapshot.title}</h3>
@@ -77,7 +77,7 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
                   </div>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-12">
+                <div className="grid gap-4 lg:grid-cols-12">
                   <div className="space-y-4 lg:col-span-8">
                     {activeSnapshot.sections.map((section) => (
                       <div key={section.title}>
@@ -94,14 +94,14 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
                     ))}
                   </div>
 
-                  <div className="rounded-xl border border-orange-200 bg-white p-4 lg:col-span-4">
+                    <div className="axis-soft-card rounded-xl bg-white/92 p-4 lg:col-span-4">
                     <div className="mb-3 flex items-center gap-2">
-                      <ShieldCheck className="size-4 text-orange-600" />
+                      <ShieldCheck className="size-4 text-[#d96200]" />
                       <h4 className="text-sm font-bold text-black">{uiText.briefings.evidenceTitle}</h4>
                     </div>
                     <ul className="space-y-2 text-sm text-neutral-700">
                       {briefings.evidenceSources.map((source) => (
-                        <li key={source} className="rounded-lg bg-neutral-50 px-3 py-2">
+                          <li key={source} className="axis-soft-card rounded-lg bg-white/82 px-3 py-2">
                           {source}
                         </li>
                       ))}
@@ -112,16 +112,16 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
             </div>
 
             <div className="space-y-4">
-              <div className="grid gap-6 lg:grid-cols-12">
+              <div className="grid gap-4 lg:grid-cols-12">
                 <div className="space-y-4 lg:col-span-12">
                   <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-lg font-bold text-black">{uiText.briefings.historyTitle}</h2>
+                    <h2 className="axis-section-title">{uiText.briefings.historyTitle}</h2>
                     <button
                       onClick={() => setIsFilterOpen((current) => !current)}
                       className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                         isFilterOpen
-                          ? 'border-orange-500 bg-orange-50 text-orange-700'
-                          : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50'
+                          ? 'border-[#ff7f00]/20 bg-[#ff7f00]/8 text-[#d96200]'
+                          : 'axis-glass text-neutral-600 hover:bg-white/82'
                       }`}
                       aria-expanded={isFilterOpen}
                     >
@@ -130,21 +130,20 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
                   </div>
 
                   {isFilterOpen && (
-                    <div className="rounded-xl border border-neutral-200 bg-white p-4">
+                    <div className="axis-panel p-5">
                       <div className="grid gap-4 md:grid-cols-3">
                         <div>
                           <label className="mb-2 block text-sm font-medium text-black">{uiText.briefings.peerFilter}</label>
                           <select
                             value={peerFilter}
                             onChange={(event) => setPeerFilter(event.target.value)}
-                            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                            className="axis-input w-full rounded-lg bg-white/92 px-3 py-2 text-sm outline-none"
                           >
                             <option value="all">전체 Peer사</option>
-                            <option value="samsung_sds">삼성SDS</option>
+                            <option value="samsung_sds">삼성 SDS</option>
                             <option value="lg_cns">LG CNS</option>
-                            <option value="hyundai_autoever">현대오토에버</option>
-                            <option value="naver_cloud">네이버클라우드</option>
-                            <option value="kakao_enterprise">Kakao Enterprise</option>
+                            <option value="hyundai_autoever">현대 오토에버</option>
+                            <option value="posco_dx">포스코 DX</option>
                           </select>
                         </div>
 
@@ -155,7 +154,7 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
                             value={keywordFilter}
                             onChange={(event) => setKeywordFilter(event.target.value)}
                             placeholder="예: Agentic AI, 금융, SDV"
-                            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                            className="axis-input w-full rounded-lg bg-white/92 px-3 py-2 text-sm outline-none"
                           />
                         </div>
 
@@ -164,7 +163,7 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
                           <select
                             value={dateRange}
                             onChange={(event) => setDateRange(event.target.value)}
-                            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                            className="axis-input w-full rounded-lg bg-white/92 px-3 py-2 text-sm outline-none"
                           >
                             <option value="7d">최근 7일</option>
                             <option value="30d">최근 30일</option>
@@ -177,13 +176,13 @@ export function BriefingsView({ onNavigate: _onNavigate }: BriefingsViewProps) {
                   )}
 
                   {briefings.history.map((briefing) => (
-                    <div key={briefing.id} className="rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:border-orange-500 sm:p-6">
+                    <div key={briefing.id} className="axis-panel p-4 transition-colors hover:border-[#ff7f00]/20 sm:p-6">
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex-1">
                           <div className="mb-2 flex flex-wrap items-center gap-3">
                             <Calendar size={16} className="text-neutral-500" />
                             <span className="text-sm text-neutral-500">{briefing.date}</span>
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                            <span className="rounded bg-[#ff7f00]/10 px-2 py-1 text-xs text-[#d96200]">
                               {uiText.briefings.delivered}
                             </span>
                           </div>

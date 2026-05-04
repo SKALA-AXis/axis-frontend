@@ -1,4 +1,4 @@
-import { Bookmark, ExternalLink, ChevronRight, AlertCircle, Info, FileText, Trash2 } from 'lucide-react';
+import { Bookmark, ExternalLink, ChevronRight, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { uiText } from '../../shared/content/uiText';
 
@@ -24,27 +24,6 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(issue.bookmarked_by_me);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const importanceConfig = {
-    urgent: {
-      label: uiText.issueCard.reviewLabels.urgent,
-      color: 'bg-red-100 text-red-700 border-red-200',
-      icon: AlertCircle,
-    },
-    notable: {
-      label: uiText.issueCard.reviewLabels.notable,
-      color: 'bg-orange-100 text-orange-700 border-orange-200',
-      icon: Info,
-    },
-    reference: {
-      label: uiText.issueCard.reviewLabels.reference,
-      color: 'bg-neutral-100 text-neutral-700 border-neutral-200',
-      icon: FileText,
-    },
-  };
-
-  const config = importanceConfig[issue.importance];
-  const ImportanceIcon = config.icon;
-
   const handleBookmark = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsBookmarked(!isBookmarked);
@@ -58,15 +37,11 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
   };
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-all hover:shadow-md">
+    <div className="axis-panel rounded-lg border-black/10 transition-all hover:border-[#ff7f00]/20 hover:shadow-md">
       <div className="p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex-1">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${config.color}`}>
-                <ImportanceIcon size={12} />
-                {config.label}
-              </span>
               <span className="px-2 py-1 rounded text-xs font-medium bg-neutral-100 text-neutral-700">
                 {uiText.issueCard.eventTypeLabels[issue.event_type]}
               </span>
@@ -78,14 +53,14 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
               </span>
             </div>
 
-            <h3 className="text-base font-bold text-black mb-3 hover:text-orange-600 cursor-pointer">
+            <h3 className="mb-3 cursor-pointer text-base font-bold text-black hover:text-[#d96200]">
               {issue.title}
             </h3>
 
             <ul className="space-y-2 mb-4">
               {issue.summary_lines.map((line, idx) => (
                 <li key={idx} className="flex items-start gap-2 text-sm text-neutral-700">
-                  <span className="text-orange-600 mt-1.5">•</span>
+                  <span className="mt-1.5 text-[#E1002A]">•</span>
                   <span>{line}</span>
                 </li>
               ))}
@@ -94,7 +69,7 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
             <div className="flex flex-wrap items-center gap-4">
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="text-sm text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1"
+                className="flex items-center gap-1 text-sm font-medium text-[#d96200] hover:text-[#E1002A]"
               >
                 {isExpanded ? uiText.issueCard.collapse : uiText.issueCard.expand}
                 <ChevronRight size={16} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
@@ -123,8 +98,8 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
               onClick={handleBookmark}
               className={`p-2 rounded-lg transition-colors ${
                 isBookmarked
-                  ? 'bg-orange-100 text-orange-600'
-                  : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700'
+                  ? 'bg-[#ff7f00]/12 text-[#d96200]'
+                  : 'text-neutral-400 hover:bg-[#fff5ea] hover:text-neutral-700'
               }`}
               aria-label="북마크"
             >
@@ -149,7 +124,7 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
 
               <div>
                 <h4 className="text-sm font-bold text-black mb-3">{uiText.issueCard.implicationTitle}</h4>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-2">
+                <div className="rounded-lg border border-[#ff7f00]/18 bg-[#ff7f00]/6 p-4 space-y-2">
                   {uiText.issueCard.implications.map((item) => (
                     <p key={item} className="text-sm text-neutral-700">{item}</p>
                   ))}
@@ -184,7 +159,7 @@ export function IssueCard({ issue, onDelete }: IssueCardProps) {
                 <h4 className="text-sm font-bold text-black mb-3">{uiText.issueCard.sourceTitle}</h4>
                 <div className="space-y-2">
                   {uiText.issueCard.sources.map((source) => (
-                    <a key={source.title} href={source.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border border-neutral-200 rounded-lg hover:border-orange-500 transition-colors">
+                    <a key={source.title} href={source.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white p-3 transition-colors hover:border-[#ff7f00]">
                       <div className="flex-1">
                         <p className="text-sm font-medium text-black">{source.title}</p>
                         <p className="text-xs text-neutral-500 mt-1">{source.meta}</p>

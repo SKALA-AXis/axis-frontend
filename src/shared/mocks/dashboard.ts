@@ -3,7 +3,7 @@ import type { DashboardData } from '../../features/dashboard/model/dashboard';
 export const mockDashboardData: DashboardData = {
   trends: [
     {
-      peer: '삼성SDS',
+      peer: '삼성 SDS',
       title: 'FabriX 기반 ERP/SCM AI 에이전트 통합 서비스',
       reason:
         '구매, 물류 등 핵심 프로세스에 AI Agent를 결합한 운영 사례를 앞세워 대형 제조 고객군을 선점하고 있습니다.',
@@ -18,16 +18,23 @@ export const mockDashboardData: DashboardData = {
       status: '영업 기회 분석',
     },
     {
-      peer: '현대오토에버',
+      peer: '현대 오토에버',
       title: '글로벌 스마트 팩토리 2.0 및 제조 데이터 플랫폼 확장',
       reason: 'HMGICS에서 검증된 AI 기반 디지털 트윈 모델을 외부 부품사로 확산하고 있습니다.',
       reviewLevel: 'watch',
       status: '시사점 도출',
     },
+    {
+      peer: '포스코 DX',
+      title: '제철소 기반 스마트팩토리 운영 AI 사업 확대',
+      reason: '현장 자동화와 운영 최적화 경험을 전면에 내세워 제조 고객군 확장을 시도하고 있습니다.',
+      reviewLevel: 'watch',
+      status: '레퍼런스 추적',
+    },
   ],
   articles: [
     {
-      peer: '삼성SDS',
+      peer: '삼성 SDS',
       title: '제조·금융 생성형 AI 운영 플랫폼 레퍼런스 확대',
       source: '연합뉴스',
       publishedAt: '2026.04.22 08:30',
@@ -41,11 +48,18 @@ export const mockDashboardData: DashboardData = {
       note: '금융 보안 진입 포인트 확대',
     },
     {
-      peer: '현대오토에버',
+      peer: '현대 오토에버',
       title: 'SDV 데이터 플랫폼 외부 고객 적용 사례 공개',
       source: '조선비즈',
       publishedAt: '2026.04.21 16:45',
       note: '제조·모빌리티 확장 흐름',
+    },
+    {
+      peer: '포스코 DX',
+      title: '스마트팩토리 고도화용 산업 AI·자동화 패키지 공개',
+      source: '매일경제',
+      publishedAt: '2026.04.21 11:20',
+      note: '현장 실행형 AX 메시지 강화',
     },
   ],
   keywords: [
@@ -53,11 +67,12 @@ export const mockDashboardData: DashboardData = {
     { text: 'SK AX', type: 'org', size: 'text-2xl', x: '33%', y: '34%' },
     { text: '제조 AX', type: 'tech', size: 'text-xl', x: '60%', y: '38%' },
     { text: 'LG CNS', type: 'org', size: 'text-xl', x: '72%', y: '28%' },
+    { text: '포스코 DX', type: 'org', size: 'text-lg', x: '22%', y: '28%' },
     { text: '금융권', type: 'place', size: 'text-lg', x: '30%', y: '50%' },
     { text: '클라우드 보안', type: 'tech', size: 'text-lg', x: '56%', y: '58%' },
     { text: 'SDV', type: 'tech', size: 'text-base', x: '76%', y: '60%' },
     { text: '공공기관', type: 'place', size: 'text-sm', x: '28%', y: '70%' },
-    { text: '현대오토에버', type: 'org', size: 'text-base', x: '48%', y: '76%' },
+    { text: '현대 오토에버', type: 'org', size: 'text-base', x: '48%', y: '76%' },
     { text: '데이터 플랫폼', type: 'tech', size: 'text-base', x: '68%', y: '78%' },
     { text: '서울', type: 'place', size: 'text-sm', x: '38%', y: '88%' },
     { text: 'AI 거버넌스', type: 'tech', size: 'text-sm', x: '78%', y: '45%' },
@@ -72,13 +87,22 @@ export const mockDashboardData: DashboardData = {
     { time: '15:00', agenticAi: 249, sovereignAi: 168, digitalTwin: 129, aiGovernance: 118 },
   ],
   keywordSeries: [
-    { key: 'agenticAi', name: 'Agentic AI', color: '#ea580c', total: '249' },
-    { key: 'sovereignAi', name: 'Sovereign AI', color: '#2563eb', total: '168' },
-    { key: 'digitalTwin', name: '디지털 트윈', color: '#14b8a6', total: '129' },
-    { key: 'aiGovernance', name: 'AI 거버넌스', color: '#7c3aed', total: '118' },
+    { key: 'agenticAi', name: 'Agentic AI', color: '#EE7501', total: '249' },
+    { key: 'sovereignAi', name: 'Sovereign AI', color: '#1A3A91', total: '168' },
+    { key: 'digitalTwin', name: '디지털 트윈', color: '#E1002A', total: '129' },
+    { key: 'aiGovernance', name: 'AI 거버넌스', color: '#111111', total: '118' },
+  ],
+  stockPoints: [
+    { date: '04.22', samsungSds: 156000, lgCns: 132000, hyundaiAutoever: 169000, poscoDx: 52400 },
+    { date: '04.23', samsungSds: 158500, lgCns: 133500, hyundaiAutoever: 170500, poscoDx: 53100 },
+    { date: '04.24', samsungSds: 157200, lgCns: 135200, hyundaiAutoever: 171300, poscoDx: 52800 },
+    { date: '04.25', samsungSds: 161000, lgCns: 136800, hyundaiAutoever: 172100, poscoDx: 53700 },
+    { date: '04.28', samsungSds: 163400, lgCns: 138200, hyundaiAutoever: 174600, poscoDx: 54400 },
+    { date: '04.29', samsungSds: 165800, lgCns: 139100, hyundaiAutoever: 176000, poscoDx: 54900 },
+    { date: '04.30', samsungSds: 167300, lgCns: 140500, hyundaiAutoever: 177200, poscoDx: 55300 },
   ],
   notifications: [
-    { title: '전략 검토', detail: '삼성SDS 제조 AX 레퍼런스 시사점 작성 필요', time: '12분 전', tone: 'urgent' },
+    { title: '전략 검토', detail: '삼성 SDS 제조 AX 레퍼런스 시사점 작성 필요', time: '12분 전', tone: 'urgent' },
     { title: '브리핑', detail: '전략기획팀 일간 브리핑 08:30 발송 완료', time: '38분 전', tone: 'info' },
     { title: '영업 공유', detail: '금융권 AI 보안 패키지 관련 알림 전송 대기', time: '1시간 전', tone: 'info' },
   ],

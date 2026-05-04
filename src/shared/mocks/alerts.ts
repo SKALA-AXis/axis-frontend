@@ -30,8 +30,8 @@ export const mockAlertsData: AlertsData = {
   history: [
     {
       id: 'ALERT-001',
-      title: '[전략 검토] 삼성SDS - 제조 AX 레퍼런스 확대',
-      message: '삼성SDS가 생성형 AI 운영 플랫폼을 제조/금융 고객 레퍼런스로 확장했습니다.',
+      title: '[전략 검토] 삼성 SDS - 제조 AX 레퍼런스 확대',
+      message: '삼성 SDS가 생성형 AI 운영 플랫폼을 제조/금융 고객 레퍼런스로 확장했습니다.',
       channel: 'email',
       status: 'sent',
       triggeredAt: '2026-04-22T09:15:00Z',

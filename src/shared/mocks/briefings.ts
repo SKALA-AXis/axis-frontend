@@ -3,18 +3,18 @@ import type { BriefingsData } from '../../features/briefings/model/briefing';
 export const mockBriefingsData: BriefingsData = {
   dailySnapshot: {
     title: '2026년 4월 22일 Peer Intelligence 일간 브리핑',
-    summary: '총 5건의 동향을 우선 검토와 지속 관찰 기준으로 정리했습니다.',
+    summary: '총 4개 Peer사의 동향을 우선 검토와 지속 관찰 기준으로 정리했습니다.',
     sections: [
       {
         title: '오늘 바로 검토할 동향',
         items: [
           {
-            headline: '삼성SDS - 제조·금융 생성형 AI 운영 플랫폼 레퍼런스 확대',
+            headline: '삼성 SDS - 제조·금융 생성형 AI 운영 플랫폼 레퍼런스 확대',
             source: '연합뉴스, 2026.04.22 08:30',
           },
           {
-            headline: '현대오토에버 - SDV 데이터 플랫폼 외부 고객 적용 사례 공개',
-            source: '조선비즈, 2026.04.21 16:45',
+            headline: '포스코 DX - 스마트팩토리용 산업 AI·자동화 패키지 공개',
+            source: '매일경제, 2026.04.21 11:20',
           },
         ],
       },
@@ -26,12 +26,8 @@ export const mockBriefingsData: BriefingsData = {
             source: '전자신문, 2026.04.22 07:15',
           },
           {
-            headline: 'Kakao Enterprise - 협업툴 내 AI 비서 베타 서비스',
-            source: '기업 블로그, 2026.04.20 11:30',
-          },
-          {
-            headline: '네이버클라우드 - 공공기관 Sovereign AI 인프라 패키지 확대',
-            source: '보도자료, 2026.04.20 14:20',
+            headline: '현대 오토에버 - SDV 데이터 플랫폼 외부 고객 적용 사례 공개',
+            source: '조선비즈, 2026.04.21 16:45',
           },
         ],
       },
@@ -39,7 +35,7 @@ export const mockBriefingsData: BriefingsData = {
   },
   weeklySnapshot: {
     title: '2026년 4월 3주차 Peer Intelligence 주간 브리핑',
-    summary: '한 주 동안 누적된 Peer사 사업 메시지와 레퍼런스 변화를 묶어서 정리했습니다.',
+    summary: '한 주 동안 4개 Peer사의 사업 메시지와 레퍼런스 변화를 묶어서 정리했습니다.',
     sections: [
       {
         title: '이번 주 핵심 변화',
@@ -58,8 +54,8 @@ export const mockBriefingsData: BriefingsData = {
         title: '연속 관찰 포인트',
         items: [
           {
-            headline: '제조 데이터 플랫폼 메시지와 외부 고객 사례 확산 여부 확인 필요',
-            source: '조선비즈, 기업 발표자료',
+            headline: '제조 데이터 플랫폼과 스마트팩토리 메시지의 외부 고객 확산 여부 확인 필요',
+            source: '조선비즈, 매일경제, 기업 발표자료',
           },
         ],
       },
@@ -77,27 +73,27 @@ export const mockBriefingsData: BriefingsData = {
       date: '2026-04-22',
       title: '2026년 4월 22일 일간 브리핑',
       status: 'delivered',
-      summary: '삼성SDS 제조 AX 레퍼런스, LG CNS 금융 보안 패키지 등 전략 검토 동향 5건',
+      summary: '삼성 SDS 제조 AX 레퍼런스, LG CNS 금융 보안 패키지, 포스코 DX 자동화 동향 등 4건',
       primaryCount: 2,
-      watchCount: 3,
-      evidence: ['연합뉴스', '전자신문', '기업 보도자료'],
+      watchCount: 2,
+      evidence: ['연합뉴스', '전자신문', '매일경제'],
     },
     {
       id: 'BR-20260421-001',
       date: '2026-04-21',
       title: '2026년 4월 21일 일간 브리핑',
       status: 'delivered',
-      summary: '네이버클라우드 공공 Sovereign AI, 현대오토에버 SDV 플랫폼 등 4건',
+      summary: '현대 오토에버 SDV 플랫폼, 포스코 DX 산업 AI 패키지 등 4건',
       primaryCount: 1,
       watchCount: 3,
-      evidence: ['조선비즈', 'IR 자료', '기업 블로그'],
+      evidence: ['조선비즈', '매일경제', '기업 블로그'],
     },
     {
       id: 'BR-20260420-001',
       date: '2026-04-20',
       title: '2026년 4월 20일 일간 브리핑',
       status: 'delivered',
-      summary: '카카오엔터프라이즈 AI 비서, KT 클라우드 사업 재편 등 업무 AX 관련 신호',
+      summary: '4개 Peer사 기준 제조·금융·운영 AX 관련 신호 추적',
       primaryCount: 0,
       watchCount: 4,
       evidence: ['매일경제', '전자신문'],

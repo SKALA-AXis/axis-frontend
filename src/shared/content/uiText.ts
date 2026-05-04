@@ -68,7 +68,7 @@ export const uiText = {
       { title: '3. 후속 기사 모니터링', body: '실제 고객명, 구축 범위, 투자 규모가 확인되는 기사 발생 시 즉시 알림' },
     ],
     sources: [
-      { title: '삼성SDS, 제조·금융 생성형 AI 운영 플랫폼 레퍼런스 확대', meta: '연합뉴스 · 2026.04.22', url: 'https://example.com/samsung-sds-openai' },
+      { title: '삼성 SDS, 제조·금융 생성형 AI 운영 플랫폼 레퍼런스 확대', meta: '연합뉴스 · 2026.04.22', url: 'https://example.com/samsung-sds-openai' },
       { title: '대기업 AX 운영 플랫폼 경쟁 심화 분석', meta: '전자신문 · 2026.04.22', url: 'https://example.com/samsung-sds-gpt4-enterprise' },
     ],
   },
