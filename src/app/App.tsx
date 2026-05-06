@@ -23,8 +23,7 @@ const initialSignUpForm: SignUpForm = { name: '', email: '', password: '' };
 function AxisMark() {
   return (
     <div
-      className="flex h-11 w-11 items-center justify-center rounded-2xl text-[10px] font-black text-white shadow-[0_6px_20px_rgba(255,127,0,0.4)]"
-      style={{ background: 'linear-gradient(135deg,#ff8c00 0%,#e04400 100%)' }}
+      className="flex h-11 w-11 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] text-[10px] font-black text-white"
       aria-hidden="true"
     >
       AX
@@ -57,33 +56,14 @@ function AuthScreen({
   return (
     <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-8"
       style={{
-        background: 'linear-gradient(145deg, #fff8f2 0%, #f5f6fa 50%, #fff5ee 100%)',
+        background:
+          'linear-gradient(90deg, rgba(16,24,32,0.055) 1px, transparent 1px), linear-gradient(180deg, rgba(16,24,32,0.055) 1px, transparent 1px), var(--axis-canvas)',
+        backgroundSize: '40px 40px',
       }}>
-      {/* Background decoration */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-32 -top-32 h-80 w-80 rounded-full opacity-40"
-          style={{ background: 'radial-gradient(circle,rgba(255,140,0,0.18),transparent 70%)' }} />
-        <div className="absolute -right-20 -bottom-20 h-96 w-96 rounded-full opacity-30"
-          style={{ background: 'radial-gradient(circle,rgba(225,0,42,0.12),transparent 70%)' }} />
-        <div className="absolute right-1/4 top-1/4 h-64 w-64 rounded-full opacity-20"
-          style={{ background: 'radial-gradient(circle,rgba(255,127,0,0.15),transparent 70%)' }} />
-        {/* Grid pattern */}
-        <svg className="absolute inset-0 h-full w-full opacity-[0.025]" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#000" strokeWidth="1"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-      </div>
-
       <section
-        className="relative w-full max-w-[22rem] overflow-hidden rounded-[1.6rem] bg-white shadow-[0_32px_64px_rgba(0,0,0,0.10),0_8px_16px_rgba(0,0,0,0.06)] sm:max-w-[23rem]"
-        style={{ border: '1px solid rgba(255,255,255,0.9)' }}
+        className="relative w-full max-w-[22rem] overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-white sm:max-w-[23rem]"
       >
-        {/* Top accent bar */}
-        <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg,#E1002A 0%,#ff7f00 50%,#ffb347 100%)' }} />
+        <div className="h-1 w-full bg-[var(--axis-navy)]" />
 
         <div className="px-7 pb-8 pt-7 sm:px-8">
           {/* Logo */}
@@ -99,17 +79,18 @@ function AuthScreen({
               <AxisMark />
             )}
             <div className="leading-none">
-              <span className="block text-[1.1rem] font-black tracking-[-0.04em] text-[#E1002A]">AXIS</span>
+              <span className="block text-[1.1rem] font-black tracking-[-0.04em] text-[var(--axis-ink)]">AXIS</span>
+              <span className="mt-1 block text-[0.7rem] font-semibold text-[var(--axis-muted)]">Executive Intelligence</span>
             </div>
           </div>
 
           {isSignIn ? (
             <form className="space-y-5" onSubmit={handleSignInSubmit} noValidate>
               <div>
-                <h1 className="text-[1.75rem] font-black tracking-[-0.05em] text-[#0f1117] leading-none">
+                <h1 className="text-[1.75rem] font-semibold tracking-[-0.05em] text-[var(--axis-ink)] leading-none">
                   로그인
                 </h1>
-                <p className="mt-1.5 text-[0.82rem] text-black/45">계정에 접속하여 시작하세요</p>
+                <p className="mt-1.5 text-[0.82rem] text-[var(--axis-muted)]">전략 인텔리전스 콘솔에 접속하세요</p>
               </div>
 
               <div className="space-y-1.5">
@@ -122,7 +103,7 @@ function AuthScreen({
                   placeholder="example@skax.com"
                   value={signInForm.email}
                   onChange={(e) => setSignInForm((c) => ({ ...c, email: e.target.value }))}
-                  className="axis-input h-11 rounded-xl px-4 text-[0.88rem]"
+                  className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-4 text-[0.88rem] focus:border-[var(--axis-accent)]"
                 />
               </div>
 
@@ -136,13 +117,13 @@ function AuthScreen({
                   placeholder="비밀번호 입력"
                   value={signInForm.password}
                   onChange={(e) => setSignInForm((c) => ({ ...c, password: e.target.value }))}
-                  className="axis-input h-11 rounded-xl px-4 text-[0.88rem]"
+                  className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-4 text-[0.88rem] focus:border-[var(--axis-accent)]"
                 />
               </div>
 
               <button
                 type="submit"
-                className="axis-accent mt-1 h-12 w-full rounded-xl text-[0.92rem] font-bold tracking-[-0.01em]"
+                className="mt-1 h-12 w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] text-[0.92rem] font-bold tracking-[-0.01em] text-white transition hover:bg-[var(--axis-ink)]"
               >
                 로그인
               </button>
@@ -151,7 +132,7 @@ function AuthScreen({
                 계정이 없으신가요?{' '}
                 <button
                   type="button"
-                  className="font-semibold text-[#d96200] underline underline-offset-3 hover:text-[#ff7f00]"
+                  className="font-semibold text-[var(--axis-accent-strong)] underline underline-offset-3 hover:text-[var(--axis-ink)]"
                   onClick={() => onModeChange('signUp')}
                 >
                   회원가입
@@ -161,10 +142,10 @@ function AuthScreen({
           ) : (
             <form className="space-y-5" onSubmit={handleSignUpSubmit} noValidate>
               <div>
-                <h1 className="text-[1.75rem] font-black tracking-[-0.05em] text-[#0f1117] leading-none">
+                <h1 className="text-[1.75rem] font-semibold tracking-[-0.05em] text-[var(--axis-ink)] leading-none">
                   회원가입
                 </h1>
-                <p className="mt-1.5 text-[0.82rem] text-black/45">새 계정을 만들어 시작하세요</p>
+                <p className="mt-1.5 text-[0.82rem] text-[var(--axis-muted)]">새 계정을 만들어 시작하세요</p>
               </div>
 
               {[
@@ -182,14 +163,14 @@ function AuthScreen({
                     placeholder={field.placeholder}
                     value={signUpForm[field.key]}
                     onChange={(e) => setSignUpForm((c) => ({ ...c, [field.key]: e.target.value }))}
-                    className="axis-input h-11 rounded-xl px-4 text-[0.88rem]"
+                    className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-4 text-[0.88rem] focus:border-[var(--axis-accent)]"
                   />
                 </div>
               ))}
 
               <button
                 type="submit"
-                className="axis-accent mt-1 h-12 w-full rounded-xl text-[0.92rem] font-bold tracking-[-0.01em]"
+                className="mt-1 h-12 w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] text-[0.92rem] font-bold tracking-[-0.01em] text-white transition hover:bg-[var(--axis-ink)]"
               >
                 계정 생성
               </button>
@@ -198,7 +179,7 @@ function AuthScreen({
                 이미 계정이 있으신가요?{' '}
                 <button
                   type="button"
-                  className="font-semibold text-[#d96200] underline underline-offset-3 hover:text-[#ff7f00]"
+                  className="font-semibold text-[var(--axis-accent-strong)] underline underline-offset-3 hover:text-[var(--axis-ink)]"
                   onClick={() => onModeChange('signIn')}
                 >
                   로그인

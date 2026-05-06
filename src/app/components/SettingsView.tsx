@@ -1,51 +1,58 @@
-import { Bell, Clock3, KeyRound, LogOut, MapPin, ShieldCheck, User, Wifi } from 'lucide-react';
+import { Bell, Clock3, KeyRound, LogOut, ShieldCheck, User } from 'lucide-react';
 import { useState } from 'react';
+import {
+  ExecutiveBadge,
+  ExecutiveButton,
+  ExecutiveContainer,
+  ExecutiveHeader,
+  ExecutiveMetric,
+  ExecutivePage,
+} from './executive/ExecutiveSystem';
 
 type SettingsTab = 'account' | 'history' | 'notifications';
 
-type LoginHistoryItem = {
-  id: string;
-  date: string;
-  time: string;
-  country: string;
-  ipAddress: string;
-};
-
-const loginHistory: LoginHistoryItem[] = [
-  { id: '1', date: '2026.05.04', time: '09:14', country: '대한민국', ipAddress: '121.168.25.41' },
-  { id: '2', date: '2026.05.03', time: '18:42', country: '대한민국', ipAddress: '121.168.25.41' },
-  { id: '3', date: '2026.05.02', time: '08:57', country: '일본', ipAddress: '103.24.77.118' },
-  { id: '4', date: '2026.05.01', time: '21:05', country: '미국', ipAddress: '34.201.11.82' },
+const loginHistory = [
+  { id: '1', date: '2026.05.04', time: '09:14', action: 'login', country: '대한민국', ipAddress: '121.168.25.41' },
+  { id: '2', date: '2026.05.03', time: '18:42', action: 'view', country: '대한민국', ipAddress: '121.168.25.41' },
+  { id: '3', date: '2026.05.02', time: '08:57', action: 'share', country: '일본', ipAddress: '103.24.77.118' },
+  { id: '4', date: '2026.05.01', time: '21:05', action: 'download', country: '미국', ipAddress: '34.201.11.82' },
 ];
 
 export function SettingsView({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
-  const [accountMode, setAccountMode] = useState<'view' | 'edit' | 'password'>('view');
   const [profileSaved, setProfileSaved] = useState(false);
-  const [passwordSaved, setPasswordSaved] = useState(false);
-  const [notificationSaved, setNotificationSaved] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
-    briefingAlert: true,
-    marketingAlert: false,
+    email: true,
+    inApp: true,
+    msTeams: false,
     briefingTime: '08:30',
+    eventImmediate: true,
   });
 
   const tabs: Array<{ id: SettingsTab; label: string; icon: typeof User }> = [
     { id: 'account', label: '회원 정보', icon: User },
-    { id: 'history', label: '로그인 이력', icon: ShieldCheck },
+    { id: 'history', label: '접속 로그', icon: ShieldCheck },
     { id: 'notifications', label: '알림 설정', icon: Bell },
   ];
 
   return (
-    <div className="axis-page flex-1 overflow-auto">
-      <div className="p-3 sm:p-4 lg:p-5">
-        <div className="axis-page-header">
-          <h1 className="axis-page-title">회원 정보</h1>
-          <p className="axis-page-subtitle">계정 정보, 로그인 이력, 알림 설정을 관리할 수 있습니다.</p>
-        </div>
+    <ExecutivePage>
+      <ExecutiveContainer className="pb-24">
+        <ExecutiveHeader
+          eyebrow="User settings"
+          title="회원 정보"
+          subtitle="프로필, 접속 로그, 알림 채널을 OpenAPI Settings 도메인 구조에 맞춰 관리합니다."
+          actions={<ExecutiveButton variant="danger" icon={<LogOut size={16} />} onClick={onLogout}>로그아웃</ExecutiveButton>}
+        />
 
-        <div className="grid gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
-          <aside className="axis-glass h-fit rounded-[1.15rem] bg-white/82 p-3">
+        <section className="grid gap-3 md:grid-cols-3">
+          <ExecutiveMetric label="Role" value="Strategist" helper="권한 기반 화면 노출" />
+          <ExecutiveMetric label="Channels" value="2" helper="Email, In-app 활성" tone="success" />
+          <ExecutiveMetric label="Access logs" value={loginHistory.length} helper="최근 기록" tone="accent" />
+        </section>
+
+        <section className="mt-5 grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
+          <aside className="axis-panel-flat h-fit p-3">
             <nav className="flex gap-2 overflow-x-auto lg:flex-col">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -56,250 +63,147 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex shrink-0 items-center gap-3 rounded-[0.95rem] px-4 py-3 text-left transition lg:w-full ${
-                      isActive ? 'bg-[#ff7f00] text-white' : 'text-black/72 hover:bg-white/70'
+                    className={`flex shrink-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-4 py-3 text-left transition lg:w-full ${
+                      isActive ? 'bg-[var(--axis-navy)] text-white' : 'text-[var(--axis-body)] hover:bg-white'
                     }`}
                   >
                     <Icon size={17} />
-                    <span className="text-sm font-medium">{tab.label}</span>
+                    <span className="text-sm font-semibold">{tab.label}</span>
                   </button>
                 );
               })}
             </nav>
           </aside>
 
-          <section className="axis-glass rounded-[1.15rem] bg-white/82 p-4 sm:p-5">
+          <main className="axis-panel-flat overflow-hidden">
             {activeTab === 'account' ? (
-              <div className="space-y-8">
-                <section className="rounded-[1.1rem] border border-black/8 bg-[linear-gradient(180deg,#fffdfb,#ffffff)] p-5 shadow-[0_10px_28px_rgba(17,17,17,0.04)]">
-                  <div className="mt-6 border-t border-black/8 pt-6">
-                    {accountMode === 'password' ? (
-                      <>
-                        <div className="mb-4 flex items-center gap-2">
-                          <KeyRound size={18} className="text-[#E1002A]" />
-                          <h3 className="axis-section-title">비밀번호 변경</h3>
-                        </div>
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <Field label="현재 비밀번호" type="password" />
-                          <Field label="새 비밀번호" type="password" />
-                          <Field label="새 비밀번호 확인" type="password" />
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setPasswordSaved(true)}
-                          className="mt-5 rounded-[0.8rem] bg-[#E1002A] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#ff7f00]"
-                        >
-                          비밀번호 변경
-                        </button>
-                        {passwordSaved ? <p className="mt-2 text-xs text-[#E1002A]">비밀번호 변경 요청이 저장되었습니다.</p> : null}
-                      </>
-                    ) : (
-                      <>
-                        <div className="mb-4 flex items-center gap-2">
-                          <User size={18} className="text-[#d96200]" />
-                          <h3 className="axis-section-title">{accountMode === 'edit' ? '회원 정보 수정' : '회원 정보 확인'}</h3>
-                        </div>
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <Field
-                            label="이름"
-                            defaultValue="Andrew Smith"
-                            readOnly={accountMode !== 'edit'}
-                          />
-                          <Field
-                            label="이메일"
-                            type="email"
-                            defaultValue="andrew.smith@skax.com"
-                            readOnly={accountMode !== 'edit'}
-                          />
-                        </div>
-
-                        {accountMode === 'edit' ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setProfileSaved(true)}
-                              className="mt-5 rounded-[0.8rem] bg-[#111111] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#ff7f00]"
-                            >
-                              회원 정보 저장
-                            </button>
-                            {profileSaved ? <p className="mt-2 text-xs text-[#d96200]">회원 정보가 저장되었습니다.</p> : null}
-                          </>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-
-                  <div className="mt-6 border-t border-black/8 pt-6">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="mb-3 flex items-center gap-2">
-                          <User size={18} className="text-[#d96200]" />
-                          <h2 className="axis-section-title">계정 관리</h2>
-                        </div>
-                        <p className="text-sm leading-6 text-black/56">
-                          회원 정보 수정, 비밀번호 변경, 로그아웃을 이 영역에서 관리할 수 있습니다.
-                        </p>
-                      </div>
-
-                      <div className="flex w-full flex-col gap-2 sm:w-[14rem]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAccountMode((current) => (current === 'edit' ? 'view' : 'edit'));
-                            setProfileSaved(false);
-                            setPasswordSaved(false);
-                          }}
-                          className="inline-flex items-center justify-center gap-2 rounded-[0.85rem] bg-[#111111] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7f00]"
-                        >
-                          <User size={15} />
-                          {accountMode === 'edit' ? '회원 정보 보기' : '회원 정보 수정'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAccountMode((current) => (current === 'password' ? 'view' : 'password'));
-                            setPasswordSaved(false);
-                            setProfileSaved(false);
-                          }}
-                          className="inline-flex items-center justify-center gap-2 rounded-[0.85rem] border border-black/10 bg-white px-4 py-3 text-sm font-semibold text-black/68 transition hover:border-[#ff7f00]/18 hover:text-[#d96200]"
-                        >
-                          <KeyRound size={15} />
-                          {accountMode === 'password' ? '회원 정보 보기' : '비밀번호 변경'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={onLogout}
-                          className="inline-flex items-center justify-center gap-2 rounded-[0.85rem] border border-[#E1002A]/12 bg-[#fff6f5] px-4 py-3 text-sm font-semibold text-[#c43f28] transition hover:border-[#ff7f00]/18 hover:text-[#d96200]"
-                        >
-                          <LogOut size={15} />
-                          로그아웃
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              </div>
+              <section className="p-5">
+                <div className="flex items-center gap-2">
+                  <User size={17} className="text-[var(--axis-accent)]" />
+                  <h2 className="axis-section-heading">프로필</h2>
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <Field label="이름" defaultValue="Andrew Smith" />
+                  <Field label="이메일" type="email" defaultValue="andrew.smith@skax.com" />
+                  <Field label="부서" defaultValue="Corporate Strategy" />
+                  <Field label="역할" defaultValue="strategist" />
+                </div>
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <ExecutiveButton onClick={() => setProfileSaved(true)}>회원 정보 저장</ExecutiveButton>
+                  <ExecutiveButton variant="secondary" icon={<KeyRound size={16} />}>비밀번호 변경</ExecutiveButton>
+                  {profileSaved ? <ExecutiveBadge tone="success">저장되었습니다</ExecutiveBadge> : null}
+                </div>
+              </section>
             ) : null}
 
             {activeTab === 'history' ? (
-              <div>
-                <div className="mb-4 flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-[#d96200]" />
-                  <h2 className="axis-section-title">로그인 이력</h2>
-                </div>
-                <p className="mb-5 text-sm text-black/56">최근 로그인 기록을 일시, 국가, IP 주소 기준으로 확인할 수 있습니다.</p>
-
-                <div className="overflow-hidden rounded-[1rem] border border-black/8 bg-white/72">
-                  <div className="grid grid-cols-3 gap-3 border-b border-black/8 bg-[#f5f6fa] px-4 py-3 text-xs font-semibold text-black/58">
-                    <span>일시</span>
-                    <span>나라</span>
-                    <span>IP 주소</span>
+              <section className="p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={17} className="text-[var(--axis-accent)]" />
+                    <h2 className="axis-section-heading">접속 로그</h2>
                   </div>
-
-                  <div className="divide-y divide-black/6">
-                    {loginHistory.map((item) => (
-                      <div key={item.id} className="grid grid-cols-3 gap-3 px-4 py-3 text-sm text-black/80">
-                        <span>{item.date} {item.time}</span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <MapPin size={14} className="text-[#d96200]" />
-                          {item.country}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 font-medium text-black/72">
-                          <Wifi size={14} className="text-[#d96200]" />
-                          {item.ipAddress}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <ExecutiveBadge>FR-043</ExecutiveBadge>
                 </div>
-              </div>
+                <div className="mt-5 overflow-x-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-white">
+                  <table className="axis-data-table">
+                    <thead>
+                      <tr>
+                        <th>일시</th>
+                        <th>Action</th>
+                        <th>국가</th>
+                        <th>IP 주소</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loginHistory.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.date} {item.time}</td>
+                          <td>{item.action}</td>
+                          <td>{item.country}</td>
+                          <td>{item.ipAddress}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
             ) : null}
 
             {activeTab === 'notifications' ? (
-              <div>
-                <div className="mb-4 flex items-center gap-2">
-                  <Bell size={18} className="text-[#d96200]" />
-                  <h2 className="axis-section-title">알림 설정</h2>
-                </div>
-                <p className="mb-5 text-sm text-black/56">알림 수신 여부와 브리핑 발송 시간을 설정할 수 있습니다.</p>
-
-                <div className="space-y-3">
-                  <ToggleCard
-                    title="브리핑 알림"
-                    description="일간 브리핑 발송 시 알림을 수신합니다."
-                    checked={notificationSettings.briefingAlert}
-                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, briefingAlert: checked }))}
-                  />
-                  <ToggleCard
-                    title="서비스 안내 알림"
-                    description="새 기능 또는 운영 안내 알림을 수신합니다."
-                    checked={notificationSettings.marketingAlert}
-                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, marketingAlert: checked }))}
-                  />
-                </div>
-
-                <div className="mt-5 rounded-[1rem] border border-black/8 bg-white/78 p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Clock3 size={16} className="text-[#d96200]" />
-                    <h3 className="text-sm font-semibold text-black/88">브리핑 시간 설정</h3>
+              <section className="p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Bell size={17} className="text-[var(--axis-accent)]" />
+                    <h2 className="axis-section-heading">알림 채널·시간</h2>
                   </div>
-                  <p className="mb-3 text-xs text-black/54">브리핑 알림이 켜져 있을 때 적용됩니다.</p>
+                  <ExecutiveBadge>FR-041</ExecutiveBadge>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  <ToggleRow
+                    title="Email"
+                    description="브리핑과 중요 이벤트를 이메일로 수신합니다."
+                    checked={notificationSettings.email}
+                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, email: checked }))}
+                  />
+                  <ToggleRow
+                    title="In-app"
+                    description="AXIS 콘솔 내부 알림을 표시합니다."
+                    checked={notificationSettings.inApp}
+                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, inApp: checked }))}
+                  />
+                  <ToggleRow
+                    title="MS Teams"
+                    description="Teams Webhook 채널로 브리핑을 전달합니다."
+                    checked={notificationSettings.msTeams}
+                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, msTeams: checked }))}
+                  />
+                </div>
+
+                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-white p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Clock3 size={16} className="text-[var(--axis-accent)]" />
+                    <h3 className="text-sm font-semibold text-[var(--axis-ink)]">브리핑 발송 시간</h3>
+                  </div>
                   <input
                     type="time"
                     value={notificationSettings.briefingTime}
-                    onChange={(event) =>
-                      setNotificationSettings((current) => ({
-                        ...current,
-                        briefingTime: event.target.value,
-                      }))
-                    }
-                    className="axis-input h-10 rounded-[0.8rem] px-4 text-sm"
+                    onChange={(event) => setNotificationSettings((current) => ({ ...current, briefingTime: event.target.value }))}
+                    className="h-10 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
                   />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setNotificationSaved(true)}
-                  className="mt-5 rounded-[0.8rem] bg-[#111111] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#ff7f00]"
-                >
-                  알림 설정 저장
-                </button>
-                {notificationSaved ? <p className="mt-2 text-xs text-[#d96200]">알림 설정이 저장되었습니다.</p> : null}
-              </div>
+              </section>
             ) : null}
-          </section>
-        </div>
-      </div>
-    </div>
+          </main>
+        </section>
+      </ExecutiveContainer>
+    </ExecutivePage>
   );
 }
 
 function Field({
   label,
-  defaultValue,
   type = 'text',
-  readOnly = false,
+  defaultValue,
 }: {
   label: string;
-  defaultValue?: string;
-  type?: 'text' | 'email' | 'password';
-  readOnly?: boolean;
+  type?: string;
+  defaultValue: string;
 }) {
   return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-black/82">{label}</label>
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold text-[var(--axis-ink)]">{label}</span>
       <input
         type={type}
         defaultValue={defaultValue}
-        readOnly={readOnly}
-        className={`axis-input h-10 w-full rounded-[0.8rem] px-4 text-sm ${readOnly ? 'bg-[#f6f7f9] text-black/68' : ''}`}
+        className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
       />
-    </div>
+    </label>
   );
 }
 
-function ToggleCard({
+function ToggleRow({
   title,
   description,
   checked,
@@ -311,25 +215,19 @@ function ToggleCard({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-4 rounded-[1rem] border border-black/8 bg-white/78 px-4 py-3.5">
+    <div className="flex items-center justify-between gap-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-white p-4">
       <div>
-        <p className="text-sm font-medium text-black/88">{title}</p>
-        <p className="mt-1 text-xs text-black/54">{description}</p>
+        <p className="text-sm font-semibold text-[var(--axis-ink)]">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">{description}</p>
       </div>
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className={`relative h-7 w-12 rounded-full transition ${
-          checked ? 'bg-[#ff7f00]' : 'bg-black/14'
-        }`}
+        className={`relative h-6 w-11 rounded-full transition ${checked ? 'bg-[var(--axis-navy)]' : 'bg-[var(--axis-hairline)]'}`}
         aria-pressed={checked}
       >
-        <span
-          className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
-            checked ? 'left-6' : 'left-1'
-          }`}
-        />
+        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${checked ? 'left-6' : 'left-1'}`} />
       </button>
-    </label>
+    </div>
   );
 }

@@ -26,6 +26,28 @@ body,
   --shadow-sm: 0 6px 16px rgba(17, 18, 23, 0.04);
   --shadow-md: 0 14px 32px rgba(17, 18, 23, 0.06);
   --shadow-lg: 0 22px 48px rgba(17, 18, 23, 0.09);
+
+  --axis-canvas: #f7f4ee;
+  --axis-surface: #ffffff;
+  --axis-surface-muted: #ede8df;
+  --axis-surface-soft: #faf8f4;
+  --axis-ink: #101820;
+  --axis-navy: #111827;
+  --axis-body: #334155;
+  --axis-muted: #64748b;
+  --axis-subtle: #94a3b8;
+  --axis-hairline: #d8d2c8;
+  --axis-accent: #c66a4a;
+  --axis-accent-strong: #9f4f36;
+  --axis-blue: #0f62fe;
+  --axis-success: #198038;
+  --axis-warning: #b7791f;
+  --axis-danger: #da1e28;
+  --axis-radius-sm: 6px;
+  --axis-radius-md: 8px;
+  --axis-radius-lg: 12px;
+  --axis-radius-xl: 16px;
+  --axis-grid: rgba(16, 24, 32, 0.055);
 }
 
 body {
@@ -214,3 +236,79 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(15,17,23,0.10); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,127,0,0.30); }
+
+.axis-executive-page {
+  background:
+    linear-gradient(90deg, var(--axis-grid) 1px, transparent 1px),
+    linear-gradient(180deg, var(--axis-grid) 1px, transparent 1px),
+    var(--axis-canvas);
+  background-size: 40px 40px;
+  color: var(--axis-ink);
+}
+
+.axis-display-title {
+  color: var(--axis-ink);
+  font-size: clamp(1.72rem, 1.28rem + 1.45vw, 3rem);
+  font-weight: 520;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+}
+
+.axis-kicker {
+  color: var(--axis-accent-strong);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.axis-section-heading {
+  color: var(--axis-ink);
+  font-size: 1rem;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.axis-panel-flat {
+  background: color-mix(in srgb, var(--axis-surface) 92%, transparent);
+  border: 1px solid var(--axis-hairline);
+  border-radius: var(--axis-radius-lg);
+  box-shadow: none;
+}
+
+.axis-executive-card {
+  background: color-mix(in srgb, var(--axis-surface) 94%, transparent);
+  border: 1px solid var(--axis-hairline);
+  border-radius: var(--axis-radius-lg);
+  box-shadow: none;
+  padding: 1rem;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.axis-executive-card:hover {
+  background: var(--axis-surface);
+  border-color: color-mix(in srgb, var(--axis-accent) 36%, var(--axis-hairline));
+}
+
+.axis-data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.axis-data-table th {
+  color: var(--axis-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.8rem 0.75rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.axis-data-table td {
+  border-top: 1px solid var(--axis-hairline);
+  color: var(--axis-body);
+  font-size: 0.9rem;
+  padding: 0.9rem 0.75rem;
+}
