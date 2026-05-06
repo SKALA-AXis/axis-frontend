@@ -1,0 +1,11 @@
+@font-face {
+  font-family: 'AxisDisplayFallback';
+  src: local('Arial Narrow'), local('Impact');
+  font-weight: 400 900;
+}
+
+:root {
+  --axis-font-display: 'AxisDisplayFallback', 'Arial Narrow', 'Impact', 'Roboto Condensed', sans-serif;
+  --axis-font-body: 'Inter', 'IBM Plex Sans', 'Aptos', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --axis-font-mono: 'SFMono-Regular', 'JetBrains Mono', 'Roboto Mono', ui-monospace, monospace;
+}

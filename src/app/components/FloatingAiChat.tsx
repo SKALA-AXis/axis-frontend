@@ -32,7 +32,7 @@ export function FloatingAiChat() {
   };
 
   return (
-    <div className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3 md:bottom-5 md:right-6">
+    <div className="fixed bottom-20 right-4 z-40 hidden flex-col items-end gap-3 md:bottom-5 md:right-6 md:flex">
       {isOpen ? (
         <section className="mb-2 flex h-[420px] w-[330px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-none">
           <div className="flex items-center justify-between border-b border-[var(--axis-hairline)] px-4 py-3">
@@ -65,7 +65,7 @@ export function FloatingAiChat() {
                   className={`max-w-[78%] rounded-[var(--axis-radius-lg)] px-3 py-2 text-sm leading-relaxed ${
                     message.role === 'user'
                       ? 'bg-[var(--axis-navy)] text-white'
-                      : 'border border-[var(--axis-hairline)] bg-white text-[var(--axis-body)]'
+                      : 'border border-[var(--axis-hairline)] bg-white/8 text-[var(--axis-body)]'
                   }`}
                 >
                   {message.content}
@@ -74,7 +74,7 @@ export function FloatingAiChat() {
             ))}
           </div>
 
-          <div className="border-t border-[var(--axis-hairline)] bg-white p-3">
+          <div className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3">
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -86,7 +86,7 @@ export function FloatingAiChat() {
                   }
                 }}
                 placeholder={uiText.dashboard.chatPlaceholder}
-                className="min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm text-[var(--axis-ink)] outline-none transition focus:border-[var(--axis-accent)]"
+                className="min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-3 py-2 text-sm text-[var(--axis-ink)] outline-none transition placeholder:text-white/32 focus:border-[var(--axis-accent)]"
               />
               <button
                 type="button"
@@ -101,7 +101,7 @@ export function FloatingAiChat() {
         </section>
       ) : (
         <div
-          className={`pointer-events-none hidden w-56 rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-white p-4 shadow-none transition-all duration-200 sm:block ${
+          className={`pointer-events-none hidden w-56 rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4 shadow-none transition-all duration-200 sm:block ${
             isBubbleVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
           }`}
         >

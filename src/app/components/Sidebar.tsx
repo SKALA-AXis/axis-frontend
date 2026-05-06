@@ -84,7 +84,7 @@ export function Sidebar({ activeView, onViewChange, currentUserRole }: SidebarPr
             <button
               type="button"
               onClick={() => onViewChange('settings')}
-              className={`min-w-0 rounded-[var(--axis-radius-md)] border bg-white text-left transition hover:border-[var(--axis-accent)] ${
+              className={`min-w-0 rounded-[var(--axis-radius-md)] border bg-white/6 text-left transition hover:border-[var(--axis-accent)] ${
                 collapsed ? 'h-11 w-11 p-0' : 'flex-1 px-3 py-2.5'
               } ${activeView === 'settings' ? 'border-[var(--axis-accent)]' : 'border-[var(--axis-hairline)]'}`}
               aria-label="회원 설정"
@@ -110,7 +110,7 @@ export function Sidebar({ activeView, onViewChange, currentUserRole }: SidebarPr
             <button
               type="button"
               onClick={() => setCollapsed((current) => !current)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white text-[var(--axis-muted)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-ink)]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/6 text-[var(--axis-muted)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-ink)]"
               aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
             >
               {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

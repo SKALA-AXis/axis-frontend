@@ -14,6 +14,7 @@ export type UserRole = 'admin' | 'strategist' | 'analyst' | 'viewer';
 
 const logoSrc = '/png.png';
 const bookmarksStorageKey = 'axis:bookmarked-cards';
+const authStorageKey = 'axis:authenticated';
 
 type SignInForm = { email: string; password: string };
 type SignUpForm = { name: string; email: string; password: string };
@@ -54,16 +55,13 @@ function AuthScreen({
   };
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-8"
-      style={{
-        background:
-          'linear-gradient(90deg, rgba(16,24,32,0.055) 1px, transparent 1px), linear-gradient(180deg, rgba(16,24,32,0.055) 1px, transparent 1px), var(--axis-canvas)',
-        backgroundSize: '40px 40px',
-      }}>
+    <div
+      className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[var(--axis-canvas)] px-4 py-8"
+    >
       <section
-        className="relative w-full max-w-[22rem] overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-white sm:max-w-[23rem]"
+        className="relative w-full max-w-[22rem] overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[#151922] text-white sm:max-w-[23rem]"
       >
-        <div className="h-1 w-full bg-[var(--axis-navy)]" />
+        <div className="h-1 w-full bg-[var(--axis-accent)]" />
 
         <div className="px-7 pb-8 pt-7 sm:px-8">
           {/* Logo */}
@@ -94,7 +92,7 @@ function AuthScreen({
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="sign-in-email" className="block text-[0.82rem] font-semibold text-black/70">
+                <label htmlFor="sign-in-email" className="block text-[0.82rem] font-semibold text-white/70">
                   이메일
                 </label>
                 <Input
@@ -103,12 +101,12 @@ function AuthScreen({
                   placeholder="example@skax.com"
                   value={signInForm.email}
                   onChange={(e) => setSignInForm((c) => ({ ...c, email: e.target.value }))}
-                  className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-4 text-[0.88rem] focus:border-[var(--axis-accent)]"
+                  className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-4 text-[0.88rem] text-white placeholder:text-white/28 focus:border-[var(--axis-accent)]"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="sign-in-password" className="block text-[0.82rem] font-semibold text-black/70">
+                <label htmlFor="sign-in-password" className="block text-[0.82rem] font-semibold text-white/70">
                   비밀번호
                 </label>
                 <Input
@@ -117,22 +115,22 @@ function AuthScreen({
                   placeholder="비밀번호 입력"
                   value={signInForm.password}
                   onChange={(e) => setSignInForm((c) => ({ ...c, password: e.target.value }))}
-                  className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-4 text-[0.88rem] focus:border-[var(--axis-accent)]"
+                  className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-4 text-[0.88rem] text-white placeholder:text-white/28 focus:border-[var(--axis-accent)]"
                 />
               </div>
 
               <button
                 type="submit"
-                className="mt-1 h-12 w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] text-[0.92rem] font-bold tracking-[-0.01em] text-white transition hover:bg-[var(--axis-ink)]"
+                className="mt-1 h-12 w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] text-[0.92rem] font-bold tracking-[-0.01em] text-black transition hover:bg-[var(--axis-accent-strong)]"
               >
                 로그인
               </button>
 
-              <p className="text-center text-[11.5px] text-black/46">
+              <p className="text-center text-[11.5px] text-white/42">
                 계정이 없으신가요?{' '}
                 <button
                   type="button"
-                  className="font-semibold text-[var(--axis-accent-strong)] underline underline-offset-3 hover:text-[var(--axis-ink)]"
+                  className="font-semibold text-[var(--axis-accent)] underline underline-offset-3 hover:text-[var(--axis-accent-strong)]"
                   onClick={() => onModeChange('signUp')}
                 >
                   회원가입
@@ -154,7 +152,7 @@ function AuthScreen({
                 { id: 'sign-up-password', label: '비밀번호', type: 'password', placeholder: '비밀번호 생성', key: 'password' as const },
               ].map((field) => (
                 <div key={field.id} className="space-y-1.5">
-                  <label htmlFor={field.id} className="block text-[0.82rem] font-semibold text-black/70">
+                  <label htmlFor={field.id} className="block text-[0.82rem] font-semibold text-white/70">
                     {field.label}
                   </label>
                   <Input
@@ -163,23 +161,23 @@ function AuthScreen({
                     placeholder={field.placeholder}
                     value={signUpForm[field.key]}
                     onChange={(e) => setSignUpForm((c) => ({ ...c, [field.key]: e.target.value }))}
-                    className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-4 text-[0.88rem] focus:border-[var(--axis-accent)]"
+                    className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-4 text-[0.88rem] text-white placeholder:text-white/28 focus:border-[var(--axis-accent)]"
                   />
                 </div>
               ))}
 
               <button
                 type="submit"
-                className="mt-1 h-12 w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] text-[0.92rem] font-bold tracking-[-0.01em] text-white transition hover:bg-[var(--axis-ink)]"
+                className="mt-1 h-12 w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] text-[0.92rem] font-bold tracking-[-0.01em] text-black transition hover:bg-[var(--axis-accent-strong)]"
               >
                 계정 생성
               </button>
 
-              <p className="text-center text-[11.5px] text-black/46">
+              <p className="text-center text-[11.5px] text-white/42">
                 이미 계정이 있으신가요?{' '}
                 <button
                   type="button"
-                  className="font-semibold text-[var(--axis-accent-strong)] underline underline-offset-3 hover:text-[var(--axis-ink)]"
+                  className="font-semibold text-[var(--axis-accent)] underline underline-offset-3 hover:text-[var(--axis-accent-strong)]"
                   onClick={() => onModeChange('signIn')}
                 >
                   로그인
@@ -246,7 +244,7 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
   };
 
   return (
-    <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-white md:flex-row">
+    <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-[var(--axis-canvas)] md:flex-row">
       <Sidebar
         activeView={activeView}
         onViewChange={handleViewChange}
@@ -261,13 +259,19 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
 
 export default function App() {
   const [mode, setMode] = useState<AuthMode>('signIn');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => window.localStorage.getItem(authStorageKey) === 'true');
+
+  const handleLogin = () => {
+    window.localStorage.setItem(authStorageKey, 'true');
+    setIsAuthenticated(true);
+  };
 
   const handleLogout = () => {
+    window.localStorage.removeItem(authStorageKey);
     setMode('signIn');
     setIsAuthenticated(false);
   };
 
   if (isAuthenticated) return <DashboardShell onLogout={handleLogout} />;
-  return <AuthScreen mode={mode} onModeChange={setMode} onLogin={() => setIsAuthenticated(true)} />;
+  return <AuthScreen mode={mode} onModeChange={setMode} onLogin={handleLogin} />;
 }

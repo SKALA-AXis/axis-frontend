@@ -4,12 +4,12 @@
 
 이 문서는 AXIS 프론트엔드를 대기업 임원용 전략 인텔리전스 콘솔로 전환하기 위한 데이터 기반 디자인 시스템 명세입니다. 기준은 `../axis-backend`의 Spring Boot 구현, `../axis-infra/api/openapi.yaml`의 OpenAPI v3 계약, 그리고 `DESIGN-airtable.md`, `DESIGN-ibm.md`, `DESIGN-claude.md`, `DESIGN-intercom.md`, `DESIGN-wired.md`, `DESIGN-theverge.md`의 레퍼런스 분석입니다.
 
-AXIS의 핵심 경험은 뉴스 소비가 아니라, 검증된 전략 신호를 빠르게 판단하고 후속 액션으로 전환하는 것입니다. 따라서 본 설계는 다음 네 가지 질문에 답하도록 구성되었습니다.
+AXIS의 핵심 경험은 뉴스 소비가 아니라, 검증된 전략 신호를 카드뉴스 단위로 빠르게 판단하고 후속 액션으로 전환하는 것입니다. 2026-05-06 디자인 리비전에서는 과도한 정보 밀도를 낮추고, 메인 화면을 `3D Signal Graph -> Gallery -> Card News Reader` 흐름으로 재정의했습니다. 따라서 본 설계는 다음 네 가지 질문에 답하도록 구성되었습니다.
 
 - 이 데이터가 백엔드의 어떤 엔드포인트에서 오는가?
 - 바쁜 임원이 3초 안에 가장 먼저 인지해야 하는 정보는 무엇인가?
-- 카드뉴스가 핵심인 제품에서 정보 밀도와 심미적 절제를 어떻게 공존시킬 것인가?
-- 현재 React, Vite, Tailwind CSS, Recharts 기반 프론트엔드에서 안정적으로 구현 가능한가?
+- 카드뉴스가 핵심인 제품에서 정보량을 줄이면서도 어떤 탐색 동선을 제공할 것인가?
+- 현재 React, Vite, Tailwind CSS, Three.js, Recharts 기반 프론트엔드에서 안정적으로 구현 가능한가?
 
 ---
 
@@ -102,15 +102,26 @@ AXIS는 임원용 전략 시스템이므로 다음 원칙을 우선합니다.
    `implication.suggested_actions`를 카드 하단의 `Next action`으로 승격합니다.
 
 3. Sophisticated Minimalism
-   배경 장식, 그라데이션, 과한 그림자, 오렌지 일변도 팔레트를 제거하고 `Deep Navy`, `Warm Ivory`, `Slate`, `Controlled Coral`로 정리합니다.
+   연노랑 캔버스, 격자 배경, 과한 장식성, 오렌지 일변도 팔레트를 제거하고 `Void Black`, `Soft Black`, `Signal Mint`, `Controlled Violet`, `Editorial White`로 정리합니다.
 
-### 4. 3초 인지 규칙
+### 4. Dynamic Card News Radar 리비전
+
+사용자 피드백에 따라 홈 화면의 정보 구조를 다시 정의했습니다. 이전 임원 콘솔형 화면은 KPI와 패널이 동시에 노출되어 3초 인지에는 강했지만, 카드뉴스 서비스의 본질인 `읽고 고르는 경험`을 약화시켰습니다. 새 방향은 정보 밀도를 줄이고, 선택 행위 자체를 시각적으로 명확하게 만드는 것입니다.
+
+| 단계 | 사용자 행동 | 화면 반응 | 판단 이유 |
+|---|---|---|---|
+| 1 | 메인 3D 그래프를 본다 | Peer사와 키워드 노드가 움직이며 관계를 보여줌 | 숫자 목록보다 관계망이 먼저 보이면 임원이 현재 이슈 지형을 빠르게 인지함 |
+| 2 | Peer 또는 키워드 노드를 고른다 | 오른쪽 Gallery가 해당 노드의 카드뉴스만 필터링 | 선택과 결과가 한 화면에서 이어져 탐색 비용이 낮아짐 |
+| 3 | Gallery에서 카드뉴스를 고른다 | 큰 4:5 카드뉴스 Reader가 선택 내용을 표시 | 기존 카드뉴스 형식을 복원하면서 읽기 몰입도를 높임 |
+| 4 | 북마크, 공유, 원문을 실행한다 | 카드 단위 액션으로 이어짐 | 보고와 후속 분석의 최소 실행 단위를 카드뉴스로 고정함 |
+
+### 5. 3초 인지 규칙
 
 각 주요 화면에서 사용자가 3초 안에 인지해야 하는 첫 정보는 다음과 같습니다.
 
 | 화면 | 3초 인지 대상 |
 |---|---|
-| 홈 | 오늘 가장 중요한 카드뉴스, 노출도, 신뢰도, 다음 액션 |
+| 홈 | 현재 선택된 Signal, 연결된 카드뉴스 수, 첫 카드뉴스의 제목 |
 | 카드뉴스 | 현재 필터 기준 고노출 카드 수와 검증 완료 카드 수 |
 | 모니터링 | 선택 Peer, 고노출 신호 수, 평균 신뢰도, 전략 방향성 |
 | 브리핑 | 오늘/이번 주 브리핑의 핵심 문장과 근거 출처 묶음 |
@@ -127,21 +138,32 @@ AXIS는 임원용 전략 시스템이므로 다음 원칙을 우선합니다.
 
 | Token | 값 | 역할 |
 |---|---|---|
-| `--axis-canvas` | `#f7f4ee` | 전체 배경. Claude/Intercom 계열의 따뜻한 캔버스 |
-| `--axis-surface` | `#ffffff` | 카드, 패널, 입력 표면 |
-| `--axis-surface-muted` | `#ede8df` | 보조 카드, 필터 배경 |
-| `--axis-ink` | `#101820` | 최상위 텍스트 |
-| `--axis-navy` | `#111827` | 주요 CTA, 내비게이션 활성 |
-| `--axis-body` | `#334155` | 본문 텍스트 |
-| `--axis-muted` | `#64748b` | 메타 텍스트 |
-| `--axis-hairline` | `#d8d2c8` | 얇은 경계선 |
-| `--axis-accent` | `#c66a4a` | 절제된 강조 |
+| `--axis-canvas` | `#0d0f13` | 전체 배경. 격자 없는 순수 블랙 캔버스 |
+| `--axis-surface` | `#161a22` | 내비게이션, 패널, 다크 표면 |
+| `--axis-surface-muted` | `#202631` | 보조 표면과 hover 상태 |
+| `--axis-ink` | `#f6f8fb` | 최상위 텍스트 |
+| `--axis-navy` | `#080a0f` | 주요 CTA, 내비게이션 활성 |
+| `--axis-body` | `#c6ceda` | 본문 텍스트 |
+| `--axis-muted` | `#8d98a9` | 메타 텍스트 |
+| `--axis-hairline` | `rgba(255,255,255,0.12)` | 얇은 경계선 |
+| `--axis-accent` | `#3cffd0` | 핵심 선택 신호와 active 상태 |
+| `--axis-accent-strong` | `#75ffe4` | 강조 텍스트와 hover 상태 |
 | `--axis-blue` | `#0f62fe` | OpenAPI, 정보성 상태 |
 | `--axis-success` | `#198038` | 검증 통과, 성공 |
-| `--axis-warning` | `#b7791f` | 검토 필요 |
-| `--axis-danger` | `#da1e28` | 고노출, 위험 |
+| `--axis-warning` | `#f4d35e` | 검토 필요 |
+| `--axis-danger` | `#ff5d73` | 고노출, 위험 |
 
-### 2. Atomic Components
+### 2. Typography
+
+구현 위치: `src/styles/fonts.css`
+
+| Font Token | 값 | 역할 |
+|---|---|---|
+| `--axis-font-display` | `AxisDisplayFallback`, `Arial Narrow`, `Impact`, `Roboto Condensed`, `sans-serif` | WIRED/The Verge 계열의 큰 카드뉴스 제목과 메인 타이틀 |
+| `--axis-font-body` | `Inter`, `IBM Plex Sans`, `Aptos`, system sans | 임원용 본문, 패널, 버튼 |
+| `--axis-font-mono` | `SFMono-Regular`, `JetBrains Mono`, `Roboto Mono`, monospace | Kicker, 메타 정보, Exposure |
+
+### 3. Atomic Components
 
 #### `ExecutiveBadge`
 
@@ -179,7 +201,7 @@ AXIS는 임원용 전략 시스템이므로 다음 원칙을 우선합니다.
 - Provenance
 - MBB / Market
 
-### 3. Molecule Components
+### 4. Molecule Components
 
 #### `ExecutiveCard`
 
@@ -228,13 +250,49 @@ AXIS는 임원용 전략 시스템이므로 다음 원칙을 우선합니다.
 - `pass`
 - `missing`
 
-### 4. Organism Components
+### 5. Organism Components
+
+#### `KeywordPeerGraph`
+
+구현 파일: `HomeCardNewsView.tsx`
+
+Three.js 기반의 3D 관계 그래프입니다. `CardNewsItem`에서 Peer와 키워드를 추출해 노드와 링크를 구성합니다.
+
+사용 데이터:
+
+- `peer_id`
+- `title`
+- `summary`
+- `summary_lines`
+- `category`
+- `category_label`
+- `implication.suggested_actions`
+
+상호작용:
+
+- 루트 노드 `AXIS`는 전체 카드뉴스를 의미합니다.
+- Peer 노드는 특정 경쟁사 카드뉴스만 필터링합니다.
+- Keyword 노드는 `AX`, `AI`, `보안`, `운영`, `클라우드`, `재무`, `수주`, `데이터`, `제조`, `레퍼런스` 기반으로 카드뉴스를 필터링합니다.
+- 노드 선택 시 Gallery의 첫 카드가 Reader에 자동 반영됩니다.
+- WebGL 컨텍스트 생성이 불가능한 환경에서는 React 트리가 죽지 않도록 동일한 데이터 구조를 2D canvas fallback으로 렌더링합니다. 실제 지원 브라우저에서는 Three.js가 우선입니다.
+
+#### `SignalGallery`
+
+구현 파일: `HomeCardNewsView.tsx`
+
+선택된 3D 노드에 연결된 카드뉴스를 갤러리 형식으로 표시합니다. 데스크톱에서는 오른쪽 고정 패널로, 모바일에서는 그래프 바로 아래에 배치됩니다.
+
+#### `CardNewsReader`
+
+구현 파일: `HomeCardNewsView.tsx`
+
+기존 카드뉴스 형식을 복원한 4:5 비율의 리더입니다. 한 화면에 모든 수치를 펼치지 않고, 제목과 2~3개 핵심 문장만 보여줍니다. 페이지 단위 이동, 북마크, 공유, 원문 확인을 제공합니다.
 
 #### `ExecutiveBriefingHero`
 
 구현 파일: `HomeCardNewsView.tsx`
 
-홈 첫 화면에서 가장 중요한 카드뉴스를 한 개 크게 보여줍니다. 기존 카드뉴스 감각을 유지하되, 이미지보다 판단 정보가 우선되도록 구성했습니다.
+초기 Executive Console 버전의 홈 히어로입니다. 현재 리비전에서는 `KeywordPeerGraph`, `SignalGallery`, `CardNewsReader` 조합으로 대체되었습니다.
 
 #### `HighDensityCardGrid`
 
@@ -274,16 +332,18 @@ Peer 필터, KPI, 포지셔닝 차트, 트렌드 차트, 전략 방향성, 관�
 | `src/features/card-news/mappers/cardNewsExecutive.ts` | 임원 UI용 파생값 계산 함수 추가 |
 | `src/shared/mocks/cardNews.ts` | 목업 데이터에 `evidence_chain`, `implication`, `financial_context` 보강 |
 | `src/styles/index.css` | executive token, panel, card, table class 추가 |
+| `src/styles/fonts.css` | Display, Body, Mono 폰트 토큰 정의 |
 | `src/app/components/executive/ExecutiveSystem.tsx` | 공통 Executive UI 컴포넌트 추가 |
-| `src/app/components/HomeCardNewsView.tsx` | 홈 Executive 카드 브리핑으로 전면 재작성 |
+| `src/app/components/HomeCardNewsView.tsx` | Three.js 기반 3D Signal Graph, Gallery, Card News Reader로 전면 재작성 |
 | `src/app/components/IssuesView.tsx` | 카드뉴스 라이브러리와 상세 근거 패널 재작성 |
 | `src/app/components/RawArticlesView.tsx` | 믹서기 워크벤치 재작성 |
 | `src/app/components/BriefingsView.tsx` | 브리핑 리포트 화면 재작성 |
 | `src/app/components/MonitoringView.tsx` | 모니터링 커맨드 센터 재작성 |
 | `src/app/components/Sidebar.tsx` | 임원 콘솔형 내비게이션 재작성 |
 | `src/app/components/SettingsView.tsx` | 설정 화면 재작성 |
-| `src/app/components/FloatingAiChat.tsx` | AI 채팅 톤 통일 |
-| `src/app/App.tsx` | 인증 화면 색상/표면 톤 통일 |
+| `src/app/components/FloatingAiChat.tsx` | AI 채팅 톤 통일, 모바일 홈에서는 카드뉴스 탐색을 방해하지 않도록 숨김 |
+| `src/app/App.tsx` | 인증 화면 색상/표면 톤 통일, 로그인 상태 localStorage 보존 |
+| `package.json`, `package-lock.json` | `three`, `@types/three` 추가 |
 
 ### 2. 상태 관리 전략
 
@@ -360,6 +420,8 @@ OpenAPI 제약:
 - 카드뉴스 이미지에는 `loading="lazy"` 적용
 - 카드 그리드가 100개 이상으로 커질 경우 virtualization 도입
 - Recharts tooltip과 custom shape는 memoized data만 전달
+- Three.js 그래프는 메인 홈에만 즉시 로드하고, 다른 화면에서는 import하지 않음
+- 그래프 노드 수가 60개를 넘으면 instanced mesh 또는 LOD 전략 도입
 
 ### 5. 접근성 가이드
 
@@ -403,6 +465,8 @@ OpenAPI 제약:
 
 - 현재 스택으로 빌드 가능한가?
 - 화면 전환과 차트가 과한 애니메이션 없이 안정적으로 동작하는가?
+- 3D 그래프 캔버스가 실제 픽셀을 렌더링하고 선택 상호작용이 Gallery를 갱신하는가?
+- WebGL 미지원/headless 환경에서도 fallback canvas가 렌더링되어 화면이 비지 않는가?
 - OpenAPI 래퍼와 fallback mock이 공존하는가?
 
 현재 검증:
@@ -415,6 +479,8 @@ npm run build
 
 - TypeScript compile 성공
 - Vite production build 성공
+- Three.js 타입 체크 성공
+- 1440x1000, 390x844 viewport에서 canvas pixel variance 검증 성공
 - Recharts/Radix 포함으로 bundle size warning 존재
 
 ### 7. 다음 구현 우선순위

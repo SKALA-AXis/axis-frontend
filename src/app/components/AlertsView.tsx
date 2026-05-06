@@ -40,12 +40,12 @@ export function AlertsView() {
           <>
             <div className="mb-6 flex gap-2 ">
               <button onClick={() => setActiveTab('history')} className={`axis-tab ${
-                activeTab === 'history' ? 'border-[#ff7f00] text-[#d96200]' : ''
+                activeTab === 'history' ? 'border-[#3cffd0] text-[#3cffd0]' : ''
               }`}>
                 {uiText.alerts.historyTab}
               </button>
               <button onClick={() => setActiveTab('rules')} className={`axis-tab ${
-                activeTab === 'rules' ? 'border-[#ff7f00] text-[#d96200]' : ''
+                activeTab === 'rules' ? 'border-[#3cffd0] text-[#3cffd0]' : ''
               }`}>
                 {uiText.alerts.rulesTab}
               </button>
@@ -58,10 +58,10 @@ export function AlertsView() {
                     <h2 className="text-lg font-bold text-black mb-4">{uiText.alerts.historyTitle}</h2>
                     <div className="space-y-3">
                       {alertsData.history.map((alert) => (
-                        <div key={alert.id} className="axis-panel-vivid p-4 transition-colors hover:border-[#ff7f00]/28">
+                        <div key={alert.id} className="axis-panel-vivid p-4 transition-colors hover:border-[#3cffd0]/28">
                           <div className="flex items-start gap-3">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ff7f00]/8">
-                              <Bell size={16} className="text-[#d96200]" />
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3cffd0]/10">
+                              <Bell size={16} className="text-[#3cffd0]" />
                             </div>
                             <div className="flex-1">
                               <h3 className="text-sm font-bold text-black mb-1">{alert.title}</h3>
@@ -103,7 +103,7 @@ export function AlertsView() {
                               </div>
                               <p className="text-sm text-neutral-600 mb-2">{rule.description}</p>
                               <div className="flex flex-wrap gap-2">
-                                <span className="rounded border border-[#ff7f00]/20 bg-[#ff7f00]/8 px-2 py-1 text-xs text-[#d96200]">이메일</span>
+                                <span className="rounded border border-[#3cffd0]/20 bg-[#3cffd0]/10 px-2 py-1 text-xs text-[#3cffd0]">이메일</span>
                               </div>
                             </div>
                           </div>
@@ -128,7 +128,7 @@ export function AlertsView() {
                           <div className="flex flex-wrap gap-2">
                             {alertsData.conditionOptions.map((option) => (
                               <button key={option} onClick={() => setSelectedRule({ ...selectedRule, description: option })} className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                                selectedRule.description === option ? 'border-[#ff7f00] bg-[#ff7f00]/8 text-[#d96200]' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+                                selectedRule.description === option ? 'border-[#3cffd0] bg-[#3cffd0]/10 text-[#3cffd0]' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
                               }`} aria-pressed={selectedRule.description === option}>
                                 {option}
                               </button>
@@ -140,7 +140,7 @@ export function AlertsView() {
                           <p className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">이메일</p>
                         </div>
                         <div className="flex flex-col gap-2 sm:flex-row">
-                          <button className="flex-1 rounded-lg bg-[#111111] px-4 py-2 text-sm font-medium text-white hover:bg-[#ff7f00]">{uiText.alerts.saveRule}</button>
+                          <button className="flex-1 rounded-lg bg-[#111111] px-4 py-2 text-sm font-medium text-white hover:bg-[#3cffd0] hover:text-black">{uiText.alerts.saveRule}</button>
                           <button onClick={() => setSelectedRule(null)} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">{uiText.common.cancel}</button>
                         </div>
                       </div>
@@ -149,7 +149,7 @@ export function AlertsView() {
                     <div className="axis-panel border border-dashed border-neutral-300 bg-white/82 p-8 text-center">
                       <p className="font-bold text-black">{uiText.alerts.emptyRuleTitle}</p>
                       <p className="mt-2 text-sm text-neutral-600">{uiText.alerts.emptyRuleBody}</p>
-                      <button onClick={openNewRule} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#E1002A] px-4 py-2 text-sm font-medium text-white hover:bg-[#ff7f00]">
+                      <button onClick={openNewRule} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#ff5d73] px-4 py-2 text-sm font-medium text-white hover:bg-[#3cffd0] hover:text-black">
                         <Plus size={16} />
                         {uiText.alerts.addRule}
                       </button>

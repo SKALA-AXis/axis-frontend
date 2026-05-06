@@ -13,65 +13,66 @@ body,
   --font-size: 14px;
 
   --axis-red: #e1002a;
-  --axis-orange: #ff7f00;
-  --axis-orange-light: #ffb25c;
-  --axis-orange-glow: rgba(255, 127, 0, 0.12);
-  --axis-bg: #ffffff;
+  --axis-orange: #3cffd0;
+  --axis-orange-light: #75ffe4;
+  --axis-orange-glow: rgba(60, 255, 208, 0.14);
+  --axis-bg: #0d0f13;
   --axis-black: #0f1117;
   --axis-white: #ffffff;
-  --axis-text: rgba(20, 22, 29, 0.94);
-  --axis-muted: rgba(20, 22, 29, 0.52);
-  --axis-line: rgba(20, 22, 29, 0.08);
+  --axis-text: rgba(246, 248, 251, 0.94);
+  --axis-muted: rgba(141, 152, 169, 0.92);
+  --axis-line: rgba(255, 255, 255, 0.10);
 
   --shadow-sm: 0 6px 16px rgba(17, 18, 23, 0.04);
   --shadow-md: 0 14px 32px rgba(17, 18, 23, 0.06);
   --shadow-lg: 0 22px 48px rgba(17, 18, 23, 0.09);
 
-  --axis-canvas: #f7f4ee;
-  --axis-surface: #ffffff;
-  --axis-surface-muted: #ede8df;
-  --axis-surface-soft: #faf8f4;
-  --axis-ink: #101820;
-  --axis-navy: #111827;
-  --axis-body: #334155;
-  --axis-muted: #64748b;
-  --axis-subtle: #94a3b8;
-  --axis-hairline: #d8d2c8;
-  --axis-accent: #c66a4a;
-  --axis-accent-strong: #9f4f36;
+  --axis-canvas: #0d0f13;
+  --axis-surface: #161a22;
+  --axis-surface-muted: #202631;
+  --axis-surface-soft: #11151c;
+  --axis-ink: #f6f8fb;
+  --axis-navy: #080a0f;
+  --axis-body: #c6ceda;
+  --axis-muted: #8d98a9;
+  --axis-subtle: #626e80;
+  --axis-hairline: rgba(255, 255, 255, 0.12);
+  --axis-accent: #3cffd0;
+  --axis-accent-strong: #75ffe4;
   --axis-blue: #0f62fe;
   --axis-success: #198038;
-  --axis-warning: #b7791f;
-  --axis-danger: #da1e28;
+  --axis-warning: #f4d35e;
+  --axis-danger: #ff5d73;
   --axis-radius-sm: 6px;
   --axis-radius-md: 8px;
   --axis-radius-lg: 12px;
   --axis-radius-xl: 16px;
-  --axis-grid: rgba(16, 24, 32, 0.055);
+  --axis-grid: transparent;
 }
 
 body {
-  background: var(--axis-bg);
+  background: #0d0f13;
   color: var(--axis-text);
+  font-family: var(--axis-font-body);
   -webkit-font-smoothing: antialiased;
 }
 
 .axis-page {
-  background: var(--axis-bg);
+  background: var(--axis-canvas);
   min-height: 100%;
 }
 
 .axis-glass {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.8);
+  background: rgba(22, 26, 34, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
   backdrop-filter: blur(18px) saturate(1.15);
 }
 
 .axis-panel {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(20, 22, 29, 0.07);
-  box-shadow: var(--shadow-sm);
+  background: rgba(22, 26, 34, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
   border-radius: 20px;
 }
 
@@ -103,20 +104,20 @@ body {
 
 .axis-input:focus,
 .axis-input:focus-visible {
-  border-color: var(--axis-orange);
-  box-shadow: 0 0 0 4px rgba(255, 127, 0, 0.10);
+  border-color: var(--axis-accent);
+  box-shadow: 0 0 0 4px rgba(60, 255, 208, 0.12);
   outline: none;
 }
 
 .axis-accent {
-  background: linear-gradient(135deg, #ff922f 0%, #ff6a13 100%);
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(255, 106, 19, 0.22);
+  background: #3cffd0;
+  color: #05070a;
+  box-shadow: 0 12px 24px rgba(60, 255, 208, 0.16);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .axis-accent:hover {
-  box-shadow: 0 16px 28px rgba(255, 106, 19, 0.28);
+  box-shadow: 0 16px 28px rgba(60, 255, 208, 0.22);
   transform: translateY(-1px);
 }
 
@@ -128,9 +129,9 @@ body {
 }
 
 .axis-outline-button:hover {
-  background: #fffaf4;
-  border-color: rgba(255, 127, 0, 0.22);
-  color: var(--axis-orange);
+  background: rgba(60, 255, 208, 0.08);
+  border-color: rgba(60, 255, 208, 0.28);
+  color: var(--axis-accent);
 }
 
 .axis-page-header {
@@ -183,7 +184,7 @@ body {
 
 .axis-tab.active {
   background: rgba(255, 255, 255, 0.96);
-  color: #d96200;
+  color: #05070a;
   box-shadow: var(--shadow-sm);
 }
 
@@ -197,7 +198,7 @@ body {
   font-weight: 600;
 }
 
-.axis-badge-orange { background: rgba(255,127,0,0.1); color: #d96200; }
+.axis-badge-orange { background: rgba(60,255,208,0.12); color: #3cffd0; }
 .axis-badge-red    { background: rgba(225,0,42,0.09); color: #b8001f; }
 .axis-badge-green  { background: rgba(16,185,129,0.1); color: #047857; }
 .axis-badge-blue   { background: rgba(59,130,246,0.1); color: #1d4ed8; }
@@ -235,30 +236,29 @@ body {
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(15,17,23,0.10); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,127,0,0.30); }
+::-webkit-scrollbar-thumb:hover { background: rgba(60,255,208,0.38); }
 
 .axis-executive-page {
-  background:
-    linear-gradient(90deg, var(--axis-grid) 1px, transparent 1px),
-    linear-gradient(180deg, var(--axis-grid) 1px, transparent 1px),
-    var(--axis-canvas);
-  background-size: 40px 40px;
+  background: #0d0f13;
   color: var(--axis-ink);
 }
 
 .axis-display-title {
   color: var(--axis-ink);
+  font-family: var(--axis-font-display);
   font-size: clamp(1.72rem, 1.28rem + 1.45vw, 3rem);
-  font-weight: 520;
-  letter-spacing: -0.035em;
-  line-height: 1.04;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+  text-transform: uppercase;
 }
 
 .axis-kicker {
   color: var(--axis-accent-strong);
+  font-family: var(--axis-font-mono);
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
@@ -271,14 +271,15 @@ body {
 }
 
 .axis-panel-flat {
-  background: color-mix(in srgb, var(--axis-surface) 92%, transparent);
+  background: rgba(22, 26, 34, 0.82);
   border: 1px solid var(--axis-hairline);
   border-radius: var(--axis-radius-lg);
   box-shadow: none;
+  backdrop-filter: blur(16px);
 }
 
 .axis-executive-card {
-  background: color-mix(in srgb, var(--axis-surface) 94%, transparent);
+  background: rgba(22, 26, 34, 0.9);
   border: 1px solid var(--axis-hairline);
   border-radius: var(--axis-radius-lg);
   box-shadow: none;
@@ -287,8 +288,8 @@ body {
 }
 
 .axis-executive-card:hover {
-  background: var(--axis-surface);
-  border-color: color-mix(in srgb, var(--axis-accent) 36%, var(--axis-hairline));
+  background: rgba(27, 33, 44, 0.96);
+  border-color: rgba(60, 255, 208, 0.52);
 }
 
 .axis-data-table {
@@ -311,4 +312,36 @@ body {
   color: var(--axis-body);
   font-size: 0.9rem;
   padding: 0.9rem 0.75rem;
+}
+
+.axis-dark-shell {
+  min-height: 100%;
+  overflow: auto;
+  background: #0d0f13;
+  color: #f6f8fb;
+  font-family: var(--axis-font-body);
+}
+
+.axis-graph-stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #0f1218;
+}
+
+.axis-graph-stage canvas {
+  display: block;
+}
+
+.axis-editorial-card {
+  background: #fbfbfb;
+  color: #111111;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.axis-card-display {
+  font-family: var(--axis-font-display);
+  letter-spacing: 0.01em;
+  line-height: 0.96;
+  text-transform: uppercase;
 }
