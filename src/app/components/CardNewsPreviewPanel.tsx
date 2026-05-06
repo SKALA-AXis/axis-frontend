@@ -1,5 +1,5 @@
 import { Bookmark, Share2 } from 'lucide-react';
-import { cardNewsItems } from '../../shared/mocks/cardNews';
+import { useCardNews } from '../../features/card-news/hooks/useCardNews';
 
 interface CardNewsPreviewPanelProps {
   cardId: string | null;
@@ -8,7 +8,16 @@ interface CardNewsPreviewPanelProps {
 }
 
 export function CardNewsPreviewPanel({ cardId, bookmarkedIds, onToggleBookmark }: CardNewsPreviewPanelProps) {
-  const card = cardNewsItems.find((item) => item.id === cardId) ?? null;
+  const { cards, isLoading } = useCardNews();
+  const card = cards.find((item) => item.id === cardId) ?? null;
+
+  if (isLoading) {
+    return (
+      <aside className="flex min-h-[32rem] items-center justify-center rounded-[1.1rem] border border-black/10 bg-white p-6 text-center shadow-sm">
+        <p className="text-sm font-medium text-black/70">카드뉴스를 불러오는 중입니다.</p>
+      </aside>
+    );
+  }
 
   if (!card) {
     return (

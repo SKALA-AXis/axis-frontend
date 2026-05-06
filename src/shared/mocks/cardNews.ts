@@ -1,25 +1,4 @@
-export type CardNewsArticlePage = {
-  title: string;
-  paragraphs: string[];
-};
-
-export type CardNewsItem = {
-  id: string;
-  category: string;
-  date: string;
-  title: string;
-  coverImageUrl: string;
-  coverImageAlt: string;
-  summary: string[];
-  articlePages: CardNewsArticlePage[];
-  insights: string[];
-  source: string;
-  sourceUrl: string;
-  detailTitle: string;
-  detailDescription: string;
-  detailPoints: string[];
-  actionItems: string[];
-};
+import type { CardNewsItem } from '../../features/card-news/model/cardNews';
 
 export const cardNewsItems: CardNewsItem[] = [
   {

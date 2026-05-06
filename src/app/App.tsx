@@ -1,16 +1,12 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { AdminView } from './components/AdminView';
-import { AlertsView } from './components/AlertsView';
-import { BookmarksView } from './components/BookmarksView';
 import { BriefingsView } from './components/BriefingsView';
-import { DashboardOverview } from './components/DashboardOverview';
 import { HomeCardNewsView } from './components/HomeCardNewsView';
 import { IssuesView } from './components/IssuesView';
-import { PeersView } from './components/PeersView';
+import { MonitoringView } from './components/MonitoringView';
 import { RawArticlesView } from './components/RawArticlesView';
 import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
-import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 
 type AuthMode = 'signIn' | 'signUp';
@@ -216,7 +212,7 @@ function AuthScreen({
   );
 }
 
-function DashboardShell() {
+function DashboardShell({ onLogout }: { onLogout: () => void }) {
   const [activeView, setActiveView] = useState('home');
   const [currentUserRole] = useState<UserRole>('strategist');
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
@@ -251,20 +247,16 @@ function DashboardShell() {
     switch (activeView) {
       case 'home':
         return <HomeCardNewsView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
-      case 'dashboard':
-        return <DashboardOverview onNavigate={handleViewChange} />;
+      case 'monitoring':
+        return <MonitoringView />;
       case 'issues':
-        return <IssuesView onNavigate={handleViewChange} />;
-      case 'peers':
-        return <PeersView onNavigate={handleViewChange} />;
-      case 'bookmarks':
-        return <BookmarksView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
+        return <IssuesView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
       case 'briefings':
         return <BriefingsView onNavigate={handleViewChange} />;
       case 'settings':
-        return <SettingsView />;
+        return <SettingsView onLogout={onLogout} />;
       case 'admin':
-        return isAdmin ? <AdminView /> : <DashboardOverview onNavigate={handleViewChange} />;
+        return isAdmin ? <AdminView /> : <MonitoringView />;
       case 'rawArticles':
         return <RawArticlesView bookmarkedIds={bookmarkedIds} />;
       default:
@@ -274,7 +266,11 @@ function DashboardShell() {
 
   return (
     <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-white md:flex-row">
-      <Sidebar activeView={activeView} onViewChange={handleViewChange} currentUserRole={currentUserRole} />
+      <Sidebar
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        currentUserRole={currentUserRole}
+      />
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 text-[13px] md:pb-0">
         {renderView()}
       </main>
@@ -286,6 +282,11 @@ export default function App() {
   const [mode, setMode] = useState<AuthMode>('signIn');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  if (isAuthenticated) return <DashboardShell />;
+  const handleLogout = () => {
+    setMode('signIn');
+    setIsAuthenticated(false);
+  };
+
+  if (isAuthenticated) return <DashboardShell onLogout={handleLogout} />;
   return <AuthScreen mode={mode} onModeChange={setMode} onLogin={() => setIsAuthenticated(true)} />;
 }

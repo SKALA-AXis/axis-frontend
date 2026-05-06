@@ -1,24 +1,31 @@
-import { useEffect, useState } from 'react';
-import type { RawArticle } from '../model/rawArticle';
-import { rawArticlesRepository } from '../api/rawArticlesRepository';
+import { DependencyList, useEffect, useState } from 'react';
 
-interface UseRawArticlesResult {
-  articles: RawArticle[];
+interface UseAsyncResourceResult<T> {
+  data: T;
   isLoading: boolean;
   error: string | null;
 }
 
-export function useRawArticles(): UseRawArticlesResult {
-  const [articles, setArticles] = useState<RawArticle[]>([]);
+export function useAsyncResource<T>(
+  load: () => Promise<T>,
+  initialValue: T,
+  deps: DependencyList,
+): UseAsyncResourceResult<T> {
+  const [data, setData] = useState<T>(initialValue);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     let isMounted = true;
-    const load = async () => {
+
+    const run = async () => {
+      setIsLoading(true);
+
       try {
-        const result = await rawArticlesRepository.list();
+        const result = await load();
+
         if (isMounted) {
-          setArticles(result);
+          setData(result);
           setError(null);
         }
       } catch (loadError) {
@@ -31,10 +38,13 @@ export function useRawArticles(): UseRawArticlesResult {
         }
       }
     };
-    void load();
+
+    void run();
+
     return () => {
       isMounted = false;
     };
-  }, []);
-  return { articles, isLoading, error };
+  }, deps);
+
+  return { data, isLoading, error };
 }

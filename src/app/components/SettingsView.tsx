@@ -1,4 +1,4 @@
-import { Bell, Clock3, KeyRound, MapPin, ShieldCheck, User, Wifi } from 'lucide-react';
+import { Bell, Clock3, KeyRound, LogOut, MapPin, ShieldCheck, User, Wifi } from 'lucide-react';
 import { useState } from 'react';
 
 type SettingsTab = 'account' | 'history' | 'notifications';
@@ -18,13 +18,13 @@ const loginHistory: LoginHistoryItem[] = [
   { id: '4', date: '2026.05.01', time: '21:05', country: '미국', ipAddress: '34.201.11.82' },
 ];
 
-export function SettingsView() {
+export function SettingsView({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+  const [accountMode, setAccountMode] = useState<'view' | 'edit' | 'password'>('view');
   const [profileSaved, setProfileSaved] = useState(false);
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [notificationSaved, setNotificationSaved] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
-    issueAlert: true,
     briefingAlert: true,
     marketingAlert: false,
     briefingTime: '08:30',
@@ -71,51 +71,114 @@ export function SettingsView() {
           <section className="axis-glass rounded-[1.15rem] bg-white/82 p-4 sm:p-5">
             {activeTab === 'account' ? (
               <div className="space-y-8">
-                <div>
-                  <div className="mb-4 flex items-center gap-2">
-                    <User size={18} className="text-[#d96200]" />
-                    <h2 className="axis-section-title">회원 정보</h2>
+                <section className="rounded-[1.1rem] border border-black/8 bg-[linear-gradient(180deg,#fffdfb,#ffffff)] p-5 shadow-[0_10px_28px_rgba(17,17,17,0.04)]">
+                  <div className="mt-6 border-t border-black/8 pt-6">
+                    {accountMode === 'password' ? (
+                      <>
+                        <div className="mb-4 flex items-center gap-2">
+                          <KeyRound size={18} className="text-[#E1002A]" />
+                          <h3 className="axis-section-title">비밀번호 변경</h3>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <Field label="현재 비밀번호" type="password" />
+                          <Field label="새 비밀번호" type="password" />
+                          <Field label="새 비밀번호 확인" type="password" />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setPasswordSaved(true)}
+                          className="mt-5 rounded-[0.8rem] bg-[#E1002A] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#ff7f00]"
+                        >
+                          비밀번호 변경
+                        </button>
+                        {passwordSaved ? <p className="mt-2 text-xs text-[#E1002A]">비밀번호 변경 요청이 저장되었습니다.</p> : null}
+                      </>
+                    ) : (
+                      <>
+                        <div className="mb-4 flex items-center gap-2">
+                          <User size={18} className="text-[#d96200]" />
+                          <h3 className="axis-section-title">{accountMode === 'edit' ? '회원 정보 수정' : '회원 정보 확인'}</h3>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <Field
+                            label="이름"
+                            defaultValue="Andrew Smith"
+                            readOnly={accountMode !== 'edit'}
+                          />
+                          <Field
+                            label="이메일"
+                            type="email"
+                            defaultValue="andrew.smith@skax.com"
+                            readOnly={accountMode !== 'edit'}
+                          />
+                        </div>
+
+                        {accountMode === 'edit' ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setProfileSaved(true)}
+                              className="mt-5 rounded-[0.8rem] bg-[#111111] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#ff7f00]"
+                            >
+                              회원 정보 저장
+                            </button>
+                            {profileSaved ? <p className="mt-2 text-xs text-[#d96200]">회원 정보가 저장되었습니다.</p> : null}
+                          </>
+                        ) : null}
+                      </>
+                    )}
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Field label="이름" defaultValue="Andrew Smith" />
-                    <Field label="이메일" type="email" defaultValue="andrew.smith@skax.com" />
-                    <Field label="부서" defaultValue="전략기획팀" />
-                    <Field label="직책" defaultValue="Product Designer" />
+                  <div className="mt-6 border-t border-black/8 pt-6">
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="mb-3 flex items-center gap-2">
+                          <User size={18} className="text-[#d96200]" />
+                          <h2 className="axis-section-title">계정 관리</h2>
+                        </div>
+                        <p className="text-sm leading-6 text-black/56">
+                          회원 정보 수정, 비밀번호 변경, 로그아웃을 이 영역에서 관리할 수 있습니다.
+                        </p>
+                      </div>
+
+                      <div className="flex w-full flex-col gap-2 sm:w-[14rem]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountMode((current) => (current === 'edit' ? 'view' : 'edit'));
+                            setProfileSaved(false);
+                            setPasswordSaved(false);
+                          }}
+                          className="inline-flex items-center justify-center gap-2 rounded-[0.85rem] bg-[#111111] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7f00]"
+                        >
+                          <User size={15} />
+                          {accountMode === 'edit' ? '회원 정보 보기' : '회원 정보 수정'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountMode((current) => (current === 'password' ? 'view' : 'password'));
+                            setPasswordSaved(false);
+                            setProfileSaved(false);
+                          }}
+                          className="inline-flex items-center justify-center gap-2 rounded-[0.85rem] border border-black/10 bg-white px-4 py-3 text-sm font-semibold text-black/68 transition hover:border-[#ff7f00]/18 hover:text-[#d96200]"
+                        >
+                          <KeyRound size={15} />
+                          {accountMode === 'password' ? '회원 정보 보기' : '비밀번호 변경'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={onLogout}
+                          className="inline-flex items-center justify-center gap-2 rounded-[0.85rem] border border-[#E1002A]/12 bg-[#fff6f5] px-4 py-3 text-sm font-semibold text-[#c43f28] transition hover:border-[#ff7f00]/18 hover:text-[#d96200]"
+                        >
+                          <LogOut size={15} />
+                          로그아웃
+                        </button>
+                      </div>
+                    </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setProfileSaved(true)}
-                    className="mt-5 rounded-[0.8rem] bg-[#111111] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#ff7f00]"
-                  >
-                    회원 정보 저장
-                  </button>
-                  {profileSaved ? <p className="mt-2 text-xs text-[#d96200]">회원 정보가 저장되었습니다.</p> : null}
-                </div>
-
-                <div className="border-t border-black/8 pt-7">
-                  <div className="mb-4 flex items-center gap-2">
-                    <KeyRound size={18} className="text-[#E1002A]" />
-                    <h2 className="axis-section-title">비밀번호 수정</h2>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Field label="현재 비밀번호" type="password" />
-                    <div />
-                    <Field label="새 비밀번호" type="password" />
-                    <Field label="새 비밀번호 확인" type="password" />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setPasswordSaved(true)}
-                    className="mt-5 rounded-[0.8rem] bg-[#E1002A] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#ff7f00]"
-                  >
-                    비밀번호 변경
-                  </button>
-                  {passwordSaved ? <p className="mt-2 text-xs text-[#E1002A]">비밀번호 변경 요청이 저장되었습니다.</p> : null}
-                </div>
+                </section>
               </div>
             ) : null}
 
@@ -125,21 +188,19 @@ export function SettingsView() {
                   <ShieldCheck size={18} className="text-[#d96200]" />
                   <h2 className="axis-section-title">로그인 이력</h2>
                 </div>
-                <p className="mb-5 text-sm text-black/56">최근 로그인 기록을 날짜, 시간, 국가, IP 주소 기준으로 확인할 수 있습니다.</p>
+                <p className="mb-5 text-sm text-black/56">최근 로그인 기록을 일시, 국가, IP 주소 기준으로 확인할 수 있습니다.</p>
 
                 <div className="overflow-hidden rounded-[1rem] border border-black/8 bg-white/72">
-                  <div className="grid grid-cols-4 gap-3 border-b border-black/8 bg-[#f5f6fa] px-4 py-3 text-xs font-semibold text-black/58">
-                    <span>날짜</span>
-                    <span>시간</span>
+                  <div className="grid grid-cols-3 gap-3 border-b border-black/8 bg-[#f5f6fa] px-4 py-3 text-xs font-semibold text-black/58">
+                    <span>일시</span>
                     <span>나라</span>
                     <span>IP 주소</span>
                   </div>
 
                   <div className="divide-y divide-black/6">
                     {loginHistory.map((item) => (
-                      <div key={item.id} className="grid grid-cols-4 gap-3 px-4 py-3 text-sm text-black/80">
-                        <span>{item.date}</span>
-                        <span>{item.time}</span>
+                      <div key={item.id} className="grid grid-cols-3 gap-3 px-4 py-3 text-sm text-black/80">
+                        <span>{item.date} {item.time}</span>
                         <span className="inline-flex items-center gap-1.5">
                           <MapPin size={14} className="text-[#d96200]" />
                           {item.country}
@@ -164,12 +225,6 @@ export function SettingsView() {
                 <p className="mb-5 text-sm text-black/56">알림 수신 여부와 브리핑 발송 시간을 설정할 수 있습니다.</p>
 
                 <div className="space-y-3">
-                  <ToggleCard
-                    title="긴급 이슈 알림"
-                    description="중요도가 높은 이슈 발생 시 알림을 수신합니다."
-                    checked={notificationSettings.issueAlert}
-                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, issueAlert: checked }))}
-                  />
                   <ToggleCard
                     title="브리핑 알림"
                     description="일간 브리핑 발송 시 알림을 수신합니다."
@@ -224,15 +279,22 @@ function Field({
   label,
   defaultValue,
   type = 'text',
+  readOnly = false,
 }: {
   label: string;
   defaultValue?: string;
   type?: 'text' | 'email' | 'password';
+  readOnly?: boolean;
 }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-medium text-black/82">{label}</label>
-      <input type={type} defaultValue={defaultValue} className="axis-input h-10 w-full rounded-[0.8rem] px-4 text-sm" />
+      <input
+        type={type}
+        defaultValue={defaultValue}
+        readOnly={readOnly}
+        className={`axis-input h-10 w-full rounded-[0.8rem] px-4 text-sm ${readOnly ? 'bg-[#f6f7f9] text-black/68' : ''}`}
+      />
     </div>
   );
 }

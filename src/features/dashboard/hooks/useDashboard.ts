@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';
 import { dashboardRepository } from '../api/dashboardRepository';
 import { mapDashboardToViewModel, type DashboardViewModel } from '../mappers/dashboardMapper';
 
@@ -9,38 +10,11 @@ interface UseDashboardResult {
 }
 
 export function useDashboard(): UseDashboardResult {
-  const [dashboard, setDashboard] = useState<DashboardViewModel | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const load = async () => {
-      try {
-        const data = await dashboardRepository.getDashboard();
-
-        if (isMounted) {
-          setDashboard(mapDashboardToViewModel(data));
-          setError(null);
-        }
-      } catch (loadError) {
-        if (isMounted) {
-          setError(loadError instanceof Error ? loadError.message : 'Unknown error');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      isMounted = false;
-    };
+  const load = useCallback(async () => {
+    const data = await dashboardRepository.getDashboard();
+    return mapDashboardToViewModel(data);
   }, []);
+  const { data: dashboard, isLoading, error } = useAsyncResource<DashboardViewModel | null>(load, null, [load]);
 
   return { dashboard, isLoading, error };
 }
