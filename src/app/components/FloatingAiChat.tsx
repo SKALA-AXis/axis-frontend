@@ -86,7 +86,7 @@ export function FloatingAiChat() {
                   }
                 }}
                 placeholder={uiText.dashboard.chatPlaceholder}
-                className="min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-3 py-2 text-sm text-[var(--axis-ink)] outline-none transition placeholder:text-white/32 focus:border-[var(--axis-accent)]"
+                className="min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-3 py-2 text-sm text-[var(--axis-ink)] outline-none transition placeholder:text-ink focus:border-[var(--axis-accent)]"
               />
               <button
                 type="button"

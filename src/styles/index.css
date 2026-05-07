@@ -1,3 +1,9 @@
+/*
+ * AXIS — index.css (Mistral light 톤 재작성)
+ * - 클래스 이름 보존 (호출 코드 영향 X)
+ * - 다크 톤 폐기. .axis-graph-stage 만 Three.js 용 다크 유지
+ * - Mistral 토큰은 theme.css 가 SoT — 여기선 utility 클래스만
+ */
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
@@ -9,173 +15,157 @@ body,
   overflow: hidden;
 }
 
-:root {
-  --font-size: 14px;
-
-  --axis-red: #e1002a;
-  --axis-orange: #3cffd0;
-  --axis-orange-light: #75ffe4;
-  --axis-orange-glow: rgba(60, 255, 208, 0.14);
-  --axis-bg: #0d0f13;
-  --axis-black: #0f1117;
-  --axis-white: #ffffff;
-  --axis-text: rgba(246, 248, 251, 0.94);
-  --axis-muted: rgba(141, 152, 169, 0.92);
-  --axis-line: rgba(255, 255, 255, 0.10);
-
-  --shadow-sm: 0 6px 16px rgba(17, 18, 23, 0.04);
-  --shadow-md: 0 14px 32px rgba(17, 18, 23, 0.06);
-  --shadow-lg: 0 22px 48px rgba(17, 18, 23, 0.09);
-
-  --axis-canvas: #0d0f13;
-  --axis-surface: #161a22;
-  --axis-surface-muted: #202631;
-  --axis-surface-soft: #11151c;
-  --axis-ink: #f6f8fb;
-  --axis-navy: #080a0f;
-  --axis-body: #c6ceda;
-  --axis-muted: #8d98a9;
-  --axis-subtle: #626e80;
-  --axis-hairline: rgba(255, 255, 255, 0.12);
-  --axis-accent: #3cffd0;
-  --axis-accent-strong: #75ffe4;
-  --axis-blue: #0f62fe;
-  --axis-success: #198038;
-  --axis-warning: #f4d35e;
-  --axis-danger: #ff5d73;
-  --axis-radius-sm: 6px;
-  --axis-radius-md: 8px;
-  --axis-radius-lg: 12px;
-  --axis-radius-xl: 16px;
-  --axis-grid: transparent;
-}
-
 body {
-  background: #0d0f13;
-  color: var(--axis-text);
-  font-family: var(--axis-font-body);
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 
+/* ─── Page utility ─────────────────────────────────────── */
 .axis-page {
-  background: var(--axis-canvas);
+  background: var(--canvas);
   min-height: 100%;
 }
 
+.axis-executive-page {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+/* ─── Glass / panels — Mistral flat (no shadow chrome) ─── */
 .axis-glass {
-  background: rgba(22, 26, 34, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: none;
-  backdrop-filter: blur(18px) saturate(1.15);
+  background: var(--cream-soft);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 12px;
 }
 
 .axis-panel {
-  background: rgba(22, 26, 34, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: none;
-  border-radius: 20px;
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 12px;
 }
 
 .axis-panel-vivid {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(255, 127, 0, 0.12);
-  box-shadow: var(--shadow-md);
-  border-radius: 20px;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s ease;
 }
 
 .axis-panel-vivid:hover {
-  border-color: rgba(255, 127, 0, 0.24);
-  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.axis-panel-flat {
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 12px;
 }
 
 .axis-soft-card {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(20, 22, 29, 0.06);
-  border-radius: 16px;
+  background: var(--cream-soft);
+  border: 1px solid var(--beige-deep);
+  border-radius: 12px;
 }
 
+.axis-editorial-card {
+  background: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 12px;
+}
+
+/* ─── Inputs ───────────────────────────────────────────── */
 .axis-input {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(20, 22, 29, 0.10);
-  color: var(--axis-text);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  background: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  color: var(--ink);
+  transition: border-color 0.18s ease;
 }
 
 .axis-input:focus,
 .axis-input:focus-visible {
-  border-color: var(--axis-accent);
-  box-shadow: 0 0 0 4px rgba(60, 255, 208, 0.12);
+  border-color: var(--primary);
+  border-width: 2px;
   outline: none;
 }
 
+/* ─── Buttons ──────────────────────────────────────────── */
 .axis-accent {
-  background: #3cffd0;
-  color: #05070a;
-  box-shadow: 0 12px 24px rgba(60, 255, 208, 0.16);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: var(--primary);
+  color: #ffffff;
+  transition: background 0.15s ease;
 }
 
 .axis-accent:hover {
-  box-shadow: 0 16px 28px rgba(60, 255, 208, 0.22);
-  transform: translateY(-1px);
+  background: var(--primary-deep);
 }
 
 .axis-outline-button {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(20, 22, 29, 0.10);
-  color: rgba(15, 17, 23, 0.76);
-  transition: background 0.15s ease, border-color 0.15s ease;
+  background: transparent;
+  border: 1px solid var(--hairline-strong);
+  color: var(--ink);
+  transition: border-color 0.15s ease;
 }
 
 .axis-outline-button:hover {
-  background: rgba(60, 255, 208, 0.08);
-  border-color: rgba(60, 255, 208, 0.28);
-  color: var(--axis-accent);
+  border-color: var(--primary);
 }
 
+/* ─── Page header ──────────────────────────────────────── */
 .axis-page-header {
-  margin-bottom: 1.3rem;
+  margin-bottom: 1.5rem;
 }
 
 .axis-page-title {
-  font-size: clamp(1.16rem, 1.03rem + 0.46vw, 1.48rem);
-  font-weight: 850;
-  letter-spacing: -0.04em;
-  line-height: 1.06;
-  color: var(--axis-black);
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--ink);
 }
 
 .axis-page-subtitle {
-  margin-top: 0.32rem;
-  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  font-size: 1rem;
   line-height: 1.55;
-  color: var(--axis-muted);
+  color: var(--steel);
   font-weight: 400;
 }
 
 .axis-section-title {
-  font-size: 0.88rem;
-  font-weight: 750;
-  letter-spacing: -0.02em;
-  color: var(--axis-text);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 
+.axis-section-heading {
+  color: var(--ink);
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+/* ─── Tabs (pill) ──────────────────────────────────────── */
 .axis-tabs {
   display: flex;
   gap: 4px;
-  background: rgba(20, 22, 29, 0.045);
-  border-radius: 999px;
+  background: var(--surface);
+  border-radius: 8px;
   padding: 4px;
   width: fit-content;
 }
 
 .axis-tab {
   padding: 7px 16px;
-  border-radius: 999px;
-  font-size: 0.79rem;
-  font-weight: 600;
-  color: var(--axis-muted);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--steel);
   transition: all 0.18s ease;
   cursor: pointer;
   border: none;
@@ -183,35 +173,37 @@ body {
 }
 
 .axis-tab.active {
-  background: rgba(255, 255, 255, 0.96);
-  color: #05070a;
-  box-shadow: var(--shadow-sm);
+  background: var(--canvas);
+  color: var(--ink);
+  font-weight: 600;
 }
 
+/* ─── Badges ───────────────────────────────────────────── */
 .axis-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
   font-weight: 600;
 }
 
-.axis-badge-orange { background: rgba(60,255,208,0.12); color: #3cffd0; }
-.axis-badge-red    { background: rgba(225,0,42,0.09); color: #b8001f; }
-.axis-badge-green  { background: rgba(16,185,129,0.1); color: #047857; }
-.axis-badge-blue   { background: rgba(59,130,246,0.1); color: #1d4ed8; }
+.axis-badge-orange { background: var(--cream-deeper); color: var(--primary); }
+.axis-badge-red    { background: rgba(184, 69, 26, 0.10); color: var(--urgent); }
+.axis-badge-green  { background: rgba(90, 107, 87, 0.10); color: var(--reference); }
+.axis-badge-blue   { background: var(--cream-soft); color: var(--primary); }
 
+/* ─── Sidebar items ────────────────────────────────────── */
 .sidebar-item {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 14px;
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: rgba(15, 17, 23, 0.54);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--steel);
   transition: all 0.18s ease;
   cursor: pointer;
   border: none;
@@ -221,127 +213,105 @@ body {
 }
 
 .sidebar-item:hover {
-  background: rgba(255, 255, 255, 0.72);
-  color: #d96200;
-  box-shadow: inset 0 0 0 1px rgba(255, 127, 0, 0.08);
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .sidebar-item.active {
-  background: linear-gradient(135deg, rgba(255,247,238,0.98) 0%, rgba(255,241,228,0.94) 100%);
-  color: #cb6400;
-  font-weight: 700;
-  box-shadow: inset 0 0 0 1px rgba(255, 127, 0, 0.12);
+  background: var(--cream-soft);
+  color: var(--primary);
+  font-weight: 600;
+  border-left: 2px solid var(--primary);
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+/* ─── Scrollbar ────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(15,17,23,0.10); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(60,255,208,0.38); }
+::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--steel); }
 
-.axis-executive-page {
-  background: #0d0f13;
-  color: var(--axis-ink);
-}
-
+/* ─── Display heading (대문자 폐기 — 한글 어색) ──────────── */
 .axis-display-title {
-  color: var(--axis-ink);
-  font-family: var(--axis-font-display);
-  font-size: clamp(1.72rem, 1.28rem + 1.45vw, 3rem);
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  line-height: 0.95;
-  text-transform: uppercase;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 1.5rem + 2vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.10;
 }
 
 .axis-kicker {
-  color: var(--axis-accent-strong);
-  font-family: var(--axis-font-mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+  color: var(--primary);
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.axis-section-heading {
-  color: var(--axis-ink);
-  font-size: 1rem;
-  font-weight: 680;
-  letter-spacing: -0.02em;
-  line-height: 1.25;
-}
-
-.axis-panel-flat {
-  background: rgba(22, 26, 34, 0.82);
-  border: 1px solid var(--axis-hairline);
-  border-radius: var(--axis-radius-lg);
-  box-shadow: none;
-  backdrop-filter: blur(16px);
-}
-
+/* ─── Executive card ───────────────────────────────────── */
 .axis-executive-card {
-  background: rgba(22, 26, 34, 0.9);
-  border: 1px solid var(--axis-hairline);
-  border-radius: var(--axis-radius-lg);
-  box-shadow: none;
-  padding: 1rem;
-  transition: border-color 0.16s ease, background 0.16s ease;
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: border-color 0.16s ease;
 }
 
 .axis-executive-card:hover {
-  background: rgba(27, 33, 44, 0.96);
-  border-color: rgba(60, 255, 208, 0.52);
+  border-color: var(--primary);
 }
 
+/* ─── Data table ───────────────────────────────────────── */
 .axis-data-table {
   width: 100%;
   border-collapse: collapse;
 }
 
 .axis-data-table th {
-  color: var(--axis-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 0.8rem 0.75rem;
+  color: var(--steel);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.75rem;
   text-align: left;
-  text-transform: uppercase;
+  border-bottom: 1px solid var(--hairline-soft);
 }
 
 .axis-data-table td {
-  border-top: 1px solid var(--axis-hairline);
-  color: var(--axis-body);
-  font-size: 0.9rem;
-  padding: 0.9rem 0.75rem;
+  border-top: 1px solid var(--hairline-soft);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  padding: 0.875rem 0.75rem;
 }
 
+/* ─── Dark shell — light 으로 변환 (기존 cyberpunk 폐기) ─── */
 .axis-dark-shell {
   min-height: 100%;
   overflow: auto;
-  background: #0d0f13;
-  color: #f6f8fb;
-  font-family: var(--axis-font-body);
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body);
 }
 
+/* ─── Three.js graph stage — 다크 유지 (그래프 가독성) ──── */
 .axis-graph-stage {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: #0f1218;
+  border: 1px solid var(--hairline-soft);
+  background: var(--surface-code);
+  border-radius: 12px;
+  box-shadow: var(--shadow-mockup);
 }
 
 .axis-graph-stage canvas {
   display: block;
 }
 
-.axis-editorial-card {
-  background: #fbfbfb;
-  color: #111111;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-}
-
+/* ─── Card display (uppercase 폐기 — 한글 어색) ─────────── */
 .axis-card-display {
-  font-family: var(--axis-font-display);
-  letter-spacing: 0.01em;
-  line-height: 0.96;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  line-height: 1.10;
+  font-weight: 700;
 }

@@ -54,21 +54,21 @@ export function BriefingsView({ onNavigate }: BriefingsViewProps) {
           }
         />
 
-        <section className="grid gap-3 md:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-4 mb-12">
           <ExecutiveMetric label="Briefing type" value={briefingType === 'daily' ? 'Daily' : 'Weekly'} helper="현재 읽는 리포트" tone="accent" />
           <ExecutiveMetric label="Sections" value={activeSnapshot.sections.length} helper="요약 섹션 수" />
           <ExecutiveMetric label="Evidence sources" value={briefings.evidenceSources.length} helper="출처 묶음" tone="success" />
           <ExecutiveMetric label="History" value={briefings.history.length} helper="전달 완료 리포트" />
         </section>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <section className="mt-12 grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
           <main className="space-y-5">
-            <div className="axis-panel-flat overflow-hidden">
+            <div className="axis-panel-flat overflow-hidden rounded-lg">
               <div className="border-b border-[var(--axis-hairline)] bg-white px-5 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="axis-kicker">Current report</p>
-                    <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em] text-[var(--axis-ink)]">{activeSnapshot.title}</h2>
+                    <h2 className="mt-1 text-heading-2 font-display text-ink">{activeSnapshot.title}</h2>
                   </div>
                   <div className="inline-flex rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] p-1">
                     {(['daily', 'weekly'] as const).map((type) => (

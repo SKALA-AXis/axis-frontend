@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bookmark, ChevronLeft, ChevronRight, Copy, ExternalLink, Mail, RotateCcw, Send, Share2 } from 'lucide-react';
+import { ArrowUpRight, Bookmark, ChevronLeft, ChevronRight, Copy, ExternalLink, Mail, RotateCcw, Send, Share2 } from 'lucide-react';
 import * as THREE from 'three';
 import { useCardNews } from '../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../features/card-news/model/cardNews';
@@ -8,8 +8,11 @@ import {
   getExecutiveRank,
   getExposureScore,
   getPeerLabel,
+  getSectorLabel,
   getSuggestedActions,
   getSummaryLines,
+  getSourceCount,
+  getTrustScore,
 } from '../../features/card-news/mappers/cardNewsExecutive';
 import {
   Dialog,
@@ -18,7 +21,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import { Button } from './ui/button';
 import { FloatingAiChat } from './FloatingAiChat';
+import { PlaceholderPattern } from './PlaceholderPattern';
+import { CardNewsDetailView } from './CardNewsDetailView';
+import { getCardImage, unsplashUrl } from '../../features/card-news/cardImages';
 
 interface HomeCardNewsViewProps {
   activeCardId?: string | null;
@@ -41,8 +48,53 @@ type GraphLink = {
   target: string;
 };
 
-const keywordPalette = ['#3cffd0', '#8b5cf6', '#38bdf8', '#f4d35e', '#ff5d73', '#9ef01a', '#ffffff'];
-const keywords = ['AX', 'AI', '보안', '운영', '클라우드', '재무', '수주', '데이터', '제조', '레퍼런스'];
+// Mistral 산-석양 팔레트 (Three.js 노드 색)
+const keywordPalette = ['#DC5A24', '#E0822F', '#ECA341', '#F2C56B', '#A85F00', '#5A6B57', '#EA002C'];
+
+/* Network Map 의 4 카테고리 키워드 사전 */
+const keywordCategories: Record<string, { name_ko: string; keywords: string[] }> = {
+  ax: {
+    name_ko: 'AX',
+    keywords: [
+      'AX', 'AI Transformation', 'AI 전환', 'AI 혁신', '디지털 전환', 'DX',
+      '제조AX', '제조 AX', '엔터프라이즈 AI', '에이전틱AI', '에이전틱 AI', 'agentic AI',
+      'AI 에이전트', 'AI agent', '생성형 AI', 'generative AI', 'LLM', 'RAG',
+      'AI 플랫폼', 'AI 팩토리', '스마트팩토리', 'smart factory',
+      '디지털 트윈', 'digital twin', '업무 자동화', '프로세스 최적화', '운영 최적화',
+    ],
+  },
+  security: {
+    name_ko: '보안',
+    keywords: [
+      '보안', '사이버보안', '정보보안', '정보보호', '제로트러스트', 'ZTA',
+      'EDR', 'XDR', 'SOC', '관제', '취약점', '랜섬웨어', '침해', '해킹',
+      '데이터 유출', '개인정보', 'ISMS', 'ISMS-P',
+      '클라우드 보안', 'AI 보안', 'AI security', 'secure AI', '프롬프트 인젝션',
+    ],
+  },
+  infra: {
+    name_ko: '인프라',
+    keywords: [
+      '인프라', 'IT 인프라', '클라우드', 'cloud', '클라우드 전환', '클라우드 관리',
+      'MSP', 'managed service provider', '데이터센터', '데이터 센터', 'IDC',
+      'GPU', 'GPU 클러스터', 'AI 인프라', '서버', '네트워크', '스토리지',
+      '가상화', '쿠버네티스', 'Kubernetes', '컨테이너',
+      '프라이빗 클라우드', '하이브리드 클라우드', '망분리',
+    ],
+  },
+  deal: {
+    name_ko: '수주',
+    keywords: [
+      '수주', '대형 수주', '메가딜', '단일 수주', '프로젝트 수주', '계약', '공급 계약',
+      '사업자 선정', '우선협상대상자', 'MOU', '업무협약', '양해각서', '협약',
+      '정부 협약', '정부', '공공', '공공 사업', '조달청', '디지털플랫폼정부',
+      '인수', '합병', '인수합병', 'M&A', '지분 인수', '지분 투자', '투자 유치',
+    ],
+  },
+};
+
+/* legacy keywords 배열 — buildGraph 호환 위해 카테고리 키로 매핑 */
+const keywords = Object.keys(keywordCategories);
 
 const shareTargets = [
   { id: 'copy', label: '링크 복사', icon: Copy },
@@ -56,6 +108,7 @@ export function HomeCardNewsView({ activeCardId, bookmarkedIds, onToggleBookmark
   const graph = useMemo(() => buildGraph(rankedCards), [rankedCards]);
   const [selectedNodeId, setSelectedNodeId] = useState('root');
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [detailCardId, setDetailCardId] = useState<string | null>(null);
   const [shareCard, setShareCard] = useState<CardNewsItem | null>(null);
   const [shareFeedback, setShareFeedback] = useState('');
 
@@ -116,137 +169,456 @@ export function HomeCardNewsView({ activeCardId, bookmarkedIds, onToggleBookmark
 
   if (isLoading) {
     return (
-      <div className="axis-dark-shell flex items-center justify-center">
-        <div className="rounded-2xl border border-white/12 bg-white/8 px-5 py-4 text-sm text-white/64">카드뉴스 그래프를 준비하는 중입니다.</div>
+      <div className="bg-canvas min-h-full flex items-center justify-center py-32">
+        <div className="rounded-lg border border-hairline-soft bg-cream-soft px-5 py-4 text-body-sm text-steel">
+          카드뉴스를 준비하는 중입니다.
+        </div>
       </div>
     );
   }
 
   if (error || !selectedCard) {
     return (
-      <div className="axis-dark-shell flex items-center justify-center">
-        <div className="rounded-2xl border border-white/12 bg-white/8 px-5 py-4 text-sm text-white/64">
+      <div className="bg-canvas min-h-full flex items-center justify-center py-32">
+        <div className="rounded-lg border-l-4 border-urgent bg-cream-soft px-5 py-4 text-body-sm text-charcoal">
           {error ?? '표시할 카드뉴스가 없습니다.'}
         </div>
       </div>
     );
   }
 
+  // 핵심 카드 = 가장 중요한 1건 (already ranked)
+  const heroCard = rankedCards[0];
+
+  // Stats
+  const totalCount = rankedCards.length;
+  const urgentCount = rankedCards.filter((c) => c.exposure_band === 'high').length;
+  const avgTrust = rankedCards.length
+    ? Math.round(rankedCards.reduce((a, c) => a + getTrustScore(c), 0) / rankedCards.length)
+    : 0;
+  const peerSet = new Set(rankedCards.map((c) => c.peer_id ?? 'unknown'));
+
+  // 오늘 날짜
+  const todayDate = new Date().toLocaleDateString('ko-KR', {
+    year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
+  });
+
   return (
-    <div className="axis-dark-shell">
-      <main className="mx-auto flex min-h-full w-full min-w-0 max-w-[1500px] flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:px-5 md:pb-5 lg:px-6">
-        <header className="flex min-w-0 flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <p className="font-mono text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#3cffd0]">AXIS signal graph</p>
-            <h1 className="axis-card-display mt-2 break-words text-[2rem] font-black text-white sm:text-[3.6rem] lg:text-[4.4rem]">
-              Card News Radar
-            </h1>
-          </div>
-          <p className="max-w-xl text-sm leading-6 text-white/58">
-            Peer사와 키워드의 관계를 3D 그래프로 탐색하고, 선택된 신호와 연결된 카드뉴스를 오른쪽 갤러리에서 확인합니다.
-          </p>
-        </header>
+    <div className="bg-canvas min-h-full">
+      {/* ─── 1. NETWORK MAP — 큰 헤드만 + 그래프 안 메타 overlay ──── */}
+      <section className="border-b border-hairline-soft">
+        <div className="mx-auto max-w-[1280px] px-6 py-8 lg:px-12 lg:py-12">
+          {/* 헤드만 크게 */}
+          <h2 className="font-display text-heading-1 text-ink mb-6" style={{ fontWeight: 800 }}>
+            Network Map
+          </h2>
 
-        <section className="grid min-h-[calc(100dvh-180px)] min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_370px] xl:grid-rows-[minmax(340px,0.95fr)_minmax(430px,1.05fr)]">
-          <section className="axis-graph-stage min-h-[330px] min-w-0 rounded-[28px] sm:min-h-[420px] xl:col-start-1 xl:row-start-1">
-            <KeywordPeerGraph
-              nodes={graph.nodes}
-              links={graph.links}
-              selectedNodeId={selectedNodeId}
-              onSelect={(nodeId) => {
-                setSelectedNodeId(nodeId);
-                const nextNode = graph.nodes.find((node) => node.id === nodeId);
-                setSelectedCardId(nextNode?.cards[0]?.id ?? rankedCards[0]?.id ?? null);
-              }}
-            />
-            <div className="pointer-events-none absolute left-5 top-5">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-white/42">Selected signal</p>
-              <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-white">{selectedNode?.label ?? 'All'}</p>
-            </div>
-            <button
-              type="button"
-              aria-label="Reset"
-              onClick={() => {
-                setSelectedNodeId('root');
-                setSelectedCardId(rankedCards[0]?.id ?? null);
-              }}
-              className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center gap-2 rounded-full border border-white/12 bg-white/8 p-0 text-sm font-semibold text-white/72 transition hover:border-[#3cffd0]/50 hover:text-white sm:right-4 sm:top-4 sm:w-auto sm:px-4"
-            >
-              <RotateCcw size={15} />
-              <span className="hidden sm:inline">Reset</span>
-            </button>
-          </section>
+          {/* 좌 (8 col) 그래프 + 우 (4 col) 갤러리 */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* 좌측: Three.js 그래프 + overlay 메타 */}
+            <div className="relative lg:col-span-8">
+              <div className="relative axis-graph-stage min-h-[420px]">
+                <KeywordPeerGraph
+                  nodes={graph.nodes}
+                  links={graph.links}
+                  selectedNodeId={selectedNodeId}
+                  onSelect={(nodeId) => {
+                    setSelectedNodeId(nodeId);
+                    const nextNode = graph.nodes.find((node) => node.id === nodeId);
+                    setSelectedCardId(nextNode?.cards[0]?.id ?? rankedCards[0]?.id ?? null);
+                  }}
+                />
 
-          <aside className="min-h-0 min-w-0 rounded-[28px] border border-white/12 bg-white/[0.06] p-3 xl:col-start-2 xl:row-span-2 xl:row-start-1">
-            <div className="mb-3 flex items-center justify-between gap-3 px-1">
-              <div>
-                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[#3cffd0]">Gallery</p>
-                <h2 className="text-lg font-semibold tracking-[-0.03em] text-white">{selectedNode?.label ?? '전체'} 카드뉴스</h2>
+                {/* 좌상단 — Selected node */}
+                <div className="pointer-events-none absolute left-6 top-6">
+                  <p className="text-micro-eyebrow text-white/50">Selected</p>
+                  <p className="mt-1.5 font-display text-heading-3 text-white" style={{ fontWeight: 700 }}>
+                    {selectedNode?.label ?? '전체'}
+                  </p>
+                </div>
+
+                {/* 우상단 — 메타 overlay (날짜/카테고리/Peer/카드) */}
+                <div className="pointer-events-none absolute right-6 top-6 flex flex-col items-end gap-3">
+                  <p className="text-fine-print text-white/50 tabular-nums">{todayDate}</p>
+                  <div className="flex items-center gap-4 text-fine-print text-white/80 tabular-nums">
+                    <span><span className="font-display-strong text-white">4</span> 카테고리</span>
+                    <span className="text-white/30">·</span>
+                    <span><span className="font-display-strong text-white">{peerSet.size}</span> Peer</span>
+                    <span className="text-white/30">·</span>
+                    <span><span className="font-display-strong text-white">{totalCount}</span> 카드</span>
+                  </div>
+                </div>
+
+                {/* 우하단 — 초기화 button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedNodeId('root');
+                    setSelectedCardId(rankedCards[0]?.id ?? null);
+                  }}
+                  className="absolute bottom-6 right-6 inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-fine-print text-white hover:bg-white/15 transition-colors"
+                >
+                  <RotateCcw size={12} />
+                  초기화
+                </button>
               </div>
-              <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white/58">{galleryCards.length}</span>
             </div>
 
-            <div className="grid max-h-[min(420px,60dvh)] gap-3 overflow-y-auto pr-1 xl:max-h-[calc(100dvh-230px)]">
-              {galleryCards.map((card) => (
-                <GalleryCard
+            {/* 우측: 갤러리 list (박스 폐기, 카드 큼) */}
+            <aside className="lg:col-span-4">
+              <div className="lg:sticky lg:top-6">
+                {/* 헤더 — 박스 없이 단순 */}
+                <div className="flex items-baseline justify-between mb-5 pb-3 border-b border-hairline-soft">
+                  <h3 className="font-display text-heading-5 text-ink" style={{ fontWeight: 700 }}>
+                    {selectedNode?.label ?? '전체'} 관련
+                  </h3>
+                  <span className="text-caption-bold text-stone tabular-nums">{galleryCards.length}건</span>
+                </div>
+
+                {galleryCards.length > 0 ? (
+                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                    {galleryCards.slice(0, 5).map((card) => (
+                      <button
+                        key={card.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCardId(card.id);
+                          setDetailCardId(card.id);
+                        }}
+                        className={`group block w-full text-left transition-colors ${
+                          card.id === selectedCard.id ? 'opacity-100' : 'opacity-90 hover:opacity-100'
+                        }`}
+                      >
+                        {/* 큰 thumbnail (16:9) */}
+                        <div className="relative overflow-hidden rounded-md border border-hairline-soft mb-2.5">
+                          <PlaceholderPattern peer={card.peer_id ?? 'default'} ratio="16/9" showLabel={false} />
+                          {card.exposure_band === 'high' && (
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-sk-mistral" />
+                          )}
+                          {card.id === selectedCard.id && (
+                            <div className="absolute inset-0 ring-2 ring-action ring-inset rounded-md" />
+                          )}
+                        </div>
+                        {/* meta + title */}
+                        <p className="text-fine-print text-stone mb-1 tabular-nums">
+                          {getPeerLabel(card)} · {getDisplayDate(card)}
+                        </p>
+                        <p className="text-body-md-strong text-ink line-clamp-2 leading-snug">
+                          {card.title}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-body-sm text-steel py-12 text-center">
+                    노드를 선택하면 관련 카드가 표시됩니다
+                  </p>
+                )}
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 2. HERO CARD — 오늘의 핵심 동향 ──────────────────────── */}
+      <section className="border-b border-hairline-soft">
+        <div className="mx-auto max-w-[1280px] px-6 py-16 lg:px-12 lg:py-24">
+          <p className="text-micro-eyebrow text-action mb-6">오늘의 핵심 동향</p>
+          <article className="group grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12 cursor-pointer"
+                   onClick={() => setDetailCardId(heroCard.id)}>
+            <div className="relative overflow-hidden rounded-lg border border-hairline-soft lg:col-span-6">
+              <PlaceholderPattern peer={heroCard.peer_id ?? 'default'} ratio="16/9" />
+              {heroCard.exposure_band === 'high' && (
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-sk-mistral" />
+              )}
+            </div>
+            <div className="flex flex-col justify-center lg:col-span-6">
+              <p className="text-caption-bold text-stone mb-4">
+                {getPeerLabel(heroCard)} · {heroCard.category_label || heroCard.category}
+              </p>
+              <h1 className="text-heading-1 font-display text-ink mb-4">{heroCard.title}</h1>
+              {heroCard.subtitle && (
+                <p className="text-subtitle text-charcoal mb-6">{heroCard.subtitle}</p>
+              )}
+              <div className="flex flex-wrap items-center gap-3 text-caption text-stone mb-8">
+                <span>AXIS AI</span><span className="text-hairline-strong">·</span>
+                <span>{getDisplayDate(heroCard)}</span><span className="text-hairline-strong">·</span>
+                <span>출처 {getSourceCount(heroCard)}건</span><span className="text-hairline-strong">·</span>
+                <span>신뢰도 {getTrustScore(heroCard)}%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={() => setDetailCardId(heroCard.id)}>
+                  전체 보기
+                  <ArrowUpRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      {/* ─── 3. STATS STRIP (Hero 아래로 이동) ──────────────────── */}
+      <section className="border-b border-hairline-soft">
+        <div className="mx-auto max-w-[1280px] px-6 py-12 lg:px-12">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-12">
+            <Stat label="오늘 동향 카드" value={totalCount} unit="건" />
+            <Stat label="우선 검토" value={urgentCount} unit="건" />
+            <Stat label="평균 신뢰도" value={avgTrust} unit="%" />
+            <Stat label="모니터링 Peer" value={peerSet.size} unit="사" />
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 4. EDITORIAL CARDS (Bloomberg 톤 2-up grid) ───────── */}
+      {rankedCards.length > 0 && (
+        <section className="border-b border-hairline-soft">
+          <div className="mx-auto max-w-[1280px] px-6 py-16 lg:px-12 lg:py-24">
+            <div className="mb-12">
+              <p className="text-micro-eyebrow text-action mb-3">전체 카드뉴스</p>
+              <h2 className="font-display text-heading-2 text-ink" style={{ fontWeight: 700 }}>
+                Insights <span className="tabular-nums text-stone">{rankedCards.length}</span>
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 gap-x-12 gap-y-16 md:grid-cols-2">
+              {rankedCards.map((card) => (
+                <EditorialCard
                   key={card.id}
                   card={card}
-                  active={card.id === selectedCard.id}
-                  bookmarked={bookmarkedIds.includes(card.id)}
-                  onClick={() => setSelectedCardId(card.id)}
-                  onBookmark={() => onToggleBookmark(card.id)}
+                  onClick={() => setDetailCardId(card.id)}
                 />
               ))}
             </div>
-          </aside>
-
-          <div className="min-h-0 min-w-0 xl:col-start-1 xl:row-start-2">
-            <CardNewsReader
-              card={selectedCard}
-              isBookmarked={bookmarkedIds.includes(selectedCard.id)}
-              onBookmark={() => onToggleBookmark(selectedCard.id)}
-              onShare={() => {
-                setShareCard(selectedCard);
-                setShareFeedback('');
-              }}
-            />
           </div>
         </section>
-      </main>
+      )}
 
+      {/* ─── 6. CARD DETAIL — Stripe Press 톤 fullscreen overlay ── */}
+      {detailCardId && (() => {
+        const detailCard = rankedCards.find((c) => c.id === detailCardId);
+        if (!detailCard) return null;
+        const related = rankedCards
+          .filter((c) =>
+            c.id !== detailCard.id &&
+            (c.peer_id === detailCard.peer_id || c.category === detailCard.category),
+          )
+          .slice(0, 3);
+        return (
+          <CardNewsDetailView
+            card={detailCard}
+            bookmarked={bookmarkedIds.includes(detailCard.id)}
+            onBookmark={() => onToggleBookmark(detailCard.id)}
+            onClose={() => setDetailCardId(null)}
+            relatedCards={related}
+            onSelectRelated={(id) => setDetailCardId(id)}
+          />
+        );
+      })()}
+
+      {/* ─── 7. SHARE DIALOG ────────────────────────────────────── */}
       <Dialog open={Boolean(shareCard)} onOpenChange={(open) => !open && setShareCard(null)}>
-        <DialogContent className="max-w-md rounded-[24px] border-white/12 bg-[#151922] p-6 text-white">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-white">공유할 곳 선택</DialogTitle>
-            <DialogDescription className="text-white/52">{shareCard?.title}</DialogDescription>
+            <DialogTitle>공유할 곳 선택</DialogTitle>
+            <DialogDescription>{shareCard?.title}</DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-2">
+          <div className="space-y-2 mt-4">
             {shareTargets.map((target) => {
               const Icon = target.icon;
-
               return (
                 <button
                   key={target.id}
                   type="button"
                   onClick={() => void handleShare(target.id)}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-white/12 bg-white/7 px-4 py-3 text-left transition hover:border-[#3cffd0]/50 hover:bg-white/10"
+                  className="flex w-full items-center gap-3 rounded-md border border-hairline-soft bg-canvas px-4 py-3 text-left transition-colors hover:border-action"
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3cffd0] text-black">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-action text-white">
                     <Icon size={18} />
                   </span>
-                  <span className="font-medium text-white">{target.label}</span>
+                  <span className="text-body-md-strong text-ink">{target.label}</span>
                 </button>
               );
             })}
           </div>
-
-          {shareFeedback ? <p className="text-sm text-white/58">{shareFeedback}</p> : null}
+          {shareFeedback && <p className="mt-3 text-caption text-steel">{shareFeedback}</p>}
         </DialogContent>
       </Dialog>
 
       <FloatingAiChat />
     </div>
+  );
+}
+
+/* ─── Stat cell ────────────────────────────────────────────── */
+function Stat({ label, value, unit }: { label: string; value: number; unit?: string }) {
+  return (
+    <div className="flex flex-col">
+      <p className="text-micro-eyebrow text-stone mb-2">{label}</p>
+      <p className="font-display text-stat-display text-ink tabular-nums">
+        {value.toLocaleString('ko-KR')}
+        {unit && <span className="ml-1 text-heading-4 text-steel">{unit}</span>}
+      </p>
+    </div>
+  );
+}
+
+/* ─── Featured Card (Mistral store-utility-card 변형) ──────── */
+function FeaturedCard({
+  card,
+  large = false,
+  bookmarked,
+  onClick,
+  onBookmark,
+  className = '',
+}: {
+  card: CardNewsItem;
+  large?: boolean;
+  bookmarked: boolean;
+  onClick: () => void;
+  onBookmark: () => void;
+  className?: string;
+}) {
+  return (
+    <article
+      className={`group relative overflow-hidden rounded-lg border border-hairline-soft bg-canvas cursor-pointer transition-colors hover:border-action ${className}`}
+      onClick={onClick}
+    >
+      {/* image area */}
+      <div className="relative">
+        <PlaceholderPattern peer={card.peer_id ?? 'default'} ratio={large ? '16/9' : '4/3'} />
+        {/* 좌측 4px indicator */}
+        {card.exposure_band === 'high' && (
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-sk-mistral" />
+        )}
+        {/* bookmark */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onBookmark(); }}
+          className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-md backdrop-blur-sm transition-colors ${
+            bookmarked ? 'bg-action text-white' : 'bg-canvas/80 text-stone hover:text-ink'
+          }`}
+          aria-label={bookmarked ? '북마크 해제' : '북마크'}
+        >
+          <Bookmark className={bookmarked ? 'fill-current' : ''} size={15} />
+        </button>
+      </div>
+
+      {/* content */}
+      <div className="p-6">
+        <p className="text-micro-eyebrow text-action mb-3">
+          {getPeerLabel(card)}
+          {card.category_label && <span className="text-stone"> · {card.category_label}</span>}
+        </p>
+        <h3 className={`font-display text-ink mb-3 line-clamp-2 ${large ? 'text-heading-3' : 'text-heading-4'}`}>
+          {card.title}
+        </h3>
+        {large && card.subtitle && (
+          <p className="text-body-md text-charcoal mb-4 line-clamp-2">{card.subtitle}</p>
+        )}
+        <div className="flex flex-wrap items-center gap-2 text-caption text-stone">
+          <span>AXIS AI</span><span className="text-hairline-strong">·</span>
+          <span>{getDisplayDate(card)}</span><span className="text-hairline-strong">·</span>
+          <span>출처 {getSourceCount(card)}건</span>
+        </div>
+      </div>
+
+      {/* click affordance — 우하단 chevron */}
+      <ArrowUpRight className="absolute bottom-6 right-6 size-4 text-stone group-hover:text-action transition-colors" />
+    </article>
+  );
+}
+
+/* ─── Editorial Card (Bloomberg 톤) ─────────────────────────
+ * 썸네일 + Peer eyebrow + 큰 제목 + 본문 + 섹터 underline.
+ */
+function EditorialCard({ card, onClick }: { card: CardNewsItem; onClick: () => void }) {
+  const body = card.subtitle || card.summary?.[0] || getSummaryLines(card)[0] || '';
+  const image = getCardImage(card);
+  return (
+    <article
+      className="group cursor-pointer"
+      onClick={onClick}
+    >
+      {/* 썸네일 — Unsplash 큐레이션 이미지 */}
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md border border-hairline-soft mb-7 bg-cream-soft">
+        <img
+          src={unsplashUrl(image.id, 800, 450)}
+          alt={image.alt}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+        />
+        {card.exposure_band === 'high' && (
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-sk-mistral" />
+        )}
+      </div>
+
+      {/* Peer eyebrow */}
+      <p
+        className="text-fine-print font-display-strong tracking-[0.12em] uppercase text-action mb-4"
+      >
+        {getPeerLabel(card)}
+      </p>
+
+      {/* Headline */}
+      <h3
+        className="font-display text-heading-3 text-ink leading-[1.2] mb-5 group-hover:text-action transition-colors"
+        style={{ fontWeight: 700 }}
+      >
+        {card.title}
+      </h3>
+
+      {/* Body */}
+      {body && (
+        <p className="text-body-md leading-[1.7] text-charcoal mb-8 line-clamp-5">
+          {body}
+        </p>
+      )}
+
+      {/* Sector underline label */}
+      <p className="inline-block text-body-sm-strong text-action border-b-2 border-action pb-1.5 group-hover:border-primary-deep group-hover:text-primary-deep transition-colors">
+        {getSectorLabel(card)}
+      </p>
+    </article>
+  );
+}
+
+/* ─── Compact Card (Network Map 갤러리 미리보기) ──────────── */
+function CompactCard({
+  card, active, bookmarked, onClick, onBookmark,
+}: {
+  card: CardNewsItem;
+  active: boolean;
+  bookmarked: boolean;
+  onClick: () => void;
+  onBookmark: () => void;
+}) {
+  return (
+    <article
+      onClick={onClick}
+      className={`group relative cursor-pointer overflow-hidden rounded-lg border bg-canvas transition-colors ${
+        active ? 'border-action' : 'border-hairline-soft hover:border-action'
+      }`}
+    >
+      <div className="relative">
+        <PlaceholderPattern peer={card.peer_id ?? 'default'} ratio="4/3" />
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onBookmark(); }}
+          className={`absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md ${
+            bookmarked ? 'bg-action text-white' : 'bg-canvas/80 text-stone'
+          }`}
+        >
+          <Bookmark className={bookmarked ? 'fill-current' : ''} size={12} />
+        </button>
+      </div>
+      <div className="p-3">
+        <p className="text-fine-print text-stone mb-1 uppercase tracking-wider">
+          {getDisplayDate(card)}
+        </p>
+        <p className="text-caption-bold text-ink line-clamp-2">{card.title}</p>
+      </div>
+    </article>
   );
 }
 
@@ -264,6 +636,11 @@ function buildGraph(cards: CardNewsItem[]) {
 
   const peerMap = new Map<string, CardNewsItem[]>();
   const keywordMap = new Map<string, CardNewsItem[]>();
+
+  // 4 카테고리 무조건 빈 키로 초기화 (카드가 0건이어도 노드는 표시)
+  for (const key of keywords) {
+    keywordMap.set(`keyword:${key}`, []);
+  }
 
   for (const card of cards) {
     const peerId = card.peer_id ? `peer:${card.peer_id}` : `peer:${getPeerLabel(card)}`;
@@ -288,24 +665,30 @@ function buildGraph(cards: CardNewsItem[]) {
     links.push({ source: 'root', target: id });
   });
 
+  // 카테고리 노드 — 모두 표시 (카드 0건이어도)
   Array.from(keywordMap.entries()).forEach(([id, keywordCards], index) => {
+    const categoryKey = id.replace('keyword:', '');
+    const category = keywordCategories[categoryKey];
     nodes.push({
       id,
-      label: id.replace('keyword:', ''),
+      label: category?.name_ko ?? categoryKey,
       kind: 'keyword',
       color: keywordPalette[(index + 2) % keywordPalette.length],
       cards: keywordCards,
     });
     links.push({ source: 'root', target: id });
 
-    const peers = new Set(keywordCards.map((card) => (card.peer_id ? `peer:${card.peer_id}` : `peer:${getPeerLabel(card)}`)));
-    peers.forEach((peerId) => links.push({ source: peerId, target: id }));
+    // 카드가 있는 경우만 peer 와 연결
+    if (keywordCards.length > 0) {
+      const peers = new Set(keywordCards.map((card) => (card.peer_id ? `peer:${card.peer_id}` : `peer:${getPeerLabel(card)}`)));
+      peers.forEach((peerId) => links.push({ source: peerId, target: id }));
+    }
   });
 
   return { nodes, links };
 }
 
-function cardMatchesKeyword(card: CardNewsItem, keyword: string) {
+function cardMatchesKeyword(card: CardNewsItem, categoryKey: string) {
   const text = [
     card.title,
     card.subtitle,
@@ -316,13 +699,14 @@ function cardMatchesKeyword(card: CardNewsItem, keyword: string) {
     ...getSuggestedActions(card),
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(' ')
+    .toLowerCase();
 
-  if (keyword === 'AI') {
-    return /AI|에이전트|생성형/i.test(text);
-  }
+  const category = keywordCategories[categoryKey];
+  if (!category) return false;
 
-  return text.includes(keyword);
+  // 4 카테고리 — 카테고리 의 keywords 중 하나라도 포함되면 매칭
+  return category.keywords.some((keyword) => text.includes(keyword.toLowerCase()));
 }
 
 function KeywordPeerGraph({
@@ -675,31 +1059,42 @@ function mountFallbackGraph({
 }
 
 function createLabelSprite(text: string, color: string) {
+  // 박스 폐기 — 텍스트만 (가독성은 검은 stroke + 흰 fill 으로)
+  const dpr = 2;
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
-  canvas.width = 512;
-  canvas.height = 128;
+  const baseW = 512;
+  const baseH = 128;
+  canvas.width = baseW * dpr;
+  canvas.height = baseH * dpr;
 
   if (context) {
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.font = '700 34px Arial, sans-serif';
+    context.scale(dpr, dpr);
+    context.clearRect(0, 0, baseW, baseH);
+    context.font = '700 48px "Pretendard Variable", "Inter", system-ui, sans-serif';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillStyle = 'rgba(0, 0, 0, 0.58)';
-    roundRect(context, 52, 28, 408, 70, 34);
-    context.fill();
-    context.strokeStyle = color;
-    context.lineWidth = 3;
-    context.stroke();
+    // outline (어두운 stroke 으로 다크 배경에서도 가독성 확보)
+    context.lineWidth = 6;
+    context.strokeStyle = 'rgba(15, 17, 23, 0.95)';
+    context.lineJoin = 'round';
+    context.miterLimit = 2;
+    context.strokeText(text, baseW / 2, baseH / 2);
+    // 흰 fill
     context.fillStyle = '#ffffff';
-    context.fillText(text, 256, 64);
+    context.fillText(text, baseW / 2, baseH / 2);
+    // 미세 액센트 underline
+    context.fillStyle = color;
+    context.fillRect(baseW / 2 - 18, baseH / 2 + 32, 36, 3);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
   const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(2.5, 0.62, 1);
+  sprite.scale.set(2.4, 0.6, 1);
   return sprite;
 }
 
@@ -717,199 +1112,3 @@ function roundRect(context: CanvasRenderingContext2D, x: number, y: number, widt
   context.closePath();
 }
 
-function GalleryCard({
-  card,
-  active,
-  bookmarked,
-  onClick,
-  onBookmark,
-}: {
-  card: CardNewsItem;
-  active: boolean;
-  bookmarked: boolean;
-  onClick: () => void;
-  onBookmark: () => void;
-}) {
-  return (
-    <article
-      className={`group relative overflow-hidden rounded-[22px] border text-left transition ${
-        active ? 'border-[#3cffd0] bg-white text-black' : 'border-white/12 bg-white/[0.07] text-white hover:border-white/30'
-      }`}
-    >
-      <button type="button" onClick={onClick} className="block w-full text-left">
-        <div className={`relative aspect-[1.55] ${active ? 'bg-[#fbfbfb]' : 'bg-[#151922]'}`}>
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(60,255,208,0.18),rgba(139,92,246,0.14),transparent)]" />
-          <div className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-            {getPeerLabel(card)}
-          </div>
-        </div>
-        <div className="p-3">
-          <p className={`font-mono text-[10px] font-semibold uppercase tracking-[0.14em] ${active ? 'text-black/46' : 'text-white/40'}`}>
-            {getDisplayDate(card)} · Exposure {getExposureScore(card)}
-          </p>
-          <h3 className={`mt-2 line-clamp-3 text-sm font-semibold leading-5 ${active ? 'text-black' : 'text-white/90'}`}>
-            {card.title}
-          </h3>
-        </div>
-      </button>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onBookmark();
-        }}
-        className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full ${
-          bookmarked ? 'bg-[#3cffd0] text-black' : 'bg-black/60 text-white'
-        }`}
-        aria-label={bookmarked ? '북마크 해제' : '북마크'}
-      >
-        <Bookmark className={bookmarked ? 'fill-current' : ''} size={15} />
-      </button>
-    </article>
-  );
-}
-
-function CardNewsReader({
-  card,
-  isBookmarked,
-  onBookmark,
-  onShare,
-}: {
-  card: CardNewsItem;
-  isBookmarked: boolean;
-  onBookmark: () => void;
-  onShare: () => void;
-}) {
-  const pages = buildCardPages(card);
-  const [pageIndex, setPageIndex] = useState(0);
-  const page = pages[pageIndex] ?? pages[0];
-
-  useEffect(() => {
-    setPageIndex(0);
-  }, [card.id]);
-
-  const move = (direction: 'previous' | 'next') => {
-    setPageIndex((current) => {
-      if (direction === 'previous') {
-        return Math.max(0, current - 1);
-      }
-
-      return Math.min(pages.length - 1, current + 1);
-    });
-  };
-
-  return (
-    <section className="grid min-h-[430px] gap-4 lg:grid-cols-[minmax(300px,430px)_minmax(0,1fr)]">
-      <div className="flex items-center justify-center">
-        <article className="axis-editorial-card relative aspect-[4/5] h-[min(64vh,620px)] min-h-[390px] w-auto overflow-hidden rounded-[30px] shadow-[0_30px_90px_rgba(0,0,0,0.38)]">
-          <div className="absolute inset-x-0 top-0 h-2 bg-[#3cffd0]" />
-          <div className="flex h-full flex-col p-7">
-            <div className="flex items-center justify-between gap-3">
-              <span className="rounded-full bg-black px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
-                {page.type}
-              </span>
-              <span className="font-mono text-[11px] font-semibold text-black/42">
-                {pageIndex + 1}/{pages.length}
-              </span>
-            </div>
-            <div className="mt-auto">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">{getPeerLabel(card)}</p>
-              <h2 className="axis-card-display mt-3 text-[2.4rem] font-black text-black sm:text-[3.1rem]">{page.title}</h2>
-              <div className="mt-5 space-y-3">
-                {page.lines.map((line) => (
-                  <p key={line} className="text-base font-medium leading-7 text-black/76">
-                    {line}
-                  </p>
-                ))}
-              </div>
-            </div>
-          </div>
-        </article>
-      </div>
-
-      <div className="flex min-w-0 flex-col justify-center rounded-[28px] border border-white/12 bg-white/[0.06] p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[#3cffd0] px-3 py-1.5 text-xs font-bold text-black">CARD NEWS</span>
-          <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/62">{getDisplayDate(card)}</span>
-        </div>
-        <h2 className="mt-4 text-2xl font-semibold leading-8 tracking-[-0.04em] text-white">{card.title}</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">{getSuggestedActions(card)[0] ?? card.detailDescription}</p>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => move('previous')}
-            disabled={pageIndex === 0}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/8 text-white transition disabled:opacity-30"
-            aria-label="이전 카드뉴스 페이지"
-          >
-            <ChevronLeft size={19} />
-          </button>
-          <button
-            type="button"
-            onClick={() => move('next')}
-            disabled={pageIndex === pages.length - 1}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/8 text-white transition disabled:opacity-30"
-            aria-label="다음 카드뉴스 페이지"
-          >
-            <ChevronRight size={19} />
-          </button>
-          <button
-            type="button"
-            onClick={onBookmark}
-            className={`inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold ${
-              isBookmarked ? 'bg-[#3cffd0] text-black' : 'border border-white/12 bg-white/8 text-white'
-            }`}
-          >
-            <Bookmark className={isBookmarked ? 'fill-current' : ''} size={16} />
-            {isBookmarked ? '저장됨' : '북마크'}
-          </button>
-          <button
-            type="button"
-            onClick={onShare}
-            className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-white/8 px-4 text-sm font-semibold text-white"
-          >
-            <Share2 size={16} />
-            공유
-          </button>
-          <a
-            href={card.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-white/8 px-4 text-sm font-semibold text-white"
-          >
-            <ExternalLink size={16} />
-            원문
-          </a>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function buildCardPages(card: CardNewsItem) {
-  const summary = getSummaryLines(card);
-  const pages = [
-    {
-      type: card.category_label ?? card.category,
-      title: card.title,
-      lines: summary.slice(0, 3),
-    },
-  ];
-
-  card.articlePages.forEach((page) => {
-    pages.push({
-      type: 'Brief',
-      title: page.title,
-      lines: page.paragraphs.slice(0, 2),
-    });
-  });
-
-  pages.push({
-    type: 'Action',
-    title: 'SK AX Next Move',
-    lines: getSuggestedActions(card).slice(0, 3),
-  });
-
-  return pages;
-}

@@ -1,12 +1,14 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { AdminView } from './components/AdminView';
 import { BriefingsView } from './components/BriefingsView';
+import { Footer } from './components/Footer';
 import { HomeCardNewsView } from './components/HomeCardNewsView';
 import { IssuesView } from './components/IssuesView';
 import { MonitoringView } from './components/MonitoringView';
 import { RawArticlesView } from './components/RawArticlesView';
 import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
+import { TopNav } from './components/TopNav';
 import { Input } from './components/ui/input';
 
 type AuthMode = 'signIn' | 'signUp';
@@ -55,82 +57,69 @@ function AuthScreen({
   };
 
   return (
-    <div
-      className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[var(--axis-canvas)] px-4 py-8"
-    >
-      <section
-        className="relative w-full max-w-[22rem] overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[#151922] text-white sm:max-w-[23rem]"
-      >
-        <div className="h-1 w-full bg-[var(--axis-accent)]" />
-
-        <div className="px-7 pb-8 pt-7 sm:px-8">
+    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-12 bg-canvas">
+      {/* ─── 좌측 form panel (5/12) ─────────────────────────── */}
+      <section className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:col-span-5 lg:px-16 lg:py-20">
+        <div className="mx-auto w-full max-w-[420px]">
           {/* Logo */}
-          <div className="mb-7 flex items-center gap-3">
+          <div className="mb-12 flex items-center gap-3">
             {logoVisible ? (
               <img
                 src={logoSrc}
                 alt="Logo"
-                className="h-9 w-9 object-contain"
+                className="h-11 w-11 object-contain"
                 onError={() => setLogoVisible(false)}
               />
             ) : (
               <AxisMark />
             )}
-            <div className="leading-none">
-              <span className="block text-[1.1rem] font-black tracking-[-0.04em] text-[var(--axis-ink)]">AXIS</span>
-              <span className="mt-1 block text-[0.7rem] font-semibold text-[var(--axis-muted)]">Executive Intelligence</span>
+            <div>
+              <p className="font-display text-heading-3 text-ink">AXIS</p>
+              <p className="text-caption text-steel">Peer Intelligence System</p>
             </div>
           </div>
 
           {isSignIn ? (
-            <form className="space-y-5" onSubmit={handleSignInSubmit} noValidate>
+            <form className="space-y-6" onSubmit={handleSignInSubmit} noValidate>
               <div>
-                <h1 className="text-[1.75rem] font-semibold tracking-[-0.05em] text-[var(--axis-ink)] leading-none">
-                  로그인
-                </h1>
-                <p className="mt-1.5 text-[0.82rem] text-[var(--axis-muted)]">전략 인텔리전스 콘솔에 접속하세요</p>
+                <h1 className="font-display text-heading-1 text-ink mb-3">로그인</h1>
+                <p className="text-body-md text-steel">전략 인텔리전스 콘솔에 접속하세요</p>
               </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="sign-in-email" className="block text-[0.82rem] font-semibold text-white/70">
-                  이메일
-                </label>
+              <div className="space-y-2">
+                <label htmlFor="sign-in-email" className="block text-caption-bold text-ink">이메일</label>
                 <Input
                   id="sign-in-email"
                   type="email"
                   placeholder="example@skax.com"
                   value={signInForm.email}
                   onChange={(e) => setSignInForm((c) => ({ ...c, email: e.target.value }))}
-                  className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-4 text-[0.88rem] text-white placeholder:text-white/28 focus:border-[var(--axis-accent)]"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="sign-in-password" className="block text-[0.82rem] font-semibold text-white/70">
-                  비밀번호
-                </label>
+              <div className="space-y-2">
+                <label htmlFor="sign-in-password" className="block text-caption-bold text-ink">비밀번호</label>
                 <Input
                   id="sign-in-password"
                   type="password"
                   placeholder="비밀번호 입력"
                   value={signInForm.password}
                   onChange={(e) => setSignInForm((c) => ({ ...c, password: e.target.value }))}
-                  className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-4 text-[0.88rem] text-white placeholder:text-white/28 focus:border-[var(--axis-accent)]"
                 />
               </div>
 
               <button
                 type="submit"
-                className="mt-1 h-12 w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] text-[0.92rem] font-bold tracking-[-0.01em] text-black transition hover:bg-[var(--axis-accent-strong)]"
+                className="h-12 w-full rounded-md bg-action text-white text-btn-md transition-colors active:bg-primary-deep focus-visible:outline-2 focus-visible:outline-action-focus focus-visible:outline-offset-2"
               >
                 로그인
               </button>
 
-              <p className="text-center text-[11.5px] text-white/42">
+              <p className="text-center text-caption text-steel pt-2">
                 계정이 없으신가요?{' '}
                 <button
                   type="button"
-                  className="font-semibold text-[var(--axis-accent)] underline underline-offset-3 hover:text-[var(--axis-accent-strong)]"
+                  className="text-action underline underline-offset-4"
                   onClick={() => onModeChange('signUp')}
                 >
                   회원가입
@@ -138,12 +127,10 @@ function AuthScreen({
               </p>
             </form>
           ) : (
-            <form className="space-y-5" onSubmit={handleSignUpSubmit} noValidate>
+            <form className="space-y-6" onSubmit={handleSignUpSubmit} noValidate>
               <div>
-                <h1 className="text-[1.75rem] font-semibold tracking-[-0.05em] text-[var(--axis-ink)] leading-none">
-                  회원가입
-                </h1>
-                <p className="mt-1.5 text-[0.82rem] text-[var(--axis-muted)]">새 계정을 만들어 시작하세요</p>
+                <h1 className="font-display text-heading-1 text-ink mb-3">회원가입</h1>
+                <p className="text-body-md text-steel">새 계정을 만들어 시작하세요</p>
               </div>
 
               {[
@@ -151,33 +138,30 @@ function AuthScreen({
                 { id: 'sign-up-email', label: '이메일', type: 'email', placeholder: 'example@skax.com', key: 'email' as const },
                 { id: 'sign-up-password', label: '비밀번호', type: 'password', placeholder: '비밀번호 생성', key: 'password' as const },
               ].map((field) => (
-                <div key={field.id} className="space-y-1.5">
-                  <label htmlFor={field.id} className="block text-[0.82rem] font-semibold text-white/70">
-                    {field.label}
-                  </label>
+                <div key={field.id} className="space-y-2">
+                  <label htmlFor={field.id} className="block text-caption-bold text-ink">{field.label}</label>
                   <Input
                     id={field.id}
                     type={field.type}
                     placeholder={field.placeholder}
                     value={signUpForm[field.key]}
                     onChange={(e) => setSignUpForm((c) => ({ ...c, [field.key]: e.target.value }))}
-                    className="h-11 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-4 text-[0.88rem] text-white placeholder:text-white/28 focus:border-[var(--axis-accent)]"
                   />
                 </div>
               ))}
 
               <button
                 type="submit"
-                className="mt-1 h-12 w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] text-[0.92rem] font-bold tracking-[-0.01em] text-black transition hover:bg-[var(--axis-accent-strong)]"
+                className="h-12 w-full rounded-md bg-action text-white text-btn-md transition-colors active:bg-primary-deep focus-visible:outline-2 focus-visible:outline-action-focus focus-visible:outline-offset-2"
               >
                 계정 생성
               </button>
 
-              <p className="text-center text-[11.5px] text-white/42">
+              <p className="text-center text-caption text-steel pt-2">
                 이미 계정이 있으신가요?{' '}
                 <button
                   type="button"
-                  className="font-semibold text-[var(--axis-accent)] underline underline-offset-3 hover:text-[var(--axis-accent-strong)]"
+                  className="text-action underline underline-offset-4"
                   onClick={() => onModeChange('signIn')}
                 >
                   로그인
@@ -187,6 +171,53 @@ function AuthScreen({
           )}
         </div>
       </section>
+
+      {/* ─── 우측 sunset gradient hero (7/12) — 모바일 숨김 ───── */}
+      <aside className="hidden bg-auth-hero relative overflow-hidden lg:col-span-7 lg:flex lg:flex-col lg:justify-between lg:p-16 xl:p-24">
+        {/* 추상 패턴 — 도트 noise */}
+        <svg className="absolute inset-0 h-full w-full opacity-15" viewBox="0 0 800 800" preserveAspectRatio="none">
+          <defs>
+            <pattern id="auth-pattern" width="50" height="50" patternUnits="userSpaceOnUse">
+              <circle cx="25" cy="25" r="1.5" fill="white" />
+            </pattern>
+          </defs>
+          <rect width="800" height="800" fill="url(#auth-pattern)" />
+        </svg>
+
+        {/* eyebrow */}
+        <p className="relative text-micro-eyebrow text-white/80">SK AX · 사업전략팀</p>
+
+        {/* 핵심 타이포 */}
+        <div className="relative">
+          <p className="text-micro-eyebrow text-white/60 mb-6">PEER INTELLIGENCE</p>
+          <h2 className="font-display text-display-lg text-white mb-6 leading-tight">
+            전략기획의 다음 30분.
+          </h2>
+          <p className="text-subtitle text-white/85 max-w-[480px]">
+            삼성SDS · LG CNS · 현대오토에버 · 포스코DX 의 변화를 24/7 자동 감지하고,
+            SK AX 관점의 시사점 초안을 매일 아침 받아보세요.
+          </p>
+        </div>
+
+        {/* 하단 통계 */}
+        <div className="relative grid grid-cols-3 gap-8 border-t border-white/20 pt-8">
+          <div>
+            <p className="font-display text-heading-2 text-white tabular-nums">4+1</p>
+            <p className="text-caption text-white/70 mt-1">Peer 사 · 자사</p>
+          </div>
+          <div>
+            <p className="font-display text-heading-2 text-white tabular-nums">~500</p>
+            <p className="text-caption text-white/70 mt-1">일일 수집</p>
+          </div>
+          <div>
+            <p className="font-display text-heading-2 text-white tabular-nums">08:30</p>
+            <p className="text-caption text-white/70 mt-1">평일 브리핑</p>
+          </div>
+        </div>
+
+        {/* 하단 sunset stripe 시그니처 */}
+        <div className="absolute bottom-0 left-0 right-0 h-2 bg-sunset-stripe" />
+      </aside>
     </div>
   );
 }
@@ -244,15 +275,22 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
   };
 
   return (
-    <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-[var(--axis-canvas)] md:flex-row">
-      <Sidebar
-        activeView={activeView}
-        onViewChange={handleViewChange}
-        currentUserRole={currentUserRole}
-      />
-      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 text-[13px] md:pb-0">
-        {renderView()}
-      </main>
+    <div className="flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-canvas">
+      {/* TopNav 풀폭 (사이드바 위) */}
+      <TopNav activeView={activeView} />
+
+      {/* 본문: 사이드바 + main 옆 나란히 */}
+      <div className="flex flex-1 min-h-0 min-w-0">
+        <Sidebar
+          activeView={activeView}
+          onViewChange={handleViewChange}
+          currentUserRole={currentUserRole}
+        />
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 text-body-md md:pb-0">
+          {renderView()}
+          <Footer />
+        </main>
+      </div>
     </div>
   );
 }

@@ -45,11 +45,11 @@ const peerLabels: Record<PeerFilter, string> = {
 };
 
 const positioningData = [
-  { name: 'SK AX', rd: 12, margin: 8, exposure: 80, color: '#c66a4a' },
-  { name: '삼성SDS', rd: 20, margin: 25, exposure: 87, color: '#0f62fe' },
-  { name: 'LG CNS', rd: 18, margin: 14, exposure: 82, color: '#198038' },
-  { name: '현대오토에버', rd: 10, margin: 10, exposure: 76, color: '#b7791f' },
-  { name: '포스코DX', rd: 19, margin: -4, exposure: 72, color: '#64748b' },
+  { name: 'SK AX', rd: 12, margin: 8, exposure: 80, color: '#DC5A24' },
+  { name: '삼성SDS', rd: 20, margin: 25, exposure: 87, color: '#E0822F' },
+  { name: 'LG CNS', rd: 18, margin: 14, exposure: 82, color: '#A85F00' },
+  { name: '현대오토에버', rd: 10, margin: 10, exposure: 76, color: '#5A6B57' },
+  { name: '포스코DX', rd: 19, margin: -4, exposure: 72, color: '#6B6B73' },
 ];
 
 const strategyNotes: Record<Exclude<PeerFilter, 'all'>, string[]> = {
@@ -100,14 +100,14 @@ export function MonitoringView() {
           actions={<TrustSeal />}
         />
 
-        <section className="grid gap-3 md:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-4 mb-12">
           <ExecutiveMetric label="Selected peer" value={selectedPeerLabel} helper="분석 기준" tone="accent" />
           <ExecutiveMetric label="Observed cards" value={visibleCards.length} helper="현재 필터 기준" />
           <ExecutiveMetric label="High exposure" value={highCount} helper="우선 검토 신호" tone="danger" />
           <ExecutiveMetric label="Avg trust" value={avgTrust} helper="출처 신뢰도 평균" tone="success" />
         </section>
 
-        <section className="axis-panel-flat mt-5 p-4">
+        <section className="axis-panel-flat mt-12 p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2">
               {peerFilters.map((peer) => (
@@ -140,12 +140,12 @@ export function MonitoringView() {
           </div>
         </section>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
+        <section className="mt-16 grid gap-8 xl:grid-cols-[0.92fr_1.08fr]">
           <PositioningPanel />
           <TrendPanel metric={metric} stockPoints={dashboard?.stockPoints ?? []} cards={visibleCards} />
         </section>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[26rem_minmax(0,1fr)]">
+        <section className="mt-16 grid gap-8 xl:grid-cols-[26rem_minmax(0,1fr)]">
           <StrategyPanel selectedPeer={selectedPeer} />
           <div>
             <div className="mb-3 flex items-center justify-between">
@@ -189,8 +189,8 @@ function PositioningPanel() {
             name="R&D"
             unit="%"
             domain={[0, 25]}
-            tick={{ fontSize: 12, fill: '#64748b' }}
-            label={{ value: 'R&D 투자 비중', position: 'insideBottom', offset: -8, fontSize: 12, fill: '#64748b' }}
+            tick={{ fontSize: 12, fill: '#6B6B73' }}
+            label={{ value: 'R&D 투자 비중', position: 'insideBottom', offset: -8, fontSize: 12, fill: '#6B6B73' }}
           />
           <YAxis
             type="number"
@@ -198,8 +198,8 @@ function PositioningPanel() {
             name="영업이익률"
             unit="%"
             domain={[-10, 30]}
-            tick={{ fontSize: 12, fill: '#64748b' }}
-            label={{ value: '영업이익률', angle: -90, position: 'insideLeft', fontSize: 12, fill: '#64748b' }}
+            tick={{ fontSize: 12, fill: '#6B6B73' }}
+            label={{ value: '영업이익률', angle: -90, position: 'insideLeft', fontSize: 12, fill: '#6B6B73' }}
           />
           <Tooltip formatter={(value: number, name: string) => [`${value}%`, name]} />
           {positioningData.map((item) => (
@@ -211,7 +211,7 @@ function PositioningPanel() {
               shape={(props: { cx?: number; cy?: number }) => (
                 <g>
                   <circle cx={props.cx} cy={props.cy} r={8 + item.exposure / 18} fill={item.color} fillOpacity={0.88} />
-                  <text x={(props.cx ?? 0) + 12} y={(props.cy ?? 0) + 4} fontSize="12" fill="#101820">
+                  <text x={(props.cx ?? 0) + 12} y={(props.cy ?? 0) + 4} fontSize="12" fill="#1A1A1F">
                     {item.name}
                   </text>
                 </g>
@@ -253,22 +253,22 @@ function TrendPanel({
         {metric === 'stock' ? (
           <LineChart data={stockPoints} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
             <CartesianGrid stroke="rgba(16,24,32,0.08)" />
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
-            <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(value: number) => `${Math.round(value / 1000)}k`} />
+            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6B6B73' }} />
+            <YAxis tick={{ fontSize: 11, fill: '#6B6B73' }} tickFormatter={(value: number) => `${Math.round(value / 1000)}k`} />
             <Tooltip formatter={(value: number) => [`${value.toLocaleString()}원`, '종가']} />
-            <Line type="monotone" dataKey="samsungSds" name="삼성SDS" stroke="#0f62fe" strokeWidth={2.2} dot={false} />
-            <Line type="monotone" dataKey="lgCns" name="LG CNS" stroke="#198038" strokeWidth={2.2} dot={false} />
-            <Line type="monotone" dataKey="hyundaiAutoever" name="현대오토에버" stroke="#b7791f" strokeWidth={2.2} dot={false} />
-            <Line type="monotone" dataKey="poscoDx" name="포스코DX" stroke="#64748b" strokeWidth={2.2} dot={false} />
+            <Line type="monotone" dataKey="samsungSds" name="삼성SDS" stroke="#E0822F" strokeWidth={2.2} dot={false} />
+            <Line type="monotone" dataKey="lgCns" name="LG CNS" stroke="#A85F00" strokeWidth={2.2} dot={false} />
+            <Line type="monotone" dataKey="hyundaiAutoever" name="현대오토에버" stroke="#5A6B57" strokeWidth={2.2} dot={false} />
+            <Line type="monotone" dataKey="poscoDx" name="포스코DX" stroke="#6B6B73" strokeWidth={2.2} dot={false} />
           </LineChart>
         ) : (
           <LineChart data={exposureSeries} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
             <CartesianGrid stroke="rgba(16,24,32,0.08)" />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} />
-            <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[0, 100]} />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6B6B73' }} />
+            <YAxis tick={{ fontSize: 11, fill: '#6B6B73' }} domain={[0, 100]} />
             <Tooltip />
-            <Line type="monotone" dataKey="exposure" name="노출 점수" stroke="#c66a4a" strokeWidth={2.4} />
-            <Line type="monotone" dataKey="trust" name="신뢰도" stroke="#0f62fe" strokeWidth={2.2} />
+            <Line type="monotone" dataKey="exposure" name="노출 점수" stroke="#DC5A24" strokeWidth={2.4} />
+            <Line type="monotone" dataKey="trust" name="신뢰도" stroke="#E0822F" strokeWidth={2.2} />
           </LineChart>
         )}
       </ResponsiveContainer>

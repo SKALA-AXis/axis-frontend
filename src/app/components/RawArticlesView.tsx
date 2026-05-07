@@ -101,14 +101,14 @@ export function RawArticlesView({ bookmarkedIds }: RawArticlesViewProps) {
           }
         />
 
-        <section className="grid gap-3 md:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-4 mb-12">
           <ExecutiveMetric label="Bookmarked cards" value={bookmarkedCards.length} helper="믹서 입력 후보" />
           <ExecutiveMetric label="Selected" value={selectedCards.length} helper="2~20개 필요" tone={canGenerate ? 'success' : 'warning'} />
           <ExecutiveMetric label="Average exposure" value={selectedCards.length ? Math.round(selectedCards.reduce((total, card) => total + getExposureScore(card), 0) / selectedCards.length) : 0} helper="선택 카드 평균" tone="accent" />
           <ExecutiveMetric label="Result" value={result ? 'Ready' : 'Draft'} helper={result?.mixId ?? '아직 생성 전'} />
         </section>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_30rem]">
+        <section className="mt-12 grid gap-8 xl:grid-cols-[minmax(0,1fr)_30rem]">
           <div>
             <div className="mb-3 flex items-center justify-between">
               <div>
@@ -166,8 +166,8 @@ export function RawArticlesView({ bookmarkedIds }: RawArticlesViewProps) {
                     </div>
                   </div>
                   <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] p-4 text-white">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/56">SK AX perspective</p>
-                    <p className="mt-2 text-sm font-medium leading-6 text-white/86">{result.skAxPerspective}</p>
+                    <p className="text-[11px] font-semibold  text-ink">SK AX perspective</p>
+                    <p className="mt-2 text-sm font-medium leading-6 text-ink">{result.skAxPerspective}</p>
                   </div>
                   <div className="flex items-center justify-between border-t border-[var(--axis-hairline)] pt-3 text-sm">
                     <span className="text-[var(--axis-muted)]">Confidence</span>

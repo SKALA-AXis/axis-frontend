@@ -94,7 +94,7 @@ export function ExecutiveButton({
     primary: 'bg-[var(--axis-navy)] text-white hover:bg-[var(--axis-ink)]',
     secondary: 'border border-[var(--axis-hairline)] bg-[var(--axis-surface)] text-[var(--axis-ink)] hover:border-[var(--axis-accent)]',
     ghost: 'bg-transparent text-[var(--axis-ink)] hover:bg-[var(--axis-surface-muted)]',
-    danger: 'bg-[var(--axis-danger)] text-white hover:bg-[#b81920]',
+    danger: 'bg-[var(--axis-danger)] text-white hover:bg-primary-deep',
   };
 
   return (
@@ -131,7 +131,7 @@ export function ExecutiveMetric({
 
   return (
     <div className="axis-panel-flat p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">{label}</p>
+      <p className="text-[11px] font-semibold  text-[var(--axis-muted)]">{label}</p>
       <p className={`mt-2 text-2xl font-semibold tracking-[-0.03em] ${tones[tone]}`}>{value}</p>
       {helper ? <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">{helper}</p> : null}
     </div>
@@ -235,7 +235,7 @@ export function ExecutiveCard({
 
       {!compact ? (
         <div className="mt-4 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">Next action</p>
+          <p className="text-[11px] font-semibold  text-[var(--axis-muted)]">Next action</p>
           <p className="mt-1 text-sm font-medium leading-6 text-[var(--axis-ink)]">{getSuggestedActions(card)[0] ?? '후속 분석을 지정하세요.'}</p>
         </div>
       ) : null}
@@ -283,7 +283,7 @@ export function InsightActionStrip({ card }: { card: CardNewsItem }) {
       </div>
       {questions.length > 0 ? (
         <div className="mt-4 border-t border-[var(--axis-hairline)] pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">Follow-up questions</p>
+          <p className="text-[11px] font-semibold  text-[var(--axis-muted)]">Follow-up questions</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {questions.map((question) => (
               <span key={question} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] px-3 py-2 text-xs font-medium text-[var(--axis-body)]">
@@ -378,9 +378,9 @@ export function EvidenceChainPanel({ card }: { card: CardNewsItem }) {
 
             {mbbRefs.length > 0 ? (
               <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] p-3 text-white">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/56">Market reference</p>
+                <p className="text-[11px] font-semibold  text-ink">Market reference</p>
                 {mbbRefs.map((ref, index) => (
-                  <p key={`${ref.title}-${index}`} className="mt-1 text-sm leading-6 text-white/82">
+                  <p key={`${ref.title}-${index}`} className="mt-1 text-sm leading-6 text-ink">
                     {ref.firm} · {ref.title}
                   </p>
                 ))}
@@ -411,7 +411,7 @@ export function CardDecisionPanel({ card }: { card: CardNewsItem }) {
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-muted)]">{label}</p>
+      <p className="text-[10px] font-semibold  text-[var(--axis-muted)]">{label}</p>
       <p className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{value}</p>
     </div>
   );
