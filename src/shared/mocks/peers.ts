@@ -5,6 +5,7 @@ export const mockPeersData: PeersData = {
     {
       id: 'samsung_sds',
       name: '삼성SDS',
+      tier: 'domestic',
       keywords: ['Agentic AI', '제조 AX', '운영 플랫폼'],
       priority: 'high',
       stats: { primary: 3, watch: 8, archive: 12 },
@@ -14,6 +15,7 @@ export const mockPeersData: PeersData = {
     {
       id: 'lg_cns',
       name: 'LG CNS',
+      tier: 'domestic',
       keywords: ['금융', '보안', '클라우드'],
       priority: 'high',
       stats: { primary: 1, watch: 6, archive: 9 },
@@ -23,6 +25,7 @@ export const mockPeersData: PeersData = {
     {
       id: 'hyundai_autoever',
       name: '현대오토에버',
+      tier: 'domestic',
       keywords: ['SDV', '제조 데이터', '모빌리티'],
       priority: 'medium',
       stats: { primary: 2, watch: 5, archive: 7 },

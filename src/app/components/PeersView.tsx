@@ -32,6 +32,7 @@ export function PeersView({ onNavigate: _onNavigate }: PeersViewProps) {
     const addedPeer: PeerSummary = {
       id: `${name.toLowerCase().replace(/[^a-z0-9가-힣]+/g, '_')}_${Date.now()}`,
       name,
+      tier: 'overseas',
       keywords: newPeerKeywords.split(',').map((keyword) => keyword.trim()).filter(Boolean).slice(0, 4),
       priority: 'medium',
       stats: { primary: 0, watch: 0, archive: 0 },

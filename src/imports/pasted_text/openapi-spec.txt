@@ -2133,7 +2133,7 @@ components:
 
     PeerCompany:
       type: object
-      required: [id, name, is_active]
+      required: [id, name, tier, is_active]
       properties:
         id:
           type: string
@@ -2141,6 +2141,9 @@ components:
         name:
           type: string
           example: 삼성SDS
+        tier:
+          type: string
+          enum: [self, domestic, overseas]
         keywords:
           type: array
           items:
