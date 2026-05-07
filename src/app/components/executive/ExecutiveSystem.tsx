@@ -53,9 +53,7 @@ export function ExecutiveContainer({
 }
 
 export function ExecutiveHeader({
-  eyebrow,
   title,
-  subtitle,
   actions,
 }: {
   eyebrow?: string;
@@ -63,13 +61,13 @@ export function ExecutiveHeader({
   subtitle?: string;
   actions?: ReactNode;
 }) {
+  if (!actions) {
+    return <h1 className="sr-only">{title}</h1>;
+  }
+
   return (
-    <header className="mb-5 flex flex-col gap-4 border-b border-[var(--axis-hairline)] pb-5 lg:flex-row lg:items-end lg:justify-between">
-      <div className="min-w-0">
-        {eyebrow ? <p className="axis-kicker">{eyebrow}</p> : null}
-        <h1 className="axis-display-title">{title}</h1>
-        {subtitle ? <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--axis-muted)]">{subtitle}</p> : null}
-      </div>
+    <header className="mb-3 flex justify-end pb-1">
+      <h1 className="sr-only">{title}</h1>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
   );
@@ -91,7 +89,7 @@ export function ExecutiveButton({
   type?: 'button' | 'submit';
 }) {
   const variants = {
-    primary: 'bg-[var(--axis-navy)] text-white hover:bg-[var(--axis-ink)]',
+    primary: 'bg-[var(--axis-accent)] text-white hover:bg-[var(--axis-accent-strong)]',
     secondary: 'border border-[var(--axis-hairline)] bg-[var(--axis-surface)] text-[var(--axis-ink)] hover:border-[var(--axis-accent)]',
     ghost: 'bg-transparent text-[var(--axis-ink)] hover:bg-[var(--axis-surface-muted)]',
     danger: 'bg-[var(--axis-danger)] text-white hover:bg-primary-deep',
@@ -443,7 +441,7 @@ export function TrustSeal() {
   return (
     <div className="inline-flex items-center gap-2 rounded-[var(--axis-radius-md)] border border-[rgba(15,98,254,0.18)] bg-[rgba(15,98,254,0.08)] px-3 py-2 text-xs font-semibold text-[var(--axis-blue)]">
       <ShieldCheck size={15} />
-      OpenAPI v3 aligned
+      Evidence ready
     </div>
   );
 }

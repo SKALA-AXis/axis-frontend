@@ -32,7 +32,7 @@ export function FloatingAiChat() {
   };
 
   return (
-    <div className="fixed bottom-20 right-4 z-40 hidden flex-col items-end gap-3 md:bottom-5 md:right-6 md:flex">
+    <div className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3 md:bottom-5 md:right-6">
       {isOpen ? (
         <section className="mb-2 flex h-[420px] w-[330px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-none">
           <div className="flex items-center justify-between border-b border-[var(--axis-hairline)] px-4 py-3">

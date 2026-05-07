@@ -1,10 +1,14 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { AdminView } from './components/AdminView';
 import { BriefingsView } from './components/BriefingsView';
-import { Footer } from './components/Footer';
-import { HomeCardNewsView } from './components/HomeCardNewsView';
-import { IssuesView } from './components/IssuesView';
-import { MonitoringView } from './components/MonitoringView';
+import {
+  CardNewsWorkspaceView,
+  HomeDashboardView,
+  InsightResultView,
+  KeywordGraphView,
+  MixerView,
+  PeerPlusView,
+} from './components/AxisPlanningViews';
 import { RawArticlesView } from './components/RawArticlesView';
 import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
@@ -17,9 +21,11 @@ export type UserRole = 'admin' | 'strategist' | 'analyst' | 'viewer';
 const logoSrc = '/png.png';
 const bookmarksStorageKey = 'axis:bookmarked-cards';
 const authStorageKey = 'axis:authenticated';
+const themeStorageKey = 'axis:theme-mode';
 
 type SignInForm = { email: string; password: string };
 type SignUpForm = { name: string; email: string; password: string };
+type ThemeMode = 'light' | 'dark';
 const initialSignInForm: SignInForm = { email: '', password: '' };
 const initialSignUpForm: SignUpForm = { name: '', email: '', password: '' };
 
@@ -225,6 +231,10 @@ function AuthScreen({
 function DashboardShell({ onLogout }: { onLogout: () => void }) {
   const [activeView, setActiveView] = useState('home');
   const [currentUserRole] = useState<UserRole>('strategist');
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    const stored = window.localStorage.getItem(themeStorageKey);
+    return stored === 'dark' ? 'dark' : 'light';
+  });
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
     const stored = window.localStorage.getItem(bookmarksStorageKey);
     if (!stored) return [];
@@ -243,6 +253,11 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
     window.localStorage.setItem(bookmarksStorageKey, JSON.stringify(bookmarkedIds));
   }, [bookmarkedIds]);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', themeMode === 'dark');
+    window.localStorage.setItem(themeStorageKey, themeMode);
+  }, [themeMode]);
+
   const toggleBookmark = (cardId: string) => {
     setBookmarkedIds((current) =>
       current.includes(cardId) ? current.filter((id) => id !== cardId) : [...current, cardId],
@@ -250,34 +265,95 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
   };
 
   const handleViewChange = (view: string) => {
-    setActiveView(view === 'admin' && !isAdmin ? 'home' : view);
+    if (view === 'admin' && !isAdmin) {
+      setActiveView('home');
+      return;
+    }
+    if (view === 'assignment' || view === 'monitoring') {
+      setActiveView('peerPlus');
+      return;
+    }
+    if (view === 'matching' || view === 'rawArticles') {
+      setActiveView('mixer');
+      return;
+    }
+    setActiveView(view);
   };
 
   const renderView = () => {
     switch (activeView) {
       case 'home':
-        return <HomeCardNewsView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
-      case 'monitoring':
-        return <MonitoringView />;
+        return (
+          <HomeDashboardView
+            onNavigate={handleViewChange}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+          />
+        );
+      case 'peerPlus':
+        return (
+          <PeerPlusView
+            onNavigate={handleViewChange}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+          />
+        );
       case 'issues':
-        return <IssuesView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
+        return <CardNewsWorkspaceView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
+      case 'insight':
+        return (
+          <InsightResultView
+            onNavigate={handleViewChange}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+          />
+        );
+      case 'mixer':
+        return <MixerView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
+      case 'keywordGraph':
+        return (
+          <KeywordGraphView
+            onNavigate={handleViewChange}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+          />
+        );
       case 'briefings':
         return <BriefingsView onNavigate={handleViewChange} />;
+      case 'rawArticles':
+        return <RawArticlesView bookmarkedIds={bookmarkedIds} />;
       case 'settings':
         return <SettingsView onLogout={onLogout} />;
       case 'admin':
-        return isAdmin ? <AdminView /> : <MonitoringView />;
-      case 'rawArticles':
-        return <RawArticlesView bookmarkedIds={bookmarkedIds} />;
+        return isAdmin ? (
+          <AdminView />
+        ) : (
+          <HomeDashboardView
+            onNavigate={handleViewChange}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+          />
+        );
       default:
-        return <HomeCardNewsView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
+        return (
+          <HomeDashboardView
+            onNavigate={handleViewChange}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+          />
+        );
     }
   };
 
   return (
     <div className="flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-canvas">
       {/* TopNav 풀폭 (사이드바 위) */}
-      <TopNav activeView={activeView} />
+      <TopNav
+        activeView={activeView}
+        onLogoClick={() => handleViewChange('home')}
+        onNotificationSelect={handleViewChange}
+        onUserClick={() => handleViewChange('settings')}
+      />
 
       {/* 본문: 사이드바 + main 옆 나란히 */}
       <div className="flex flex-1 min-h-0 min-w-0">
@@ -285,10 +361,11 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
           activeView={activeView}
           onViewChange={handleViewChange}
           currentUserRole={currentUserRole}
+          themeMode={themeMode}
+          onThemeToggle={() => setThemeMode((mode) => (mode === 'dark' ? 'light' : 'dark'))}
         />
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 text-body-md md:pb-0">
           {renderView()}
-          <Footer />
         </main>
       </div>
     </div>

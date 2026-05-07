@@ -2,11 +2,11 @@ import {
   ChevronLeft,
   ChevronRight,
   FileChartColumn,
-  FileSearch,
   Home,
-  MonitorDot,
-  Settings,
+  Moon,
+  Network,
   Sparkles,
+  Sun,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -16,38 +16,37 @@ interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
   currentUserRole: UserRole;
+  themeMode: 'light' | 'dark';
+  onThemeToggle: () => void;
 }
 
 const baseMenuItems = [
   { id: 'home', icon: Home, label: '홈' },
-  { id: 'monitoring', icon: MonitorDot, label: '모니터링' },
+  { id: 'peerPlus', icon: Users, label: 'Peer+' },
   { id: 'issues', icon: FileChartColumn, label: '카드뉴스' },
-  { id: 'briefings', icon: FileSearch, label: '브리핑' },
-  { id: 'rawArticles', icon: Sparkles, label: '믹서기' },
+  { id: 'insight', icon: Sparkles, label: '인사이트' },
+  { id: 'mixer', icon: Sparkles, label: '믹서' },
+  { id: 'keywordGraph', icon: Network, label: '키워드 그래프' },
 ] as const;
 
-/**
- * Sidebar — Notion / YouTube / Stripe 톤
- * 흰 배경 + 우측 hairline border + 활성 = bg-cream-soft + bold + filled icon
- * 220px 폭 (collapsed 64px)
- */
-export function Sidebar({ activeView, onViewChange, currentUserRole }: SidebarProps) {
+export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, onThemeToggle }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const menuItems = currentUserRole === 'admin'
     ? [...baseMenuItems, { id: 'admin', icon: Users, label: '관리자' }]
     : baseMenuItems;
+  const ThemeIcon = themeMode === 'dark' ? Sun : Moon;
 
   return (
     <>
       {/* ─── Desktop sidebar — Notion 톤 ────────────────────── */}
       <aside
-        className={`hidden h-dvh shrink-0 flex-col border-r border-hairline-soft bg-canvas transition-[width] duration-200 md:flex ${
+        className={`hidden h-full shrink-0 flex-col bg-canvas transition-[width] duration-200 md:flex ${
           collapsed ? 'w-[64px]' : 'w-[220px]'
         }`}
       >
         {/* Menu — 상단 TopNav 가 로고 표시. 사이드바는 메뉴만. */}
-        <nav className={`flex-1 ${collapsed ? 'px-2' : 'px-3'} pt-5 overflow-y-auto`}>
-          <div className="space-y-1.5">
+        <nav className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${collapsed ? 'px-2' : 'px-4'} py-8`}>
+          <div className="space-y-5">
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeView === item.id;
@@ -56,17 +55,14 @@ export function Sidebar({ activeView, onViewChange, currentUserRole }: SidebarPr
                 <button
                   key={item.id}
                   onClick={() => onViewChange(item.id)}
-                  className={`relative flex w-full items-center rounded-md text-left transition-colors ${
+                  className={`relative flex w-full items-center rounded-md transition-colors ${
                     isActive
-                      ? 'bg-cream-soft text-ink'
+                      ? 'text-ink'
                       : 'text-charcoal hover:bg-surface'
-                  } ${collapsed ? 'justify-center px-3 py-3' : 'gap-3 px-3.5 py-3'}`}
+                  } ${collapsed ? 'justify-center px-3 py-3' : 'justify-start gap-3 px-3.5 py-3 text-left'}`}
                   aria-label={item.label}
                   title={collapsed ? item.label : undefined}
                 >
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 bg-sk-red rounded-r-md" />
-                  )}
                   <Icon
                     className={`h-5 w-5 shrink-0 ${isActive ? 'text-sk-red' : 'text-stone'}`}
                     strokeWidth={isActive ? 2.4 : 2}
@@ -84,56 +80,23 @@ export function Sidebar({ activeView, onViewChange, currentUserRole }: SidebarPr
             })}
           </div>
 
-          {/* Divider */}
-          {!collapsed && <div className="my-4 border-t border-hairline-soft" />}
-
-          {/* Settings */}
-          <button
-            type="button"
-            onClick={() => onViewChange('settings')}
-            className={`relative flex w-full items-center rounded-md text-left transition-colors ${
-              activeView === 'settings' ? 'bg-cream-soft text-ink' : 'text-charcoal hover:bg-surface'
-            } ${collapsed ? 'justify-center px-3 py-3' : 'gap-3 px-3.5 py-3'}`}
-            aria-label="설정"
-            title={collapsed ? '설정' : undefined}
-          >
-            {activeView === 'settings' && (
-              <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 bg-sk-red rounded-r-md" />
-            )}
-            <Settings
-              className={`h-5 w-5 shrink-0 ${activeView === 'settings' ? 'text-sk-red' : 'text-stone'}`}
-              strokeWidth={activeView === 'settings' ? 2.4 : 2}
-            />
-            {!collapsed && (
-              <span
-                className="text-body-md leading-tight"
-                style={{ fontWeight: activeView === 'settings' ? 700 : 600 }}
-              >
-                설정
-              </span>
-            )}
-          </button>
         </nav>
 
-        {/* User block */}
-        <div className={`border-t border-hairline-soft ${collapsed ? 'px-2 py-3' : 'px-3 py-3'}`}>
-          {!collapsed ? (
-            <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sk-red text-fine-print font-display-strong text-white">
-                SK
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-caption-bold text-ink leading-tight">SK AX User</p>
-                <p className="truncate text-fine-print text-stone capitalize leading-tight mt-0.5">{currentUserRole}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sk-red text-fine-print font-display-strong text-white">
-                SK
-              </div>
-            </div>
-          )}
+        <div className={`${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
+          <button
+            type="button"
+            onClick={onThemeToggle}
+            className={`flex w-full h-9 items-center justify-center gap-2 rounded-md text-stone hover:bg-surface transition-colors ${
+              collapsed ? 'px-0' : 'px-2'
+            }`}
+            aria-label={themeMode === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            title={themeMode === 'dark' ? '라이트 모드' : '다크 모드'}
+          >
+            <ThemeIcon className="h-4 w-4 shrink-0" />
+            {!collapsed && (
+              <span className="text-fine-print">{themeMode === 'dark' ? '라이트 모드' : '다크 모드'}</span>
+            )}
+          </button>
 
           {/* Collapse toggle */}
           <button
@@ -153,8 +116,8 @@ export function Sidebar({ activeView, onViewChange, currentUserRole }: SidebarPr
       </aside>
 
       {/* ─── Mobile bottom nav ────────────────────────────────── */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-hairline-soft bg-canvas px-2 py-2 md:hidden">
-        {[...menuItems, { id: 'settings', icon: Settings, label: '설정' }].map((item) => {
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex overflow-x-auto border-t border-hairline-soft bg-canvas px-2 py-2 md:hidden">
+        {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
 
@@ -162,7 +125,7 @@ export function Sidebar({ activeView, onViewChange, currentUserRole }: SidebarPr
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={`relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-md px-1 py-2 transition-colors ${
+              className={`relative flex min-w-[72px] flex-none flex-col items-center gap-1 rounded-md px-1 py-2 transition-colors ${
                 isActive ? 'text-action' : 'text-stone'
               }`}
             >

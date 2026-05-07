@@ -26,7 +26,6 @@ import {
   ExecutiveCard,
   ExecutiveContainer,
   ExecutiveHeader,
-  ExecutiveMetric,
   ExecutivePage,
   TrustSeal,
 } from './executive/ExecutiveSystem';
@@ -83,31 +82,18 @@ export function MonitoringView() {
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const visibleCards = rankedCards.filter((card) => selectedPeer === 'all' || card.peer_id === selectedPeer).slice(0, 6);
-  const highCount = visibleCards.filter((card) => getExposureScore(card) >= 80).length;
-  const avgTrust =
-    visibleCards.length === 0
-      ? 0
-      : Math.round(visibleCards.reduce((total, card) => total + getTrustScore(card), 0) / visibleCards.length);
-  const selectedPeerLabel = selectedPeer === 'all' ? '전체 Peer' : peerLabels[selectedPeer];
 
   return (
     <ExecutivePage>
-      <ExecutiveContainer className="pb-24">
+      <ExecutiveContainer className="pb-12">
         <ExecutiveHeader
           eyebrow="Monitoring command center"
           title="모니터링"
-          subtitle="Peer사별 관찰 상태, 노출 점수, 재무 흐름, 전략 방향성을 한 화면에서 연결합니다."
+          subtitle="Peer별 변화 신호와 재무 흐름을 빠르게 점검합니다."
           actions={<TrustSeal />}
         />
 
-        <section className="grid gap-4 md:grid-cols-4 mb-12">
-          <ExecutiveMetric label="Selected peer" value={selectedPeerLabel} helper="분석 기준" tone="accent" />
-          <ExecutiveMetric label="Observed cards" value={visibleCards.length} helper="현재 필터 기준" />
-          <ExecutiveMetric label="High exposure" value={highCount} helper="우선 검토 신호" tone="danger" />
-          <ExecutiveMetric label="Avg trust" value={avgTrust} helper="출처 신뢰도 평균" tone="success" />
-        </section>
-
-        <section className="axis-panel-flat mt-12 p-6">
+        <section className="axis-panel-flat p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2">
               {peerFilters.map((peer) => (
@@ -140,12 +126,12 @@ export function MonitoringView() {
           </div>
         </section>
 
-        <section className="mt-16 grid gap-8 xl:grid-cols-[0.92fr_1.08fr]">
+        <section className="mt-6 grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
           <PositioningPanel />
           <TrendPanel metric={metric} stockPoints={dashboard?.stockPoints ?? []} cards={visibleCards} />
         </section>
 
-        <section className="mt-16 grid gap-8 xl:grid-cols-[26rem_minmax(0,1fr)]">
+        <section className="mt-6 grid gap-6 xl:grid-cols-[26rem_minmax(0,1fr)]">
           <StrategyPanel selectedPeer={selectedPeer} />
           <div>
             <div className="mb-3 flex items-center justify-between">

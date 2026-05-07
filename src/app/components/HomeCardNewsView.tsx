@@ -705,7 +705,7 @@ function cardMatchesKeyword(card: CardNewsItem, categoryKey: string) {
   const category = keywordCategories[categoryKey];
   if (!category) return false;
 
-  // 4 카테고리 — 카테고리 의 keywords 중 하나라도 포함되면 매칭
+  // 4개 카테고리 중 하나의 keyword가 포함되면 해당 분류로 본다.
   return category.keywords.some((keyword) => text.includes(keyword.toLowerCase()));
 }
 
@@ -1111,4 +1111,3 @@ function roundRect(context: CanvasRenderingContext2D, x: number, y: number, widt
   context.quadraticCurveTo(x, y, x + radius, y);
   context.closePath();
 }
-

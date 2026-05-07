@@ -20,6 +20,15 @@ body {
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 /* ─── Page utility ─────────────────────────────────────── */
@@ -31,6 +40,7 @@ body {
 .axis-executive-page {
   background: var(--canvas);
   color: var(--ink);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ─── Glass / panels — Mistral flat (no shadow chrome) ─── */
@@ -62,6 +72,7 @@ body {
   background: var(--canvas);
   border: 1px solid var(--hairline-soft);
   border-radius: 12px;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .axis-soft-card {
@@ -257,6 +268,15 @@ body {
   padding: 1.5rem;
   transition: border-color 0.16s ease;
 }
+
+.dark .bg-white {
+  background-color: var(--axis-canvas) !important;
+}
+
+.dark .hover\:bg-white:hover {
+  background-color: var(--axis-surface) !important;
+}
+
 
 .axis-executive-card:hover {
   border-color: var(--primary);
