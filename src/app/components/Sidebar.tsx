@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { UserRole } from '../App';
+import { adminNavigationItem, primaryNavigationItems } from '../../shared/content/navigation';
 
 interface SidebarProps {
   activeView: string;
@@ -22,21 +23,22 @@ interface SidebarProps {
   onThemeToggle: () => void;
 }
 
-const baseMenuItems = [
-  { id: 'home', icon: Home, label: '홈' },
-  { id: 'briefings', icon: FileText, label: '브리핑' },
-  { id: 'insight', icon: Lightbulb, label: '인사이트' },
-  { id: 'peerPlus', icon: Users, label: 'Peer+' },
-  { id: 'issues', icon: FileChartColumn, label: '카드뉴스' },
-  { id: 'mixer', icon: Shuffle, label: '믹서' },
-  { id: 'keywordGraph', icon: Network, label: '키워드 그래프' },
-] as const;
+const menuIcons = {
+  home: Home,
+  briefings: FileText,
+  insight: Lightbulb,
+  peerPlus: Users,
+  issues: FileChartColumn,
+  mixer: Shuffle,
+  keywordGraph: Network,
+  admin: Users,
+} as const;
 
 export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, onThemeToggle }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const menuItems = currentUserRole === 'admin'
-    ? [...baseMenuItems, { id: 'admin', icon: Users, label: '관리자' }]
-    : baseMenuItems;
+    ? [...primaryNavigationItems, adminNavigationItem]
+    : primaryNavigationItems;
   const ThemeIcon = themeMode === 'dark' ? Sun : Moon;
 
   return (
@@ -51,7 +53,7 @@ export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, 
         <nav className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${collapsed ? 'px-2' : 'px-4'} py-8`}>
           <div className="space-y-5">
             {menuItems.map((item) => {
-              const Icon = item.icon;
+              const Icon = menuIcons[item.id];
               const isActive = activeView === item.id;
 
               return (
@@ -121,7 +123,7 @@ export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, 
       {/* ─── Mobile bottom nav ────────────────────────────────── */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex overflow-x-auto border-t border-hairline-soft bg-canvas px-2 py-2 md:hidden">
         {menuItems.map((item) => {
-          const Icon = item.icon;
+          const Icon = menuIcons[item.id];
           const isActive = activeView === item.id;
 
           return (

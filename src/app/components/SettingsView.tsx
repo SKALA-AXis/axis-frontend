@@ -7,15 +7,9 @@ import {
   ExecutiveHeader,
   ExecutivePage,
 } from './executive/ExecutiveSystem';
+import { mockLoginHistory } from '../../shared/mocks/userSettings';
 
 type SettingsTab = 'account' | 'history' | 'notifications';
-
-const loginHistory = [
-  { id: '1', date: '2026.05.04', time: '09:14', action: 'login', country: '대한민국', ipAddress: '121.168.25.41' },
-  { id: '2', date: '2026.05.03', time: '18:42', action: 'view', country: '대한민국', ipAddress: '121.168.25.41' },
-  { id: '3', date: '2026.05.02', time: '08:57', action: 'share', country: '일본', ipAddress: '103.24.77.118' },
-  { id: '4', date: '2026.05.01', time: '21:05', action: 'download', country: '미국', ipAddress: '34.201.11.82' },
-];
 
 export function SettingsView({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
@@ -111,7 +105,7 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {loginHistory.map((item) => (
+                      {mockLoginHistory.map((item) => (
                         <tr key={item.id}>
                           <td>{item.date} {item.time}</td>
                           <td>{item.action}</td>

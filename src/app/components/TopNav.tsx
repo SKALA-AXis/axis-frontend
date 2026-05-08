@@ -7,6 +7,13 @@ import {
   getPeerLabel,
   getSummaryLines,
 } from '../../features/card-news/mappers/cardNewsExecutive';
+import { viewLabels } from '../../shared/content/navigation';
+import {
+  mockNotificationItems,
+  notificationClearedStorageKey,
+  notificationStorageKey,
+  type NotificationItem,
+} from '../../shared/mocks/notifications';
 import { mockPeerPlusOptions, type PeerPlusPeerId } from '../../shared/mocks/peerPlus';
 
 interface TopNavProps {
@@ -20,22 +27,6 @@ interface TopNavProps {
   onSearchNavigate?: (target: string, options?: { peerId?: PeerPlusPeerId; query?: string }) => void;
 }
 
-const viewLabels: Record<string, string> = {
-  home: '홈',
-  assignment: 'Peer+',
-  matching: '믹서',
-  peerPlus: 'Peer+',
-  issues: '카드뉴스',
-  insight: '인사이트',
-  keywordGraph: '키워드 그래프',
-  monitoring: 'Peer+',
-  mixer: '믹서',
-  briefings: '브리핑',
-  rawArticles: '믹서기',
-  settings: '설정',
-  admin: '관리자',
-};
-
 function formatLastCrawlUpdate() {
   const date = new Date();
   const dateLabel = date.toLocaleDateString('ko-KR', {
@@ -46,27 +37,6 @@ function formatLastCrawlUpdate() {
   return `${dateLabel} 08:30`;
 }
 
-type NotificationItem = {
-  id: string;
-  peer: string;
-  title: string;
-  tone: string;
-  target: string;
-  time: string;
-  read: boolean;
-};
-
-const notificationStorageKey = 'axis:notifications';
-const notificationClearedStorageKey = 'axis:notifications-cleared';
-
-const notificationItems: NotificationItem[] = [
-  { id: 'notice-posco-megadeal', peer: '포스코DX', title: '공공 메가딜 우선협상 신호가 감지되었습니다.', tone: '대응 필요', target: 'keywordGraph', time: '08:30', read: false },
-  { id: 'notice-lg-cardnews', peer: 'LG CNS', title: 'AX 금융 패키지 관련 카드뉴스 요약이 준비되었습니다.', tone: '카드뉴스 보기', target: 'issues', time: '08:12', read: false },
-  { id: 'notice-samsung-ir', peer: '삼성SDS', title: 'IR 기반 AI agent 지표가 Peer+에 반영되었습니다.', tone: 'Peer+ 이동', target: 'peerPlus', time: '07:55', read: true },
-  { id: 'notice-hyundai-factory', peer: '현대 오토에버', title: '스마트팩토리 데이터 플랫폼 언급량이 증가했습니다.', tone: '관찰', target: 'peerPlus', time: '어제', read: true },
-  { id: 'notice-briefing-ready', peer: 'AXIS', title: '주간 브리핑 초안이 생성되어 검토할 수 있습니다.', tone: '브리핑', target: 'briefings', time: '어제', read: true },
-];
-
 function loadNotifications() {
   try {
     const stored = window.localStorage.getItem(notificationStorageKey);
@@ -76,11 +46,11 @@ function loadNotifications() {
       return storedItems;
     }
     const byId = new Map(storedItems.map((item) => [item.id, item]));
-    const seeded = notificationItems.map((item) => byId.get(item.id) ?? item);
-    const extraStored = storedItems.filter((item) => !notificationItems.some((seed) => seed.id === item.id));
+    const seeded = mockNotificationItems.map((item) => byId.get(item.id) ?? item);
+    const extraStored = storedItems.filter((item) => !mockNotificationItems.some((seed) => seed.id === item.id));
     return [...seeded, ...extraStored];
   } catch {
-    return notificationItems;
+    return mockNotificationItems;
   }
 }
 
