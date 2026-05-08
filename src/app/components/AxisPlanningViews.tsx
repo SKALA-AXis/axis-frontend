@@ -1,9 +1,12 @@
-import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
   Bookmark,
   Box,
+  CalendarDays,
   Check,
+  ChevronLeft,
+  ChevronRight,
   CircleDot,
   Filter,
   LineChart as LineChartIcon,
@@ -14,16 +17,16 @@ import {
   Radar,
   Share2,
   Sparkles,
+  X,
 } from 'lucide-react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   PolarAngleAxis,
   PolarGrid,
   PolarRadiusAxis,
@@ -46,6 +49,8 @@ import {
 } from '../../features/card-news/mappers/cardNewsExecutive';
 import { useDashboard } from '../../features/dashboard/hooks/useDashboard';
 import type { DashboardKeywordSearchPoint } from '../../features/dashboard/model/dashboard';
+import { mockMixerConfig } from '../../shared/mocks/mixer';
+import { mockPeerPlusIrProfiles, mockPeerPlusKeywordCloud, mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../shared/mocks/peerPlus';
 import { FloatingAiChat } from './FloatingAiChat';
 import {
   ExecutiveBadge,
@@ -91,6 +96,8 @@ async function shareCardNews(card: CardNewsItem) {
   return '카드뉴스 링크를 복사했습니다.';
 }
 
+export { shareCardNews };
+
 function FilterChip({
   children,
   active = false,
@@ -130,30 +137,149 @@ function ChartButton({
   icon,
   onClick,
   children,
+  controls,
 }: {
   title: string;
   helper: string;
   icon: ReactNode;
   onClick: () => void;
   children: ReactNode;
+  controls?: ReactNode;
 }) {
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="axis-panel-flat min-h-[196px] p-4 text-left transition hover:border-[var(--axis-accent)]"
+      onKeyDown={handleKeyDown}
+      className="axis-panel-flat min-h-[250px] cursor-pointer p-4 text-left transition hover:border-[var(--axis-accent)]"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="axis-kicker">{helper}</p>
           <h3 className="axis-section-heading mt-1">{title}</h3>
         </div>
-        <span className="flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] text-[var(--axis-accent)]">
-          {icon}
-        </span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {controls}
+          <span className="flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] text-[var(--axis-accent)]">
+            {icon}
+          </span>
+        </div>
       </div>
-      <div className="h-[118px]">{children}</div>
-    </button>
+      <div className="h-[170px]">{children}</div>
+    </div>
+  );
+}
+
+type DonutCalloutDatum = {
+  name: string;
+  value: number;
+  color: string;
+};
+
+function polarPoint(cx: number, cy: number, radius: number, angle: number) {
+  return {
+    x: cx + radius * Math.cos(angle),
+    y: cy + radius * Math.sin(angle),
+  };
+}
+
+function donutArcPath(cx: number, cy: number, innerRadius: number, outerRadius: number, startAngle: number, endAngle: number) {
+  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+  const outerStart = polarPoint(cx, cy, outerRadius, startAngle);
+  const outerEnd = polarPoint(cx, cy, outerRadius, endAngle);
+  const innerEnd = polarPoint(cx, cy, innerRadius, endAngle);
+  const innerStart = polarPoint(cx, cy, innerRadius, startAngle);
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`,
+    'Z',
+  ].join(' ');
+}
+
+function DonutCalloutChart({ data }: { data: DonutCalloutDatum[] }) {
+  const total = Math.max(1, data.reduce((sum, item) => sum + item.value, 0));
+  let cursor = -Math.PI / 2;
+  const cx = 180;
+  const cy = 118;
+  const outerRadius = 68;
+  const innerRadius = 26;
+  const segments = data.map((item, index) => {
+    const startAngle = cursor;
+    const angle = (item.value / total) * Math.PI * 2;
+    cursor += angle;
+    const endAngle = cursor;
+    const midAngle = startAngle + angle / 2;
+    const side = Math.cos(midAngle) >= 0 ? 'right' : 'left';
+    const anchor = polarPoint(cx, cy, outerRadius + 2, midAngle);
+    const elbow = polarPoint(cx, cy, outerRadius + 18, midAngle);
+    const y = Math.min(202, Math.max(28, elbow.y + (index % 2 === 0 ? -2 : 8)));
+    const labelX = side === 'right' ? 300 : 60;
+    const lineEndX = side === 'right' ? labelX - 24 : labelX + 24;
+    return {
+      ...item,
+      startAngle,
+      endAngle,
+      anchor,
+      elbow: { ...elbow, y },
+      labelX,
+      lineEndX,
+      side,
+      percentage: Math.round((item.value / total) * 100),
+    };
+  });
+
+  return (
+    <svg viewBox="0 0 360 236" className="h-full w-full overflow-visible" role="img" aria-label="선택 비율 도넛 차트">
+      <g>
+        {segments.map((item) => (
+          <path
+            key={item.name}
+            d={donutArcPath(cx, cy, innerRadius, outerRadius, item.startAngle, item.endAngle)}
+            fill={item.color}
+            opacity="0.9"
+          />
+        ))}
+      </g>
+      <circle cx={cx} cy={cy} r={innerRadius - 1} fill="var(--axis-canvas)" />
+      {segments.map((item) => (
+        <g key={`label-${item.name}`}>
+          <path
+            d={`M ${item.anchor.x} ${item.anchor.y} L ${item.elbow.x} ${item.elbow.y} L ${item.lineEndX} ${item.elbow.y}`}
+            fill="none"
+            stroke="var(--axis-muted)"
+            strokeOpacity="0.72"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <text
+            x={item.labelX}
+            y={item.elbow.y - 4}
+            textAnchor={item.side === 'right' ? 'end' : 'start'}
+            className="fill-[var(--axis-ink)] text-[13px] font-bold"
+          >
+            {item.name}
+          </text>
+          <text
+            x={item.labelX}
+            y={item.elbow.y + 14}
+            textAnchor={item.side === 'right' ? 'end' : 'start'}
+            className="fill-[var(--axis-muted)] text-[12px] font-semibold"
+          >
+            {item.value} · {item.percentage}%
+          </text>
+        </g>
+      ))}
+    </svg>
   );
 }
 
@@ -178,7 +304,7 @@ function GraphifyPreview({ large = false }: { large?: boolean }) {
         <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-muted)]">Graphify ready</span>
         <ExecutiveBadge tone="accent">관계 시각화</ExecutiveBadge>
       </div>
-      <svg viewBox="0 0 320 260" className={`${large ? 'h-[218px]' : 'h-[142px]'} w-full`} role="img" aria-label="오늘 인사이트 관계 그래프 미리보기">
+      <svg viewBox="0 0 320 280" className={`${large ? 'h-[270px]' : 'h-[154px]'} w-full`} role="img" aria-label="오늘 인사이트 관계 그래프 미리보기">
         {links.map(([sourceId, targetId]) => {
           const source = nodeMap.get(sourceId);
           const target = nodeMap.get(targetId);
@@ -191,7 +317,8 @@ function GraphifyPreview({ large = false }: { large?: boolean }) {
               x2={target.x}
               y2={target.y}
               stroke="var(--axis-graph-edge)"
-              strokeWidth="3"
+              strokeOpacity="0.86"
+              strokeWidth="4"
               strokeLinecap="round"
             />
           );
@@ -225,6 +352,7 @@ export function HomeDashboardView({
   const filteredCards = rankedCards;
   const summaryChoices = filteredCards.slice(0, 5);
   const [summaryIndex, setSummaryIndex] = useState(0);
+  const [interestChartIndex, setInterestChartIndex] = useState(0);
   const [homeDetailCardId, setHomeDetailCardId] = useState<string | null>(null);
   const [homeDetailSlideIndex, setHomeDetailSlideIndex] = useState(0);
 
@@ -233,7 +361,7 @@ export function HomeDashboardView({
     setSummaryIndex((current) => current % summaryChoices.length);
     const id = window.setInterval(() => {
       setSummaryIndex((current) => (current + 1) % summaryChoices.length);
-    }, 4_500);
+    }, 3_000);
     return () => window.clearInterval(id);
   }, [summaryChoices.length]);
 
@@ -253,11 +381,12 @@ export function HomeDashboardView({
     { label: '전주 대비', value: '+18%' },
     { label: '핵심 키워드', value: dashboard.keywordSeries[0]?.name ?? 'Agentic AI' },
   ];
-  const barData = dashboard.keywordSeries.map((item, index) => ({
-    name: item.name,
-    value: Number(item.total),
-    color: item.color || peerColors[index % peerColors.length],
-  }));
+  const peerFinancialData = [
+    { name: '삼성SDS', backlog: 8.4, profit: 7.1, color: 'var(--axis-graph-company)' },
+    { name: 'LG CNS', backlog: 7.6, profit: 6.8, color: 'var(--axis-graph-infra)' },
+    { name: '현대오토에버', backlog: 6.9, profit: 6.1, color: 'var(--axis-graph-security)' },
+    { name: '포스코DX', backlog: 6.4, profit: 5.8, color: 'var(--axis-graph-deal)' },
+  ];
   const radarData = [
     { subject: '재무', sk: 72, peer: 82 },
     { subject: '사업', sk: 84, peer: 78 },
@@ -265,21 +394,51 @@ export function HomeDashboardView({
     { subject: '기술', sk: 88, peer: 81 },
     { subject: '리스크', sk: 62, peer: 58 },
   ];
+  const peerStockPoints = [
+    { time: '09:00', samsung: 100, lg: 100, hyundai: 100, posco: 100 },
+    { time: '10:00', samsung: 101.8, lg: 100.6, hyundai: 99.4, posco: 101.1 },
+    { time: '11:00', samsung: 102.4, lg: 102.1, hyundai: 100.2, posco: 103.4 },
+    { time: '12:00', samsung: 101.6, lg: 103.8, hyundai: 100.9, posco: 102.7 },
+    { time: '13:00', samsung: 103.1, lg: 104.5, hyundai: 101.7, posco: 104.2 },
+    { time: '14:00', samsung: 104.2, lg: 103.7, hyundai: 102.6, posco: 105.8 },
+    { time: '15:00', samsung: 103.8, lg: 105.2, hyundai: 103.4, posco: 105.1 },
+  ];
+  const showStockChart = interestChartIndex % 2 === 1;
+  const chartSwitcher = (
+    <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
+      <button
+        type="button"
+        aria-label="이전 그래프"
+        onClick={() => setInterestChartIndex((current) => (current + 1) % 2)}
+        className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+      >
+        <ChevronLeft size={15} />
+      </button>
+      <button
+        type="button"
+        aria-label="다음 그래프"
+        onClick={() => setInterestChartIndex((current) => (current + 1) % 2)}
+        className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+      >
+        <ChevronRight size={15} />
+      </button>
+    </div>
+  );
 
   return (
     <ExecutivePage>
       <ExecutiveContainer className="pb-10 pt-3">
-        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
+        <section className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
           <button
             type="button"
             onClick={() => onNavigate('insight')}
-            className="axis-panel-flat relative min-h-[340px] overflow-hidden p-5 text-left transition hover:border-[var(--axis-accent)]"
+            className="axis-panel-flat relative min-h-[430px] overflow-hidden p-5 text-left transition hover:border-[var(--axis-accent)]"
           >
             <div className="pointer-events-none absolute inset-0 opacity-80" style={{ background: 'radial-gradient(circle at 74% 42%, rgba(220,90,36,0.13), transparent 34%), radial-gradient(circle at 18% 18%, rgba(90,107,87,0.10), transparent 32%)' }} />
-            <div className="relative grid h-full gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+            <div className="relative grid h-full gap-5 2xl:grid-cols-[minmax(320px,1fr)_minmax(300px,420px)] 2xl:items-center">
               <div className="min-w-0">
                 <p className="axis-kicker">Today insight</p>
-                <h2 className="mt-2 max-w-3xl text-heading-4 font-display leading-tight text-ink">
+                <h2 className="mt-2 max-w-3xl text-[clamp(2rem,3.1vw,3.7rem)] font-display leading-[1.08] text-ink">
                   과거와의 변화를 기반으로 오늘의 동향
                 </h2>
                 <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
@@ -313,11 +472,13 @@ export function HomeDashboardView({
                   ))}
                 </div>
               </div>
-              <GraphifyPreview large />
+              <div className="min-w-0">
+                <GraphifyPreview large />
+              </div>
             </div>
           </button>
 
-          <aside className="axis-panel-flat w-full max-w-full min-w-0 overflow-hidden p-4 [contain:inline-size]">
+          <aside className="axis-panel-flat min-h-[430px] w-full max-w-full min-w-0 overflow-hidden p-4 [contain:inline-size]">
             <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="axis-kicker">Card news</p>
@@ -387,17 +548,36 @@ export function HomeDashboardView({
           </aside>
         </section>
 
-        <section className="mt-4 grid gap-4 lg:grid-cols-3">
-          <ChartButton title="관심도 변화" helper="Line graph" icon={<LineChartIcon size={18} />} onClick={() => onNavigate('keywordGraph')}>
+        <section className="mt-4 grid gap-4 xl:grid-cols-3">
+          <ChartButton
+            title={showStockChart ? 'Peer사 주가 변동' : '관심도 변화'}
+            helper={showStockChart ? 'Stock compare' : 'Line graph'}
+            icon={<LineChartIcon size={18} />}
+            controls={chartSwitcher}
+            onClick={() => onNavigate(showStockChart ? 'peerPlus' : 'keywordGraph')}
+          >
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dashboard.keywordSearchPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="var(--axis-graph-edge)" />
-                <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="agenticAi" name="Agentic AI" stroke="var(--axis-graph-ax)" strokeWidth={2.4} dot={false} />
-                <Line type="monotone" dataKey="sovereignAi" name="Sovereign AI" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
-              </LineChart>
+              {showStockChart ? (
+                <LineChart data={peerStockPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
+                  <CartesianGrid stroke="var(--axis-graph-edge)" />
+                  <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} domain={[98, 107]} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="samsung" name="삼성SDS" stroke="var(--axis-graph-company)" strokeWidth={2.3} dot={false} />
+                  <Line type="monotone" dataKey="lg" name="LG CNS" stroke="var(--axis-graph-infra)" strokeWidth={2.3} dot={false} />
+                  <Line type="monotone" dataKey="hyundai" name="현대오토에버" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
+                  <Line type="monotone" dataKey="posco" name="포스코DX" stroke="var(--axis-graph-deal)" strokeWidth={2.2} dot={false} />
+                </LineChart>
+              ) : (
+                <LineChart data={dashboard.keywordSearchPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
+                  <CartesianGrid stroke="var(--axis-graph-edge)" />
+                  <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="agenticAi" name="Agentic AI" stroke="var(--axis-graph-ax)" strokeWidth={2.4} dot={false} />
+                  <Line type="monotone" dataKey="sovereignAi" name="Sovereign AI" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
+                </LineChart>
+              )}
             </ResponsiveContainer>
           </ChartButton>
           <ChartButton title="DART 기준 비교" helper="Radar chart" icon={<Radar size={18} />} onClick={() => onNavigate('peerPlus')}>
@@ -412,18 +592,19 @@ export function HomeDashboardView({
               </RadarChart>
             </ResponsiveContainer>
           </ChartButton>
-          <ChartButton title="키워드 영향도" helper="Bar graph" icon={<BarChart3 size={18} />} onClick={() => onNavigate('keywordGraph')}>
+          <ChartButton title="Peer사별 수주·재무" helper="DART metric" icon={<BarChart3 size={18} />} onClick={() => onNavigate('peerPlus')}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={peerFinancialData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
                 <CartesianGrid stroke="var(--axis-graph-edge)" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
                 <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
                 <Tooltip />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {barData.map((item) => (
-                    <Cell key={item.name} fill={item.color} />
+                <Bar dataKey="backlog" name="수주/잔고 지표" radius={[6, 6, 0, 0]}>
+                  {peerFinancialData.map((item) => (
+                    <Cell key={`backlog-${item.name}`} fill={item.color} />
                   ))}
                 </Bar>
+                <Bar dataKey="profit" name="재무 건전성" fill="var(--axis-graph-ax)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartButton>
@@ -449,9 +630,11 @@ export function HomeDashboardView({
 
 type MixerResultView = {
   summary: string;
+  insightBrief: string[];
+  evidenceLogic: string[];
+  actions: string[];
   connections: string[];
   skAxPerspective: string;
-  confidence: number;
 };
 
 export function MixerView({
@@ -463,19 +646,17 @@ export function MixerView({
 }) {
   const { cards, isLoading, error } = useCardNews();
   const [mode, setMode] = useState<'select' | 'result'>('select');
-  const [selectedPeers, setSelectedPeers] = useState<string[]>(['삼성SDS', 'LG CNS']);
-  const [selectedCustomers, setSelectedCustomers] = useState<string[]>(['공공기관']);
-  const [selectedIndustries, setSelectedIndustries] = useState<string[]>(['공공', '제조']);
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(['AX', '수주', 'AI 에이전트']);
+  const [selectedPeers, setSelectedPeers] = useState<string[]>(mockMixerConfig.defaults.peers);
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>(mockMixerConfig.defaults.customers);
+  const [selectedIndustries, setSelectedIndustries] = useState<string[]>(mockMixerConfig.defaults.industries);
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(mockMixerConfig.defaults.keywords);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [result, setResult] = useState<MixerResultView | null>(null);
+  const [mixerDetailCardId, setMixerDetailCardId] = useState<string | null>(null);
+  const [mixerDetailSlideIndex, setMixerDetailSlideIndex] = useState(0);
 
   const mixerCards = useMemo(() => buildMixerCards(cards), [cards]);
-  const peerOptions = ['삼성SDS', 'LG CNS', '현대 오토에버', '포스코 DX'];
-  const customerOptions = ['공공기관', '금융권', '제조 대기업', '유통/서비스'];
-  const industryOptions = ['공공', '금융', '제조', '클라우드', '보안'];
-  const keywordOptions = ['AX', 'AI 에이전트', '수주', '클라우드', '보안', '스마트팩토리'];
   const visibleCards = mixerCards.filter((item) => {
     const peerMatched = selectedPeers.length === 0 || selectedPeers.includes(item.peer);
     const bookmarkMatched = !bookmarkedOnly || bookmarkedIds.includes(item.card.id);
@@ -490,14 +671,20 @@ export function MixerView({
     { name: '산업', value: selectedIndustries.length, color: 'var(--axis-graph-security)' },
     { name: '키워드', value: selectedKeywords.length, color: 'var(--axis-graph-company)' },
   ].filter((item) => item.value > 0);
-  const resultRadarData = [
-    { subject: '관련도', mixed: Math.min(96, 64 + selectedCards.length * 7), baseline: 62 },
-    { subject: '수주 신호', mixed: selectedKeywords.includes('수주') ? 88 : 70, baseline: 61 },
-    { subject: 'AX 전환', mixed: selectedKeywords.includes('AX') ? 92 : 72, baseline: 66 },
-    { subject: '산업 적합', mixed: Math.min(94, 58 + selectedIndustries.length * 8), baseline: 64 },
-    { subject: '북마크 근거', mixed: Math.min(92, 52 + selectedCards.filter((item) => bookmarkedIds.includes(item.card.id)).length * 14), baseline: 58 },
-    { subject: '실행성', mixed: Math.min(95, 66 + selectedCustomers.length * 6), baseline: 63 },
-  ];
+  const resultRadarData = mockMixerConfig.radarMetrics.map((metric) => {
+    const keywordScore = metric.keyword && selectedKeywords.includes(metric.keyword) ? metric.keywordValue ?? metric.base : metric.base;
+    const weightedScore =
+      keywordScore +
+      (metric.cardWeight ?? 0) * selectedCards.length +
+      (metric.industryWeight ?? 0) * selectedIndustries.length +
+      (metric.bookmarkWeight ?? 0) * selectedCards.filter((item) => bookmarkedIds.includes(item.card.id)).length +
+      (metric.customerWeight ?? 0) * selectedCustomers.length;
+    return {
+      subject: metric.subject,
+      mixed: Math.min(metric.max, weightedScore),
+    };
+  });
+  const mixerDetailCard = mixerDetailCardId ? cards.find((card) => card.id === mixerDetailCardId) ?? null : null;
 
   const toggleListValue = (value: string, setter: (updater: (current: string[]) => string[]) => void) => {
     setter((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]));
@@ -511,20 +698,37 @@ export function MixerView({
     if (!canGenerate) return;
     const peers = Array.from(new Set(selectedCards.map((item) => item.peer)));
     const summaryLines = selectedCards.flatMap((item) => getSummaryLines(item.card));
+    const primaryIndustries = selectedIndustries.slice(0, 2).join(' · ') || '고객 산업';
+    const primaryKeywords = selectedKeywords.slice(0, 3).join(' · ') || 'AX 신호';
     const connections = Array.from(
       new Set(
         summaryLines
           .join(' ')
           .split(/\s+/)
-          .filter((token) => ['AX', 'AI', '보안', '수주', '운영', '클라우드', '제조', '데이터'].includes(token)),
+          .filter((token) => mockMixerConfig.connectionKeywords.includes(token)),
       ),
     ).slice(0, 5);
 
     setResult({
-      summary: `${peers.join(', ')} 카드 ${selectedCards.length}건에서 AX 운영 전환과 근거 데이터 연결 신호가 반복됩니다.`,
+      summary: `${mockMixerConfig.insightTemplate.leadPrefix} ${peers.join(', ')}의 ${primaryKeywords} 신호를 ${primaryIndustries} 제안 맥락으로 재조합해 ${mockMixerConfig.insightTemplate.leadSuffix}`,
+      insightBrief: [
+        `${peers.join(', ')}에서 반복된 메시지는 단순 기술 발표보다 고객 운영 성과, 수주 근거, 실행 레퍼런스 쪽으로 모입니다.`,
+        `${primaryIndustries} 고객에게는 “기능 도입”보다 “업무 KPI 개선과 안정적 운영 전환”을 먼저 제안하는 편이 설득력이 큽니다.`,
+        `북마크와 카드뉴스를 함께 묶으면 경쟁사 공개 신호를 SK AX의 산업별 제안 문장으로 바꾸는 근거 패키지가 됩니다.`,
+      ],
+      evidenceLogic: [
+        `선택 카드 ${selectedCards.length}건`,
+        `Peer ${peers.length}개사`,
+        `키워드 ${selectedKeywords.length}개`,
+        `북마크 근거 ${selectedCards.filter((item) => bookmarkedIds.includes(item.card.id)).length}건`,
+      ],
+      actions: [
+        '고객 미팅 전 카드뉴스 묶음을 3문장 브리핑으로 변환',
+        '제안서 첫 장에 수주/운영/보안 근거를 함께 배치',
+        'Graphify 관계도를 통해 예상 밖 연결 키워드를 후속 검토',
+      ],
       connections: connections.length > 0 ? connections : [...selectedKeywords, '고객 제안'].slice(0, 5),
       skAxPerspective: selectedCards[0]?.card.actionItems?.[0] ?? '선택한 카드 묶음을 산업별 제안 근거와 실행 문장으로 재구성할 수 있습니다.',
-      confidence: Math.min(94, 68 + selectedCards.length * 6),
     });
     setMode('result');
   };
@@ -548,27 +752,53 @@ export function MixerView({
           />
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-            <article className="axis-panel-flat min-h-[320px] p-6">
-              <p className="axis-kicker">New insight</p>
-              <h2 className="mt-2 text-heading-3 font-display leading-tight text-[var(--axis-ink)]">
+            <article className="axis-panel-flat min-h-[360px] overflow-hidden border-[rgba(220,90,36,0.26)]">
+              <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
+                <p className="axis-kicker">New insight</p>
+                <h2 className="mt-2 text-heading-3 font-display leading-tight text-[var(--axis-ink)]">
                 {result.summary}
-              </h2>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-4">
-                  <p className="text-xs font-semibold text-[var(--axis-accent-strong)]">뉴스 내용 분석</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-                    {selectedCards[0] ? getSummaryLines(selectedCards[0].card)[0] : '선택한 뉴스의 반복 문맥을 분석합니다.'}
-                  </p>
-                </div>
-                <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-4">
-                  <p className="text-xs font-semibold text-[var(--axis-accent-strong)]">SK AX 관점</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{result.skAxPerspective}</p>
-                </div>
+                </h2>
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {result.connections.map((connection) => (
-                  <ExecutiveBadge key={connection} tone="accent">{connection}</ExecutiveBadge>
-                ))}
+              <div className="p-6">
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
+                  <div className="space-y-3">
+                    {result.insightBrief.map((item, index) => (
+                      <div key={item} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
+                          {index + 1}
+                        </span>
+                        <p className="text-base font-semibold leading-7 text-[var(--axis-ink)]">{item}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
+                    <p className="text-xs font-semibold text-[var(--axis-success)]">{mockMixerConfig.insightTemplate.evidenceLabel}</p>
+                    <div className="mt-3 grid gap-2">
+                      {result.evidenceLogic.map((item) => (
+                        <span key={item} className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm font-semibold text-[var(--axis-ink)]">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-4">
+                    <p className="text-xs font-semibold text-[var(--axis-accent-strong)]">뉴스 내용 분석</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+                      {selectedCards[0] ? getSummaryLines(selectedCards[0].card)[0] : '선택한 뉴스의 반복 문맥을 분석합니다.'}
+                    </p>
+                  </div>
+                  <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-4">
+                    <p className="text-xs font-semibold text-[var(--axis-accent-strong)]">{mockMixerConfig.insightTemplate.actionLabel}</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{result.skAxPerspective}</p>
+                  </div>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {result.connections.map((connection) => (
+                    <ExecutiveBadge key={connection} tone="accent">{connection}</ExecutiveBadge>
+                  ))}
+                </div>
               </div>
             </article>
 
@@ -581,30 +811,54 @@ export function MixerView({
             </aside>
           </section>
 
-          <section className="mt-5 grid gap-5 lg:grid-cols-2">
-            <article className="axis-panel-flat min-h-[320px] p-5">
-              <p className="axis-kicker">Radar graph</p>
+          <section className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+            <article className="axis-panel-flat min-h-[430px] p-5">
+              <p className="axis-kicker">Signal map</p>
               <h3 className="axis-section-heading mt-1">믹서 결과 신호 분포</h3>
-              <div className="mt-4 h-[240px]">
+              <div className="mt-3 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3">
+                <div className="h-[286px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={resultRadarData} outerRadius={90}>
+                  <RadarChart data={resultRadarData} outerRadius={106} margin={{ top: 22, right: 48, bottom: 8, left: 48 }}>
                     <PolarGrid stroke="var(--axis-graph-edge)" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                    <PolarRadiusAxis tick={false} axisLine={false} />
-                    <RadarShape name="믹서 결과" dataKey="mixed" stroke="var(--axis-graph-ax)" fill="var(--axis-graph-ax)" fillOpacity={0.22} />
-                    <RadarShape name="기준선" dataKey="baseline" stroke="var(--axis-graph-company)" fill="var(--axis-graph-company)" fillOpacity={0.08} />
-                    <Tooltip />
+                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fontWeight: 700, fill: 'var(--axis-ink)' }} />
+                    <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                    <RadarShape name="선택 조합 신호" dataKey="mixed" stroke="var(--axis-graph-ax)" strokeWidth={2.6} fill="var(--axis-graph-ax)" fillOpacity={0.24} />
+                    <Legend verticalAlign="bottom" height={24} iconType="circle" wrapperStyle={{ fontSize: 12, color: 'var(--axis-muted)' }} />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--axis-canvas)',
+                        border: '1px solid var(--axis-hairline)',
+                        borderRadius: 8,
+                        color: 'var(--axis-ink)',
+                      }}
+                    />
                   </RadarChart>
                 </ResponsiveContainer>
+                </div>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {result.actions.map((action) => (
+                  <p key={action} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] p-3 text-xs font-semibold leading-5 text-[var(--axis-body)]">
+                    {action}
+                  </p>
+                ))}
               </div>
             </article>
 
-            <article className="axis-panel-flat min-h-[320px] p-5">
+            <article className="axis-panel-flat min-h-[430px] p-5">
               <p className="axis-kicker">Selected evidence</p>
               <h3 className="axis-section-heading mt-1">결과에 반영된 카드뉴스</h3>
               <div className="mt-4 grid gap-3">
                 {selectedCards.slice(0, 3).map((item) => (
-                  <div key={item.id} className="flex gap-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-3">
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setMixerDetailCardId(item.card.id);
+                      setMixerDetailSlideIndex(0);
+                    }}
+                    className="flex w-full gap-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-3 text-left transition hover:bg-[var(--axis-surface-soft)] hover:ring-1 hover:ring-[var(--axis-accent)]"
+                  >
                     <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-[var(--axis-radius-sm)] bg-[#081324]">
                       {item.card.coverImageUrl ? (
                         <img src={item.card.coverImageUrl} alt={item.card.coverImageAlt} className="h-full w-full object-cover opacity-70" />
@@ -614,12 +868,25 @@ export function MixerView({
                       <p className="text-xs font-semibold text-[var(--axis-accent-strong)]">{item.peer}</p>
                       <h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{item.card.title}</h4>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </article>
           </section>
         </ExecutiveContainer>
+        {mixerDetailCard ? (
+          <FloatingCardNewsOverlay
+            card={mixerDetailCard}
+            bookmarked={bookmarkedIds.includes(mixerDetailCard.id)}
+            slideIndex={mixerDetailSlideIndex}
+            onSlideChange={setMixerDetailSlideIndex}
+            onBookmark={() => onToggleBookmark(mixerDetailCard.id)}
+            onClose={() => {
+              setMixerDetailCardId(null);
+              setMixerDetailSlideIndex(0);
+            }}
+          />
+        ) : null}
       </ExecutivePage>
     );
   }
@@ -648,12 +915,16 @@ export function MixerView({
         />
 
         <section className="mb-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
-          {[
-            { title: 'Peer사', values: peerOptions, selected: selectedPeers, setter: setSelectedPeers },
-            { title: '고객사', values: customerOptions, selected: selectedCustomers, setter: setSelectedCustomers },
-            { title: '산업', values: industryOptions, selected: selectedIndustries, setter: setSelectedIndustries },
-            { title: '키워드', values: keywordOptions, selected: selectedKeywords, setter: setSelectedKeywords },
-          ].map((group) => (
+          {mockMixerConfig.options.map((optionGroup) => {
+            const group =
+              optionGroup.title === 'Peer사'
+                ? { ...optionGroup, selected: selectedPeers, setter: setSelectedPeers }
+                : optionGroup.title === '고객사'
+                  ? { ...optionGroup, selected: selectedCustomers, setter: setSelectedCustomers }
+                  : optionGroup.title === '산업'
+                    ? { ...optionGroup, selected: selectedIndustries, setter: setSelectedIndustries }
+                    : { ...optionGroup, selected: selectedKeywords, setter: setSelectedKeywords };
+            return (
             <div key={group.title} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="axis-kicker">{group.title}</p>
@@ -676,7 +947,8 @@ export function MixerView({
                 ))}
               </div>
             </div>
-          ))}
+            );
+          })}
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -727,7 +999,7 @@ export function MixerView({
                       type="button"
                       aria-label={bookmarked ? '북마크 해제' : '북마크'}
                       onClick={() => onToggleBookmark(item.card.id)}
-                      className={`absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur transition ${
+                      className={`absolute right-4 top-14 flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] border backdrop-blur transition ${
                         bookmarked
                           ? 'border-white/70 bg-white text-[#081324] dark:border-white dark:bg-white dark:text-[#081324]'
                           : 'border-white/25 bg-black/20 text-white hover:bg-white/15'
@@ -746,31 +1018,14 @@ export function MixerView({
               <Sparkles size={18} className="text-[var(--axis-accent)]" />
               <h2 className="axis-section-heading">선택 비율</h2>
             </div>
-            <div className="mt-5 h-[210px]">
+            <div className="mt-5 min-h-[228px] overflow-visible">
               {ratioData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={ratioData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={78} paddingAngle={3}>
-                      {ratioData.map((item) => (
-                        <Cell key={item.name} fill={item.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <DonutCalloutChart data={ratioData} />
               ) : (
-                <div className="flex h-full items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] text-sm text-[var(--axis-muted)]">
+                <div className="flex h-[210px] items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] text-sm text-[var(--axis-muted)]">
                   선택 항목이 없습니다.
                 </div>
               )}
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {ratioData.map((item) => (
-                <span key={item.name} className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--axis-body)]">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
-                  {item.name} {item.value}
-                </span>
-              ))}
             </div>
             <div className="mt-5 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4 text-sm leading-6 text-[var(--axis-muted)]">
               카드 2개 이상을 선택하면 선택 비율을 기반으로 믹서 결과 페이지가 생성됩니다.
@@ -786,110 +1041,34 @@ export function PeerPlusView({
   onNavigate,
   bookmarkedIds = [],
   onToggleBookmark,
+  selectedPeerId: externalSelectedPeerId,
 }: {
   onNavigate: NavigateHandler;
   bookmarkedIds?: string[];
   onToggleBookmark?: (cardId: string) => void;
+  selectedPeerId?: PeerPlusPeerId;
 }) {
   const { cards, isLoading, error } = useCardNews();
-  const peerOptions = [
-    { id: 'samsung_sds', label: '삼성SDS' },
-    { id: 'lg_cns', label: 'LG CNS' },
-    { id: 'hyundai_autoever', label: '현대 오토에버' },
-    { id: 'posco_dx', label: '포스코DX' },
-  ] as const;
-  const [selectedPeerId, setSelectedPeerId] = useState<(typeof peerOptions)[number]['id']>('samsung_sds');
+  const peerOptions = mockPeerPlusOptions;
+  const [selectedPeerId, setSelectedPeerId] = useState<PeerPlusPeerId>(() => {
+    const stored = window.localStorage.getItem(peerPlusSelectionStorageKey);
+    return mockPeerPlusOptions.some((peer) => peer.id === stored) ? (stored as PeerPlusPeerId) : 'samsung_sds';
+  });
   const [peerDetailCardId, setPeerDetailCardId] = useState<string | null>(null);
   const [peerDetailSlideIndex, setPeerDetailSlideIndex] = useState(0);
+  const [peerKeywordMatches, setPeerKeywordMatches] = useState<{ keyword: string; cards: CardNewsItem[] } | null>(null);
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
+
+  useEffect(() => {
+    if (externalSelectedPeerId) {
+      setSelectedPeerId(externalSelectedPeerId);
+    }
+  }, [externalSelectedPeerId]);
   const selectedPeer = peerOptions.find((peer) => peer.id === selectedPeerId) ?? peerOptions[0];
   const peerCards = rankedCards.filter((card) => card.peer_id === selectedPeerId);
   const companyNews = (peerCards.length > 0 ? peerCards : rankedCards).slice(0, 4);
   const peerDetailCard = peerDetailCardId ? cards.find((card) => card.id === peerDetailCardId) ?? null : null;
-  const peerIrProfiles: Record<typeof selectedPeerId, {
-    revenue: string;
-    operatingProfit: string;
-    axRatio: string;
-    orderBacklog: string;
-    margin: string;
-    capex: string;
-    deltas: {
-      revenue: number;
-      operatingProfit: number;
-      axRatio: number;
-      orderBacklog: number;
-      margin: number;
-      capex: number;
-    };
-    quarterly: Array<{ quarter: string; revenue: number; profit: number; ax: number }>;
-    summary: string[];
-  }> = {
-    samsung_sds: {
-      revenue: '3.42조',
-      operatingProfit: '2,430억',
-      axRatio: '31%',
-      orderBacklog: '1.8조',
-      margin: '7.1%',
-      capex: '4,800억',
-      deltas: { revenue: 0.42, operatingProfit: 1.8, axRatio: 2.4, orderBacklog: 3.1, margin: -0.2, capex: 4.6 },
-      quarterly: [
-        { quarter: 'Q1', revenue: 82, profit: 66, ax: 54 },
-        { quarter: 'Q2', revenue: 86, profit: 69, ax: 61 },
-        { quarter: 'Q3', revenue: 91, profit: 72, ax: 68 },
-        { quarter: 'Q4', revenue: 96, profit: 78, ax: 74 },
-      ],
-      summary: ['클라우드와 AI 플랫폼 매출 비중이 점진적으로 확대됩니다.', 'ERP/SCM AI agent 패키지와 보안 운영이 함께 언급됩니다.'],
-    },
-    lg_cns: {
-      revenue: '1.58조',
-      operatingProfit: '1,120억',
-      axRatio: '37%',
-      orderBacklog: '2.1조',
-      margin: '7.8%',
-      capex: '3,200억',
-      deltas: { revenue: 0.68, operatingProfit: 2.1, axRatio: 3.6, orderBacklog: 4.2, margin: 0.3, capex: -1.4 },
-      quarterly: [
-        { quarter: 'Q1', revenue: 74, profit: 60, ax: 58 },
-        { quarter: 'Q2', revenue: 80, profit: 65, ax: 66 },
-        { quarter: 'Q3', revenue: 88, profit: 72, ax: 73 },
-        { quarter: 'Q4', revenue: 93, profit: 76, ax: 81 },
-      ],
-      summary: ['금융/공공 AX 패키지의 상품화 속도가 빠릅니다.', '수주 신호와 생성형 AI 운영 메시지가 카드뉴스에 자주 연결됩니다.'],
-    },
-    hyundai_autoever: {
-      revenue: '9,820억',
-      operatingProfit: '760억',
-      axRatio: '24%',
-      orderBacklog: '1.1조',
-      margin: '7.7%',
-      capex: '2,450억',
-      deltas: { revenue: -0.24, operatingProfit: 0.9, axRatio: 1.7, orderBacklog: 2.2, margin: -0.1, capex: 2.8 },
-      quarterly: [
-        { quarter: 'Q1', revenue: 69, profit: 58, ax: 42 },
-        { quarter: 'Q2', revenue: 73, profit: 62, ax: 48 },
-        { quarter: 'Q3', revenue: 79, profit: 67, ax: 56 },
-        { quarter: 'Q4', revenue: 85, profit: 70, ax: 63 },
-      ],
-      summary: ['스마트팩토리와 차량 데이터 플랫폼이 핵심 축입니다.', '제조 데이터와 디지털 트윈 키워드가 근접하게 나타납니다.'],
-    },
-    posco_dx: {
-      revenue: '1.05조',
-      operatingProfit: '690억',
-      axRatio: '28%',
-      orderBacklog: '1.4조',
-      margin: '6.6%',
-      capex: '2,900억',
-      deltas: { revenue: 0.31, operatingProfit: -0.6, axRatio: 2.1, orderBacklog: 5.3, margin: -0.4, capex: 3.2 },
-      quarterly: [
-        { quarter: 'Q1', revenue: 64, profit: 52, ax: 45 },
-        { quarter: 'Q2', revenue: 72, profit: 58, ax: 54 },
-        { quarter: 'Q3', revenue: 83, profit: 66, ax: 63 },
-        { quarter: 'Q4', revenue: 91, profit: 71, ax: 70 },
-      ],
-      summary: ['공공 메가딜과 산업 자동화 노출이 강합니다.', 'OT/IT 통합, 데이터센터, AI 인프라 문맥이 연결됩니다.'],
-    },
-  };
-  const selectedIr = peerIrProfiles[selectedPeerId];
+  const selectedIr = mockPeerPlusIrProfiles[selectedPeerId];
   const peerInsightItems = [
     {
       label: '포지셔닝',
@@ -920,6 +1099,34 @@ export function PeerPlusView({
     { subject: '운영 효율', value: Number(selectedIr.margin.replace('%', '')) * 8 + 18 },
     { subject: '시장 노출', value: 82 },
   ];
+  const selectedKeywordCloud = mockPeerPlusKeywordCloud[selectedPeerId];
+  const wordCloudLayout = [
+    { left: '50%', top: '50%', rotate: 0 },
+    { left: '23%', top: '35%', rotate: -6 },
+    { left: '75%', top: '35%', rotate: 5 },
+    { left: '26%', top: '72%', rotate: 0 },
+    { left: '74%', top: '72%', rotate: -4 },
+    { left: '50%', top: '20%', rotate: 0 },
+  ];
+  const openKeywordCard = (keyword: string) => {
+    const normalizedKeyword = normalizeGraphTerm(keyword);
+    const keywordTerms = Array.from(new Set([normalizedKeyword, ...normalizedKeyword.split(/[\s/·-]+/)])).filter(Boolean);
+    const matchedCards = rankedCards.filter((card) => {
+      const haystack = normalizeGraphTerm([
+        card.title,
+        getPeerLabel(card),
+        card.category,
+        card.category_label,
+        card.subtitle,
+        card.sector,
+        ...(card.summary_lines ?? card.summary),
+        ...(card.insights ?? []),
+        ...(card.actionItems ?? []),
+      ].filter(Boolean).join(' '));
+      return keywordTerms.some((term) => term.length > 1 && haystack.includes(term));
+    }).slice(0, 6);
+    setPeerKeywordMatches({ keyword, cards: matchedCards.length > 0 ? matchedCards : companyNews });
+  };
 
   if (isLoading) return <LoadingBlock label="Peer+ 분석 데이터를 불러오는 중입니다." />;
   if (error) return <LoadingBlock label={error} />;
@@ -937,7 +1144,10 @@ export function PeerPlusView({
                 <button
                   key={peer.id}
                   type="button"
-                  onClick={() => setSelectedPeerId(peer.id)}
+                  onClick={() => {
+                    window.localStorage.setItem(peerPlusSelectionStorageKey, peer.id);
+                    setSelectedPeerId(peer.id);
+                  }}
                   className={`h-8 rounded-full border px-3 text-xs font-semibold transition ${
                     selectedPeerId === peer.id
                       ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
@@ -952,26 +1162,23 @@ export function PeerPlusView({
         />
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-          <button
-            type="button"
-            onClick={() => onNavigate('insight')}
-            className="axis-panel-flat min-h-[360px] p-5 text-left transition hover:border-[var(--axis-accent)]"
-          >
+          <article className="axis-panel-flat min-h-[360px] p-5">
             <p className="axis-kicker">AI comparison summary</p>
             <h2 className="mt-2 text-lg font-display font-semibold leading-tight text-ink">
-              SK AX와 {selectedPeer.label}는 이렇게 달라요
+              경쟁 메시지 차이와 SK AX 대응 포인트
             </h2>
-            <div className="mt-4 grid gap-4 lg:grid-cols-[210px_minmax(0,1fr)]">
+            <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
               <div className="relative min-h-[230px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] p-4">
-                <div className="absolute left-6 top-6 h-36 w-36 rounded-full border border-[rgba(220,90,36,0.30)] bg-[rgba(220,90,36,0.08)]" />
-                <div className="absolute bottom-8 right-5 h-28 w-28 rounded-full border border-[rgba(90,107,87,0.34)] bg-[rgba(90,107,87,0.10)]" />
-                <div className="absolute left-1/2 top-20 h-24 w-24 -translate-x-1/2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/70" />
+                <div className="absolute left-9 top-10 bottom-10 w-px bg-[var(--axis-hairline)]" />
                 {[
                   ['SK AX', '운영 KPI'],
                   [selectedPeer.label, '공개 신호'],
                   ['GAP', '제안 전환'],
                 ].map(([label, sub], index) => (
-                  <div key={label} className="relative z-10 mb-5 flex items-center gap-3">
+                  <div
+                    key={label}
+                    className="relative z-10 mb-5 flex items-center gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/88 p-2.5 shadow-[0_14px_36px_-32px_rgba(0,0,0,0.42)]"
+                  >
                     <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-xs font-black ${
                       index === 0
                         ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.16)] text-[var(--axis-accent-strong)]'
@@ -1011,22 +1218,24 @@ export function PeerPlusView({
                 ))}
               </div>
             </div>
-          </button>
+          </article>
 
           <button
             type="button"
             onClick={() => onNavigate('keywordGraph')}
-            className="axis-panel-flat min-h-[300px] p-5 text-left transition hover:border-[var(--axis-accent)]"
+            className="axis-panel-flat min-h-[360px] p-5 text-left transition hover:border-[var(--axis-accent)]"
           >
             <p className="axis-kicker">IR numeric pack</p>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-2 gap-2.5">
               {irMetricCards.map((item) => (
-                <div key={item.label} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] px-2.5 py-3">
-                  <p className="text-[11px] font-semibold text-[var(--axis-muted)]">{item.label}</p>
-                  <p className="mt-1 text-base font-semibold text-[var(--axis-ink)]">{item.value}</p>
-                  <p className={`mt-1 text-xs font-semibold ${item.delta >= 0 ? 'text-[var(--axis-success)]' : 'text-[var(--axis-danger)]'}`}>
-                    {item.delta >= 0 ? '+' : ''}{item.delta.toFixed(2)}%
-                  </p>
+                <div key={item.label} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] px-3 py-4">
+                  <p className="text-sm font-semibold leading-tight text-[var(--axis-muted)]">{item.label}</p>
+                  <div className="mt-2 flex items-end justify-between gap-3">
+                    <p className="text-[22px] font-semibold leading-none text-[var(--axis-ink)]">{item.value}</p>
+                    <p className={`shrink-0 text-base font-bold leading-none ${item.delta >= 0 ? 'text-[var(--axis-success)]' : 'text-[var(--axis-danger)]'}`}>
+                      {item.delta >= 0 ? '+' : ''}{item.delta.toFixed(2)}%
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1035,20 +1244,57 @@ export function PeerPlusView({
 
         <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <article className="axis-panel-flat p-5">
-            <p className="axis-kicker">Quarterly trend</p>
-            <h2 className="axis-section-heading mt-1">IR 기반 분기 흐름</h2>
-            <div className="mt-4 h-[220px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={selectedIr.quarterly} margin={{ top: 10, right: 14, left: -20, bottom: 0 }}>
-                  <CartesianGrid stroke="rgba(128,128,128,0.14)" />
-                  <XAxis dataKey="quarter" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="revenue" name="매출" stroke="var(--axis-graph-ax)" strokeWidth={2.4} />
-                  <Line type="monotone" dataKey="profit" name="영업이익" stroke="var(--axis-graph-security)" strokeWidth={2.2} />
-                  <Line type="monotone" dataKey="ax" name="AX 비중" stroke="var(--axis-graph-infra)" strokeWidth={2.2} />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
+              <div className="min-w-0">
+                <p className="axis-kicker">Quarterly trend</p>
+                <h2 className="axis-section-heading mt-1">IR 기반 분기 흐름</h2>
+                <div className="mt-4 h-[112px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={selectedIr.quarterly} margin={{ top: 8, right: 10, left: -24, bottom: 0 }}>
+                      <CartesianGrid stroke="rgba(128,128,128,0.14)" />
+                      <XAxis dataKey="quarter" tick={{ fontSize: 10, fill: 'var(--axis-muted)' }} />
+                      <YAxis tick={{ fontSize: 10, fill: 'var(--axis-muted)' }} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="revenue" name="매출" stroke="var(--axis-graph-ax)" strokeWidth={2.2} dot={false} />
+                      <Line type="monotone" dataKey="profit" name="영업이익" stroke="var(--axis-graph-security)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="ax" name="AX 비중" stroke="var(--axis-graph-infra)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div className="min-w-0 rounded-[var(--axis-radius-lg)] bg-[var(--axis-surface-soft)] p-4">
+                <p className="axis-kicker">AI / 사업 / MOU cloud</p>
+                <h3 className="axis-section-heading mt-1">최근 도입·협력 워드클라우드</h3>
+                <div className="relative mt-4 h-[210px] overflow-hidden rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]">
+                  <div className="absolute inset-5 rounded-full border border-dashed border-[var(--axis-hairline)] opacity-55" />
+                  {selectedKeywordCloud.map((item, index) => {
+                    const position = wordCloudLayout[index % wordCloudLayout.length];
+                    return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => openKeywordCard(item.label)}
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-1.5 font-display font-semibold leading-none transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--axis-accent)] ${
+                        item.weight === 3 ? 'text-3xl' : item.weight === 2 ? 'text-xl' : 'text-sm'
+                      } ${
+                        item.tone === 'accent'
+                          ? 'text-[var(--axis-accent-strong)]'
+                          : item.tone === 'success'
+                            ? 'text-[var(--axis-success)]'
+                            : 'text-[var(--axis-body)]'
+                      }`}
+                      style={{
+                        left: position.left,
+                        top: position.top,
+                        transform: `translate(-50%, -50%) rotate(${position.rotate}deg)`,
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </article>
 
@@ -1104,6 +1350,62 @@ export function PeerPlusView({
           </div>
         </section>
       </ExecutiveContainer>
+      {peerKeywordMatches ? (
+        <div
+          className="fixed inset-0 z-40 bg-[rgba(250,248,244,0.62)] p-5 backdrop-blur-sm dark:bg-[rgba(17,18,22,0.70)]"
+          onClick={() => setPeerKeywordMatches(null)}
+        >
+          <section
+            className="ml-auto h-full w-full max-w-[520px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] shadow-[0_28px_90px_-42px_rgba(0,0,0,0.55)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="flex items-start justify-between gap-3 border-b border-[var(--axis-hairline)] p-5">
+              <div>
+                <p className="axis-kicker">Keyword card news</p>
+                <h2 className="axis-section-heading mt-1">‘{peerKeywordMatches.keyword}’ 관련 카드뉴스</h2>
+              </div>
+              <button
+                type="button"
+                aria-label="관련 카드뉴스 목록 닫기"
+                onClick={() => setPeerKeywordMatches(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]"
+              >
+                <X size={16} />
+              </button>
+            </header>
+            <div className="h-[calc(100%-82px)] overflow-y-auto p-5">
+              <div className="space-y-3">
+                {peerKeywordMatches.cards.map((card) => (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={() => {
+                      setPeerDetailCardId(card.id);
+                      setPeerDetailSlideIndex(0);
+                    }}
+                    className="grid w-full grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)] hover:bg-[var(--axis-canvas)]"
+                  >
+                    <div className="relative aspect-[4/5] overflow-hidden rounded-[var(--axis-radius-sm)] bg-[#081324]">
+                      {card.coverImageUrl ? (
+                        <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-70" />
+                      ) : null}
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/60" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-[var(--axis-accent-strong)]">{getPeerLabel(card)}</span>
+                        <span className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</span>
+                      </div>
+                      <h3 className="mt-2 line-clamp-3 text-base font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</h3>
+                      <p className="mt-2 line-clamp-2 text-sm leading-5 text-[var(--axis-muted)]">{getSummaryLines(card)[0]}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {peerDetailCard ? (
         <FloatingCardNewsOverlay
           card={peerDetailCard}
@@ -1138,7 +1440,7 @@ function buildCardNewsRows(cards: CardNewsItem[]) {
   }));
 }
 
-function FloatingCardNewsOverlay({
+export function FloatingCardNewsOverlay({
   card,
   bookmarked,
   slideIndex,
@@ -1175,6 +1477,16 @@ function FloatingCardNewsOverlay({
   const slideImage = card.slides?.[activeIndex]?.image_url ?? card.coverImageUrl;
   const slideImageAlt = card.slides?.[activeIndex]?.image_alt ?? card.coverImageAlt;
   const [shareFeedback, setShareFeedback] = useState('');
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   return (
     <div className="fixed inset-0 z-50">
@@ -1278,15 +1590,20 @@ function FloatingCardNewsOverlay({
 export function CardNewsWorkspaceView({
   bookmarkedIds,
   onToggleBookmark,
+  initialQuery = '',
 }: {
   bookmarkedIds: string[];
   onToggleBookmark: (cardId: string) => void;
+  initialQuery?: string;
 }) {
   const { cards, isLoading, error } = useCardNews();
   const [peerFilter, setPeerFilter] = useState('전체');
   const [sectorFilter, setSectorFilter] = useState('전체');
+  const [dateFilter, setDateFilter] = useState('');
+  const [keywordFilter, setKeywordFilter] = useState(initialQuery);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
+  const [detailBookmarkId, setDetailBookmarkId] = useState<string | null>(null);
   const [detailSlideIndex, setDetailSlideIndex] = useState(0);
   const [shareFeedback, setShareFeedback] = useState('');
   const rows = useMemo(() => buildCardNewsRows(cards), [cards]);
@@ -1295,14 +1612,35 @@ export function CardNewsWorkspaceView({
   const visibleRows = rows.filter((row) => {
     const peerMatched = peerFilter === '전체' || row.peer === peerFilter;
     const sectorMatched = sectorFilter === '전체' || row.sourceType === sectorFilter;
-    const bookmarkMatched = !bookmarkedOnly || bookmarkedIds.includes(row.sourceId);
-    return peerMatched && sectorMatched && bookmarkMatched;
+    const normalizedDate = (row.card.published_date ?? row.card.date ?? '').slice(0, 10);
+    const dateMatched = !dateFilter || normalizedDate === dateFilter;
+    const normalizedKeyword = keywordFilter.trim().toLowerCase();
+    const haystack = [
+      row.cardNewsTitle,
+      row.originalTitle,
+      row.peer,
+      row.sourceType,
+      row.accentLabel,
+      row.card.category,
+      row.card.category_label,
+      row.card.subtitle,
+      ...(row.card.summary_lines ?? row.card.summary),
+      ...(row.card.insights ?? []),
+      ...(row.card.actionItems ?? []),
+    ].filter(Boolean).join(' ').toLowerCase();
+    const keywordMatched = !normalizedKeyword || haystack.includes(normalizedKeyword);
+    const bookmarkMatched = !bookmarkedOnly || bookmarkedIds.includes(row.id);
+    return peerMatched && sectorMatched && dateMatched && keywordMatched && bookmarkMatched;
   });
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
 
   useEffect(() => {
     setDetailSlideIndex(0);
   }, [detailCardId]);
+
+  useEffect(() => {
+    setKeywordFilter(initialQuery);
+  }, [initialQuery]);
 
   if (isLoading) return <LoadingBlock label="카드뉴스를 불러오는 중입니다." />;
   if (error) return <LoadingBlock label={error} />;
@@ -1316,7 +1654,7 @@ export function CardNewsWorkspaceView({
           subtitle="뉴스를 카드 커버 단위로 확인하고, 클릭하면 AI 요약과 시사점 상세를 확인합니다."
         />
 
-        <section className="mb-6 flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
+        <section data-guide="cardnews-filter" className="mb-5 flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
           <span className="inline-flex h-9 items-center gap-2 rounded-full bg-[var(--axis-canvas)] px-3 text-xs font-semibold text-[var(--axis-muted)]">
             <Filter size={14} />
             필터
@@ -1341,6 +1679,26 @@ export function CardNewsWorkspaceView({
               <option key={sector} value={sector}>{sector}</option>
             ))}
           </select>
+          <label className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)]">
+            <CalendarDays size={14} className="text-[var(--axis-accent)]" />
+            <span className="sr-only">카드뉴스 날짜 선택</span>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(event) => setDateFilter(event.target.value)}
+              className="h-7 w-[130px] bg-transparent text-sm font-semibold text-[var(--axis-ink)] outline-none"
+            />
+          </label>
+          <label className="relative min-w-[220px] flex-1">
+            <span className="sr-only">카드뉴스 키워드 검색</span>
+            <input
+              type="search"
+              value={keywordFilter}
+              onChange={(event) => setKeywordFilter(event.target.value)}
+              placeholder="키워드 내용 검색..."
+              className="h-9 w-full rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 text-sm font-semibold text-[var(--axis-ink)] outline-none placeholder:text-[var(--axis-muted)] focus:border-[var(--axis-accent)]"
+            />
+          </label>
           <button
             type="button"
             onClick={() => setBookmarkedOnly((current) => !current)}
@@ -1363,9 +1721,9 @@ export function CardNewsWorkspaceView({
           {visibleRows.length === 0 ? (
             <EmptyBlock label="선택한 필터에 해당하는 카드뉴스가 없습니다." />
           ) : (
-            <main className="grid gap-10 md:grid-cols-2 xl:grid-cols-3 2xl:gap-12">
+            <main data-guide="cardnews-grid" className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 2xl:grid-cols-4 2xl:gap-7">
               {visibleRows.map((row) => {
-                const bookmarked = bookmarkedIds.includes(row.sourceId);
+                const bookmarked = bookmarkedIds.includes(row.id);
                 return (
                   <article
                     key={row.id}
@@ -1375,8 +1733,9 @@ export function CardNewsWorkspaceView({
                       type="button"
                       onClick={() => {
                         setDetailCardId(row.sourceId);
+                        setDetailBookmarkId(row.id);
                       }}
-                      className="relative block aspect-[4/5] w-full overflow-hidden text-left"
+                      className="relative block aspect-[3/4] w-full overflow-hidden text-left sm:aspect-[4/5]"
                     >
                       {row.card.coverImageUrl ? (
                         <img
@@ -1388,33 +1747,33 @@ export function CardNewsWorkspaceView({
                         <div className="absolute inset-0" style={{ background: row.coverStyle }} />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-b from-black/38 via-[#081324]/48 to-black/92" />
-                      <div className="relative flex h-full flex-col justify-between p-4 text-white">
-                        <div className="flex items-start justify-between gap-3 text-xs font-semibold">
-                          <span className="rounded-sm border border-white/25 bg-white/10 px-2.5 py-1 tracking-[0.06em]">
+                      <div className="relative flex h-full flex-col justify-between p-3 text-white sm:p-4">
+                        <div className="flex items-start justify-between gap-2 text-[10px] font-semibold sm:text-xs">
+                          <span className="rounded-sm border border-white/25 bg-white/10 px-2 py-0.5 tracking-[0.06em] sm:px-2.5 sm:py-1">
                             {getDisplayDate(row.card)}
                           </span>
-                          <span className="rounded-sm border border-white/25 bg-white/10 px-2.5 py-1">
+                          <span className="rounded-sm border border-white/25 bg-white/10 px-2 py-0.5 sm:px-2.5 sm:py-1">
                             {row.accentLabel}
                           </span>
                         </div>
                         <div>
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/75">{row.peer}</p>
-                          <h2 className="line-clamp-4 text-[19px] font-semibold leading-tight text-white">{row.cardNewsTitle}</h2>
+                          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/75 sm:text-xs">{row.peer}</p>
+                          <h2 className="line-clamp-3 text-[13px] font-semibold leading-tight text-white sm:line-clamp-4 sm:text-[18px]">{row.cardNewsTitle}</h2>
                         </div>
                       </div>
                     </button>
-                    <div className="absolute right-4 top-20 flex flex-col gap-2">
+                    <div className="absolute right-2 top-14 flex flex-col gap-2 sm:right-4 sm:top-20">
                       <button
                         type="button"
                         aria-label={bookmarked ? '북마크 해제' : '북마크'}
-                        onClick={() => onToggleBookmark(row.sourceId)}
+                        onClick={() => onToggleBookmark(row.id)}
                         className={`flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur transition ${
                           bookmarked
                             ? 'border-white/40 bg-white text-[#081324]'
                             : 'border-white/25 bg-black/20 text-white hover:bg-white/15'
                         }`}
                       >
-                        <Bookmark size={15} fill={bookmarked ? 'currentColor' : 'none'} />
+                        <Bookmark size={14} fill={bookmarked ? 'currentColor' : 'none'} />
                       </button>
                       <button
                         type="button"
@@ -1424,7 +1783,7 @@ export function CardNewsWorkspaceView({
                         }}
                         className="flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur transition hover:bg-white/15"
                       >
-                        <Share2 size={15} />
+                        <Share2 size={14} />
                       </button>
                     </div>
                   </article>
@@ -1442,11 +1801,14 @@ export function CardNewsWorkspaceView({
       {detailCard ? (
         <FloatingCardNewsOverlay
           card={detailCard}
-          bookmarked={bookmarkedIds.includes(detailCard.id)}
+          bookmarked={bookmarkedIds.includes(detailBookmarkId ?? detailCard.id)}
           slideIndex={detailSlideIndex}
           onSlideChange={setDetailSlideIndex}
-          onBookmark={() => onToggleBookmark(detailCard.id)}
-          onClose={() => setDetailCardId(null)}
+          onBookmark={() => onToggleBookmark(detailBookmarkId ?? detailCard.id)}
+          onClose={() => {
+            setDetailCardId(null);
+            setDetailBookmarkId(null);
+          }}
         />
       ) : null}
     </ExecutivePage>
@@ -1502,56 +1864,66 @@ export function InsightResultView({
           subtitle="원인, 변화, 영향, 대응을 한 화면에서 연결해 읽을 수 있도록 재배치했습니다."
         />
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
           <main className="space-y-5">
-            <section className="axis-panel-flat p-6">
-              <div className="flex items-center gap-2">
-                <Sparkles size={18} className="text-[var(--axis-accent)]" />
-                <h2 className="axis-section-heading">핵심 판단</h2>
+            <section className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
+              <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-6 py-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
+                    <Sparkles size={18} />
+                  </span>
+                  <h2 className="axis-section-heading">핵심 판단</h2>
+                </div>
               </div>
-              <p className="mt-4 text-xl font-semibold leading-8 text-[var(--axis-ink)]">{insightResult.summary}</p>
+              <div className="p-6">
+              <p className="text-2xl font-semibold leading-9 text-[var(--axis-ink)]">{insightResult.summary}</p>
               <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {insightResult.flowSteps.map((step, index) => (
-                  <article key={step.id} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+                  <article key={step.id} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_14px_36px_-34px_rgba(0,0,0,0.32)]">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold text-[var(--axis-muted)]">{String(index + 1).padStart(2, '0')}</span>
+                      <span className="rounded-full bg-[rgba(220,90,36,0.10)] px-2 py-1 text-xs font-semibold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
                       <CircleDot size={18} className="text-[var(--axis-accent)]" />
                     </div>
-                    <h3 className="mt-3 text-base font-semibold text-[var(--axis-ink)]">{step.label}</h3>
-                    <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{step.description}</p>
+                    <h3 className="mt-3 text-lg font-semibold text-[var(--axis-ink)]">{step.label}</h3>
+                    <p className="mt-2 text-base leading-7 text-[var(--axis-body)]">{step.description}</p>
                   </article>
                 ))}
               </div>
-              <div className="mt-5 grid gap-5 lg:grid-cols-2">
-                <div>
-                  <p className="axis-kicker">Evidence</p>
-                  <ul className="mt-3 space-y-2">
-                    {insightResult.evidence.map((item) => (
-                      <li key={item} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3 text-sm leading-6 text-[var(--axis-body)]">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="axis-kicker">Implications</p>
-                  <ul className="mt-3 space-y-2">
-                    {insightResult.implications.map((item) => (
-                      <li key={item} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3 text-sm leading-6 text-[var(--axis-body)]">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <ExecutiveButton variant="secondary" onClick={() => onNavigate('keywordGraph')}>그래프로 보기</ExecutiveButton>
-                <ExecutiveButton variant="secondary">보고서에 추가</ExecutiveButton>
+            </section>
+            <section className="grid gap-5 lg:grid-cols-2">
+              <div className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
+                <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
+                  <p className="axis-kicker">Evidence</p>
+                  <h2 className="axis-section-heading mt-1">판단 근거</h2>
+                </div>
+                <ul className="space-y-2 p-5">
+                  {insightResult.evidence.map((item, index) => (
+                    <li key={item} className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 text-base leading-7 text-[var(--axis-body)]">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(90,107,87,0.12)] text-xs font-semibold text-[var(--axis-success)]">{index + 1}</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.28)]">
+                <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.07)] px-5 py-4">
+                  <p className="axis-kicker">Implications</p>
+                  <h2 className="axis-section-heading mt-1">시사점</h2>
+                </div>
+                <ul className="space-y-2 p-5">
+                  {insightResult.implications.map((item, index) => (
+                    <li key={item} className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 text-base leading-7 text-[var(--axis-body)]">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.11)] text-xs font-semibold text-[var(--axis-accent-strong)]">{index + 1}</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </section>
           </main>
 
-          <aside className="space-y-4">
+          <aside className="grid gap-4 sm:grid-cols-2 2xl:block 2xl:space-y-4">
             {relatedAssets.length > 0 ? (
               relatedAssets.map((card) => (
                 <button
@@ -1560,7 +1932,7 @@ export function InsightResultView({
                   onClick={() => setInsightDetailCardId(card.id)}
                   className="block w-full overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[#081324] text-left shadow-[0_18px_48px_-34px_rgba(0,0,0,0.55)] transition hover:border-[var(--axis-accent)]"
                 >
-                  <div className="relative aspect-[4/5]">
+                  <div className="relative aspect-[16/9] 2xl:aspect-[4/5]">
                     {card.coverImageUrl ? (
                       <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
                     ) : null}
@@ -1572,7 +1944,7 @@ export function InsightResultView({
                       </div>
                       <div>
                         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/75">{getPeerLabel(card)}</p>
-                        <h3 className="line-clamp-4 text-lg font-semibold leading-tight text-white">{card.title}</h3>
+                        <h3 className="line-clamp-3 text-[clamp(15px,1.3vw,18px)] font-semibold leading-tight text-white">{card.title}</h3>
                       </div>
                     </div>
                   </div>
@@ -1597,6 +1969,7 @@ export function InsightResultView({
           }}
         />
       ) : null}
+      <FloatingAiChat />
     </ExecutivePage>
   );
 }
@@ -1722,15 +2095,51 @@ function resolveCssColor(value: string, fallback: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(variableMatch[1]).trim() || fallback;
 }
 
+function getGraphNodeDisplayRadius(node: KeywordNode, active = false) {
+  const base = node.category === '기업'
+    ? node.size / 3.2
+    : node.size >= 22
+      ? node.size / 3.8
+      : node.size / 4.35;
+  return base + (active ? 2.4 : 0);
+}
+
+function splitGraphLabel(label: string) {
+  if (label.includes(' ') && label.length > 11) {
+    const parts = label.split(' ');
+    const midpoint = Math.ceil(parts.length / 2);
+    return [parts.slice(0, midpoint).join(' '), parts.slice(midpoint).join(' ')];
+  }
+  if (label.length > 7) {
+    const midpoint = Math.ceil(label.length / 2);
+    return [label.slice(0, midpoint), label.slice(midpoint)];
+  }
+  return [label];
+}
+
 function getSpherePosition(node: KeywordNode, radius: number, index = 0) {
-  const theta = (node.x / 900) * Math.PI * 2 + index * 0.18;
-  const phi = (node.y / 560) * Math.PI;
-  const layer = node.id === 'sk-axis'
-    ? 0.48
-    : node.category === '기업'
-      ? 0.76
-      : 0.58 + (index % 5) * 0.095;
-  const layeredRadius = radius * Math.min(1.04, layer);
+  if (node.id === 'sk-axis') {
+    return new THREE.Vector3(0, 0, 0);
+  }
+
+  const companyAnchors: Record<string, [number, number, number]> = {
+    'samsung-sds': [-0.66, 0.58, -0.46],
+    'lg-cns': [0.72, 0.54, -0.34],
+    'hyundai-autoever': [-0.58, -0.62, 0.48],
+    'posco-dx': [0.62, -0.58, 0.50],
+  };
+
+  const anchor = companyAnchors[node.id];
+  if (anchor) {
+    return new THREE.Vector3(anchor[0], anchor[1], anchor[2]).normalize().multiplyScalar(radius * 0.98);
+  }
+
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  const normalizedIndex = index + 1.5;
+  const phi = Math.acos(1 - (2 * normalizedIndex) / (graphNodes.length + 2));
+  const theta = normalizedIndex * goldenAngle;
+  const layer = node.size >= 21 ? 0.94 : 0.58 + (index % 6) * 0.07;
+  const layeredRadius = radius * Math.min(1, layer);
   return new THREE.Vector3(
     layeredRadius * Math.sin(phi) * Math.cos(theta),
     layeredRadius * Math.cos(phi),
@@ -1759,8 +2168,8 @@ function KeywordSphereGraph({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const onSelectRef = useRef(onSelectNode);
   const groupRef = useRef<THREE.Group | null>(null);
+  const rotationRef = useRef<{ x: number; y: number; z: number } | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedId) ?? nodes[0];
-  void edges;
 
   useEffect(() => {
     onSelectRef.current = onSelectNode;
@@ -1783,28 +2192,54 @@ function KeywordSphereGraph({
     camera.position.set(0, 0, fullscreen ? 540 : 470);
 
     const group = new THREE.Group();
-    group.rotation.x = fullscreen ? 0.18 : 0.12;
+    const preservedRotation = rotationRef.current;
+    group.rotation.x = preservedRotation?.x ?? (fullscreen ? 0.18 : 0.12);
+    group.rotation.y = preservedRotation?.y ?? 0;
+    group.rotation.z = preservedRotation?.z ?? 0;
     group.scale.setScalar(zoom);
     groupRef.current = group;
     scene.add(group);
 
-    const radius = fullscreen ? 186 : 122;
+    const radius = fullscreen ? 214 : 146;
     const nodePositions = new Map<string, THREE.Vector3>();
     nodes.forEach((node, index) => nodePositions.set(node.id, getSpherePosition(node, radius, index)));
+    const isDarkMode = document.documentElement.classList.contains('dark');
 
     group.add(new THREE.AmbientLight(0xffffff, 1.4));
     const keyLight = new THREE.PointLight(0xffffff, 1.2);
     keyLight.position.set(120, 180, 260);
     group.add(keyLight);
 
+    edges.forEach((edge) => {
+      const source = nodePositions.get(edge.source);
+      const target = nodePositions.get(edge.target);
+      if (!source || !target) return;
+      const active = selectedId === edge.source || selectedId === edge.target;
+      const geometry = new THREE.BufferGeometry().setFromPoints([source, target]);
+      const material = new THREE.LineBasicMaterial({
+        color: active
+          ? resolveCssColor('var(--axis-graph-active-edge)', '#DC5A24')
+          : (isDarkMode ? '#F5E7D2' : resolveCssColor('var(--axis-graph-edge)', '#8D8173')),
+        transparent: true,
+        opacity: active ? 0.92 : (isDarkMode ? 0.62 : 0.5),
+        depthTest: false,
+        depthWrite: false,
+      });
+      group.add(new THREE.Line(geometry, material));
+    });
+
     const nodeMeshes: THREE.Mesh[] = [];
-    const labelColor = resolveCssColor('var(--axis-ink)', '#1A1A1F');
-    const createLabelSprite = (label: string, active: boolean) => {
+    const labelColor = isDarkMode ? '#FFF8EC' : resolveCssColor('var(--axis-ink)', '#1A1A1F');
+    const labelStroke = isDarkMode ? 'rgba(4,5,8,0.96)' : 'rgba(255,255,255,0.98)';
+    const createLabelSprite = (label: string, active: boolean, category: KeywordNode['category']) => {
       const labelCanvas = document.createElement('canvas');
       const context = labelCanvas.getContext('2d');
-      const fontSize = active ? 30 : 23;
-      const width = Math.max(132, label.length * fontSize * 0.72);
-      const height = 48;
+      const labelLines = splitGraphLabel(label);
+      const fontSize = category === '기업' ? (active ? 36 : 31) : active ? 29 : 23;
+      const lineHeight = fontSize * 1.05;
+      const longestLine = labelLines.reduce((longest, line) => Math.max(longest, line.length), 0);
+      const width = Math.max(120, longestLine * fontSize * 0.82 + 28);
+      const height = Math.max(48, labelLines.length * lineHeight + 18);
       labelCanvas.width = width;
       labelCanvas.height = height;
       if (context) {
@@ -1812,10 +2247,13 @@ function KeywordSphereGraph({
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillStyle = labelColor;
-        context.strokeStyle = 'rgba(255,255,255,0.72)';
-        context.lineWidth = 5;
-        context.strokeText(label, width / 2, height / 2);
-        context.fillText(label, width / 2, height / 2);
+        context.strokeStyle = labelStroke;
+        context.lineWidth = isDarkMode ? 7 : 6;
+        labelLines.forEach((line, index) => {
+          const y = height / 2 + (index - (labelLines.length - 1) / 2) * lineHeight;
+          context.strokeText(line, width / 2, y);
+          context.fillText(line, width / 2, y);
+        });
       }
       const texture = new THREE.CanvasTexture(labelCanvas);
       const material = new THREE.SpriteMaterial({
@@ -1825,7 +2263,7 @@ function KeywordSphereGraph({
         depthTest: false,
       });
       const sprite = new THREE.Sprite(material);
-      sprite.scale.set(width / (fullscreen ? 4.1 : 4.8), height / (fullscreen ? 4.1 : 4.8), 1);
+      sprite.scale.set(width / (fullscreen ? 4.7 : 5.2), height / (fullscreen ? 4.7 : 5.2), 1);
       return sprite;
     };
 
@@ -1834,8 +2272,9 @@ function KeywordSphereGraph({
       if (!position) return;
       const active = node.id === selectedId;
       const color = resolveCssColor(graphCategoryColor[node.category], '#D48362');
+      const visibleRadius = getGraphNodeDisplayRadius(node, active);
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(Math.max(4.8, node.size / (active ? 4.6 : 5.4)), 24, 16),
+        new THREE.SphereGeometry(Math.max(4.8, visibleRadius), 24, 16),
         new THREE.MeshStandardMaterial({
           color,
           emissive: color,
@@ -1846,11 +2285,19 @@ function KeywordSphereGraph({
       );
       mesh.position.copy(position);
       mesh.userData.nodeId = node.id;
-      nodeMeshes.push(mesh);
       group.add(mesh);
 
-      const labelSprite = createLabelSprite(node.label, active || node.category === '기업');
-      labelSprite.position.copy(position.clone().multiplyScalar(node.category === '기업' ? 1.12 : 1.08));
+      const hitMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(Math.max(visibleRadius + 8, node.category === '기업' ? 20 : 14), 18, 12),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+      );
+      hitMesh.position.copy(position);
+      hitMesh.userData.nodeId = node.id;
+      nodeMeshes.push(hitMesh);
+      group.add(hitMesh);
+
+      const labelSprite = createLabelSprite(node.label, active || node.category === '기업', node.category);
+      labelSprite.position.copy(position);
       group.add(labelSprite);
     });
 
@@ -1872,6 +2319,7 @@ function KeywordSphereGraph({
         const dy = event.clientY - dragState.lastY;
         group.rotation.y += dx * 0.006;
         group.rotation.x += dy * 0.004;
+        rotationRef.current = { x: group.rotation.x, y: group.rotation.y, z: group.rotation.z };
         dragState.lastX = event.clientX;
         dragState.lastY = event.clientY;
         dragState.moved = dragState.moved || Math.abs(dx) + Math.abs(dy) > 2;
@@ -1929,6 +2377,7 @@ function KeywordSphereGraph({
     const animate = () => {
       if (!dragState.dragging) {
         group.rotation.y += fullscreen ? 0.0014 : 0.001;
+        rotationRef.current = { x: group.rotation.x, y: group.rotation.y, z: group.rotation.z };
       }
       renderer.render(scene, camera);
       frameId = window.requestAnimationFrame(animate);
@@ -1958,10 +2407,11 @@ function KeywordSphereGraph({
           object.material.dispose();
         }
       });
+      rotationRef.current = { x: group.rotation.x, y: group.rotation.y, z: group.rotation.z };
       renderer.dispose();
       groupRef.current = null;
     };
-  }, [fullscreen, nodes, selectedId]);
+  }, [edges, fullscreen, nodes, selectedId]);
 
   return (
     <div
@@ -2018,13 +2468,15 @@ export function KeywordGraphView({
   const [keywordOverlayOpen, setKeywordOverlayOpen] = useState(false);
   const [overlayPage, setOverlayPage] = useState(0);
   const [graphMode, setGraphMode] = useState<'2d' | '3d'>('2d');
-  const [sphereFullscreen, setSphereFullscreen] = useState(false);
+  const [graphFullscreenMode, setGraphFullscreenMode] = useState<'2d' | '3d' | null>(null);
   const [keywordDetailCardId, setKeywordDetailCardId] = useState<string | null>(null);
   const [keywordDetailSlideIndex, setKeywordDetailSlideIndex] = useState(0);
 
-  const visibleNodes = graphNodes.filter((node) => category === '전체' || node.category === category);
-  const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
-  const visibleEdges = graphEdges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
+  const visibleNodes = useMemo(() => graphNodes.filter((node) => category === '전체' || node.category === category), [category]);
+  const visibleEdges = useMemo(() => {
+    const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
+    return graphEdges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
+  }, [visibleNodes]);
   const selected = graphNodes.find((node) => node.id === selectedId) ?? graphNodes[0];
   const trendData: DashboardKeywordSearchPoint[] = dashboard?.keywordSearchPoints ?? [];
   const rankedCardsForKeyword = useMemo(() => getExecutiveRank(cards), [cards]);
@@ -2084,10 +2536,83 @@ export function KeywordGraphView({
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   };
+  const handleGraphWheel = (event: ReactWheelEvent<HTMLElement>) => {
+    event.preventDefault();
+    const nextDelta = event.deltaY > 0 ? -0.08 : 0.08;
+    setScale((current) => Math.min(1.45, Math.max(0.75, Number((current + nextDelta).toFixed(2)))));
+  };
+  const renderKeywordSvg = (fullscreen = false) => (
+    <svg
+      viewBox="0 0 900 560"
+      className={`h-full w-full cursor-grab active:cursor-grabbing ${fullscreen ? 'bg-[var(--axis-surface-soft)]' : ''}`}
+      role="img"
+      aria-label="키워드 관계 그래프"
+      style={{ touchAction: 'none' }}
+      onPointerDown={handleGraphPointerDown}
+      onPointerMove={handleGraphPointerMove}
+      onPointerUp={handleGraphPointerUp}
+      onPointerLeave={handleGraphPointerUp}
+    >
+      <g transform={`translate(${graphPan.x + 450 - 450 * scale} ${graphPan.y + 280 - 280 * scale}) scale(${scale})`}>
+        {visibleEdges.map((edge) => {
+          const source = getNode(edge.source);
+          const target = getNode(edge.target);
+          const active = selectedId === edge.source || selectedId === edge.target || hoveredId === edge.source || hoveredId === edge.target;
+          return (
+            <line
+              key={`${edge.source}-${edge.target}`}
+              x1={source.x}
+              y1={source.y}
+              x2={target.x}
+              y2={target.y}
+              stroke={active ? 'var(--axis-graph-active-edge)' : 'var(--axis-graph-edge)'}
+              strokeWidth={edge.weight}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        {visibleNodes.map((node) => {
+          const active = selectedId === node.id || hoveredId === node.id;
+          return (
+            <g
+              key={node.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => selectGraphNode(node.id)}
+              onDoubleClick={() => onNavigate(node.sourceType === 'cardnews' ? 'issues' : 'insight')}
+              onMouseEnter={() => setHoveredId(node.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              className="cursor-pointer"
+            >
+              <circle
+                cx={node.x}
+                cy={node.y}
+                r={node.size + (active ? 5 : 0)}
+                fill={graphCategoryColor[node.category]}
+                fillOpacity={active ? 0.95 : 0.78}
+                stroke={active ? 'var(--axis-ink)' : 'var(--axis-canvas)'}
+                strokeWidth={active ? 3 : 2}
+              />
+              <text
+                x={node.x}
+                y={node.y + node.size + 18}
+                textAnchor="middle"
+                fontSize={active ? 15 : 13}
+                fontWeight={active ? 700 : 600}
+                fill="var(--axis-ink)"
+              >
+                {node.label}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    </svg>
+  );
 
   return (
     <ExecutivePage>
-      <ExecutiveContainer className="pb-4 pt-2">
+      <ExecutiveContainer className="max-w-none px-3 pb-3 pt-2 sm:px-4 lg:px-4">
         <section className="axis-panel-flat min-h-0 overflow-hidden">
           <header className="flex flex-col gap-2 p-3 lg:flex-row lg:items-center lg:justify-end">
             <h1 className="sr-only">키워드 그래프</h1>
@@ -2111,18 +2636,15 @@ export function KeywordGraphView({
               <ExecutiveButton
                 variant="secondary"
                 icon={<Maximize2 size={15} />}
-                onClick={() => {
-                  setGraphMode('3d');
-                  setSphereFullscreen(true);
-                }}
+                onClick={() => setGraphFullscreenMode(graphMode)}
               >
                 전체화면
               </ExecutiveButton>
             </div>
           </header>
 
-          <div className="grid h-[min(560px,calc(100dvh-230px))] min-h-[380px] gap-0 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <main className="relative min-h-0 bg-[var(--axis-surface-soft)]">
+          <div className="grid h-[calc(100dvh-156px)] min-h-[620px] gap-0 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <main className="relative min-h-0 bg-[var(--axis-surface-soft)]" onWheel={handleGraphWheel}>
               {graphMode === '3d' ? (
                 <KeywordSphereGraph
                   nodes={visibleNodes}
@@ -2132,72 +2654,7 @@ export function KeywordGraphView({
                   onSelectNode={selectGraphNode}
                 />
               ) : (
-                <svg
-                  viewBox="0 0 900 560"
-                  className="h-full w-full cursor-grab active:cursor-grabbing"
-                  role="img"
-                  aria-label="키워드 관계 그래프"
-                  style={{ touchAction: 'none' }}
-                  onPointerDown={handleGraphPointerDown}
-                  onPointerMove={handleGraphPointerMove}
-                  onPointerUp={handleGraphPointerUp}
-                  onPointerLeave={handleGraphPointerUp}
-                >
-                  <g transform={`translate(${graphPan.x + 450 - 450 * scale} ${graphPan.y + 280 - 280 * scale}) scale(${scale})`}>
-                    {visibleEdges.map((edge) => {
-                      const source = getNode(edge.source);
-                      const target = getNode(edge.target);
-                      const active = selectedId === edge.source || selectedId === edge.target || hoveredId === edge.source || hoveredId === edge.target;
-                      return (
-                        <line
-                          key={`${edge.source}-${edge.target}`}
-                          x1={source.x}
-                          y1={source.y}
-                          x2={target.x}
-                          y2={target.y}
-                          stroke={active ? 'var(--axis-graph-active-edge)' : 'var(--axis-graph-edge)'}
-                          strokeWidth={edge.weight}
-                          strokeLinecap="round"
-                        />
-                      );
-                    })}
-                    {visibleNodes.map((node) => {
-                      const active = selectedId === node.id || hoveredId === node.id;
-                      return (
-                        <g
-                          key={node.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => selectGraphNode(node.id)}
-                          onDoubleClick={() => onNavigate(node.sourceType === 'cardnews' ? 'issues' : 'insight')}
-                          onMouseEnter={() => setHoveredId(node.id)}
-                          onMouseLeave={() => setHoveredId(null)}
-                          className="cursor-pointer"
-                        >
-                          <circle
-                            cx={node.x}
-                            cy={node.y}
-                            r={node.size + (active ? 5 : 0)}
-                            fill={graphCategoryColor[node.category]}
-                            fillOpacity={active ? 0.95 : 0.78}
-                            stroke={active ? 'var(--axis-ink)' : 'var(--axis-canvas)'}
-                            strokeWidth={active ? 3 : 2}
-                          />
-                          <text
-                            x={node.x}
-                            y={node.y + node.size + 18}
-                            textAnchor="middle"
-                            fontSize={active ? 15 : 13}
-                            fontWeight={active ? 700 : 600}
-                            fill="var(--axis-ink)"
-                          >
-                            {node.label}
-                          </text>
-                        </g>
-                      );
-                    })}
-                  </g>
-                </svg>
+                renderKeywordSvg()
               )}
               {hoveredId ? (
                 <div className="pointer-events-none absolute left-5 top-5 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-xs text-[var(--axis-body)]">
@@ -2205,8 +2662,14 @@ export function KeywordGraphView({
                 </div>
               ) : null}
               {keywordOverlayOpen ? (
-                <div className="absolute inset-0 z-20 bg-[rgba(250,248,244,0.72)] p-5 backdrop-blur-[2px] dark:bg-[rgba(24,25,31,0.72)]">
-                  <section className="mx-auto mt-8 max-w-[720px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-5 shadow-[0_24px_70px_-34px_rgba(0,0,0,0.45)]">
+                <div
+                  className="absolute inset-0 z-20 bg-[rgba(250,248,244,0.72)] p-5 backdrop-blur-[2px] dark:bg-[rgba(24,25,31,0.72)]"
+                  onClick={() => setKeywordOverlayOpen(false)}
+                >
+                  <section
+                    className="mx-auto mt-8 max-w-[720px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-5 shadow-[0_24px_70px_-34px_rgba(0,0,0,0.45)]"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     <div className="mb-4 flex items-start justify-between gap-3">
                       <div>
                         <p className="axis-kicker">Related card news</p>
@@ -2319,16 +2782,38 @@ export function KeywordGraphView({
           </div>
         </section>
       </ExecutiveContainer>
-      {sphereFullscreen ? (
-        <div className="fixed inset-0 z-50 bg-[var(--axis-canvas)]">
-          <KeywordSphereGraph
-            nodes={graphNodes}
-            edges={graphEdges}
-            selectedId={selectedId}
-            zoom={scale}
-            fullscreen
-            onSelectNode={selectGraphNode}
-          />
+      {graphFullscreenMode ? (
+        <div className="fixed inset-0 z-50 bg-[var(--axis-canvas)]" onWheel={handleGraphWheel}>
+          {graphFullscreenMode === '3d' ? (
+            <KeywordSphereGraph
+              nodes={visibleNodes}
+              edges={visibleEdges}
+              selectedId={selectedId}
+              zoom={scale}
+              fullscreen
+              onSelectNode={selectGraphNode}
+            />
+          ) : (
+            <div className="h-full w-full bg-[var(--axis-surface-soft)]">
+              {renderKeywordSvg(true)}
+            </div>
+          )}
+          <div className="absolute right-5 top-20 z-20 flex max-w-[520px] flex-wrap justify-end gap-2">
+            {(['전체', '기업', 'AX', '보안', '인프라', '수주'] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setCategory(item)}
+                className={`rounded-[var(--axis-radius-md)] border px-3 py-2 text-sm font-semibold shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] transition ${
+                  category === item
+                    ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
+                    : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)] hover:border-[var(--axis-accent)]'
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
           <div className="absolute right-5 top-5 z-20 flex flex-wrap justify-end gap-2">
             <button
               type="button"
@@ -2349,62 +2834,88 @@ export function KeywordGraphView({
             </button>
             <button
               type="button"
-              onClick={() => setSphereFullscreen(false)}
+              onClick={() => {
+                const nextMode = graphFullscreenMode === '3d' ? '2d' : '3d';
+                setGraphFullscreenMode(nextMode);
+                setGraphMode(nextMode);
+              }}
+              className={`rounded-[var(--axis-radius-md)] border px-4 py-2 text-sm font-semibold shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] transition ${
+                graphFullscreenMode === '3d'
+                  ? 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)] hover:border-[var(--axis-accent)]'
+                  : 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
+              }`}
+            >
+              {graphFullscreenMode === '3d' ? '키워드 보기' : '3D 보기'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setGraphFullscreenMode(null)}
               className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-2 text-sm font-semibold text-[var(--axis-ink)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] hover:border-[var(--axis-accent)]"
             >
               전체화면 닫기
             </button>
           </div>
           {keywordOverlayOpen ? (
-            <section className="absolute bottom-6 right-6 z-10 max-h-[min(520px,calc(100vh-120px))] w-[min(620px,calc(100vw-32px))] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/95 p-4 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.56)] backdrop-blur">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="axis-kicker">Related card news</p>
-                  <h2 className="mt-1 truncate text-xl font-display font-semibold text-[var(--axis-ink)]">{selected.label}</h2>
-                  <p className="mt-1 text-xs font-semibold text-[var(--axis-muted)]">
-                    {overlayCardsAll.length}건 중 {safeOverlayPage + 1}/{overlayPageCount}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-wrap justify-end gap-2">
-                  {overlayCardsAll.length > overlayPageSize ? (
+            <>
+              <button
+                type="button"
+                aria-label="관련 카드뉴스 팝업 닫기"
+                onClick={() => setKeywordOverlayOpen(false)}
+                className="absolute inset-0 z-[6] cursor-default"
+              />
+              <section
+                className="absolute bottom-6 right-6 z-10 max-h-[min(520px,calc(100vh-120px))] w-[min(620px,calc(100vw-32px))] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/95 p-4 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.56)] backdrop-blur"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="axis-kicker">Related card news</p>
+                    <h2 className="mt-1 truncate text-xl font-display font-semibold text-[var(--axis-ink)]">{selected.label}</h2>
+                    <p className="mt-1 text-xs font-semibold text-[var(--axis-muted)]">
+                      {overlayCardsAll.length}건 중 {safeOverlayPage + 1}/{overlayPageCount}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                    {overlayCardsAll.length > overlayPageSize ? (
+                      <button
+                        type="button"
+                        onClick={() => setOverlayPage((page) => (page + 1) % overlayPageCount)}
+                        className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
+                      >
+                        다음
+                      </button>
+                    ) : null}
                     <button
                       type="button"
-                      onClick={() => setOverlayPage((page) => (page + 1) % overlayPageCount)}
+                      onClick={() => setKeywordOverlayOpen(false)}
                       className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
                     >
-                      다음
+                      닫기
                     </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => setKeywordOverlayOpen(false)}
-                    className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
-                  >
-                    닫기
-                  </button>
+                  </div>
                 </div>
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                {overlayCards.map((card) => (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => setKeywordDetailCardId(card.id)}
-                    className="min-w-0 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)]"
-                  >
-                    <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-[var(--axis-radius-md)] bg-[#081324]">
-                      {card.coverImageUrl ? (
-                        <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
-                      ) : null}
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
-                      <span className="absolute bottom-2 left-2 text-xs font-semibold text-white">{getPeerLabel(card)}</span>
-                    </div>
-                    <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
-                    <h3 className="mt-1 line-clamp-3 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</h3>
-                  </button>
-                ))}
-              </div>
-            </section>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {overlayCards.map((card) => (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => setKeywordDetailCardId(card.id)}
+                      className="min-w-0 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)]"
+                    >
+                      <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-[var(--axis-radius-md)] bg-[#081324]">
+                        {card.coverImageUrl ? (
+                          <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
+                        ) : null}
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
+                        <span className="absolute bottom-2 left-2 text-xs font-semibold text-white">{getPeerLabel(card)}</span>
+                      </div>
+                      <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
+                      <h3 className="mt-1 line-clamp-3 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</h3>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </>
           ) : null}
         </div>
       ) : null}

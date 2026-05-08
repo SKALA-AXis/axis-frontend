@@ -5,7 +5,6 @@ import {
   ExecutiveButton,
   ExecutiveContainer,
   ExecutiveHeader,
-  ExecutiveMetric,
   ExecutivePage,
 } from './executive/ExecutiveSystem';
 
@@ -45,15 +44,9 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
           actions={<ExecutiveButton variant="danger" icon={<LogOut size={16} />} onClick={onLogout}>로그아웃</ExecutiveButton>}
         />
 
-        <section className="grid gap-3 md:grid-cols-3">
-          <ExecutiveMetric label="Role" value="Strategist" helper="권한 기반 화면 노출" />
-          <ExecutiveMetric label="Channels" value="2" helper="Email, In-app 활성" tone="success" />
-          <ExecutiveMetric label="Access logs" value={loginHistory.length} helper="최근 기록" tone="accent" />
-        </section>
-
-        <section className="mt-5 grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <section className="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <aside className="axis-panel-flat h-fit p-3">
-            <nav className="flex gap-2 overflow-x-auto lg:flex-col">
+            <nav data-guide="settings-tabs" className="flex gap-2 overflow-x-auto lg:flex-col">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -64,7 +57,9 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex shrink-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-4 py-3 text-left transition lg:w-full ${
-                      isActive ? 'bg-[var(--axis-navy)] text-white' : 'text-[var(--axis-body)] hover:bg-white'
+                      isActive
+                        ? 'bg-[var(--axis-accent)] text-white shadow-[0_14px_34px_-26px_rgba(220,90,36,0.65)]'
+                        : 'text-[var(--axis-body)] hover:bg-[var(--axis-surface-muted)]'
                     }`}
                   >
                     <Icon size={17} />
@@ -105,7 +100,7 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
                   </div>
                   <ExecutiveBadge>FR-043</ExecutiveBadge>
                 </div>
-                <div className="mt-5 overflow-x-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-white">
+                <div className="mt-5 overflow-x-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)]">
                   <table className="axis-data-table">
                     <thead>
                       <tr>
@@ -161,7 +156,7 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
                   />
                 </div>
 
-                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-white p-4">
+                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <Clock3 size={16} className="text-[var(--axis-accent)]" />
                     <h3 className="text-sm font-semibold text-[var(--axis-ink)]">브리핑 발송 시간</h3>
@@ -170,7 +165,7 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
                     type="time"
                     value={notificationSettings.briefingTime}
                     onChange={(event) => setNotificationSettings((current) => ({ ...current, briefingTime: event.target.value }))}
-                    className="h-10 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+                    className="h-10 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
                   />
                 </div>
               </section>
@@ -197,7 +192,7 @@ function Field({
       <input
         type={type}
         defaultValue={defaultValue}
-        className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+        className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
       />
     </label>
   );
@@ -215,7 +210,7 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-white p-4">
+    <div className="flex items-center justify-between gap-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
       <div>
         <p className="text-sm font-semibold text-[var(--axis-ink)]">{title}</p>
         <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">{description}</p>
@@ -223,10 +218,14 @@ function ToggleRow({
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 rounded-full transition ${checked ? 'bg-[var(--axis-navy)]' : 'bg-[var(--axis-hairline)]'}`}
+        className={`relative h-6 w-11 rounded-full border transition ${
+          checked
+            ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)]'
+            : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)]'
+        }`}
         aria-pressed={checked}
       >
-        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${checked ? 'left-6' : 'left-1'}`} />
+        <span className={`absolute top-1 h-4 w-4 rounded-full bg-[#FFFFFF] shadow-sm transition ${checked ? 'left-6' : 'left-1'}`} />
       </button>
     </div>
   );

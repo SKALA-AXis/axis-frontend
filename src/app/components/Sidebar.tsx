@@ -2,10 +2,12 @@ import {
   ChevronLeft,
   ChevronRight,
   FileChartColumn,
+  FileText,
   Home,
+  Lightbulb,
   Moon,
   Network,
-  Sparkles,
+  Shuffle,
   Sun,
   Users,
 } from 'lucide-react';
@@ -22,10 +24,11 @@ interface SidebarProps {
 
 const baseMenuItems = [
   { id: 'home', icon: Home, label: '홈' },
+  { id: 'briefings', icon: FileText, label: '브리핑' },
+  { id: 'insight', icon: Lightbulb, label: '인사이트' },
   { id: 'peerPlus', icon: Users, label: 'Peer+' },
   { id: 'issues', icon: FileChartColumn, label: '카드뉴스' },
-  { id: 'insight', icon: Sparkles, label: '인사이트' },
-  { id: 'mixer', icon: Sparkles, label: '믹서' },
+  { id: 'mixer', icon: Shuffle, label: '믹서' },
   { id: 'keywordGraph', icon: Network, label: '키워드 그래프' },
 ] as const;
 

@@ -157,9 +157,9 @@
   --cream-soft: #22232a;
   --cream-deeper: #30313a;
   --beige-deep: #4a4650;
-  --canvas: #18191f;
-  --surface: #202128;
-  --surface-cream: #24252d;
+  --canvas: #1b1d24;
+  --surface: #252832;
+  --surface-cream: #2b2e38;
   --surface-code: #101117;
   --ink: #F6F1E8;
   --ink-tint: #E5DED2;
@@ -167,9 +167,9 @@
   --slate: #BDB6AC;
   --steel: #A49D94;
   --stone: #877F77;
-  --hairline: rgba(255, 255, 255, 0.14);
-  --hairline-soft: rgba(255, 255, 255, 0.10);
-  --hairline-strong: rgba(255, 255, 255, 0.22);
+  --hairline: rgba(255, 255, 255, 0.18);
+  --hairline-soft: rgba(255, 255, 255, 0.14);
+  --hairline-strong: rgba(255, 255, 255, 0.26);
   --urgent: #FF6B47;
   --notable: #F2C56B;
   --reference: #7AA67D;
