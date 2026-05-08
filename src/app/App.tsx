@@ -14,6 +14,7 @@ import { RawArticlesView } from './components/RawArticlesView';
 import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
 import { TopNav } from './components/TopNav';
+import { FloatingAiChat } from './components/FloatingAiChat';
 import { Input } from './components/ui/input';
 import { viewLabels } from '../shared/content/navigation';
 import { guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../shared/content/productGuide';
@@ -34,6 +35,12 @@ type SignUpForm = { name: string; email: string; password: string };
 type ThemeMode = 'light' | 'dark';
 const initialSignInForm: SignInForm = { email: '', password: '' };
 const initialSignUpForm: SignUpForm = { name: '', email: '', password: '' };
+
+function resolveAdaptiveFontSize() {
+  if (window.innerWidth >= 1800 && window.innerHeight >= 900) return '15.2px';
+  if (window.innerWidth <= 1180) return '15.5px';
+  return '16px';
+}
 function AxisMark() {
   return (
     <div
@@ -517,6 +524,22 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
   }, [themeMode]);
 
   useEffect(() => {
+    const applyAdaptiveScale = () => {
+      document.documentElement.style.setProperty('--font-size', resolveAdaptiveFontSize());
+      document.documentElement.classList.toggle('axis-wide-viewport', window.innerWidth >= 1800 && window.innerHeight >= 900);
+    };
+
+    applyAdaptiveScale();
+    window.addEventListener('resize', applyAdaptiveScale);
+
+    return () => {
+      window.removeEventListener('resize', applyAdaptiveScale);
+      document.documentElement.style.removeProperty('--font-size');
+      document.documentElement.classList.remove('axis-wide-viewport');
+    };
+  }, []);
+
+  useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       document.querySelectorAll<HTMLElement>('main, .axis-executive-page').forEach((element) => {
@@ -651,6 +674,7 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
           {renderView()}
         </main>
       </div>
+      <FloatingAiChat />
       {showGuide || helpGuideOpen ? (
         <InAppGuideOverlay
           activeView={activeView}

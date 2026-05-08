@@ -1,4 +1,4 @@
-import { Bell, Clock3, KeyRound, LogOut, ShieldCheck, User } from 'lucide-react';
+import { Bell, Clock3, KeyRound, LayoutDashboard, LogOut, ShieldCheck, User } from 'lucide-react';
 import { useState } from 'react';
 import {
   ExecutiveBadge,
@@ -7,13 +7,19 @@ import {
   ExecutiveHeader,
   ExecutivePage,
 } from './executive/ExecutiveSystem';
+import {
+  getStoredContentViewMode,
+  setStoredContentViewMode,
+  type ContentViewMode,
+} from '../../shared/config/viewPreferences';
 import { mockLoginHistory } from '../../shared/mocks/userSettings';
 
-type SettingsTab = 'account' | 'history' | 'notifications';
+type SettingsTab = 'account' | 'view' | 'history' | 'notifications';
 
 export function SettingsView({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [profileSaved, setProfileSaved] = useState(false);
+  const [contentViewMode, setContentViewMode] = useState<ContentViewMode>(getStoredContentViewMode);
   const [notificationSettings, setNotificationSettings] = useState({
     email: true,
     inApp: true,
@@ -24,9 +30,15 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
 
   const tabs: Array<{ id: SettingsTab; label: string; icon: typeof User }> = [
     { id: 'account', label: '회원 정보', icon: User },
+    { id: 'view', label: '기본 보기', icon: LayoutDashboard },
     { id: 'history', label: '접속 로그', icon: ShieldCheck },
     { id: 'notifications', label: '알림 설정', icon: Bell },
   ];
+
+  const updateContentViewMode = (mode: ContentViewMode) => {
+    setContentViewMode(mode);
+    setStoredContentViewMode(mode);
+  };
 
   return (
     <ExecutivePage>
@@ -81,6 +93,61 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
                   <ExecutiveButton onClick={() => setProfileSaved(true)}>회원 정보 저장</ExecutiveButton>
                   <ExecutiveButton variant="secondary" icon={<KeyRound size={16} />}>비밀번호 변경</ExecutiveButton>
                   {profileSaved ? <ExecutiveBadge tone="success">저장되었습니다</ExecutiveBadge> : null}
+                </div>
+              </section>
+            ) : null}
+
+            {activeTab === 'view' ? (
+              <section className="p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <LayoutDashboard size={17} className="text-[var(--axis-accent)]" />
+                    <h2 className="axis-section-heading">본문 기본 보기</h2>
+                  </div>
+                  <ExecutiveBadge tone="accent">기본값: 도형위주</ExecutiveBadge>
+                </div>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--axis-muted)]">
+                  브리핑, 인사이트, Peer+의 핵심 내용을 줄글 중심으로 볼지, 도형과 관계 중심으로 압축해서 볼지 선택합니다.
+                </p>
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => updateContentViewMode('visual')}
+                    className={`rounded-[var(--axis-radius-lg)] border p-5 text-left transition ${
+                      contentViewMode === 'visual'
+                        ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)]'
+                        : 'border-[var(--axis-hairline)] bg-[var(--axis-surface)] hover:border-[var(--axis-accent)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(220,90,36,0.14)] text-sm font-black text-[var(--axis-accent-strong)]">
+                        01
+                      </span>
+                      <div>
+                        <p className="text-base font-semibold text-[var(--axis-ink)]">도형위주</p>
+                        <p className="mt-1 text-sm text-[var(--axis-muted)]">관계, 흐름, 핵심 판단을 도형 카드로 먼저 봅니다.</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateContentViewMode('text')}
+                    className={`rounded-[var(--axis-radius-lg)] border p-5 text-left transition ${
+                      contentViewMode === 'text'
+                        ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)]'
+                        : 'border-[var(--axis-hairline)] bg-[var(--axis-surface)] hover:border-[var(--axis-accent)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] text-sm font-black text-[var(--axis-ink)]">
+                        Aa
+                      </span>
+                      <div>
+                        <p className="text-base font-semibold text-[var(--axis-ink)]">본문위주</p>
+                        <p className="mt-1 text-sm text-[var(--axis-muted)]">현재처럼 상세 문장을 충분히 읽는 구성을 유지합니다.</p>
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </section>
             ) : null}

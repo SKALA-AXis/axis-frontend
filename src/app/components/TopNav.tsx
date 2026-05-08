@@ -8,6 +8,7 @@ import {
   getSummaryLines,
 } from '../../features/card-news/mappers/cardNewsExecutive';
 import { viewLabels } from '../../shared/content/navigation';
+import { searchSuggestionKeywords } from '../../shared/content/searchSuggestions';
 import {
   mockNotificationItems,
   notificationClearedStorageKey,
@@ -74,6 +75,7 @@ export function TopNav({
   const { cards } = useCardNews();
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const normalizedQuery = query.trim().toLowerCase();
+  const hasQuery = normalizedQuery.length > 0;
   const peerResults = useMemo(() => {
     if (!normalizedQuery) return [];
     return mockPeerPlusOptions.filter((peer) => peer.label.toLowerCase().replace(/\s+/g, '').includes(normalizedQuery.replace(/\s+/g, '')));
@@ -96,7 +98,8 @@ export function TopNav({
       })
       .slice(0, 4);
   }, [normalizedQuery, rankedCards]);
-  const keywordFallback = normalizedQuery && peerResults.length === 0 && cardResults.length === 0;
+  const keywordFallback = hasQuery && peerResults.length === 0 && cardResults.length === 0;
+  const showSearchPanel = searchOpen && (hasQuery || searchSuggestionKeywords.length > 0);
   const unreadCount = notifications.filter((item) => !item.read).length;
   const visibleNotifications = showAllNotifications ? notifications : notifications.slice(0, 3);
 
@@ -161,7 +164,17 @@ export function TopNav({
       </div>
 
       {/* ─── 가운데: 글로벌 검색 input ──────────────────────── */}
-      <form data-guide="global-search" className="relative min-w-0 flex-1" onSubmit={handleSearchSubmit}>
+      <form
+        data-guide="global-search"
+        className="relative min-w-0 flex-1"
+        onSubmit={handleSearchSubmit}
+        onMouseEnter={() => setSearchOpen(true)}
+        onMouseLeave={() => {
+          if (document.activeElement?.id !== 'axis-global-search' && !query.trim()) {
+            setSearchOpen(false);
+          }
+        }}
+      >
         <label htmlFor="axis-global-search" className="sr-only">검색</label>
         <Search
           size={15}
@@ -186,12 +199,43 @@ export function TopNav({
         <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-sm border border-hairline bg-cream-soft px-1.5 py-0.5 font-mono text-[10px] text-stone md:inline">
             ⌘K
         </kbd>
-        {searchOpen && normalizedQuery ? (
+        {showSearchPanel ? (
           <section className="absolute left-0 right-0 top-12 z-40 overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] shadow-[0_22px_70px_-36px_rgba(0,0,0,0.45)]">
             <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-4 py-3">
-              <p className="axis-kicker">Search results</p>
+              <p className="axis-kicker">{hasQuery ? 'Search results' : 'Recommended keywords'}</p>
             </div>
             <div className="max-h-[360px] overflow-y-auto p-2">
+              {!hasQuery ? (
+                <div className="p-2">
+                  <div className="flex flex-wrap gap-2">
+                    {searchSuggestionKeywords.map((keyword) => (
+                      <button
+                        key={keyword}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => navigateFromSearch('issues', { query: keyword })}
+                        className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-2 text-sm font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                      >
+                        {keyword}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {mockPeerPlusOptions.slice(0, 4).map((peer) => (
+                      <button
+                        key={peer.id}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => navigateFromSearch('peerPlus', { peerId: peer.id, query: peer.label })}
+                        className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3 text-left transition hover:border-[var(--axis-accent)]"
+                      >
+                        <span className="text-[11px] font-semibold text-[var(--axis-muted)]">Peer 바로가기</span>
+                        <span className="mt-1 block text-sm font-bold text-[var(--axis-ink)]">{peer.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               {peerResults.map((peer) => (
                 <button
                   key={peer.id}

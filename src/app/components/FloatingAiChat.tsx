@@ -54,9 +54,9 @@ export function FloatingAiChat() {
   };
 
   return (
-    <div className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3 md:bottom-5 md:right-6">
+    <div className="fixed bottom-20 right-4 z-[55] flex flex-col items-end gap-3 md:bottom-5 md:right-6">
       {isOpen ? (
-        <section className="mb-2 flex h-[420px] w-[330px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-none">
+        <section className="mb-2 flex h-[420px] w-[330px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-[0_24px_80px_-42px_rgba(0,0,0,0.62)]">
           <div className="flex items-center justify-between border-b border-[var(--axis-hairline)] px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)]">
@@ -133,7 +133,7 @@ export function FloatingAiChat() {
         </section>
       ) : (
         <div
-          className={`pointer-events-none hidden w-56 rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4 shadow-none transition-all duration-200 sm:block ${
+          className={`pointer-events-none hidden w-56 rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4 shadow-[0_18px_54px_-34px_rgba(0,0,0,0.52)] transition-all duration-200 sm:block ${
             isBubbleVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
           }`}
         >
@@ -155,15 +155,13 @@ export function FloatingAiChat() {
         onMouseLeave={() => setIsBubbleVisible(false)}
         onFocus={() => setIsBubbleVisible(true)}
         onBlur={() => setIsBubbleVisible(false)}
-        className={`flex size-14 items-center justify-center rounded-[var(--axis-radius-xl)] shadow-none transition-transform hover:scale-105 focus:outline-none ${
-          isOpen ? 'bg-[var(--axis-accent)]' : 'bg-[var(--axis-navy)]'
+        className={`flex size-14 items-center justify-center rounded-[var(--axis-radius-xl)] border border-white/20 text-white shadow-[0_18px_54px_-28px_rgba(220,90,36,0.82)] transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--axis-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--axis-canvas)] ${
+          isOpen ? 'bg-[var(--axis-accent-strong)]' : 'bg-[var(--axis-accent)]'
         }`}
         aria-label={isOpen ? 'AI 채팅 패널 닫기' : 'AI 채팅 패널 열기'}
         aria-expanded={isOpen}
       >
-        <span className="relative block size-7 rounded-[var(--axis-radius-md)] bg-white/90">
-          <span className="absolute bottom-1 left-1.5 h-2 w-4 bg-[var(--axis-accent)]" />
-        </span>
+        <Sparkles className="size-6" />
       </button>
       {reportPreviewOpen ? (
         <div className="fixed inset-0 z-[60] bg-[rgba(8,10,14,0.58)] p-4 backdrop-blur-sm">

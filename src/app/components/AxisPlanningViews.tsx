@@ -65,7 +65,7 @@ import {
 } from '../../shared/mocks/keywordGraph';
 import { mockMixerConfig } from '../../shared/mocks/mixer';
 import { mockPeerPlusIrProfiles, mockPeerPlusKeywordCloud, mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../shared/mocks/peerPlus';
-import { FloatingAiChat } from './FloatingAiChat';
+import { useContentViewMode } from '../../shared/hooks/useContentViewMode';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -608,7 +608,6 @@ export function HomeDashboardView({
           }}
         />
       ) : null}
-      <FloatingAiChat />
     </ExecutivePage>
   );
 }
@@ -1034,6 +1033,7 @@ export function PeerPlusView({
   selectedPeerId?: PeerPlusPeerId;
 }) {
   const { cards, isLoading, error } = useCardNews();
+  const contentViewMode = useContentViewMode();
   const peerOptions = mockPeerPlusOptions;
   const [selectedPeerId, setSelectedPeerId] = useState<PeerPlusPeerId>(() => {
     const stored = window.localStorage.getItem(peerPlusSelectionStorageKey);
@@ -1085,6 +1085,7 @@ export function PeerPlusView({
     { subject: '시장 노출', value: 82 },
   ];
   const selectedKeywordCloud = mockPeerPlusKeywordCloud[selectedPeerId];
+  const isVisualMode = contentViewMode === 'visual';
   const wordCloudLayout = [
     { left: '50%', top: '50%', rotate: 0 },
     { left: '23%', top: '35%', rotate: -6 },
@@ -1152,57 +1153,108 @@ export function PeerPlusView({
             <h2 className="mt-2 text-lg font-display font-semibold leading-tight text-ink">
               경쟁 메시지 차이와 SK AX 대응 포인트
             </h2>
-            <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-              <div className="relative min-h-[230px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] p-4">
-                <div className="absolute left-9 top-10 bottom-10 w-px bg-[var(--axis-hairline)]" />
-                {[
-                  ['SK AX', '운영 KPI'],
-                  [selectedPeer.label, '공개 신호'],
-                  ['GAP', '제안 전환'],
-                ].map(([label, sub], index) => (
-                  <div
-                    key={label}
-                    className="relative z-10 mb-5 flex items-center gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/88 p-2.5 shadow-[0_14px_36px_-32px_rgba(0,0,0,0.42)]"
-                  >
-                    <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-xs font-black ${
-                      index === 0
-                        ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.16)] text-[var(--axis-accent-strong)]'
-                        : index === 1
-                          ? 'border-[var(--axis-success)] bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
-                          : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
-                    }`}>
-                      {index + 1}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold text-[var(--axis-ink)]">{label}</span>
-                      <span className="mt-0.5 block text-[11px] font-semibold text-[var(--axis-muted)]">{sub}</span>
-                    </span>
-                  </div>
-                ))}
+            {isVisualMode ? (
+              <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <div className="relative min-h-[300px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[radial-gradient(circle_at_50%_48%,rgba(220,90,36,0.10),transparent_46%),var(--axis-surface-muted)] p-5">
+                  <div className="absolute left-[18%] right-[18%] top-1/2 h-px bg-[var(--axis-hairline)]" />
+                  {[
+                    { label: 'SK AX', sub: '운영 KPI', left: '16%', top: '52%', tone: 'accent', text: peerInsightItems[0].body },
+                    { label: selectedPeer.label, sub: '공개 신호', left: '84%', top: '52%', tone: 'success', text: peerInsightItems[2]?.body ?? peerInsightItems[0].body },
+                    { label: 'GAP', sub: '제안 전환', left: '50%', top: '26%', tone: 'neutral', text: peerInsightItems[peerInsightItems.length - 2]?.body ?? peerInsightItems[0].body },
+                    { label: 'Risk', sub: '수주 검증', left: '50%', top: '78%', tone: 'muted', text: peerInsightItems[peerInsightItems.length - 1]?.body ?? peerInsightItems[0].body },
+                  ].map((node) => (
+                    <button
+                      key={`${node.label}-${node.sub}`}
+                      type="button"
+                      className={`group absolute flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border p-3 text-center transition hover:scale-105 ${
+                        node.tone === 'accent'
+                          ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.16)] text-[var(--axis-accent-strong)]'
+                          : node.tone === 'success'
+                            ? 'border-[var(--axis-success)] bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
+                            : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
+                      }`}
+                      style={{ left: node.left, top: node.top }}
+                    >
+                      <span className="text-base font-black leading-tight">{node.label}</span>
+                      <span className="mt-1 text-[11px] font-semibold text-[var(--axis-muted)]">{node.sub}</span>
+                      <InsightRevealBubble text={node.text} />
+                    </button>
+                  ))}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {peerInsightItems.map((item, index) => (
+                    <article
+                      key={`${item.label}-${item.body}`}
+                      tabIndex={0}
+                      className={`group relative min-h-28 overflow-hidden rounded-[var(--axis-radius-lg)] border p-4 text-left transition hover:-translate-y-0.5 hover:border-[var(--axis-accent)] focus-visible:border-[var(--axis-accent)] focus-visible:outline-none ${
+                        index === 0
+                          ? 'sm:col-span-2 border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)]'
+                          : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</span>
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--axis-canvas)] text-xs font-bold text-[var(--axis-muted)]">{index + 1}</span>
+                      </div>
+                      <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
+                      <InsightRevealBubble text={item.body} />
+                    </article>
+                  ))}
+                </div>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                {peerInsightItems.map((item, index) => (
-                  <div
-                    key={`${item.label}-${item.body}`}
-                    className={`rounded-[var(--axis-radius-lg)] border p-4 ${
-                      index === 0
-                        ? 'md:col-span-2 border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)]'
-                        : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)]'
-                    }`}
-                  >
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
-                        {item.label}
+            ) : (
+              <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <div className="relative min-h-[230px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] p-4">
+                  <div className="absolute left-9 top-10 bottom-10 w-px bg-[var(--axis-hairline)]" />
+                  {[
+                    ['SK AX', '운영 KPI'],
+                    [selectedPeer.label, '공개 신호'],
+                    ['GAP', '제안 전환'],
+                  ].map(([label, sub], index) => (
+                    <div
+                      key={label}
+                      className="relative z-10 mb-5 flex items-center gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/88 p-2.5 shadow-[0_14px_36px_-32px_rgba(0,0,0,0.42)]"
+                    >
+                      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-xs font-black ${
+                        index === 0
+                          ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.16)] text-[var(--axis-accent-strong)]'
+                          : index === 1
+                            ? 'border-[var(--axis-success)] bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
+                            : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
+                      }`}>
+                        {index + 1}
                       </span>
-                      <span className="text-xs font-semibold text-[var(--axis-muted)]">{String(index + 1).padStart(2, '0')}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-[var(--axis-ink)]">{label}</span>
+                        <span className="mt-0.5 block text-[11px] font-semibold text-[var(--axis-muted)]">{sub}</span>
+                      </span>
                     </div>
-                    <p className={`${index === 0 ? 'text-base leading-7' : 'text-sm leading-6'} font-semibold text-[var(--axis-ink)]`}>
-                      {item.body}
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {peerInsightItems.map((item, index) => (
+                    <div
+                      key={`${item.label}-${item.body}`}
+                      className={`rounded-[var(--axis-radius-lg)] border p-4 ${
+                        index === 0
+                          ? 'md:col-span-2 border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)]'
+                          : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)]'
+                      }`}
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
+                          {item.label}
+                        </span>
+                        <span className="text-xs font-semibold text-[var(--axis-muted)]">{String(index + 1).padStart(2, '0')}</span>
+                      </div>
+                      <p className={`${index === 0 ? 'text-base leading-7' : 'text-sm leading-6'} font-semibold text-[var(--axis-ink)]`}>
+                        {item.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </article>
 
           <button
@@ -1812,10 +1864,14 @@ export function InsightResultView({
   onToggleBookmark?: (cardId: string) => void;
 }) {
   const { cards } = useCardNews();
-  const relatedAssets = getExecutiveRank(cards).slice(0, 3);
+  const contentViewMode = useContentViewMode();
+  const insightEvidenceCards = getExecutiveRank(cards).slice(0, 6);
   const [insightDetailCardId, setInsightDetailCardId] = useState<string | null>(null);
   const [insightDetailSlideIndex, setInsightDetailSlideIndex] = useState(0);
+  const [activeInsightStep, setActiveInsightStep] = useState(0);
   const insightDetailCard = insightDetailCardId ? cards.find((card) => card.id === insightDetailCardId) ?? null : null;
+  const isVisualMode = contentViewMode === 'visual';
+  const activeFlowStep = insightResult.flowSteps[activeInsightStep] ?? insightResult.flowSteps[0];
 
   return (
     <ExecutivePage>
@@ -1828,90 +1884,206 @@ export function InsightResultView({
 
         <section className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
           <main className="space-y-5">
-            <section data-guide="insight-summary" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
-              <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-6 py-4">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
-                    <Sparkles size={18} />
-                  </span>
-                  <h2 className="axis-section-heading">핵심 판단</h2>
-                </div>
-              </div>
-              <div className="p-6">
-              <p className="text-2xl font-semibold leading-9 text-[var(--axis-ink)]">{insightResult.summary}</p>
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {insightResult.flowSteps.map((step, index) => (
-                  <article key={step.id} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_14px_36px_-34px_rgba(0,0,0,0.32)]">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="rounded-full bg-[rgba(220,90,36,0.10)] px-2 py-1 text-xs font-semibold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
-                      <CircleDot size={18} className="text-[var(--axis-accent)]" />
+            {isVisualMode ? (
+              <>
+                <section data-guide="insight-summary" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
+                  <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
+                        <Sparkles size={18} />
+                      </span>
+                      <h2 className="axis-section-heading">핵심 판단</h2>
                     </div>
-                    <h3 className="mt-3 text-lg font-semibold text-[var(--axis-ink)]">{step.label}</h3>
-                    <p className="mt-2 text-base leading-7 text-[var(--axis-body)]">{step.description}</p>
-                  </article>
-                ))}
-              </div>
-              </div>
-            </section>
-            <section data-guide="insight-analysis" className="grid gap-5 lg:grid-cols-2">
-              <div className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
-                <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
-                  <p className="axis-kicker">Evidence</p>
-                  <h2 className="axis-section-heading mt-1">판단 근거</h2>
-                </div>
-                <ul className="space-y-2 p-5">
-                  {insightResult.evidence.map((item, index) => (
-                    <li key={item} className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 text-base leading-7 text-[var(--axis-body)]">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(90,107,87,0.12)] text-xs font-semibold text-[var(--axis-success)]">{index + 1}</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.28)]">
-                <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.07)] px-5 py-4">
-                  <p className="axis-kicker">Implications</p>
-                  <h2 className="axis-section-heading mt-1">시사점</h2>
-                </div>
-                <ul className="space-y-2 p-5">
-                  {insightResult.implications.map((item, index) => (
-                    <li key={item} className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 text-base leading-7 text-[var(--axis-body)]">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.11)] text-xs font-semibold text-[var(--axis-accent-strong)]">{index + 1}</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </section>
-          </main>
-
-          <aside data-guide="insight-sources" className="grid gap-4 sm:grid-cols-2 2xl:block 2xl:space-y-4">
-            {relatedAssets.length > 0 ? (
-              relatedAssets.map((card) => (
-                <button
-                  key={card.id}
-                  type="button"
-                  onClick={() => setInsightDetailCardId(card.id)}
-                  className="block w-full overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[#081324] text-left shadow-[0_18px_48px_-34px_rgba(0,0,0,0.55)] transition hover:border-[var(--axis-accent)]"
-                >
-                  <div className="relative aspect-[16/9] 2xl:aspect-[4/5]">
-                    {card.coverImageUrl ? (
-                      <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
-                    ) : null}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#081324]/48 to-black/92" />
-                    <div className="relative flex h-full flex-col justify-between p-4 text-white">
-                      <div className="flex items-start justify-between gap-2 text-xs font-semibold">
-                        <span className="rounded-sm border border-white/25 bg-white/10 px-2 py-1">{getDisplayDate(card)}</span>
-                        <span className="rounded-sm border border-white/25 bg-white/10 px-2 py-1">{card.category_label ?? card.category}</span>
+                  </div>
+                  <div className="grid gap-5 p-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                    <div className="flex min-h-[300px] flex-col justify-center rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.28)] bg-[radial-gradient(circle_at_12%_20%,rgba(220,90,36,0.12),transparent_34%),var(--axis-canvas)] p-6">
+                      <p className="text-2xl font-semibold leading-9 text-[var(--axis-ink)]">{insightResult.summary}</p>
+                      <p className="mt-4 text-sm font-semibold text-[var(--axis-muted)]">단계 카드를 누르면 오른쪽 도형 보드의 상세 해석이 바뀝니다.</p>
+                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                        {insightResult.flowSteps.map((step, index) => (
+                          <button
+                            key={step.id}
+                            type="button"
+                            onClick={() => setActiveInsightStep(index)}
+                            className={`group relative min-h-24 overflow-hidden rounded-[var(--axis-radius-md)] border p-3 text-left transition hover:border-[var(--axis-accent)] ${
+                              activeInsightStep === index
+                                ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.11)]'
+                                : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)]'
+                            }`}
+                            aria-pressed={activeInsightStep === index}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--axis-canvas)] text-xs font-black text-[var(--axis-accent-strong)]">
+                                {String(index + 1).padStart(2, '0')}
+                              </span>
+                              <span className="text-sm font-bold text-[var(--axis-ink)]">{step.label}</span>
+                            </div>
+                            <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-[var(--axis-body)]">{step.description}</p>
+                            <InsightRevealBubble text={step.description} />
+                          </button>
+                        ))}
                       </div>
-                      <div>
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/75">{getPeerLabel(card)}</p>
-                        <h3 className="line-clamp-3 text-[clamp(15px,1.3vw,18px)] font-semibold leading-tight text-white">{card.title}</h3>
+                    </div>
+                    <div className="relative min-h-[300px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] p-5">
+                      <div className="absolute left-1/2 top-10 h-[calc(100%-80px)] w-px -translate-x-1/2 bg-[var(--axis-hairline)]" aria-hidden="true" />
+                      <div className="absolute left-10 right-10 top-1/2 h-px -translate-y-1/2 bg-[var(--axis-hairline)]" aria-hidden="true" />
+                      <div className="relative z-10 flex h-full min-h-[260px] items-center justify-center">
+                        <div className="max-w-sm rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.32)] bg-[var(--axis-canvas)] p-5 text-center shadow-[0_18px_48px_-34px_rgba(0,0,0,0.38)]">
+                          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--axis-accent)] text-lg font-black text-white">
+                            {String(activeInsightStep + 1).padStart(2, '0')}
+                          </span>
+                          <p className="mt-4 axis-kicker">{activeFlowStep?.label}</p>
+                          <p className="mt-2 text-lg font-semibold leading-7 text-[var(--axis-ink)]">{activeFlowStep?.description}</p>
+                        </div>
+                        {insightResult.flowSteps.map((step, index) => {
+                          const positions = [
+                            'left-[8%] top-[10%]',
+                            'right-[8%] top-[12%]',
+                            'left-[9%] bottom-[10%]',
+                            'right-[9%] bottom-[12%]',
+                          ];
+                          return (
+                            <button
+                              key={step.id}
+                              type="button"
+                              onClick={() => setActiveInsightStep(index)}
+                              className={`absolute ${positions[index] ?? 'left-4 top-4'} flex h-20 w-20 items-center justify-center rounded-full border text-xs font-black transition hover:scale-105 ${
+                                activeInsightStep === index
+                                  ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
+                                  : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]'
+                              }`}
+                              aria-label={`${step.label} 상세 보기`}
+                              aria-pressed={activeInsightStep === index}
+                            >
+                              {step.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
-                </button>
-              ))
+                </section>
+                <section data-guide="insight-analysis" className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  {[
+                    { title: '판단 근거', label: 'Evidence', items: insightResult.evidence, tone: 'success' },
+                    { title: '시사점', label: 'Implications', items: insightResult.implications, tone: 'accent' },
+                  ].map((group) => (
+                    <section key={group.title} className="axis-panel-flat overflow-hidden">
+                      <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
+                        <p className="axis-kicker">{group.label}</p>
+                        <h2 className="axis-section-heading mt-1">{group.title}</h2>
+                      </div>
+                      <div className="grid gap-3 p-5 sm:grid-cols-2">
+                        {group.items.map((item, index) => (
+                          <article
+                            key={item}
+                            tabIndex={0}
+                            className={`group relative min-h-32 overflow-hidden rounded-[var(--axis-radius-lg)] border p-4 text-left transition hover:-translate-y-0.5 hover:border-[var(--axis-accent)] focus-visible:border-[var(--axis-accent)] focus-visible:outline-none ${
+                              group.tone === 'success'
+                                ? 'border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)]'
+                                : 'border-[rgba(220,90,36,0.24)] bg-[rgba(220,90,36,0.07)]'
+                            }`}
+                          >
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--axis-canvas)] text-xs font-bold text-[var(--axis-muted)]">{index + 1}</span>
+                            <p className="mt-3 line-clamp-4 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item}</p>
+                            <InsightRevealBubble text={item} />
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </section>
+              </>
+            ) : (
+              <>
+                <section data-guide="insight-summary" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
+                  <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
+                        <Sparkles size={18} />
+                      </span>
+                      <h2 className="axis-section-heading">핵심 판단</h2>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-2xl font-semibold leading-9 text-[var(--axis-ink)]">{insightResult.summary}</p>
+                    <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      {insightResult.flowSteps.map((step, index) => (
+                        <article key={step.id} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_14px_36px_-34px_rgba(0,0,0,0.32)]">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="rounded-full bg-[rgba(220,90,36,0.10)] px-2 py-1 text-xs font-semibold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
+                            <CircleDot size={18} className="text-[var(--axis-accent)]" />
+                          </div>
+                          <h3 className="mt-3 text-lg font-semibold text-[var(--axis-ink)]">{step.label}</h3>
+                          <p className="mt-2 text-base leading-7 text-[var(--axis-body)]">{step.description}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+                <section data-guide="insight-analysis" className="grid gap-5 lg:grid-cols-2">
+                  <div className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
+                    <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
+                      <p className="axis-kicker">Evidence</p>
+                      <h2 className="axis-section-heading mt-1">판단 근거</h2>
+                    </div>
+                    <ul className="space-y-2 p-5">
+                      {insightResult.evidence.map((item, index) => (
+                        <li key={item} className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 text-base leading-7 text-[var(--axis-body)]">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(90,107,87,0.12)] text-xs font-semibold text-[var(--axis-success)]">{index + 1}</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.28)]">
+                    <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.07)] px-5 py-4">
+                      <p className="axis-kicker">Implications</p>
+                      <h2 className="axis-section-heading mt-1">시사점</h2>
+                    </div>
+                    <ul className="space-y-2 p-5">
+                      {insightResult.implications.map((item, index) => (
+                        <li key={item} className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 text-base leading-7 text-[var(--axis-body)]">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.11)] text-xs font-semibold text-[var(--axis-accent-strong)]">{index + 1}</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </section>
+              </>
+            )}
+          </main>
+
+          <aside data-guide="insight-sources" className="2xl:sticky 2xl:top-4 2xl:self-start">
+            {insightEvidenceCards.length > 0 ? (
+              <section className="axis-panel-flat p-5">
+                <p className="axis-kicker">Evidence queue</p>
+                <h2 className="axis-section-heading mt-1">근거 카드뉴스</h2>
+                <p className="mt-2 text-xs font-semibold leading-5 text-[var(--axis-muted)]">
+                  브리핑에서 쓰는 근거 카드뉴스 형식으로, 인사이트 판단 근거를 바로 확인합니다.
+                </p>
+                <div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-1">
+                  {insightEvidenceCards.map((card, index) => (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => setInsightDetailCardId(card.id)}
+                      className="group relative block w-full overflow-hidden rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)] hover:bg-[var(--axis-canvas)]"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(220,90,36,0.10)] text-xs font-black text-[var(--axis-accent-strong)]">
+                          {index + 1}
+                        </span>
+                        <span className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</span>
+                      </div>
+                      <p className="mt-3 text-xs font-semibold text-[var(--axis-accent-strong)]">{getPeerLabel(card)}</p>
+                      <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</h3>
+                      <p className="mt-2 line-clamp-2 text-xs font-medium leading-5 text-[var(--axis-muted)]">{getSummaryLines(card)[0]}</p>
+                    </button>
+                  ))}
+                </div>
+              </section>
             ) : (
               <EmptyBlock label="관련 콘텐츠 카드가 없습니다." />
             )}
@@ -1931,8 +2103,19 @@ export function InsightResultView({
           }}
         />
       ) : null}
-      <FloatingAiChat />
     </ExecutivePage>
+  );
+}
+
+function InsightRevealBubble({ text }: { text: string }) {
+  return (
+    <span
+      data-hover-reveal
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-3 bottom-3 z-20 max-h-24 translate-y-2 overflow-y-auto rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--axis-ink)] opacity-0 shadow-[0_18px_48px_-30px_rgba(0,0,0,0.45)] transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100"
+    >
+      {text}
+    </span>
   );
 }
 
@@ -2319,7 +2502,7 @@ export function KeywordGraphView({
   const [detailOpen, setDetailOpen] = useState(() => window.matchMedia('(min-width: 1280px)').matches);
   const [keywordOverlayOpen, setKeywordOverlayOpen] = useState(false);
   const [overlayPage, setOverlayPage] = useState(0);
-  const [graphMode, setGraphMode] = useState<'2d' | '3d'>('2d');
+  const [graphMode, setGraphMode] = useState<'2d' | '3d'>('3d');
   const [graphFullscreenMode, setGraphFullscreenMode] = useState<'2d' | '3d' | null>(null);
   const [keywordDetailCardId, setKeywordDetailCardId] = useState<string | null>(null);
   const [keywordDetailSlideIndex, setKeywordDetailSlideIndex] = useState(0);

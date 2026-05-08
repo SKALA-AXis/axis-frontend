@@ -15,6 +15,7 @@ import {
   ExecutivePage,
 } from './executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from './AxisPlanningViews';
+import { useContentViewMode } from '../../shared/hooks/useContentViewMode';
 
 type BriefingPeriod = 'daily' | 'weekly' | 'monthly';
 type BriefingRange = {
@@ -370,6 +371,7 @@ function buildBriefingPrintHtml(briefing: ReturnType<typeof buildBriefing>) {
 
 export function BriefingsView() {
   const { cards, isLoading, error } = useCardNews();
+  const contentViewMode = useContentViewMode();
   const [period, setPeriod] = useState<BriefingPeriod>('daily');
   const [dailyDate, setDailyDate] = useState(() => toDateInputValue());
   const [weeklyMonth, setWeeklyMonth] = useState(() => toMonthInputValue());
@@ -380,6 +382,7 @@ export function BriefingsView() {
   const [detailSlideIndex, setDetailSlideIndex] = useState(0);
   const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
+  const [activeSignalIndex, setActiveSignalIndex] = useState(0);
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const weeklyOptions = useMemo(() => getWeekOptions(weeklyMonth), [weeklyMonth]);
   const briefingRange = useMemo(
@@ -389,6 +392,9 @@ export function BriefingsView() {
   const briefing = useMemo(() => buildBriefing(period, rankedCards, briefingRange), [period, rankedCards, briefingRange]);
   const reportText = useMemo(() => buildBriefingReportText(briefing), [briefing]);
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
+  const isVisualMode = contentViewMode === 'visual';
+  const activeSignal = briefing.signalCards[activeSignalIndex] ?? briefing.signalCards[0];
+  const activeDigest = briefing.whatHappenedDigest[activeSignalIndex] ?? briefing.whatHappenedDigest[0];
 
   const handleShareBriefing = async () => {
     setSharePreviewOpen(true);
@@ -545,7 +551,7 @@ export function BriefingsView() {
           </p>
         ) : null}
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
           <main data-guide="briefing-main" className="space-y-5">
             <section className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.24)]">
               <div className="h-1.5 bg-[linear-gradient(90deg,var(--axis-accent),rgba(220,90,36,0.16))]" />
@@ -565,46 +571,149 @@ export function BriefingsView() {
               </div>
             </section>
 
-            <section className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
-              <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <TrendingUp size={20} className="text-[var(--axis-accent)]" />
-                  <h2 className="text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">{briefingFocusTitle}</h2>
-                </div>
-                </div>
-              </div>
-              <div className="p-6">
-              <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.30)] bg-[rgba(220,90,36,0.08)] p-5 shadow-[0_18px_48px_-38px_rgba(220,90,36,0.35)]">
-                <p className="text-xl font-semibold leading-8 text-[var(--axis-ink)]">{briefing.whatHappenedDigest[0]}</p>
-                <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                  {briefing.whatHappenedDigest.slice(1).map((item) => (
-                    <p key={item} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/92 p-4 text-base font-medium leading-7 text-[var(--axis-body)]">
-                      {item}
-                    </p>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                {briefing.signalCards.map((item, index) => (
-                  <article key={item.label} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_14px_36px_-34px_rgba(0,0,0,0.35)]">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="axis-kicker">{String(index + 1).padStart(2, '0')} · {item.label}</p>
-                      <ExecutiveBadge tone="accent">{item.metric}</ExecutiveBadge>
+            {isVisualMode ? (
+              <>
+                <section className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
+                  <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={20} className="text-[var(--axis-accent)]" />
+                      <h2 className="text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">{briefingFocusTitle}</h2>
                     </div>
-                    <p className="mt-3 text-base font-semibold leading-7 text-[var(--axis-ink)]">{item.value}</p>
-                  </article>
-                ))}
-              </div>
-              </div>
-            </section>
+                  </div>
+                  <div className="grid gap-5 p-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+                    <div className="relative overflow-hidden rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.30)] bg-[radial-gradient(circle_at_18%_20%,rgba(220,90,36,0.16),transparent_32%),rgba(220,90,36,0.08)] p-5 shadow-[0_18px_48px_-38px_rgba(220,90,36,0.35)]">
+                      <div className="grid gap-5 lg:grid-cols-[116px_minmax(0,1fr)]">
+                        <div className="relative flex min-h-[260px] flex-col items-center justify-between py-2">
+                          <span className="absolute bottom-10 top-10 w-px bg-[linear-gradient(180deg,var(--axis-accent),rgba(90,107,87,0.45))]" aria-hidden="true" />
+                          {['감지', '해석', '대응'].map((label, index) => (
+                            <button
+                              key={label}
+                              type="button"
+                              onClick={() => setActiveSignalIndex(index)}
+                              className={`relative z-10 flex h-20 w-20 flex-col items-center justify-center rounded-full border text-center transition ${
+                                activeSignalIndex === index
+                                  ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white shadow-[0_16px_42px_-24px_rgba(220,90,36,0.8)]'
+                                  : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]'
+                              }`}
+                              aria-pressed={activeSignalIndex === index}
+                            >
+                              <span className="text-[11px] font-black tracking-[0.12em]">{String(index + 1).padStart(2, '0')}</span>
+                              <span className="mt-1 text-sm font-bold">{label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex min-h-[260px] flex-col justify-center">
+                          <p className="axis-kicker">Selected change</p>
+                          <h3 className="mt-2 text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">
+                            {activeSignal?.label ?? briefingFocusTitle}
+                          </h3>
+                          <p className="mt-4 text-lg font-semibold leading-8 text-[var(--axis-ink)]">
+                            {activeDigest}
+                          </p>
+                          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                            {briefing.whatHappenedDigest.map((item, index) => (
+                              <BriefingRevealPill
+                                key={item}
+                                active={activeSignalIndex === index}
+                                label={`${index + 1}`}
+                                text={item}
+                                onClick={() => setActiveSignalIndex(index)}
+                              />
+                            ))}
+                          </div>
+                          {activeSignal ? (
+                            <div className="mt-5 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/88 p-4">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ExecutiveBadge tone="accent">{activeSignal.metric}</ExecutiveBadge>
+                                <span className="text-xs font-semibold text-[var(--axis-muted)]">클릭한 신호의 상세 해석</span>
+                              </div>
+                              <p className="mt-3 text-base font-semibold leading-7 text-[var(--axis-body)]">{activeSignal.value}</p>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid gap-3">
+                      {briefing.signalCards.map((item, index) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => setActiveSignalIndex(index)}
+                          className={`group relative flex min-h-32 flex-col justify-between overflow-hidden rounded-[var(--axis-radius-lg)] border p-4 text-left transition hover:-translate-y-1 hover:border-[var(--axis-accent)] ${
+                            activeSignalIndex === index
+                              ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.08)]'
+                              : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)]'
+                          }`}
+                          aria-pressed={activeSignalIndex === index}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-black text-[var(--axis-accent-strong)]">
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-base font-semibold text-[var(--axis-ink)]">{item.label}</p>
+                              <ExecutiveBadge tone="accent">{item.metric}</ExecutiveBadge>
+                            </div>
+                          </div>
+                          <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-[var(--axis-body)]">{item.value}</p>
+                          <RevealBubble text={item.value} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </section>
 
-            <section className="grid gap-5 lg:grid-cols-2">
-              <BriefingBlock icon={<Lightbulb size={18} />} title="의미와 시사점" items={briefing.meaning} />
-              <BriefingBlock icon={<Target size={18} />} title="SK AX 대응 방향" items={briefing.response} />
-              <BriefingBlock icon={<FileText size={18} />} title="벤치마킹 포인트" items={briefing.benchmark} />
-              <BriefingBlock icon={<Lightbulb size={18} />} title="제안 아이디어" items={briefing.ideas} highlight />
-            </section>
+                <section className="grid gap-5 lg:grid-cols-2">
+                  <BriefingVisualBlock icon={<Lightbulb size={18} />} title="의미와 시사점" items={briefing.meaning} />
+                  <BriefingVisualBlock icon={<Target size={18} />} title="SK AX 대응 방향" items={briefing.response} />
+                  <BriefingVisualBlock icon={<FileText size={18} />} title="벤치마킹 포인트" items={briefing.benchmark} />
+                  <BriefingVisualBlock icon={<Lightbulb size={18} />} title="제안 아이디어" items={briefing.ideas} highlight />
+                </section>
+              </>
+            ) : (
+              <>
+                <section className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
+                  <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={20} className="text-[var(--axis-accent)]" />
+                      <h2 className="text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">{briefingFocusTitle}</h2>
+                    </div>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                  <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.30)] bg-[rgba(220,90,36,0.08)] p-5 shadow-[0_18px_48px_-38px_rgba(220,90,36,0.35)]">
+                    <p className="text-xl font-semibold leading-8 text-[var(--axis-ink)]">{briefing.whatHappenedDigest[0]}</p>
+                    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                      {briefing.whatHappenedDigest.slice(1).map((item) => (
+                        <p key={item} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/92 p-4 text-base font-medium leading-7 text-[var(--axis-body)]">
+                          {item}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                    {briefing.signalCards.map((item, index) => (
+                      <article key={item.label} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_14px_36px_-34px_rgba(0,0,0,0.35)]">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="axis-kicker">{String(index + 1).padStart(2, '0')} · {item.label}</p>
+                          <ExecutiveBadge tone="accent">{item.metric}</ExecutiveBadge>
+                        </div>
+                        <p className="mt-3 text-base font-semibold leading-7 text-[var(--axis-ink)]">{item.value}</p>
+                      </article>
+                    ))}
+                  </div>
+                  </div>
+                </section>
+
+                <section className="grid gap-5 lg:grid-cols-2">
+                  <BriefingBlock icon={<Lightbulb size={18} />} title="의미와 시사점" items={briefing.meaning} />
+                  <BriefingBlock icon={<Target size={18} />} title="SK AX 대응 방향" items={briefing.response} />
+                  <BriefingBlock icon={<FileText size={18} />} title="벤치마킹 포인트" items={briefing.benchmark} />
+                  <BriefingBlock icon={<Lightbulb size={18} />} title="제안 아이디어" items={briefing.ideas} highlight />
+                </section>
+              </>
+            )}
           </main>
 
           <aside data-guide="briefing-evidence" className="space-y-4">
@@ -714,6 +823,93 @@ export function BriefingsView() {
         />
       ) : null}
     </ExecutivePage>
+  );
+}
+
+function BriefingVisualBlock({
+  icon,
+  title,
+  items,
+  highlight = false,
+}: {
+  icon: ReactNode;
+  title: string;
+  items: string[];
+  highlight?: boolean;
+}) {
+  return (
+    <section className={`axis-panel-flat overflow-hidden ${highlight ? 'border-[rgba(220,90,36,0.32)] bg-[rgba(220,90,36,0.05)]' : 'border-[rgba(120,110,96,0.24)]'}`}>
+      <div className={`flex items-center gap-2 border-b border-[var(--axis-hairline)] px-5 py-4 ${
+        highlight ? 'bg-[rgba(220,90,36,0.10)]' : 'bg-[var(--axis-surface-muted)]'
+      }`}>
+        <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
+          {icon}
+        </span>
+        <h2 className="axis-section-heading text-[var(--axis-ink)]">{title}</h2>
+      </div>
+      <div className="grid gap-3 p-5 sm:grid-cols-3">
+        {items.map((item, index) => (
+          <article
+            key={item}
+            tabIndex={0}
+            className={`group relative flex min-h-36 flex-col justify-between overflow-hidden rounded-[var(--axis-radius-lg)] border p-4 text-left transition hover:-translate-y-0.5 hover:border-[var(--axis-accent)] focus-visible:border-[var(--axis-accent)] focus-visible:outline-none ${
+              highlight
+                ? 'border-[rgba(220,90,36,0.24)] bg-[rgba(220,90,36,0.08)]'
+                : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)]'
+            }`}
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--axis-surface-muted)] text-sm font-black text-[var(--axis-accent-strong)]">
+              {index + 1}
+            </span>
+            <p className="mt-4 line-clamp-4 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item}</p>
+            <RevealBubble text={item} />
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BriefingRevealPill({
+  active,
+  label,
+  text,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  text: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative min-h-20 overflow-hidden rounded-[var(--axis-radius-md)] border p-3 text-left transition hover:border-[var(--axis-accent)] ${
+        active
+          ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.12)]'
+          : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)]'
+      }`}
+      aria-pressed={active}
+    >
+      <span className="text-xs font-black text-[var(--axis-accent-strong)]">{label}</span>
+      <span className="mt-2 block line-clamp-2 text-xs font-semibold leading-5 text-[var(--axis-ink)]">{text}</span>
+      <RevealBubble text={text} compact />
+    </button>
+  );
+}
+
+function RevealBubble({ text, compact = false }: { text: string; compact?: boolean }) {
+  return (
+    <span
+      data-hover-reveal
+      aria-hidden="true"
+      className={`pointer-events-none absolute inset-x-3 bottom-3 z-20 translate-y-2 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-left font-semibold text-[var(--axis-ink)] opacity-0 shadow-[0_18px_48px_-30px_rgba(0,0,0,0.45)] transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 ${
+        compact ? 'text-[11px] leading-4' : 'text-xs leading-5'
+      }`}
+    >
+      {text}
+    </span>
   );
 }
 
