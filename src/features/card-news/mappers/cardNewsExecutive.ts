@@ -1,37 +1,23 @@
-import type { CardNewsEvidenceChain, CardNewsItem, ExposureBand, PeerId, SectorId } from '../model/cardNews';
-
-const peerLabels: Record<PeerId, string> = {
-  samsung_sds: '삼성SDS',
-  lg_cns: 'LG CNS',
-  hyundai_autoever: '현대오토에버',
-  posco_dx: '포스코DX',
-};
-
-const sectorLabels: Record<SectorId, string> = {
-  security: '보안',
-  ax: 'AX',
-  infra: '인프라',
-  biz_area: '사업영역',
-  other: '기타',
-};
-
-const exposureLabels: Record<ExposureBand, string> = {
-  high: 'High exposure',
-  medium: 'Medium exposure',
-  low: 'Low exposure',
-};
+import type { CardNewsEvidenceChain, CardNewsItem } from '../model/cardNews';
+import {
+  cardNewsExecutiveDefaults,
+  cardNewsExposureLabels,
+  cardNewsPeerLabels,
+  cardNewsPeerTitleAliases,
+  cardNewsSectorLabels,
+} from '../../../shared/content/cardNewsLabels';
 
 export function getPeerLabel(card: CardNewsItem) {
   if (card.peer_id) {
-    return peerLabels[card.peer_id];
+    return cardNewsPeerLabels[card.peer_id];
   }
 
-  return card.displayEntries?.[0]?.peerCompany ?? derivePeerFromTitle(card.title) ?? '전체 Peer';
+  return card.displayEntries?.[0]?.peerCompany ?? derivePeerFromTitle(card.title) ?? cardNewsExecutiveDefaults.peerLabel;
 }
 
 export function getSectorLabel(card: CardNewsItem) {
   if (card.sector) {
-    return sectorLabels[card.sector];
+    return cardNewsSectorLabels[card.sector];
   }
 
   return card.category_label ?? card.category;
@@ -42,7 +28,7 @@ export function getDisplayDate(card: CardNewsItem) {
 }
 
 export function getExposureLabel(card: CardNewsItem) {
-  return card.exposure_band ? exposureLabels[card.exposure_band] : 'Watch';
+  return card.exposure_band ? cardNewsExposureLabels[card.exposure_band] : cardNewsExecutiveDefaults.exposureLabel;
 }
 
 export function getExposureScore(card: CardNewsItem) {
@@ -51,7 +37,7 @@ export function getExposureScore(card: CardNewsItem) {
   }
 
   const legacyScore = card.valueFields?.find((field) => /score|노출|중요/i.test(field.label));
-  return typeof legacyScore?.value === 'number' ? legacyScore.value : 74;
+  return typeof legacyScore?.value === 'number' ? legacyScore.value : cardNewsExecutiveDefaults.exposureScore;
 }
 
 export function getTrustScore(card: CardNewsItem) {
@@ -64,7 +50,7 @@ export function getTrustScore(card: CardNewsItem) {
     return sourceScore > 1 ? Math.round(sourceScore) : Math.round(sourceScore * 100);
   }
 
-  return 86;
+  return cardNewsExecutiveDefaults.trustScore;
 }
 
 export function getSummaryLines(card: CardNewsItem) {
@@ -102,7 +88,7 @@ export function getFinancialNarrative(card: CardNewsItem) {
     return card.financial_context.highlights[0];
   }
 
-  return '재무 연결 정보는 상세 근거에서 확인하세요.';
+  return cardNewsExecutiveDefaults.financialNarrative;
 }
 
 export function getEvidenceStatus(card: CardNewsItem) {
@@ -162,9 +148,5 @@ export function getEvidenceChain(card: CardNewsItem): CardNewsEvidenceChain {
 }
 
 function derivePeerFromTitle(title: string) {
-  if (title.includes('삼성')) return '삼성SDS';
-  if (title.includes('LG')) return 'LG CNS';
-  if (title.includes('현대')) return '현대오토에버';
-  if (title.includes('포스코')) return '포스코DX';
-  return null;
+  return cardNewsPeerTitleAliases.find(({ token }) => title.includes(token))?.label ?? null;
 }

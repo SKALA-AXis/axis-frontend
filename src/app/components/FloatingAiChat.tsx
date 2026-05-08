@@ -87,7 +87,7 @@ export function FloatingAiChat() {
                   className={`max-w-[78%] rounded-[var(--axis-radius-lg)] px-3 py-2 text-sm leading-relaxed ${
                     message.role === 'user'
                       ? 'bg-[var(--axis-navy)] text-white'
-                      : 'border border-[var(--axis-hairline)] bg-white/8 text-[var(--axis-body)]'
+                      : 'border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)]'
                   }`}
                 >
                   <p>{message.content}</p>
@@ -118,7 +118,7 @@ export function FloatingAiChat() {
                   }
                 }}
                 placeholder={uiText.dashboard.chatPlaceholder}
-                className="min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/8 px-3 py-2 text-sm text-[var(--axis-ink)] outline-none transition placeholder:text-ink focus:border-[var(--axis-accent)]"
+                className="min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm text-[var(--axis-ink)] outline-none transition placeholder:text-[var(--axis-muted)] focus:border-[var(--axis-accent)]"
               />
               <button
                 type="button"

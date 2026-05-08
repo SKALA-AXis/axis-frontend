@@ -431,6 +431,7 @@ export function HomeDashboardView({
         <section className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
           <button
             type="button"
+            data-guide="home-insight"
             onClick={() => onNavigate('insight')}
             className="axis-panel-flat relative min-h-[430px] overflow-hidden p-5 text-left transition hover:border-[var(--axis-accent)]"
           >
@@ -478,7 +479,7 @@ export function HomeDashboardView({
             </div>
           </button>
 
-          <aside className="axis-panel-flat min-h-[430px] w-full max-w-full min-w-0 overflow-hidden p-4 [contain:inline-size]">
+          <aside data-guide="home-summary" className="axis-panel-flat min-h-[430px] w-full max-w-full min-w-0 overflow-hidden p-4 [contain:inline-size]">
             <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="axis-kicker">Card news</p>
@@ -548,7 +549,7 @@ export function HomeDashboardView({
           </aside>
         </section>
 
-        <section className="mt-4 grid gap-4 xl:grid-cols-3">
+        <section data-guide="home-charts" className="mt-4 grid gap-4 xl:grid-cols-3">
           <ChartButton
             title={showStockChart ? 'Peer사 주가 변동' : '관심도 변화'}
             helper={showStockChart ? 'Stock compare' : 'Line graph'}
@@ -752,7 +753,7 @@ export function MixerView({
           />
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-            <article className="axis-panel-flat min-h-[360px] overflow-hidden border-[rgba(220,90,36,0.26)]">
+            <article data-guide="mixer-result" className="axis-panel-flat min-h-[360px] overflow-hidden border-[rgba(220,90,36,0.26)]">
               <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
                 <p className="axis-kicker">New insight</p>
                 <h2 className="mt-2 text-heading-3 font-display leading-tight text-[var(--axis-ink)]">
@@ -812,7 +813,7 @@ export function MixerView({
           </section>
 
           <section className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-            <article className="axis-panel-flat min-h-[430px] p-5">
+            <article data-guide="mixer-signal-map" className="axis-panel-flat min-h-[430px] p-5">
               <p className="axis-kicker">Signal map</p>
               <h3 className="axis-section-heading mt-1">믹서 결과 신호 분포</h3>
               <div className="mt-3 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3">
@@ -845,7 +846,7 @@ export function MixerView({
               </div>
             </article>
 
-            <article className="axis-panel-flat min-h-[430px] p-5">
+            <article data-guide="mixer-evidence" className="axis-panel-flat min-h-[430px] p-5">
               <p className="axis-kicker">Selected evidence</p>
               <h3 className="axis-section-heading mt-1">결과에 반영된 카드뉴스</h3>
               <div className="mt-4 grid gap-3">
@@ -914,7 +915,7 @@ export function MixerView({
           }
         />
 
-        <section className="mb-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+        <section data-guide="mixer-input" className="mb-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
           {mockMixerConfig.options.map((optionGroup) => {
             const group =
               optionGroup.title === 'Peer사'
@@ -952,7 +953,7 @@ export function MixerView({
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <main>
+          <main data-guide="mixer-candidates">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p className="axis-kicker">Source cards</p>
@@ -1013,7 +1014,7 @@ export function MixerView({
             </div>
           </main>
 
-          <aside className="axis-panel-flat p-5">
+          <aside data-guide="mixer-ratio" className="axis-panel-flat p-5">
             <div className="flex items-center gap-2">
               <Sparkles size={18} className="text-[var(--axis-accent)]" />
               <h2 className="axis-section-heading">선택 비율</h2>
@@ -1139,7 +1140,7 @@ export function PeerPlusView({
           title="Peer+"
           subtitle="Peer사의 IR 수치, 재무 흐름, 관련 카드뉴스를 하나의 화면에서 비교합니다."
           actions={
-            <div className="flex flex-wrap justify-end gap-1.5">
+            <div data-guide="peer-selector" className="flex flex-wrap justify-end gap-1.5">
               {peerOptions.map((peer) => (
                 <button
                   key={peer.id}
@@ -1162,7 +1163,7 @@ export function PeerPlusView({
         />
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-          <article className="axis-panel-flat min-h-[360px] p-5">
+          <article data-guide="peer-insight" className="axis-panel-flat min-h-[360px] p-5">
             <p className="axis-kicker">AI comparison summary</p>
             <h2 className="mt-2 text-lg font-display font-semibold leading-tight text-ink">
               경쟁 메시지 차이와 SK AX 대응 포인트
@@ -1222,6 +1223,7 @@ export function PeerPlusView({
 
           <button
             type="button"
+            data-guide="peer-ir"
             onClick={() => onNavigate('keywordGraph')}
             className="axis-panel-flat min-h-[360px] p-5 text-left transition hover:border-[var(--axis-accent)]"
           >
@@ -1262,7 +1264,7 @@ export function PeerPlusView({
                   </ResponsiveContainer>
                 </div>
               </div>
-              <div className="min-w-0 rounded-[var(--axis-radius-lg)] bg-[var(--axis-surface-soft)] p-4">
+              <div data-guide="peer-wordcloud" className="min-w-0 rounded-[var(--axis-radius-lg)] bg-[var(--axis-surface-soft)] p-4">
                 <p className="axis-kicker">AI / 사업 / MOU cloud</p>
                 <h3 className="axis-section-heading mt-1">최근 도입·협력 워드클라우드</h3>
                 <div className="relative mt-4 h-[210px] overflow-hidden rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]">
@@ -1831,7 +1833,6 @@ const insightResult = {
     'Peer 비교 화면에서는 단순 기사량보다 IR 수치와 실제 수주 맥락을 함께 보여줘야 의사결정 근거가 선명해집니다.',
     '그래프뷰에서는 기업 노드와 섹터 키워드를 분리해 “어떤 회사가 어떤 신호를 선점하는지”가 바로 보이도록 해야 합니다.',
   ],
-  recommendedActions: ['그래프로 보기', '보고서에 추가'],
   flowSteps: [
     { id: 'cause', label: '원인', description: 'AI 투자와 실적 발표 신호가 동시에 증가했습니다.' },
     { id: 'change', label: '변화', description: 'PoC보다 전사 확산형 구축 수요가 커졌습니다.' },
@@ -1841,7 +1842,6 @@ const insightResult = {
 };
 
 export function InsightResultView({
-  onNavigate,
   bookmarkedIds = [],
   onToggleBookmark,
 }: {
@@ -1866,7 +1866,7 @@ export function InsightResultView({
 
         <section className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
           <main className="space-y-5">
-            <section className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
+            <section data-guide="insight-summary" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
               <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-6 py-4">
                 <div className="flex items-center gap-2">
                   <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
@@ -1891,7 +1891,7 @@ export function InsightResultView({
               </div>
               </div>
             </section>
-            <section className="grid gap-5 lg:grid-cols-2">
+            <section data-guide="insight-analysis" className="grid gap-5 lg:grid-cols-2">
               <div className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
                 <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
                   <p className="axis-kicker">Evidence</p>
@@ -1923,7 +1923,7 @@ export function InsightResultView({
             </section>
           </main>
 
-          <aside className="grid gap-4 sm:grid-cols-2 2xl:block 2xl:space-y-4">
+          <aside data-guide="insight-sources" className="grid gap-4 sm:grid-cols-2 2xl:block 2xl:space-y-4">
             {relatedAssets.length > 0 ? (
               relatedAssets.map((card) => (
                 <button
@@ -2421,7 +2421,7 @@ function KeywordSphereGraph({
       }`}
     >
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-label="360도 회전 키워드 구 그래프" />
-      <div className="pointer-events-none absolute left-5 top-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/90 px-4 py-3 shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] backdrop-blur">
+      <div data-keyword-sphere-info className="pointer-events-none absolute left-5 top-5 hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/90 px-4 py-3 shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] backdrop-blur md:block">
         <p className="axis-kicker">3D keyword sphere</p>
         <h2 className="mt-1 text-base font-semibold text-[var(--axis-ink)]">{selectedNode?.label ?? '키워드 그래프'}</h2>
         <p className="mt-1 text-xs text-[var(--axis-muted)]">드래그로 회전하고, 노드를 선택하면 카드뉴스가 열립니다.</p>
@@ -2464,7 +2464,7 @@ export function KeywordGraphView({
   const [scale, setScale] = useState(1);
   const [graphPan, setGraphPan] = useState({ x: 0, y: 0 });
   const graphPanRef = useRef({ dragging: false, lastX: 0, lastY: 0 });
-  const [detailOpen, setDetailOpen] = useState(true);
+  const [detailOpen, setDetailOpen] = useState(() => window.matchMedia('(min-width: 1280px)').matches);
   const [keywordOverlayOpen, setKeywordOverlayOpen] = useState(false);
   const [overlayPage, setOverlayPage] = useState(0);
   const [graphMode, setGraphMode] = useState<'2d' | '3d'>('2d');
@@ -2514,7 +2514,9 @@ export function KeywordGraphView({
   const getNode = (id: string) => graphNodes.find((node) => node.id === id) ?? graphNodes[0];
   const selectGraphNode = (nodeId: string) => {
     setSelectedId(nodeId);
-    setDetailOpen(true);
+    if (window.matchMedia('(min-width: 1280px)').matches) {
+      setDetailOpen(true);
+    }
     setKeywordOverlayOpen(true);
   };
   const handleGraphPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -2616,11 +2618,13 @@ export function KeywordGraphView({
         <section className="axis-panel-flat min-h-0 overflow-hidden">
           <header className="flex flex-col gap-2 p-3 lg:flex-row lg:items-center lg:justify-end">
             <h1 className="sr-only">키워드 그래프</h1>
-            <div className="flex flex-wrap gap-2">
+            <div data-guide="keyword-controls" className="flex flex-wrap gap-2">
+              <div data-guide="keyword-filter" className="flex flex-wrap gap-2">
               <FilterChip active={category === '전체'} onClick={() => setCategory('전체')}>전체</FilterChip>
               {(['기업', 'AX', '보안', '인프라', '수주'] as const).map((item) => (
                 <FilterChip key={item} active={category === item} onClick={() => setCategory(item)}>{item}</FilterChip>
               ))}
+              </div>
               <ExecutiveButton variant="secondary" icon={<Minus size={15} />} onClick={() => setScale((current) => Math.max(0.75, Number((current - 0.1).toFixed(2))))}>축소</ExecutiveButton>
               <span className="inline-flex min-h-10 items-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-body)]">
                 {Math.round(scale * 100)}%
@@ -2644,7 +2648,7 @@ export function KeywordGraphView({
           </header>
 
           <div className="grid h-[calc(100dvh-156px)] min-h-[620px] gap-0 xl:grid-cols-[minmax(0,1fr)_300px]">
-            <main className="relative min-h-0 bg-[var(--axis-surface-soft)]" onWheel={handleGraphWheel}>
+            <main data-guide="keyword-map" className="relative min-h-0 bg-[var(--axis-surface-soft)]" onWheel={handleGraphWheel}>
               {graphMode === '3d' ? (
                 <KeywordSphereGraph
                   nodes={visibleNodes}
@@ -2798,7 +2802,7 @@ export function KeywordGraphView({
               {renderKeywordSvg(true)}
             </div>
           )}
-          <div className="absolute right-5 top-20 z-20 flex max-w-[520px] flex-wrap justify-end gap-2">
+          <div className="absolute left-3 right-3 top-16 z-20 flex flex-wrap justify-end gap-2 sm:left-auto sm:right-5 sm:top-20 sm:max-w-[520px]">
             {(['전체', '기업', 'AX', '보안', '인프라', '수주'] as const).map((item) => (
               <button
                 key={item}
@@ -2814,23 +2818,27 @@ export function KeywordGraphView({
               </button>
             ))}
           </div>
-          <div className="absolute right-5 top-5 z-20 flex flex-wrap justify-end gap-2">
+          <div className="absolute left-3 right-3 top-3 z-20 grid grid-cols-[44px_64px_44px_minmax(92px,1fr)_112px] gap-2 sm:left-auto sm:right-5 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
             <button
               type="button"
+              aria-label="키워드 그래프 축소"
               onClick={() => setScale((current) => Math.max(0.75, Number((current - 0.1).toFixed(2))))}
-              className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] hover:border-[var(--axis-accent)]"
+              className="inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 text-sm font-semibold text-[var(--axis-body)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] hover:border-[var(--axis-accent)] sm:w-[68px] sm:px-3"
             >
-              축소
+              <Minus size={15} />
+              <span className="hidden sm:inline">축소</span>
             </button>
-            <span className="inline-flex items-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)]">
+            <span className="inline-flex h-10 min-w-0 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 text-sm font-semibold tabular-nums text-[var(--axis-body)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] sm:w-[70px]">
               {Math.round(scale * 100)}%
             </span>
             <button
               type="button"
+              aria-label="키워드 그래프 확대"
               onClick={() => setScale((current) => Math.min(1.45, Number((current + 0.1).toFixed(2))))}
-              className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] hover:border-[var(--axis-accent)]"
+              className="inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 text-sm font-semibold text-[var(--axis-body)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] hover:border-[var(--axis-accent)] sm:w-[68px] sm:px-3"
             >
-              확대
+              <Plus size={15} />
+              <span className="hidden sm:inline">확대</span>
             </button>
             <button
               type="button"
@@ -2839,7 +2847,7 @@ export function KeywordGraphView({
                 setGraphFullscreenMode(nextMode);
                 setGraphMode(nextMode);
               }}
-              className={`rounded-[var(--axis-radius-md)] border px-4 py-2 text-sm font-semibold shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] transition ${
+              className={`h-10 min-w-0 rounded-[var(--axis-radius-md)] border px-2 text-xs font-semibold shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] transition sm:w-[104px] sm:px-4 sm:text-sm ${
                 graphFullscreenMode === '3d'
                   ? 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)] hover:border-[var(--axis-accent)]'
                   : 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
@@ -2850,7 +2858,7 @@ export function KeywordGraphView({
             <button
               type="button"
               onClick={() => setGraphFullscreenMode(null)}
-              className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-2 text-sm font-semibold text-[var(--axis-ink)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] hover:border-[var(--axis-accent)]"
+              className="h-10 min-w-0 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 text-xs font-semibold text-[var(--axis-ink)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] hover:border-[var(--axis-accent)] sm:w-[126px] sm:px-4 sm:text-sm"
             >
               전체화면 닫기
             </button>

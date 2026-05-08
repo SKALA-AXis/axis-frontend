@@ -295,7 +295,16 @@ function AuthScreen({
   );
 }
 
-const viewGuideMap: Record<string, Array<{ title: string; body: string; anchor: string; position: string; arrow: string; highlight: string }>> = {
+type GuideStep = {
+  title: string;
+  body: string;
+  anchor: string;
+  position: string;
+  arrow: string;
+  highlight: string;
+};
+
+const viewGuideMap: Record<string, GuideStep[]> = {
   home: [
     { title: '통합 검색', body: '상단 검색창에 Peer사, 키워드, 카드뉴스 제목을 입력합니다. Peer사는 Peer+로, 키워드는 카드뉴스 검색 결과로 바로 연결됩니다.', anchor: '상단 검색창', position: 'left-[560px] top-[98px]', arrow: 'left-12 -top-3 border-l border-t', highlight: 'left-[500px] top-[22px] h-[62px] w-[calc(100vw-980px)]' },
     { title: 'Today Insight', body: '홈의 첫 섹션은 오늘 감지된 핵심 변화와 Graphify로 들어갈 시각화 영역입니다. 요약 수치보다 오늘 읽어야 할 흐름이 먼저 보이도록 구성합니다.', anchor: '메인 인사이트 영역', position: 'left-[360px] top-[176px]', arrow: '-left-3 top-16 border-b border-l', highlight: 'left-[330px] top-[136px] h-[360px] w-[calc(100vw-760px)]' },
@@ -330,6 +339,7 @@ const viewGuideMap: Record<string, Array<{ title: string; body: string; anchor: 
     { title: '사용 전: 카드뉴스 후보', body: '북마크와 카드뉴스 후보를 골라 믹서에 넣습니다. 선택한 뉴스는 결과의 근거 카드뉴스로 다시 확인할 수 있습니다.', anchor: '카드뉴스 후보/북마크', position: 'right-[70px] top-[170px]', arrow: 'right-8 -top-3 border-l border-t', highlight: 'right-[56px] top-[112px] h-[260px] w-[420px]' },
     { title: '사용 전: 구성 비율', body: '아래 도넛 차트는 선택한 Peer, 산업, 키워드, 카드뉴스 비율을 보여줍니다. 결과를 만들기 전 입력 균형을 점검하는 영역입니다.', anchor: '입력 비율 차트', position: 'left-[360px] bottom-[92px]', arrow: '-left-3 top-16 border-b border-l', highlight: 'left-[315px] bottom-[48px] h-[240px] w-[calc(100vw-760px)]' },
     { title: '사용 후: 결과 인사이트', body: '믹서를 실행하면 상단 중앙에 새 인사이트가 정리됩니다. 고객 제안 방향, 벤치마킹 포인트, 대응 아이디어를 먼저 읽습니다.', anchor: '믹서 결과 인사이트', position: 'left-[420px] top-[210px]', arrow: '-left-3 top-16 border-b border-l', highlight: 'left-[330px] top-[160px] h-[300px] w-[calc(100vw-840px)]' },
+    { title: '사용 후: 신호 분포', body: '결과 화면에서는 선택값이 어떤 전략 신호로 재구성됐는지 레이더 차트로 확인합니다. 입력 비율 차트와 별개의 결과 검토 영역입니다.', anchor: '믹서 결과 신호 분포', position: 'left-[360px] top-[430px]', arrow: '-left-3 top-16 border-b border-l', highlight: 'left-[315px] top-[390px] h-[300px] w-[calc(100vw-760px)]' },
     { title: '사용 후: 결과 근거', body: '결과에 반영된 카드뉴스를 클릭하면 상세가 플로팅으로 열립니다. 그래프보다 실제 근거를 확인하는 흐름입니다.', anchor: '결과 카드뉴스', position: 'right-[66px] top-[310px]', arrow: 'right-8 -top-3 border-l border-t', highlight: 'right-[56px] top-[250px] h-[340px] w-[420px]' },
   ],
   keywordGraph: [
@@ -343,6 +353,115 @@ const viewGuideMap: Record<string, Array<{ title: string; body: string; anchor: 
   ],
 };
 
+const guideTargetByAnchor: Record<string, string> = {
+  '상단 검색창': 'global-search',
+  '메인 인사이트 영역': 'home-insight',
+  '오늘의 요약 카드뉴스': 'home-summary',
+  '하단 그래프 영역': 'home-charts',
+  '좌측 상단 기간 컨트롤': 'briefing-period',
+  '브리핑 본문': 'briefing-main',
+  '근거 카드뉴스 큐': 'briefing-evidence',
+  '우측 상단 버튼': 'briefing-share-print',
+  '인사이트 요약': 'insight-summary',
+  '인사이트 분석 섹션': 'insight-analysis',
+  '출처 영역': 'insight-sources',
+  'Peer+ 상단': 'peer-selector',
+  'IR 정량자료': 'peer-ir',
+  'Peer 비교 시사점': 'peer-insight',
+  '워드클라우드': 'peer-wordcloud',
+  '카드뉴스 필터 영역': 'cardnews-filter',
+  '카드뉴스 목록': 'cardnews-grid',
+  '카드뉴스 상세 팝업': 'cardnews-grid',
+  '카드 액션': 'cardnews-grid',
+  '믹서 선택 패널': 'mixer-input',
+  '카드뉴스 후보/북마크': 'mixer-candidates',
+  '입력 비율 차트': 'mixer-ratio',
+  '믹서 결과 인사이트': 'mixer-result',
+  '믹서 결과 신호 분포': 'mixer-signal-map',
+  '결과 카드뉴스': 'mixer-evidence',
+  '키워드 필터': 'keyword-filter',
+  '2D 그래프 영역': 'keyword-map',
+  '노드 선택 결과': 'keyword-map',
+  '상단 컨트롤': 'keyword-controls',
+  '설정 탭': 'settings-tabs',
+};
+
+type GuideLayout = {
+  panelStyle?: CSSProperties;
+  highlightStyle?: CSSProperties;
+  arrowStyle?: CSSProperties;
+  arrowClass?: string;
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function createGuideLayout(rect: DOMRect): GuideLayout {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const gap = 18;
+  const margin = 16;
+  const panelWidth = Math.min(420, viewportWidth - margin * 2);
+  const estimatedPanelHeight = Math.min(360, viewportHeight - margin * 2);
+  const targetCenterX = rect.left + rect.width / 2;
+  const targetCenterY = rect.top + rect.height / 2;
+
+  let left = rect.right + gap;
+  let top = targetCenterY - estimatedPanelHeight / 2;
+  let arrowClass = '-left-2 border-b border-l';
+  let arrowStyle: CSSProperties = { top: clamp(targetCenterY - top - 10, 28, estimatedPanelHeight - 34) };
+
+  if (left + panelWidth > viewportWidth - margin) {
+    left = rect.left - panelWidth - gap;
+    arrowClass = '-right-2 border-r border-t';
+    arrowStyle = { top: clamp(targetCenterY - top - 10, 28, estimatedPanelHeight - 34) };
+  }
+
+  if (left < margin) {
+    left = clamp(targetCenterX - panelWidth / 2, margin, viewportWidth - panelWidth - margin);
+    top = rect.bottom + gap;
+    arrowClass = '-top-2 border-l border-t';
+    arrowStyle = { left: clamp(targetCenterX - left - 10, 26, panelWidth - 34) };
+  }
+
+  if (top + estimatedPanelHeight > viewportHeight - margin) {
+    const aboveTop = rect.top - estimatedPanelHeight - gap;
+    if (aboveTop > margin) {
+      top = aboveTop;
+      arrowClass = '-bottom-2 border-r border-b';
+      arrowStyle = { left: clamp(targetCenterX - left - 10, 26, panelWidth - 34) };
+    }
+  }
+
+  top = clamp(top, margin, Math.max(margin, viewportHeight - estimatedPanelHeight - margin));
+
+  return {
+    panelStyle: {
+      left,
+      top,
+      width: panelWidth,
+    },
+    highlightStyle: {
+      left: clamp(rect.left - 8, 8, viewportWidth - 16),
+      top: clamp(rect.top - 8, 8, viewportHeight - 16),
+      width: Math.max(24, Math.min(rect.width + 16, viewportWidth - Math.max(16, rect.left))),
+      height: Math.max(24, Math.min(rect.height + 16, viewportHeight - Math.max(16, rect.top))),
+    },
+    arrowStyle,
+    arrowClass,
+  };
+}
+
+function resolveGuideSteps(baseSteps: GuideStep[]) {
+  const visibleSteps = baseSteps.filter((step) => {
+    const targetKey = guideTargetByAnchor[step.anchor];
+    return !targetKey || Boolean(document.querySelector(`[data-guide="${targetKey}"]`));
+  });
+
+  return visibleSteps.length > 0 ? visibleSteps : baseSteps;
+}
+
 function InAppGuideOverlay({
   activeView,
   onClose,
@@ -350,20 +469,74 @@ function InAppGuideOverlay({
   activeView: string;
   onClose: () => void;
 }) {
-  const steps = viewGuideMap[activeView] ?? viewGuideMap.home;
+  const baseSteps = viewGuideMap[activeView] ?? viewGuideMap.home;
+  const [availableSteps, setAvailableSteps] = useState<GuideStep[]>(baseSteps);
   const [stepIndex, setStepIndex] = useState(0);
+  const [guideLayout, setGuideLayout] = useState<GuideLayout>({});
+  const steps = availableSteps.length > 0 ? availableSteps : baseSteps;
   const step = steps[stepIndex] ?? steps[0];
   const isLast = stepIndex === steps.length - 1;
+  const hasDynamicLayout = Boolean(guideLayout.panelStyle && guideLayout.highlightStyle);
 
   useEffect(() => {
-    setStepIndex(0);
-  }, [activeView]);
+    const frameId = window.requestAnimationFrame(() => {
+      setAvailableSteps(resolveGuideSteps(baseSteps));
+      setStepIndex(0);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeView, baseSteps]);
+
+  useEffect(() => {
+    const targetKey = guideTargetByAnchor[step.anchor];
+
+    const updateLayout = () => {
+      if (!targetKey) {
+        setGuideLayout({});
+        return;
+      }
+
+      const targetElement = document.querySelector<HTMLElement>(`[data-guide="${targetKey}"]`);
+      if (!targetElement) {
+        setGuideLayout({});
+        return;
+      }
+
+      setGuideLayout(createGuideLayout(targetElement.getBoundingClientRect()));
+    };
+
+    updateLayout();
+    const frameId = window.requestAnimationFrame(updateLayout);
+    window.addEventListener('resize', updateLayout);
+    window.addEventListener('scroll', updateLayout, true);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', updateLayout);
+      window.removeEventListener('scroll', updateLayout, true);
+    };
+  }, [activeView, step.anchor, stepIndex]);
 
   return (
     <div className="fixed inset-0 z-50 bg-[rgba(10,14,22,0.38)] backdrop-blur-[1px]">
-      <div className={`pointer-events-none absolute hidden rounded-[18px] border-2 border-[var(--axis-accent)] bg-[rgba(220,90,36,0.08)] shadow-[0_0_0_9999px_rgba(10,14,22,0.28)] lg:block ${step.highlight}`} />
-      <section className={`absolute w-[min(420px,calc(100vw-32px))] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-6 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.58)] transition-all duration-300 ${step.position}`}>
-        <div className={`absolute h-6 w-6 rotate-45 bg-[var(--axis-canvas)] ${step.arrow} border-[var(--axis-hairline)]`} />
+      <div
+        className={`pointer-events-none absolute rounded-[18px] border-2 border-[var(--axis-accent)] bg-[rgba(220,90,36,0.08)] shadow-[0_0_0_9999px_rgba(10,14,22,0.28)] ${
+          hasDynamicLayout ? '' : `hidden lg:block ${step.highlight}`
+        }`}
+        style={guideLayout.highlightStyle}
+      />
+      <section
+        className={`absolute w-[min(420px,calc(100vw-32px))] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-6 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.58)] transition-all duration-300 ${
+          hasDynamicLayout ? '' : step.position
+        }`}
+        style={guideLayout.panelStyle}
+      >
+        <div
+          className={`absolute h-5 w-5 rotate-45 border-[var(--axis-hairline)] bg-[var(--axis-canvas)] ${
+            hasDynamicLayout ? `border ${guideLayout.arrowClass ?? '-left-2 border-b border-l'}` : step.arrow
+          }`}
+          style={guideLayout.arrowStyle}
+        />
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="axis-kicker">{appViewLabels[activeView] ?? 'AXIS'} guide</p>
@@ -442,6 +615,17 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
     document.documentElement.classList.toggle('dark', themeMode === 'dark');
     window.localStorage.setItem(themeStorageKey, themeMode);
   }, [themeMode]);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.querySelectorAll<HTMLElement>('main, .axis-executive-page').forEach((element) => {
+        element.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeView]);
 
   const toggleBookmark = (cardId: string) => {
     setBookmarkedIds((current) =>

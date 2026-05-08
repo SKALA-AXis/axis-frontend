@@ -49,7 +49,7 @@ export function ExecutiveContainer({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={`mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 lg:px-8 ${className}`}>{children}</div>;
+  return <div className={`mx-auto w-full max-w-[1680px] px-3 py-5 sm:px-5 lg:px-6 2xl:px-8 ${className}`}>{children}</div>;
 }
 
 export function ExecutiveHeader({

@@ -128,12 +128,12 @@ export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, 
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={`relative flex min-w-[72px] flex-none flex-col items-center gap-1 rounded-md px-1 py-2 transition-colors ${
+              className={`relative flex min-w-[64px] flex-none flex-col items-center gap-1 rounded-md px-1 py-2 transition-colors ${
                 isActive ? 'text-action' : 'text-stone'
               }`}
             >
               <Icon className="h-4 w-4" strokeWidth={isActive ? 2.2 : 1.8} />
-              <span className={`truncate text-fine-print ${isActive ? 'font-display-strong' : ''}`}>{item.label}</span>
+              <span className={`max-w-full truncate text-[10px] leading-tight ${isActive ? 'font-display-strong' : ''}`}>{item.label}</span>
             </button>
           );
         })}

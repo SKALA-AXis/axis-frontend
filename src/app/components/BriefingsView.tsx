@@ -446,7 +446,7 @@ export function BriefingsView() {
       <ExecutiveContainer className="pb-12 pt-3">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="sr-only">브리핑</h1>
-          <div className="relative">
+          <div data-guide="briefing-period" className="relative">
             <button
               type="button"
               onClick={() => setDatePickerOpen((open) => !open)}
@@ -533,7 +533,7 @@ export function BriefingsView() {
               </div>
             ) : null}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div data-guide="briefing-share-print" className="flex flex-wrap gap-2">
             <ExecutiveButton variant="secondary" icon={<Share2 size={16} />} onClick={handleShareBriefing}>
               공유·인쇄
             </ExecutiveButton>
@@ -546,7 +546,7 @@ export function BriefingsView() {
         ) : null}
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <main className="space-y-5">
+          <main data-guide="briefing-main" className="space-y-5">
             <section className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.24)]">
               <div className="h-1.5 bg-[linear-gradient(90deg,var(--axis-accent),rgba(220,90,36,0.16))]" />
               <div className="p-5">
@@ -607,7 +607,7 @@ export function BriefingsView() {
             </section>
           </main>
 
-          <aside className="space-y-4">
+          <aside data-guide="briefing-evidence" className="space-y-4">
             <section className="axis-panel-flat p-5">
               <p className="axis-kicker">Briefing queue</p>
               <h2 className="axis-section-heading mt-1">근거 카드뉴스</h2>

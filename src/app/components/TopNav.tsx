@@ -57,6 +57,7 @@ type NotificationItem = {
 };
 
 const notificationStorageKey = 'axis:notifications';
+const notificationClearedStorageKey = 'axis:notifications-cleared';
 
 const notificationItems: NotificationItem[] = [
   { id: 'notice-posco-megadeal', peer: '포스코DX', title: '공공 메가딜 우선협상 신호가 감지되었습니다.', tone: '대응 필요', target: 'keywordGraph', time: '08:30', read: false },
@@ -71,6 +72,9 @@ function loadNotifications() {
     const stored = window.localStorage.getItem(notificationStorageKey);
     const parsed = stored ? JSON.parse(stored) : [];
     const storedItems = Array.isArray(parsed) ? parsed.filter((item): item is NotificationItem => item && typeof item.id === 'string') : [];
+    if (stored && window.localStorage.getItem(notificationClearedStorageKey) === 'true') {
+      return storedItems;
+    }
     const byId = new Map(storedItems.map((item) => [item.id, item]));
     const seeded = notificationItems.map((item) => byId.get(item.id) ?? item);
     const extraStored = storedItems.filter((item) => !notificationItems.some((seed) => seed.id === item.id));
@@ -308,6 +312,7 @@ export function TopNav({
                 <button
                   type="button"
                   onClick={() => {
+                    window.localStorage.setItem(notificationClearedStorageKey, 'true');
                     setNotifications([]);
                     setShowAllNotifications(false);
                   }}
