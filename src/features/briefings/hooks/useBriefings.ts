@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';
 import { briefingsRepository } from '../api/briefingsRepository';
 import { mapBriefingsToViewModel, type BriefingsViewModel } from '../mappers/briefingsMapper';
 
@@ -9,38 +10,11 @@ interface UseBriefingsResult {
 }
 
 export function useBriefings(): UseBriefingsResult {
-  const [briefings, setBriefings] = useState<BriefingsViewModel | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const load = async () => {
-      try {
-        const data = await briefingsRepository.getBriefings();
-
-        if (isMounted) {
-          setBriefings(mapBriefingsToViewModel(data));
-          setError(null);
-        }
-      } catch (loadError) {
-        if (isMounted) {
-          setError(loadError instanceof Error ? loadError.message : 'Unknown error');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      isMounted = false;
-    };
+  const load = useCallback(async () => {
+    const data = await briefingsRepository.getBriefings();
+    return mapBriefingsToViewModel(data);
   }, []);
+  const { data: briefings, isLoading, error } = useAsyncResource<BriefingsViewModel | null>(load, null, [load]);
 
   return { briefings, isLoading, error };
 }

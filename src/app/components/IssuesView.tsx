@@ -1,255 +1,126 @@
-import { Link, Plus, Search, X } from 'lucide-react';
+/**
+ * IssuesView — 사이드바 "카드뉴스" 탭. press.stripe.com 톤 책등 리스트 단일 뷰.
+ * Peer 칩 필터만 최소로 유지. 책등 클릭 시 CardNewsDetailView 풀스크린.
+ */
 import { useMemo, useState } from 'react';
-import type { Issue as DomainIssue } from '../../entities/issue/model';
-import { useIssues } from '../../features/issues/hooks/useIssues';
-import { uiText } from '../../shared/content/uiText';
-import { IssueCard } from './IssueCard';
-
-type IssueCardViewModel = {
-  id: string;
-  peer_id: string;
-  peer_name: string;
-  title: string;
-  summary_lines: string[];
-  importance: 'urgent' | 'notable' | 'reference';
-  event_type: 'partnership' | 'ma' | 'personnel' | 'tech' | 'regulation' | 'new_biz';
-  review_status: 'pending' | 'approved' | 'needs_revision' | 'dismissed';
-  bookmarked_by_me: boolean;
-  created_at: string;
-};
+import { useCardNews } from '../../features/card-news/hooks/useCardNews';
+import type { CardNewsItem, PeerId } from '../../features/card-news/model/cardNews';
+import { getExecutiveRank } from '../../features/card-news/mappers/cardNewsExecutive';
+import { CardNewsBookSpineList } from './CardNewsBookSpine';
+import { CardNewsDetailView } from './CardNewsDetailView';
 
 interface IssuesViewProps {
-  onNavigate: (view: string) => void;
+  bookmarkedIds: string[];
+  onToggleBookmark: (cardId: string) => void;
 }
 
-export function IssuesView({ onNavigate: _onNavigate }: IssuesViewProps) {
-  const { issues: fetchedIssues, isLoading, error } = useIssues();
-  const [manualIssues, setManualIssues] = useState<IssueCardViewModel[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPeer, setSelectedPeer] = useState('all');
-  const [selectedImportance, setSelectedImportance] = useState('all');
-  const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
-  const [sourceUrl, setSourceUrl] = useState('');
+const peerChips: Array<{ id: 'all' | PeerId; label: string }> = [
+  { id: 'all', label: '전체' },
+  { id: 'samsung_sds', label: '삼성SDS' },
+  { id: 'lg_cns', label: 'LG CNS' },
+  { id: 'hyundai_autoever', label: '현대오토에버' },
+  { id: 'posco_dx', label: '포스코DX' },
+];
 
-  const issues = useMemo(
-    () => [...manualIssues, ...fetchedIssues.map(mapDomainIssueToViewModel)],
-    [fetchedIssues, manualIssues]
-  );
+export function IssuesView({ bookmarkedIds, onToggleBookmark }: IssuesViewProps) {
+  const { cards, isLoading, error } = useCardNews();
+  const [peerFilter, setPeerFilter] = useState<'all' | PeerId>('all');
+  const [detailCardId, setDetailCardId] = useState<string | null>(null);
 
-  const filteredIssues = issues.filter((issue) => {
-    const matchesPeer = selectedPeer === 'all' || issue.peer_id === selectedPeer;
-    const matchesImportance = selectedImportance === 'all' || issue.importance === selectedImportance;
-    const matchesSearch =
-      searchQuery === '' ||
-      issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      issue.summary_lines.some((line) => line.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesPeer && matchesImportance && matchesSearch;
-  });
+  const filtered = useMemo(() => {
+    const ranked = getExecutiveRank(cards);
+    return peerFilter === 'all' ? ranked : ranked.filter((c) => c.peer_id === peerFilter);
+  }, [cards, peerFilter]);
 
-  const peers = [
-    { id: 'all', name: '전체' },
-    { id: 'samsung_sds', name: '삼성SDS' },
-    { id: 'lg_cns', name: 'LG CNS' },
-    { id: 'hyundai_autoever', name: '현대오토에버' },
-    { id: 'naver_cloud', name: '네이버클라우드' },
-    { id: 'kakao_enterprise', name: 'Kakao Enterprise' },
-  ];
+  if (isLoading) {
+    return (
+      <div className="flex min-h-full items-center justify-center bg-canvas py-32">
+        <p className="text-body-sm text-steel">카드뉴스를 불러오는 중입니다.</p>
+      </div>
+    );
+  }
 
-  const importanceOptions = [
-    { value: 'all', label: '전체' },
-    { value: 'urgent', label: '우선 검토' },
-    { value: 'notable', label: '관찰 필요' },
-    { value: 'reference', label: '배경 참고' },
-  ];
+  if (error) {
+    return (
+      <div className="flex min-h-full items-center justify-center bg-canvas py-32">
+        <p className="text-body-sm text-charcoal">{error}</p>
+      </div>
+    );
+  }
 
-  const handleAddIssue = () => {
-    const trimmedUrl = sourceUrl.trim();
+  const detailCard: CardNewsItem | null = detailCardId
+    ? filtered.find((c) => c.id === detailCardId) ?? cards.find((c) => c.id === detailCardId) ?? null
+    : null;
 
-    if (!trimmedUrl) {
-      return;
-    }
-
-    const newIssue: IssueCardViewModel = {
-      id: `IC-MANUAL-${Date.now()}`,
-      peer_id: 'manual',
-      peer_name: uiText.issues.manualPeer,
-      title: uiText.issues.manualTitle,
-      summary_lines: [
-        uiText.issues.manualSummaryOne,
-        uiText.issues.manualSummaryTwo,
-        trimmedUrl,
-      ],
-      importance: 'reference',
-      event_type: 'tech',
-      review_status: 'pending',
-      bookmarked_by_me: false,
-      created_at: new Date().toISOString(),
-    };
-
-    setManualIssues((currentIssues) => [newIssue, ...currentIssues]);
-    setSourceUrl('');
-    setIsAddPanelOpen(false);
-  };
+  const relatedCards = detailCard
+    ? filtered
+        .filter((c) => c.id !== detailCard.id && (c.peer_id === detailCard.peer_id || c.category === detailCard.category))
+        .slice(0, 3)
+    : [];
 
   return (
-    <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-6">
-          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.issues.pageTitle}</h1>
-          <p className="text-neutral-600">{uiText.issues.pageSubtitle}</p>
+    <div
+      className="min-h-full"
+      style={{
+        background:
+          'radial-gradient(ellipse at 50% -10%, var(--cream-soft) 0%, var(--surface) 40%, var(--canvas) 100%)',
+      }}
+    >
+      <div className="mx-auto max-w-[1280px] px-6 py-16 lg:px-12 lg:py-24">
+        {/* 헤더 */}
+        <div className="mb-12">
+          <p className="text-micro-eyebrow text-action mb-3">Card News Library</p>
+          <h1 className="font-display text-heading-1 text-ink mb-3" style={{ fontWeight: 800 }}>
+            카드뉴스
+          </h1>
+          <p className="text-body-md text-steel max-w-[58ch]">
+            Peer 사별 시그니처 색을 입은 책등을 클릭하면 카드뉴스 상세가 열립니다. 총{' '}
+            <span className="tabular-nums text-ink">{filtered.length}</span>건.
+          </p>
         </div>
 
-        <div className="mb-6 space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder={uiText.issues.searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-3 pr-12 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-              <Search size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-            </div>
-            <button
-              onClick={() => setIsAddPanelOpen(true)}
-              className="flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 font-medium text-white hover:bg-orange-700"
-            >
-              <Plus size={18} />
-              {uiText.issues.addTrend}
-            </button>
+        {/* Peer 칩 필터 */}
+        <div className="mb-8 flex flex-wrap gap-2">
+          {peerChips.map((chip) => {
+            const active = peerFilter === chip.id;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => setPeerFilter(chip.id)}
+                className={`rounded-full border px-4 py-2 text-caption-bold transition-colors ${
+                  active
+                    ? 'border-ink bg-ink text-white'
+                    : 'border-hairline-strong bg-canvas text-charcoal hover:border-ink hover:bg-cream-soft'
+                }`}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 책등 리스트 */}
+        {filtered.length > 0 ? (
+          <CardNewsBookSpineList cards={filtered} onSelect={(id) => setDetailCardId(id)} />
+        ) : (
+          <div className="rounded-md border border-hairline bg-cream-soft px-6 py-16 text-center text-body-sm text-steel">
+            선택한 Peer 의 카드뉴스가 없습니다.
           </div>
-
-          {isAddPanelOpen && (
-            <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-base font-bold text-black">{uiText.issues.addTrendTitle}</h2>
-                </div>
-                <button
-                  onClick={() => setIsAddPanelOpen(false)}
-                  className="rounded-lg p-1.5 text-neutral-500 hover:bg-white hover:text-black"
-                  aria-label="동향 추가 패널 닫기"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="relative flex-1">
-                  <input
-                    type="url"
-                    value={sourceUrl}
-                    onChange={(event) => setSourceUrl(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        handleAddIssue();
-                      }
-                    }}
-                    placeholder={uiText.issues.addUrlPlaceholder}
-                    className="w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 pr-11 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                  <Link size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-                </div>
-                <button
-                  onClick={handleAddIssue}
-                  disabled={!sourceUrl.trim()}
-                  className="rounded-lg bg-orange-600 px-5 py-3 text-sm font-medium text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
-                >
-                  {uiText.issues.addAction}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-4 xl:flex-row">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <span className="text-sm text-neutral-600 py-2">{uiText.issues.peerFilter}</span>
-              <div className="flex flex-wrap gap-2">
-                {peers.map((peer) => (
-                  <button
-                    key={peer.id}
-                    onClick={() => setSelectedPeer(peer.id)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      selectedPeer === peer.id
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                    }`}
-                  >
-                    {peer.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <span className="text-sm text-neutral-600 py-2">{uiText.issues.reviewLevelFilter}</span>
-              <div className="flex flex-wrap gap-2">
-                {importanceOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSelectedImportance(option.value)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      selectedImportance === option.value
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {uiText.issues.loadFallback}
-            </div>
-          )}
-
-          {isLoading && (
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 text-sm text-neutral-500">
-              {uiText.issues.loading}
-            </div>
-          )}
-
-          {filteredIssues.length > 0 ? (
-            filteredIssues.map((issue) => (
-              <IssueCard
-                key={issue.id}
-                issue={issue}
-                onDelete={
-                  issue.peer_id === 'manual'
-                    ? () => setManualIssues((currentIssues) => currentIssues.filter((currentIssue) => currentIssue.id !== issue.id))
-                    : undefined
-                }
-              />
-            ))
-          ) : (
-            <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center sm:p-12">
-              <p className="text-neutral-500">{uiText.issues.empty}</p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
+
+      {/* Detail overlay */}
+      {detailCard && (
+        <CardNewsDetailView
+          card={detailCard}
+          bookmarked={bookmarkedIds.includes(detailCard.id)}
+          onBookmark={() => onToggleBookmark(detailCard.id)}
+          onClose={() => setDetailCardId(null)}
+          relatedCards={relatedCards}
+          onSelectRelated={(id) => setDetailCardId(id)}
+        />
+      )}
     </div>
   );
-}
-
-function mapDomainIssueToViewModel(issue: DomainIssue): IssueCardViewModel {
-  return {
-    id: issue.id,
-    peer_id: issue.peerId,
-    peer_name: issue.peerName,
-    title: issue.title,
-    summary_lines: issue.summaryLines,
-    importance: issue.importance,
-    event_type: 'tech',
-    review_status: 'approved',
-    bookmarked_by_me: false,
-    created_at: issue.createdAt,
-  };
 }

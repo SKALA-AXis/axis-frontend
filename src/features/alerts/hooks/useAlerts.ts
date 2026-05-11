@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';
 import type { AlertsData } from '../model/alert';
 import { alertsRepository } from '../api/alertsRepository';
 
@@ -9,32 +10,8 @@ interface UseAlertsResult {
 }
 
 export function useAlerts(): UseAlertsResult {
-  const [alertsData, setAlertsData] = useState<AlertsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    let isMounted = true;
-    const load = async () => {
-      try {
-        const result = await alertsRepository.getAlerts();
-        if (isMounted) {
-          setAlertsData(result);
-          setError(null);
-        }
-      } catch (loadError) {
-        if (isMounted) {
-          setError(loadError instanceof Error ? loadError.message : 'Unknown error');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-    void load();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const load = useCallback(() => alertsRepository.getAlerts(), []);
+  const { data: alertsData, isLoading, error } = useAsyncResource<AlertsData | null>(load, null, [load]);
+
   return { alertsData, isLoading, error };
 }

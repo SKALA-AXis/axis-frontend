@@ -41,12 +41,21 @@ export interface DashboardNotification {
   tone: 'urgent' | 'info';
 }
 
+export interface DashboardStockPoint {
+  date: string;
+  samsungSds: number;
+  lgCns: number;
+  hyundaiAutoever: number;
+  poscoDx: number;
+}
+
 export interface DashboardData {
   trends: DashboardTrend[];
   articles: DashboardArticle[];
   keywords: DashboardKeyword[];
   keywordSearchPoints: DashboardKeywordSearchPoint[];
   keywordSeries: DashboardKeywordSeries[];
+  stockPoints: DashboardStockPoint[];
   notifications: DashboardNotification[];
   keywordNewsCount: string;
 }
