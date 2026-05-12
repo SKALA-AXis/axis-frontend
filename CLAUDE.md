@@ -283,8 +283,9 @@ function renderWithCitations(text: string, sources: Source[]) {
 # .env.local (로컬 개발용)
 VITE_API_BASE_URL=http://localhost:8080
 
-# .env.production (운영)
-VITE_API_BASE_URL=https://api.axis.internal
+# .env.production (운영 — SKALA EKS ALB endpoint)
+VITE_API_BASE_URL=http://skala3-team13-axis-alb-1349892737.ap-northeast-2.elb.amazonaws.com
+# (P8 에서 사용자 도메인 발급 시 https://axis.skala25a.project.skala-ai.com 같은 패턴으로)
 ```
 
 ---
