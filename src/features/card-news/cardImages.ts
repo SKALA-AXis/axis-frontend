@@ -12,7 +12,7 @@ function pickImageCategory(card: CardNewsItem): ImageCategory {
   if (card.sector === 'ax') return 'ax';
   if (card.sector === 'security') return 'security';
   if (card.sector === 'infra') return 'infra';
-  if (card.sector === 'biz_area') return 'deals';
+  if (card.sector === 'deal') return 'deals';
 
   const cat = `${card.category_label ?? ''} ${card.category ?? ''}`;
   if (/AX|AI|디지털|섹터/i.test(cat)) return 'ax';

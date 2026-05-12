@@ -1005,15 +1005,15 @@ export interface components {
          */
         PeerIdEnum: "samsung_sds" | "lg_cns" | "hyundai_autoever" | "posco_dx";
         /**
-         * @description FR-013 본문 라벨링 대분류 4개 (요구사항정의서 v0.1):
-         *     - security: 보안
+         * @description axis-ai 기준 전략 모니터링 섹터 4개 + other:
          *     - ax: AX
+         *     - security: 보안
          *     - infra: 인프라
-         *     - biz_area: 사업영역
+         *     - deal: 수주
          *     - other: 기타
          * @enum {string}
          */
-        SectorEnum: "security" | "ax" | "infra" | "biz_area" | "other";
+        SectorEnum: "ax" | "security" | "infra" | "deal" | "other";
         /** @enum {string} */
         ExposureBandEnum: "high" | "medium" | "low";
         /** @enum {string} */

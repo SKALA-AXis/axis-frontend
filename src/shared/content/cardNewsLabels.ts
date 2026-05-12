@@ -8,10 +8,10 @@ export const cardNewsPeerLabels: Record<PeerId, string> = {
 };
 
 export const cardNewsSectorLabels: Record<SectorId, string> = {
-  security: '보안',
   ax: 'AX',
+  security: '보안',
   infra: '인프라',
-  biz_area: '사업영역',
+  deal: '수주',
   other: '기타',
 };
 
