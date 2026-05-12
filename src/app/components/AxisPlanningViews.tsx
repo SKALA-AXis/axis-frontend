@@ -502,7 +502,7 @@ export function HomeDashboardView({
   const changeSummary = [
     { label: '오늘 감지된 변화', value: `${dashboard.trends.length + filteredCards.length}건` },
     { label: '전주 대비', value: '+18%' },
-    { label: '핵심 키워드', value: dashboard.keywordSeries[0]?.name ?? 'Agentic AI' },
+    { label: '핵심 키워드', value: dashboard.keywordSeries[0]?.name ?? 'AX(제조)' },
   ];
   const stockChartPoints = dashboard.stockPoints.map((point) => ({
     date: point.date,
@@ -665,8 +665,8 @@ export function HomeDashboardView({
 
         <section data-guide="home-charts" className="mt-4 grid gap-4 xl:grid-cols-3">
           <ChartButton
-            title={showStockChart ? 'Peer사 주가 변동' : '관심도 변화'}
-            helper={showStockChart ? 'Stock compare' : 'Line graph'}
+            title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
+            helper={showStockChart ? 'Stock compare' : 'Rate of change'}
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
             onClick={() => onNavigate(showStockChart ? 'peerPlus' : 'keywordGraph')}
@@ -676,8 +676,12 @@ export function HomeDashboardView({
                 <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
                   <CartesianGrid stroke="var(--axis-graph-edge)" />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <Tooltip />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: 'var(--axis-muted)' }}
+                    width={72}
+                    tickFormatter={(value: number) => value.toLocaleString('ko-KR')}
+                  />
+                  <Tooltip formatter={(value: number) => [`${value.toLocaleString('ko-KR')}원`, '종가']} />
                   <Line type="monotone" dataKey="samsung" name="삼성SDS" stroke="var(--axis-graph-company)" strokeWidth={2.3} dot={false} />
                   <Line type="monotone" dataKey="lg" name="LG CNS" stroke="var(--axis-graph-infra)" strokeWidth={2.3} dot={false} />
                   <Line type="monotone" dataKey="hyundai" name="현대오토에버" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
@@ -687,10 +691,19 @@ export function HomeDashboardView({
                 <LineChart data={dashboard.keywordSearchPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
                   <CartesianGrid stroke="var(--axis-graph-edge)" />
                   <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="agenticAi" name="Agentic AI" stroke="var(--axis-graph-ax)" strokeWidth={2.4} dot={false} />
-                  <Line type="monotone" dataKey="sovereignAi" name="Sovereign AI" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} tickFormatter={(value: number) => `${value}%`} />
+                  <Tooltip formatter={(value: number) => [`${value.toFixed(2)}%`, '전일 대비 증감률']} />
+                  {dashboard.keywordSeries.map((series, index) => (
+                    <Line
+                      key={series.key}
+                      type="monotone"
+                      dataKey={series.key}
+                      name={series.name}
+                      stroke={series.color}
+                      strokeWidth={index === 0 ? 2.4 : 2.2}
+                      dot={false}
+                    />
+                  ))}
                 </LineChart>
               )}
             </ResponsiveContainer>
@@ -1567,7 +1580,7 @@ export function PeerPlusView({
           <article className="axis-panel-flat p-5">
             <p className="axis-kicker">DART balance</p>
             <h2 className="axis-section-heading mt-1">
-              {selectedDartSummary ? '삼성SDS 재무 체질 레이더' : '수치형 자료 요약'}
+              {selectedDartSummary ? `${selectedPeer.label} 재무 체질 레이더` : '수치형 자료 요약'}
             </h2>
             <div className="mt-4 h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -1898,7 +1911,7 @@ export function FloatingCardNewsOverlay({
                     }}
                     className="inline-flex min-h-10 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-4 py-2 text-sm font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)]"
                   >
-                    {sourceOptions.length > 1 ? '원문 선택' : '원문 열기'}
+                    {sourceOptions.length > 1 ? '원문 열기' : '원문 열기'}
                   </button>
                   {sourcePickerOpen && sourceOptions.length > 1 ? (
                     <div className="absolute bottom-[calc(100%+10px)] right-0 z-10 w-[320px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] shadow-[0_22px_70px_-36px_rgba(0,0,0,0.45)]">
