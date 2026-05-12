@@ -22,13 +22,13 @@ export function AlertsView() {
   };
 
   return (
-    <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-6 sm:mb-8">
+    <div className="axis-page flex-1 overflow-auto">
+      <div className="p-3 sm:p-4 lg:p-5">
+        <div className="axis-page-header">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">{uiText.alerts.pageTitle}</h1>
-              <p className="text-neutral-600">{uiText.alerts.pageSubtitle}</p>
+              <h1 className="axis-page-title">{uiText.alerts.pageTitle}</h1>
+              <p className="axis-page-subtitle">{uiText.alerts.pageSubtitle}</p>
             </div>
           </div>
         </div>
@@ -38,14 +38,14 @@ export function AlertsView() {
 
         {alertsData ? (
           <>
-            <div className="mb-6 flex gap-2 border-b border-neutral-200">
-              <button onClick={() => setActiveTab('history')} className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'history' ? 'border-orange-600 text-orange-600' : 'border-transparent text-neutral-600 hover:text-black'
+            <div className="mb-6 flex gap-2 ">
+              <button onClick={() => setActiveTab('history')} className={`axis-tab ${
+                activeTab === 'history' ? 'border-action text-action' : ''
               }`}>
                 {uiText.alerts.historyTab}
               </button>
-              <button onClick={() => setActiveTab('rules')} className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'rules' ? 'border-orange-600 text-orange-600' : 'border-transparent text-neutral-600 hover:text-black'
+              <button onClick={() => setActiveTab('rules')} className={`axis-tab ${
+                activeTab === 'rules' ? 'border-action text-action' : ''
               }`}>
                 {uiText.alerts.rulesTab}
               </button>
@@ -54,14 +54,14 @@ export function AlertsView() {
             {activeTab === 'history' && (
               <div className="grid gap-6 lg:grid-cols-12">
                 <div className="lg:col-span-12">
-                  <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+                  <div className="axis-panel p-5 sm:p-6">
                     <h2 className="text-lg font-bold text-black mb-4">{uiText.alerts.historyTitle}</h2>
                     <div className="space-y-3">
                       {alertsData.history.map((alert) => (
-                        <div key={alert.id} className="border border-neutral-200 rounded-lg p-4 hover:border-orange-300 transition-colors">
+                        <div key={alert.id} className="axis-panel-vivid p-4 transition-colors hover:border-action/28">
                           <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                              <Bell size={16} className="text-orange-600" />
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-action/10">
+                              <Bell size={16} className="text-action" />
                             </div>
                             <div className="flex-1">
                               <h3 className="text-sm font-bold text-black mb-1">{alert.title}</h3>
@@ -86,7 +86,7 @@ export function AlertsView() {
             {activeTab === 'rules' && (
               <div className="grid gap-6 lg:grid-cols-12">
                 <div className="lg:col-span-7">
-                  <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+                  <div className="axis-panel p-5 sm:p-6">
                     <h2 className="text-lg font-bold text-black mb-4">{uiText.alerts.rulesTitle}</h2>
                     <div className="space-y-3">
                       {alertsData.rules.map((rule) => (
@@ -103,7 +103,7 @@ export function AlertsView() {
                               </div>
                               <p className="text-sm text-neutral-600 mb-2">{rule.description}</p>
                               <div className="flex flex-wrap gap-2">
-                                <span className="rounded border border-orange-200 bg-orange-50 px-2 py-1 text-xs text-orange-700">이메일</span>
+                                <span className="rounded border border-action/20 bg-action/10 px-2 py-1 text-xs text-action">이메일</span>
                               </div>
                             </div>
                           </div>
@@ -116,7 +116,7 @@ export function AlertsView() {
 
                 <div className="lg:col-span-5">
                   {selectedRule ? (
-                    <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+                    <div className="axis-glass mb-6 rounded-xl bg-white/82 p-4 sm:p-6">
                       <h2 className="mb-4 text-lg font-bold text-black">{uiText.alerts.ruleEditorTitle}</h2>
                       <div className="space-y-4">
                         <div>
@@ -128,7 +128,7 @@ export function AlertsView() {
                           <div className="flex flex-wrap gap-2">
                             {alertsData.conditionOptions.map((option) => (
                               <button key={option} onClick={() => setSelectedRule({ ...selectedRule, description: option })} className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                                selectedRule.description === option ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+                                selectedRule.description === option ? 'border-action bg-action/10 text-action' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
                               }`} aria-pressed={selectedRule.description === option}>
                                 {option}
                               </button>
@@ -140,16 +140,16 @@ export function AlertsView() {
                           <p className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">이메일</p>
                         </div>
                         <div className="flex flex-col gap-2 sm:flex-row">
-                          <button className="flex-1 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700">{uiText.alerts.saveRule}</button>
+                          <button className="flex-1 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-primary-deep">{uiText.alerts.saveRule}</button>
                           <button onClick={() => setSelectedRule(null)} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">{uiText.common.cancel}</button>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-8 text-center">
+                    <div className="axis-panel border border-dashed border-neutral-300 bg-white/82 p-8 text-center">
                       <p className="font-bold text-black">{uiText.alerts.emptyRuleTitle}</p>
                       <p className="mt-2 text-sm text-neutral-600">{uiText.alerts.emptyRuleBody}</p>
-                      <button onClick={openNewRule} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700">
+                      <button onClick={openNewRule} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-urgent px-4 py-2 text-sm font-medium text-white hover:bg-primary-deep">
                         <Plus size={16} />
                         {uiText.alerts.addRule}
                       </button>

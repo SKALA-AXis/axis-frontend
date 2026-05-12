@@ -1,0 +1,20 @@
+/*
+ * AXIS — modern sans 단일 (서브 헤드만 medium serif 옵션)
+ * - 메인: Pretendard Variable (한글 + 라틴 둘 다 우수, modern, 가벼움)
+ * - UI / 캡션: Inter Variable (라틴 backup)
+ * - 코드: JetBrains Mono
+ */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/variable/pretendardvariable.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* 단일 sans 시스템 — 진지함 X, modern + 가벼움 */
+  --font-display: 'Pretendard Variable', 'Inter', -apple-system, 'Apple SD Gothic Neo', system-ui, sans-serif;
+  --font-body:    'Pretendard Variable', 'Inter', -apple-system, 'Apple SD Gothic Neo', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Backwards-compat */
+  --axis-font-display: var(--font-display);
+  --axis-font-body:    var(--font-body);
+  --axis-font-mono:    var(--font-mono);
+}

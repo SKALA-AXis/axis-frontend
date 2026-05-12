@@ -1,83 +1,229 @@
+/*
+ * AXIS — SK·Mistral·McKinsey 융합 디자인 토큰 (design-mistral-prompt.md SoT)
+ * - SK Red → Mistral Orange 그라디언트 (시그니처 영역만)
+ * - 본문 16px / line-height 1.55~1.6 (한글)
+ * - 라운딩: xs 4 / sm 6 / md 8 / lg 12 / xl 16 / xxl 20 / full 9999
+ * - chrome 그림자 X (shadow-card / shadow-mockup 만 별도)
+ * - .dark 블록 — W6+ 다크모드용 보존
+ */
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
+
+  /* ─── SK + Mistral 융합 액센트 (라이트 모드) ─────────── */
+  --sk-red: #EA002C;
+  --primary: #DC5A24;          /* Mistral Orange — 단색 CTA */
+  --primary-deep: #B8451A;     /* pressed 상태 */
+
+  /* ─── Sunshine palette ─────────────────────────────── */
+  --sunshine-300: #F2C56B;
+  --sunshine-500: #ECA341;
+  --sunshine-700: #E0822F;
+  --sunshine-800: #C75D2C;
+  --sunshine-900: #A24818;
+  --yellow-saturated: #F7D14B;
+
+  /* ─── Cream (라이트 강조 카드 톤) ─────────────────── */
+  --cream: #F5EAD0;
+  --cream-soft: #FBF4E4;
+  --cream-deeper: #ECDCB0;
+  --beige-deep: #D4C28C;
+
+  /* ─── Surface (라이트) ────────────────────────────── */
+  --canvas: #FFFFFF;
+  --surface: #FAF8F5;
+  --surface-cream: #FBF4E4;
+  --surface-code: #1A1A1F;     /* code mockup / TopNav 다크 톤은 보존 */
+
+  /* ─── Ink (라이트 — dark text on light bg) ───────── */
+  --ink: #1A1A1F;
+  --ink-tint: #2A2A30;
+  --charcoal: #2D2D33;
+  --slate: #4A4A52;
+  --steel: #6B6B73;
+  --stone: #8E8E96;
+  --muted-color: #B8B8BE;
+
+  /* ─── Hairline ────────────────────────────────────── */
+  --hairline: #E5E0D6;
+  --hairline-soft: #EFEAE0;
+  --hairline-strong: #C8C2B4;
+
+  /* ─── 중요도 (라이트 환경) ────────────────────────── */
+  --urgent: #B8451A;
+  --notable: #A85F00;
+  --reference: #5A6B57;
+
+  /* ─── shadcn semantic 매핑 ─────────────────────────── */
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: var(--canvas);
+  --card-foreground: var(--ink);
+  --popover: var(--canvas);
+  --popover-foreground: var(--ink);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--cream);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface);
+  --muted-foreground: var(--steel);
+  --accent: var(--cream-soft);
+  --accent-foreground: var(--ink);
+  --destructive: var(--urgent);
+  --destructive-foreground: #FFFFFF;
+  --border: var(--hairline-soft);
   --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
-  --font-weight-medium: 500;
+  --input-background: var(--canvas);
+  --switch-background: var(--hairline);
+  --ring: var(--primary);
+
+  /* sidebar — ink 다크 유지 */
+  --sidebar: var(--ink);
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--ink-tint);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: var(--ink-tint);
+  --sidebar-ring: var(--primary);
+
+  /* font-weight ladder — Mistral 은 500 사용 */
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --font-weight-medium: 500;
+  --font-weight-strong: 600;
+
+  /* Radius — Mistral sober 정렬 */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-xxl: 20px;
+  --radius-pill: 9999px;
+  --radius: var(--radius-lg);   /* shadcn 기본 — 카드 톤 */
+
+  /* Shadow — 라이트 환경 (Mistral 톤, 미세) */
+  --shadow-card: rgba(0, 0, 0, 0.04) 0px 4px 12px;
+  --shadow-mockup: rgba(0, 0, 0, 0.08) 0px 12px 24px -4px;
+
+  /* Chart palette — Mistral 무채/시그니처 톤 */
+  --chart-1: var(--primary);
+  --chart-2: var(--sunshine-700);
+  --chart-3: var(--sunshine-500);
+  --chart-4: var(--steel);
+  --chart-5: var(--sk-red);
+  --axis-graph-company: #1A1A1F;
+  --axis-graph-ax: #DC5A24;
+  --axis-graph-security: #5A6B57;
+  --axis-graph-infra: #E0822F;
+  --axis-graph-deal: #6B6B73;
+  --axis-graph-edge: rgba(26, 26, 31, 0.18);
+  --axis-graph-active-edge: #DC5A24;
+
+  /* ─── 자체 axis-* alias (호출 코드 보존 — designing 브랜치 호환) ───── */
+  --axis-navy:           var(--ink);
+  --axis-black:          var(--surface-code);
+  --axis-blue:           var(--primary);
+  --axis-canvas:         var(--canvas);
+  --axis-surface:        var(--canvas);
+  --axis-surface-soft:   var(--surface);
+  --axis-surface-muted:  var(--cream-soft);
+  --axis-subtle:         var(--surface);
+  --axis-ink:            var(--ink);
+  --axis-text:           var(--ink);
+  --axis-body:           var(--charcoal);
+  --axis-muted:          var(--steel);
+  --axis-hairline:       var(--hairline-soft);
+  --axis-accent:         var(--primary);
+  --axis-accent-strong:  var(--primary-deep);
+  --axis-success:        var(--reference);
+  --axis-warning:        var(--notable);
+  --axis-danger:         var(--urgent);
+
+  --axis-radius-sm:      var(--radius-sm);
+  --axis-radius-md:      var(--radius-md);
+  --axis-radius-lg:      var(--radius-lg);
+  --axis-radius-xl:      var(--radius-xl);
 }
 
+/* ─── 다크 모드 (사용자 옵션 — <html class="dark"> 으로 활성화) ─── */
+/* SK AX 사이트 톤 — 3 layer multi-tone 다크 (TopNav / 본문 / 카드) */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  /* base 색 재정의 */
+  --primary: #FF6A3D;
+  --primary-deep: #EA4F25;
+  --cream: #25262d;
+  --cream-soft: #22232a;
+  --cream-deeper: #30313a;
+  --beige-deep: #4a4650;
+  --canvas: #1b1d24;
+  --surface: #252832;
+  --surface-cream: #2b2e38;
+  --surface-code: #101117;
+  --ink: #F6F1E8;
+  --ink-tint: #E5DED2;
+  --charcoal: #D7D0C6;
+  --slate: #BDB6AC;
+  --steel: #A49D94;
+  --stone: #877F77;
+  --hairline: rgba(255, 255, 255, 0.18);
+  --hairline-soft: rgba(255, 255, 255, 0.14);
+  --hairline-strong: rgba(255, 255, 255, 0.26);
+  --urgent: #FF6B47;
+  --notable: #F2C56B;
+  --reference: #7AA67D;
+
+  /* shadow 다크용 */
+  --shadow-card: rgba(0, 0, 0, 0.4) 0px 4px 16px, inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-mockup: rgba(0, 0, 0, 0.6) 0px 12px 32px -8px, inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  /* shadcn semantic 다크 매핑 — 모두 다크 토큰 참조 */
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--cream);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface);
+  --muted-foreground: var(--steel);
+  --accent: var(--cream-soft);
+  --accent-foreground: var(--ink);
+  --destructive: var(--urgent);
+  --destructive-foreground: #FFFFFF;
+  --border: var(--hairline);
+  --input: var(--surface);
+  --input-background: var(--surface);
+  --switch-background: var(--hairline-strong);
+  --ring: var(--primary);
+
+  --sidebar: var(--canvas);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--cream-soft);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--primary);
+
+  --chart-1: var(--primary);
+  --chart-2: var(--sunshine-500);
+  --chart-3: var(--reference);
+  --chart-4: var(--notable);
+  --chart-5: var(--steel);
+  --axis-graph-company: #D8D1C4;
+  --axis-graph-ax: #D48362;
+  --axis-graph-security: #8FA58C;
+  --axis-graph-infra: #C69A64;
+  --axis-graph-deal: #9B98A3;
+  --axis-graph-edge: rgba(246, 241, 232, 0.16);
+  --axis-graph-active-edge: #E2A079;
 }
 
+/* ─── Tailwind v4 inline theme ─────────────────────────── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -105,10 +251,47 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Mistral 토큰 — Tailwind class 직접 사용 */
+  --color-sk-red: var(--sk-red);
+  --color-primary-deep: var(--primary-deep);
+  --color-sunshine-300: var(--sunshine-300);
+  --color-sunshine-500: var(--sunshine-500);
+  --color-sunshine-700: var(--sunshine-700);
+  --color-sunshine-800: var(--sunshine-800);
+  --color-sunshine-900: var(--sunshine-900);
+  --color-yellow-saturated: var(--yellow-saturated);
+  --color-cream: var(--cream);
+  --color-cream-soft: var(--cream-soft);
+  --color-cream-deeper: var(--cream-deeper);
+  --color-beige-deep: var(--beige-deep);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-cream: var(--surface-cream);
+  --color-surface-code: var(--surface-code);
+  --color-ink: var(--ink);
+  --color-ink-tint: var(--ink-tint);
+  --color-charcoal: var(--charcoal);
+  --color-slate: var(--slate);
+  --color-steel: var(--steel);
+  --color-stone: var(--stone);
+  --color-hairline: var(--hairline);
+  --color-hairline-soft: var(--hairline-soft);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-urgent: var(--urgent);
+  --color-notable: var(--notable);
+  --color-reference: var(--reference);
+
+  /* Radius scale */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-xxl: 20px;
+  --radius-pill: 9999px;
+
+  /* Sidebar */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -124,58 +307,167 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    font-size: var(--font-size);   /* 16px — rem 보존 */
+  }
+
   body {
     @apply bg-background text-foreground;
-  }
-
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
-
-  html {
+    font-family: var(--font-body);
     font-size: var(--font-size);
+    line-height: 1.55;
+    color: var(--ink);
+    background: var(--canvas);
+    /* mobile 한글 줄바꿈 자연스럽게 (§22.5) */
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
 
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;     /* sans 일 때 더 강하게 */
+    color: var(--ink);
+    letter-spacing: -0.02em;
   }
 
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
-  }
-
-  h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
-  }
-
-  h4 {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
-  }
+  /* h1~h4 default — Tailwind text-* utility 가 override */
+  h1 { font-size: 3rem; line-height: 1.10; }
+  h2 { font-size: 2rem; line-height: 1.20; }
+  h3 { font-size: 1.5rem; line-height: 1.30; font-weight: 600; }
+  h4 { font-size: 1.25rem; line-height: 1.35; font-weight: 600; }
+  h5 { font-size: 1rem; line-height: 1.45; font-weight: 600; }
 
   label {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.50;
   }
 
   button {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.30;
   }
 
-  input {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-normal);
-    line-height: 1.5;
+  input, textarea, select {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.55;
+  }
+
+  /* tabular numerals — KPI / 테이블 / 차트 라벨 자동 적용 */
+  .tabular, .num, td.num, th.num,
+  .stat-number, [data-tabular] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* p, li 한글 줄바꿈 keep-all */
+  p, li {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+}
+
+/* ─── Book Spine (press.stripe.com 톤, 라이트 변형) ─────────
+ * 라이트 cream 바탕 + 2px Peer 색 테두리 (inset shadow 로 layout shift 방지).
+ * 3D perspective + 스크롤 연동 tilt + hover 시 테두리 강조.
+ * --spine-border, --spine-glow 는 컴포넌트가 inline 으로 주입.
+ */
+.axis-spine-shelf {
+  perspective: 2400px;
+  perspective-origin: 50% 0%;
+  transform-style: preserve-3d;
+}
+
+.axis-spine {
+  --spine-tilt: 6deg;
+  --spine-lift: 0px;
+  --spine-tz: 0px;
+  --spine-index: 0;
+  --spine-border: var(--hairline-strong);
+  --spine-glow: rgba(0, 0, 0, 0.08);
+  transform-origin: 50% 100%;
+  transform-style: preserve-3d;
+  transform: translateY(var(--spine-lift)) translateZ(var(--spine-tz)) rotateX(var(--spine-tilt));
+  will-change: transform, box-shadow, opacity;
+  opacity: 0;
+  background: transparent;
+  box-shadow:
+    0 14px 28px -16px rgba(15, 17, 23, 0.45),
+    0 4px 10px -4px rgba(15, 17, 23, 0.18);
+  transition:
+    transform 600ms cubic-bezier(0.2, 0.85, 0.2, 1),
+    box-shadow 350ms ease,
+    opacity 700ms cubic-bezier(0.2, 0.85, 0.2, 1);
+}
+
+/* 윗면 (책의 페이지 단면) — 90° 뒤로 누워 진짜 3D 평면 */
+.axis-spine-top {
+  transform: rotateX(-90deg);
+  transform-origin: 50% 100%;
+  backface-visibility: hidden;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* 우측면 (책 옆 단면) — 90° 안쪽으로 회전 */
+.axis-spine-right {
+  transform: rotateY(90deg);
+  transform-origin: 0% 50%;
+  backface-visibility: hidden;
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.2);
+}
+
+/* 정면 — Peer 색 테두리 (border) */
+.axis-spine-face {
+  box-shadow: inset 0 0 0 2px var(--spine-border);
+  transition: box-shadow 350ms ease;
+}
+
+.axis-spine[data-in-view='false'] {
+  --spine-lift: 28px;
+  --spine-tilt: 16deg;
+}
+
+.axis-spine[data-in-view='true'] {
+  opacity: 1;
+  transition-delay: calc(var(--spine-index) * 55ms);
+}
+
+@media (hover: hover) {
+  .axis-spine[data-in-view='true']:hover {
+    --spine-lift: -6px;
+    --spine-tilt: 0deg;
+    --spine-tz: 48px;
+    box-shadow:
+      0 30px 56px -22px rgba(15, 17, 23, 0.55),
+      0 12px 22px -10px var(--spine-glow);
+    transition-duration: 320ms;
+  }
+  .axis-spine[data-in-view='true']:hover .axis-spine-face {
+    box-shadow: inset 0 0 0 3px var(--spine-border);
+  }
+}
+
+.axis-spine[data-in-view='true']:focus-visible {
+  --spine-lift: -3px;
+  --spine-tz: 28px;
+  box-shadow:
+    0 0 0 3px var(--spine-glow),
+    0 16px 32px -16px rgba(15, 17, 23, 0.45);
+  outline: none;
+}
+.axis-spine[data-in-view='true']:focus-visible .axis-spine-face {
+  box-shadow: inset 0 0 0 3px var(--spine-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .axis-spine,
+  .axis-spine[data-in-view='false'] {
+    --spine-lift: 0px;
+    --spine-tilt: 0deg;
+    --spine-tz: 0px;
+    opacity: 1;
+    transition: box-shadow 200ms ease;
   }
 }

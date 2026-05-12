@@ -1,10 +1,8 @@
 export type PeriodFilter = 'yearly' | 'quarterly' | 'monthly';
-export type CompanyTier = 'self' | 'domestic' | 'overseas';
 
 export interface PeerSummary {
   id: string;
   name: string;
-  tier: CompanyTier;
   keywords: string[];
   priority: 'high' | 'medium';
   stats: {

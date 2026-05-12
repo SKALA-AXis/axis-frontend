@@ -1,253 +1,293 @@
-import { User, Bell, Shield, Globe } from 'lucide-react';
+import { Bell, Clock3, KeyRound, LayoutDashboard, LogOut, ShieldCheck, User } from 'lucide-react';
 import { useState } from 'react';
+import {
+  ExecutiveBadge,
+  ExecutiveButton,
+  ExecutiveContainer,
+  ExecutiveHeader,
+  ExecutivePage,
+} from './executive/ExecutiveSystem';
+import {
+  getStoredContentViewMode,
+  setStoredContentViewMode,
+  type ContentViewMode,
+} from '../../shared/config/viewPreferences';
+import { mockLoginHistory } from '../../shared/mocks/userSettings';
 
-export function SettingsView() {
-  const [activeTab, setActiveTab] = useState('profile');
+type SettingsTab = 'account' | 'view' | 'history' | 'notifications';
 
-  const tabs = [
-    { id: 'profile', label: '프로필', icon: User },
+export function SettingsView({ onLogout }: { onLogout: () => void }) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [contentViewMode, setContentViewMode] = useState<ContentViewMode>(getStoredContentViewMode);
+  const [notificationSettings, setNotificationSettings] = useState({
+    email: true,
+    inApp: true,
+    msTeams: false,
+    briefingTime: '08:30',
+    eventImmediate: true,
+  });
+
+  const tabs: Array<{ id: SettingsTab; label: string; icon: typeof User }> = [
+    { id: 'account', label: '회원 정보', icon: User },
+    { id: 'view', label: '기본 보기', icon: LayoutDashboard },
+    { id: 'history', label: '접속 로그', icon: ShieldCheck },
     { id: 'notifications', label: '알림 설정', icon: Bell },
-    { id: 'security', label: '보안', icon: Shield },
-    { id: 'preferences', label: '환경 설정', icon: Globe },
   ];
 
-  return (
-    <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="mb-2 text-2xl font-bold text-black sm:text-3xl">설정</h1>
-          <p className="text-neutral-600">계정 및 시스템 환경 설정</p>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-3">
-            <div className="rounded-xl border border-neutral-200 bg-white p-3 sm:p-4">
-              <nav className="flex gap-2 overflow-x-auto lg:block lg:space-y-1">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex shrink-0 items-center gap-3 rounded-lg px-4 py-3 transition-colors lg:w-full ${
-                        activeTab === tab.id
-                          ? 'bg-orange-100 text-orange-700'
-                          : 'text-neutral-700 hover:bg-neutral-100'
-                      }`}
-                    >
-                      <Icon size={18} />
-                      <span className="text-sm font-medium">{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-          </div>
-
-          <div className="lg:col-span-9">
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
-              {activeTab === 'profile' && <ProfileSettings />}
-              {activeTab === 'notifications' && <NotificationSettings />}
-              {activeTab === 'security' && <SecuritySettings />}
-              {activeTab === 'preferences' && <PreferencesSettings />}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProfileSettings() {
-  const [saved, setSaved] = useState(false);
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-black mb-4">프로필 정보</h2>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="block text-sm font-medium text-black mb-2">이름</label>
-          <input type="text" defaultValue="SK AX User" className="w-full px-4 py-2 border border-neutral-300 rounded-lg" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-black mb-2">직책</label>
-          <input type="text" defaultValue="전략기획 담당자" className="w-full px-4 py-2 border border-neutral-300 rounded-lg" />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">이메일</label>
-        <input type="email" defaultValue="user@sk.com" className="w-full px-4 py-2 border border-neutral-300 rounded-lg" />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">부서</label>
-        <input type="text" defaultValue="사업전략팀" className="w-full px-4 py-2 border border-neutral-300 rounded-lg" />
-      </div>
-
-      <button
-        onClick={() => setSaved(true)}
-        className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-      >
-        변경사항 저장
-      </button>
-      {saved && <p className="text-sm text-green-700">프로필 변경사항이 저장되었습니다.</p>}
-    </div>
-  );
-}
-
-function NotificationSettings() {
-  const [dailyBriefingTime, setDailyBriefingTime] = useState('08:30');
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-black mb-4">알림 설정</h2>
-      </div>
-
-      <div className="space-y-4">
-        <label className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-medium text-black">긴급 이슈 즉시 알림</p>
-            <p className="text-sm text-neutral-600">긴급 중요도 이슈 발생 시 등록된 이메일로 즉시 전송</p>
-          </div>
-          <input type="checkbox" defaultChecked className="w-5 h-5 text-orange-600 rounded" />
-        </label>
-
-        <div className="p-4 border border-neutral-200 rounded-lg">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-medium text-black">일간 브리핑</p>
-              <p className="text-sm text-neutral-600">매일 설정한 시간에 이메일 브리핑 전송</p>
-            </div>
-            <input type="checkbox" defaultChecked className="w-5 h-5 text-orange-600 rounded" />
-          </div>
-          <div className="mt-4 border-t border-neutral-100 pt-4">
-            <label className="block text-sm font-medium text-black mb-2">브리핑 전송 시간</label>
-            <input
-              type="time"
-              value={dailyBriefingTime}
-              onChange={(event) => setDailyBriefingTime(event.target.value)}
-              className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
-            />
-          </div>
-        </div>
-
-        <label className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-medium text-black">주간 요약</p>
-            <p className="text-sm text-neutral-600">매주 월요일 이메일로 주간 동향 요약 전송</p>
-          </div>
-          <input type="checkbox" className="w-5 h-5 text-orange-600 rounded" />
-        </label>
-      </div>
-    </div>
-  );
-}
-
-function SecuritySettings() {
-  const [requested, setRequested] = useState(false);
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-black mb-4">보안 설정</h2>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">현재 비밀번호</label>
-        <input type="password" className="w-full px-4 py-2 border border-neutral-300 rounded-lg" />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">새 비밀번호</label>
-        <input type="password" className="w-full px-4 py-2 border border-neutral-300 rounded-lg" />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">새 비밀번호 확인</label>
-        <input type="password" className="w-full px-4 py-2 border border-neutral-300 rounded-lg" />
-      </div>
-
-      <button
-        onClick={() => setRequested(true)}
-        className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-      >
-        비밀번호 변경
-      </button>
-      {requested && <p className="text-sm text-green-700">비밀번호 변경 요청이 접수되었습니다.</p>}
-
-      <div className="pt-6 border-t border-neutral-200">
-        <h3 className="font-bold text-black mb-3">로그인 이력</h3>
-        <div className="space-y-2">
-          <div className="p-3 bg-neutral-50 rounded-lg">
-            <p className="text-sm text-black">2026-04-22 09:30 · 서울, 한국</p>
-          </div>
-          <div className="p-3 bg-neutral-50 rounded-lg">
-            <p className="text-sm text-black">2026-04-21 08:15 · 서울, 한국</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PreferencesSettings() {
-  const defaultReasoningPrompt =
-    '이슈의 사업 연관성, 고객군 중복 가능성, 확산 신호를 근거 중심으로 정리하세요. 추정은 명확히 구분하고 원문에서 확인 가능한 내용만 판단 근거로 사용하세요.';
-  const defaultImplicationPrompt =
-    'SK AX 관점에서 전략적 중요도, 시장 영향, 검토 질문을 도출하세요. 경쟁사 메시지와 SK AX의 대응 포인트가 분리되어 보이도록 작성하세요.';
-  const [saved, setSaved] = useState(false);
-  const [reasoningPrompt, setReasoningPrompt] = useState(defaultReasoningPrompt);
-  const [implicationPrompt, setImplicationPrompt] = useState(defaultImplicationPrompt);
-
-  const resetPrompts = () => {
-    setReasoningPrompt(defaultReasoningPrompt);
-    setImplicationPrompt(defaultImplicationPrompt);
+  const updateContentViewMode = (mode: ContentViewMode) => {
+    setContentViewMode(mode);
+    setStoredContentViewMode(mode);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-bold text-black">환경 설정</h2>
-        <button
-          onClick={resetPrompts}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-        >
-          초기값으로 복원
-        </button>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">판단 근거 프롬프트</label>
-        <textarea
-          value={reasoningPrompt}
-          onChange={(event) => setReasoningPrompt(event.target.value)}
-          rows={6}
-          className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm"
+    <ExecutivePage>
+      <ExecutiveContainer className="pb-24">
+        <ExecutiveHeader
+          eyebrow="User settings"
+          title="회원 정보"
+          subtitle="프로필, 접속 로그, 알림 채널을 OpenAPI Settings 도메인 구조에 맞춰 관리합니다."
+          actions={<ExecutiveButton variant="danger" icon={<LogOut size={16} />} onClick={onLogout}>로그아웃</ExecutiveButton>}
         />
-      </div>
 
+        <section className="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
+          <aside className="axis-panel-flat h-fit p-3">
+            <nav data-guide="settings-tabs" className="flex gap-2 overflow-x-auto lg:flex-col">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex shrink-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-4 py-3 text-left transition lg:w-full ${
+                      isActive
+                        ? 'bg-[var(--axis-accent)] text-white shadow-[0_14px_34px_-26px_rgba(220,90,36,0.65)]'
+                        : 'text-[var(--axis-body)] hover:bg-[var(--axis-surface-muted)]'
+                    }`}
+                  >
+                    <Icon size={17} />
+                    <span className="text-sm font-semibold">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
+
+          <main className="axis-panel-flat overflow-hidden">
+            {activeTab === 'account' ? (
+              <section className="p-5">
+                <div className="flex items-center gap-2">
+                  <User size={17} className="text-[var(--axis-accent)]" />
+                  <h2 className="axis-section-heading">프로필</h2>
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <Field label="이름" defaultValue="Andrew Smith" />
+                  <Field label="이메일" type="email" defaultValue="andrew.smith@skax.com" />
+                  <Field label="부서" defaultValue="Corporate Strategy" />
+                  <Field label="역할" defaultValue="strategist" />
+                </div>
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <ExecutiveButton onClick={() => setProfileSaved(true)}>회원 정보 저장</ExecutiveButton>
+                  <ExecutiveButton variant="secondary" icon={<KeyRound size={16} />}>비밀번호 변경</ExecutiveButton>
+                  {profileSaved ? <ExecutiveBadge tone="success">저장되었습니다</ExecutiveBadge> : null}
+                </div>
+              </section>
+            ) : null}
+
+            {activeTab === 'view' ? (
+              <section className="p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <LayoutDashboard size={17} className="text-[var(--axis-accent)]" />
+                    <h2 className="axis-section-heading">본문 기본 보기</h2>
+                  </div>
+                  <ExecutiveBadge tone="accent">기본값: 도형위주</ExecutiveBadge>
+                </div>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--axis-muted)]">
+                  브리핑, 인사이트, Peer+의 핵심 내용을 줄글 중심으로 볼지, 도형과 관계 중심으로 압축해서 볼지 선택합니다.
+                </p>
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => updateContentViewMode('visual')}
+                    className={`rounded-[var(--axis-radius-lg)] border p-5 text-left transition ${
+                      contentViewMode === 'visual'
+                        ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)]'
+                        : 'border-[var(--axis-hairline)] bg-[var(--axis-surface)] hover:border-[var(--axis-accent)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(220,90,36,0.14)] text-sm font-black text-[var(--axis-accent-strong)]">
+                        01
+                      </span>
+                      <div>
+                        <p className="text-base font-semibold text-[var(--axis-ink)]">도형위주</p>
+                        <p className="mt-1 text-sm text-[var(--axis-muted)]">관계, 흐름, 핵심 판단을 도형 카드로 먼저 봅니다.</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateContentViewMode('text')}
+                    className={`rounded-[var(--axis-radius-lg)] border p-5 text-left transition ${
+                      contentViewMode === 'text'
+                        ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)]'
+                        : 'border-[var(--axis-hairline)] bg-[var(--axis-surface)] hover:border-[var(--axis-accent)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] text-sm font-black text-[var(--axis-ink)]">
+                        Aa
+                      </span>
+                      <div>
+                        <p className="text-base font-semibold text-[var(--axis-ink)]">본문위주</p>
+                        <p className="mt-1 text-sm text-[var(--axis-muted)]">현재처럼 상세 문장을 충분히 읽는 구성을 유지합니다.</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </section>
+            ) : null}
+
+            {activeTab === 'history' ? (
+              <section className="p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={17} className="text-[var(--axis-accent)]" />
+                    <h2 className="axis-section-heading">접속 로그</h2>
+                  </div>
+                  <ExecutiveBadge>FR-043</ExecutiveBadge>
+                </div>
+                <div className="mt-5 overflow-x-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)]">
+                  <table className="axis-data-table">
+                    <thead>
+                      <tr>
+                        <th>일시</th>
+                        <th>Action</th>
+                        <th>국가</th>
+                        <th>IP 주소</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mockLoginHistory.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.date} {item.time}</td>
+                          <td>{item.action}</td>
+                          <td>{item.country}</td>
+                          <td>{item.ipAddress}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : null}
+
+            {activeTab === 'notifications' ? (
+              <section className="p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Bell size={17} className="text-[var(--axis-accent)]" />
+                    <h2 className="axis-section-heading">알림 채널·시간</h2>
+                  </div>
+                  <ExecutiveBadge>FR-041</ExecutiveBadge>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  <ToggleRow
+                    title="Email"
+                    description="브리핑과 중요 이벤트를 이메일로 수신합니다."
+                    checked={notificationSettings.email}
+                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, email: checked }))}
+                  />
+                  <ToggleRow
+                    title="In-app"
+                    description="AXIS 콘솔 내부 알림을 표시합니다."
+                    checked={notificationSettings.inApp}
+                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, inApp: checked }))}
+                  />
+                  <ToggleRow
+                    title="MS Teams"
+                    description="Teams Webhook 채널로 브리핑을 전달합니다."
+                    checked={notificationSettings.msTeams}
+                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, msTeams: checked }))}
+                  />
+                </div>
+
+                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Clock3 size={16} className="text-[var(--axis-accent)]" />
+                    <h3 className="text-sm font-semibold text-[var(--axis-ink)]">브리핑 발송 시간</h3>
+                  </div>
+                  <input
+                    type="time"
+                    value={notificationSettings.briefingTime}
+                    onChange={(event) => setNotificationSettings((current) => ({ ...current, briefingTime: event.target.value }))}
+                    className="h-10 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+                  />
+                </div>
+              </section>
+            ) : null}
+          </main>
+        </section>
+      </ExecutiveContainer>
+    </ExecutivePage>
+  );
+}
+
+function Field({
+  label,
+  type = 'text',
+  defaultValue,
+}: {
+  label: string;
+  type?: string;
+  defaultValue: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold text-[var(--axis-ink)]">{label}</span>
+      <input
+        type={type}
+        defaultValue={defaultValue}
+        className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+      />
+    </label>
+  );
+}
+
+function ToggleRow({
+  title,
+  description,
+  checked,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
       <div>
-        <label className="block text-sm font-medium text-black mb-2">시사점 프롬프트</label>
-        <textarea
-          value={implicationPrompt}
-          onChange={(event) => setImplicationPrompt(event.target.value)}
-          rows={6}
-          className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm"
-        />
+        <p className="text-sm font-semibold text-[var(--axis-ink)]">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">{description}</p>
       </div>
-
       <button
-        onClick={() => setSaved(true)}
-        className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={`relative h-6 w-11 rounded-full border transition ${
+          checked
+            ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)]'
+            : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)]'
+        }`}
+        aria-pressed={checked}
       >
-        변경사항 저장
+        <span className={`absolute top-1 h-4 w-4 rounded-full bg-[#FFFFFF] shadow-sm transition ${checked ? 'left-6' : 'left-1'}`} />
       </button>
-      {saved && <p className="text-sm text-green-700">환경 설정이 저장되었습니다.</p>}
     </div>
   );
 }

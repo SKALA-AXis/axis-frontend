@@ -4,7 +4,7 @@ export const mockIssues: Issue[] = [
   {
     id: 'IC-20260422-001',
     peerId: 'samsung_sds',
-    peerName: '삼성SDS',
+    peerName: '삼성 SDS',
     title: '생성형 AI 운영 플랫폼을 제조/금융 레퍼런스로 확장',
     summaryLines: [
       '대기업 고객의 업무 프로세스에 생성형 AI를 내재화하는 운영 플랫폼 메시지 강화',
@@ -31,7 +31,7 @@ export const mockIssues: Issue[] = [
   {
     id: 'IC-20260422-003',
     peerId: 'hyundai_autoever',
-    peerName: '현대오토에버',
+    peerName: '현대 오토에버',
     title: 'SDV 데이터 플랫폼 외부 고객 적용 사례 공개',
     summaryLines: [
       '자동차 SW 경험을 제조 데이터 플랫폼 사업으로 확장',
@@ -40,5 +40,18 @@ export const mockIssues: Issue[] = [
     importance: 'reference',
     createdAt: '2026-04-21T16:45:00Z',
     sourceUrl: 'https://example.com/issues/IC-20260422-003',
+  },
+  {
+    id: 'IC-20260421-004',
+    peerId: 'posco_dx',
+    peerName: '포스코 DX',
+    title: '스마트팩토리용 산업 AI·자동화 패키지 공개',
+    summaryLines: [
+      '생산 현장 자동화와 산업 AI 운영을 함께 제안하는 메시지 강화',
+      '제조 고객 대상 실행형 레퍼런스 확보 흐름을 점검할 필요가 있음',
+    ],
+    importance: 'notable',
+    createdAt: '2026-04-21T11:20:00Z',
+    sourceUrl: 'https://example.com/issues/IC-20260421-004',
   },
 ];

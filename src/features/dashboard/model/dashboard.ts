@@ -41,12 +41,58 @@ export interface DashboardNotification {
   tone: 'urgent' | 'info';
 }
 
+export interface DashboardStockPoint {
+  date: string;
+  samsungSds: number;
+  lgCns: number;
+  hyundaiAutoever: number;
+  poscoDx: number;
+}
+
+export interface DashboardDartChartPoint {
+  label: string;
+  value: number;
+  unit: string;
+  color: string;
+}
+
+export interface DashboardDartRadarMetric {
+  axis: string;
+  metric: string;
+  actualValuePct: number;
+  displayValue: string;
+  score: number;
+}
+
+export interface DashboardDartSummary {
+  peerId: string;
+  corpName: string;
+  period: string;
+  periodType: string;
+  reportName: string;
+  publishedAt: string;
+  revenueTotalKrwBn: number;
+  operatingProfitKrwBn: number;
+  operatingMarginPct: number;
+  netMarginPct?: number;
+  debtRatioPct?: number;
+  cashRatioPct?: number;
+  intangibleAssetRatioPct?: number;
+  capexRatioPct?: number;
+  documentTableCount: number;
+  documentImageCount: number;
+  chartPoints: DashboardDartChartPoint[];
+  radarMetrics?: DashboardDartRadarMetric[];
+}
+
 export interface DashboardData {
   trends: DashboardTrend[];
   articles: DashboardArticle[];
   keywords: DashboardKeyword[];
   keywordSearchPoints: DashboardKeywordSearchPoint[];
   keywordSeries: DashboardKeywordSeries[];
+  stockPoints: DashboardStockPoint[];
   notifications: DashboardNotification[];
   keywordNewsCount: string;
+  dartSummary?: DashboardDartSummary | null;
 }

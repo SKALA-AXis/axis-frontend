@@ -3,7 +3,7 @@ import type { RawArticle } from '../../features/raw-articles/model/rawArticle';
 export const mockRawArticles: RawArticle[] = [
   {
     id: 1,
-    title: '삼성SDS, 제조/금융 생성형 AI 운영 플랫폼 레퍼런스 확대',
+    title: '삼성 SDS, 제조/금융 생성형 AI 운영 플랫폼 레퍼런스 확대',
     url: 'https://example.com/article1',
     sourceName: 'Naver News',
     peerId: 'samsung_sds',
@@ -23,12 +23,22 @@ export const mockRawArticles: RawArticle[] = [
   },
   {
     id: 3,
-    title: '현대오토에버, SDV 데이터 플랫폼 외부 고객 적용 사례 공개',
+    title: '현대 오토에버, SDV 데이터 플랫폼 외부 고객 적용 사례 공개',
     url: 'https://example.com/article3',
     sourceName: 'Chosun Biz',
     peerId: 'hyundai_autoever',
     publishedAt: '2026-04-21T16:45:00Z',
     collectedAt: '2026-04-21T16:50:00Z',
     importanceLevel: null,
+  },
+  {
+    id: 4,
+    title: '포스코 DX, 스마트팩토리 고도화용 산업 AI 자동화 패키지 공개',
+    url: 'https://example.com/article4',
+    sourceName: 'Maeil Business',
+    peerId: 'posco_dx',
+    publishedAt: '2026-04-21T11:20:00Z',
+    collectedAt: '2026-04-21T11:28:00Z',
+    importanceLevel: 'notable',
   },
 ];
