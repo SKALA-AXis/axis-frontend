@@ -97,7 +97,7 @@ open http://localhost:3000
 | 오늘의 브리핑 | `/` | 당일 이슈 카드 목록 + 상세 (메인) |
 | AI 검색 | `/search` | Generative Search + Citation 표시 |
 | Peer사 모니터링 | `/peers` | Peer사별 이슈 타임라인 |
-| 알림 설정 | `/settings` | Slack 알림 시간·조건 설정 |
+| 알림 설정 | `/settings` | 이메일 알림 시간·조건 설정 (AWS SES, 매일 08:30 KST 자동 브리핑) |
 
 ---
 
@@ -132,8 +132,9 @@ npm run preview      # 빌드 결과 미리보기
 # 로컬 개발
 VITE_API_BASE_URL=http://localhost:8080
 
-# 운영
-VITE_API_BASE_URL=https://api.axis.internal
+# 운영 (SKALA EKS ALB endpoint)
+VITE_API_BASE_URL=http://skala3-team13-axis-alb-1349892737.ap-northeast-2.elb.amazonaws.com
+# (P8 에서 사용자 도메인 발급 시 https://axis.skala25a.project.skala-ai.com 패턴으로)
 ```
 
 ---
