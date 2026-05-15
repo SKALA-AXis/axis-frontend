@@ -56,6 +56,8 @@ import {
 import { cardNewsItems as fallbackCardNewsItems } from '../../shared/mocks/cardNews';
 import { mockInsightResult } from '../../shared/mocks/insight';
 import { useInsightGeneration } from '../../features/insight/hooks/useInsightGeneration';
+import { useMixerAnalysis } from '../../features/mixer/hooks/useMixerAnalysis';
+import { MIXER_RADAR_LABELS, type MixerAnalysisResponse } from '../../features/mixer/model/mixer';
 import {
   graphCategoryColor,
   graphCompanyAliases,
@@ -787,6 +789,30 @@ type MixerResultView = {
   skAxPerspective: string;
 };
 
+function adaptMixerToView(raw: MixerAnalysisResponse, fallback: MixerResultView): MixerResultView {
+  const summary = (raw.final_one_liner || raw.insight || fallback.summary).trim() || fallback.summary;
+  const insightBrief = raw.bullet_signals.length > 0 ? raw.bullet_signals.slice(0, 3) : fallback.insightBrief;
+  const evidenceLogic = raw.sources_used.length > 0
+    ? [
+        `분석 카드 ${raw.sources_used.length}건`,
+        `Peer ${raw.peer_ids.length}개사`,
+        `연결 ${raw.connections.length}건`,
+        `신뢰도 ${Math.round((raw.confidence ?? 0) * 100)}%`,
+      ]
+    : fallback.evidenceLogic;
+  const connections = raw.reasoning_trail.length > 0
+    ? raw.reasoning_trail.map((item) => item.label).filter((s) => s.trim().length > 0)
+    : fallback.connections;
+  return {
+    summary,
+    insightBrief,
+    evidenceLogic,
+    actions: fallback.actions,
+    connections,
+    skAxPerspective: raw.sk_ax_implication.trim() || fallback.skAxPerspective,
+  };
+}
+
 export function MixerView({
   bookmarkedIds,
   onToggleBookmark,
@@ -802,11 +828,14 @@ export function MixerView({
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(mockMixerConfig.defaults.keywords);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<MixerResultView | null>(null);
+  const [mixerRaw, setMixerRaw] = useState<MixerAnalysisResponse | null>(null);
+  const [mixerErrorMessage, setMixerErrorMessage] = useState<string | null>(null);
+  const [showMixerSteps, setShowMixerSteps] = useState(false);
   const [mixerDetailCardId, setMixerDetailCardId] = useState<string | null>(null);
   const [mixerDetailSlideIndex, setMixerDetailSlideIndex] = useState(0);
   const generationTimeoutRef = useRef<number | null>(null);
+  const { analyze: analyzeMixer, isLoading: isGenerating } = useMixerAnalysis();
 
   const mixerSourceCards = useMemo(() => {
     if (cards.length >= 4) {
@@ -900,20 +929,36 @@ export function MixerView({
     };
   };
 
-  const generateMixerResult = () => {
+  const generateMixerResult = async () => {
     if (!canGenerate || isGenerating) return;
-
-    setIsGenerating(true);
     if (generationTimeoutRef.current !== null) {
       window.clearTimeout(generationTimeoutRef.current);
+      generationTimeoutRef.current = null;
     }
 
-    generationTimeoutRef.current = window.setTimeout(() => {
-      setResult(buildMixerResult());
-      setMode('result');
-      setIsGenerating(false);
-      generationTimeoutRef.current = null;
-    }, 1800);
+    setMixerErrorMessage(null);
+    const mockResult = buildMixerResult();
+
+    const raw = await analyzeMixer({
+      cardIds: selectedCards.map((item) => item.card.id),
+      ratios: {
+        peer: selectedPeers,
+        industry: selectedIndustries,
+        keyword: selectedKeywords,
+        customer: selectedCustomers,
+      },
+    });
+
+    if (raw) {
+      setMixerRaw(raw);
+      setResult(adaptMixerToView(raw, mockResult));
+    } else {
+      setMixerRaw(null);
+      setResult(mockResult);
+      setMixerErrorMessage('axis-ai 호출 실패 — 샘플 결과 표시');
+    }
+
+    setMode('result');
   };
 
   if (isLoading) return <LoadingBlock label="믹서 후보 카드를 불러오는 중입니다." />;
@@ -1056,6 +1101,189 @@ export function MixerView({
               </div>
             </article>
           </section>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {mixerRaw ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(220,90,36,0.10)] px-3 py-1 text-xs font-semibold text-[var(--axis-accent-strong)]">
+                <Sparkles size={14} />
+                AI 초안
+                <span className="ml-1 text-[var(--axis-muted)]">신뢰도 {Math.round((mixerRaw.confidence ?? 0) * 100)}%</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--axis-surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--axis-muted)]">
+                샘플 데이터
+              </span>
+            )}
+            {mixerRaw && (mixerRaw.confidence ?? 0) < 0.6 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
+                ⚠️ 근거 불충분 — 결과는 참고용
+              </span>
+            ) : null}
+            {mixerRaw?.warning ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
+                ⚠️ {mixerRaw.warning}
+              </span>
+            ) : null}
+            {mixerErrorMessage ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                {mixerErrorMessage}
+              </span>
+            ) : null}
+            {mixerRaw?.mix_id ? (
+              <span className="ml-auto text-[10px] font-mono text-[var(--axis-muted)]">
+                mix: {mixerRaw.mix_id}
+              </span>
+            ) : null}
+          </div>
+
+          {mixerRaw && mixerRaw.radar_axes.length > 0 ? (
+            <section className="axis-panel-flat mt-5 p-5">
+              <p className="axis-kicker">6-axis radar (AI)</p>
+              <h3 className="axis-section-heading mt-1">결정적 산식 기반 6축 점수</h3>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {mixerRaw.radar_axes.map((axis) => {
+                  const label = MIXER_RADAR_LABELS.find((l) => l.id === axis.axis)?.label ?? axis.axis;
+                  const percent = Math.round(axis.score * 100);
+                  return (
+                    <div
+                      key={axis.axis}
+                      className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-[var(--axis-ink)]">{label}</p>
+                        <span className="text-xs font-bold text-[var(--axis-accent-strong)]">{percent}</span>
+                      </div>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--axis-surface-muted)]">
+                        <div
+                          className="h-full rounded-full bg-[var(--axis-accent)]"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-[var(--axis-muted)]">{axis.explanation}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          {mixerRaw && mixerRaw.reasoning_trail.length > 0 ? (
+            <section className="axis-panel-flat mt-5 overflow-hidden">
+              <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
+                <p className="axis-kicker">Reasoning trail</p>
+                <h3 className="axis-section-heading mt-1">AI 분석 흐름</h3>
+                <p className="mt-2 text-xs font-semibold leading-5 text-[var(--axis-muted)]">
+                  3-phase per_card / cross_card / synthesis 흐름을 사용자 관점 한 줄로 요약합니다.
+                </p>
+              </div>
+              <ol className="space-y-2 p-5">
+                {mixerRaw.reasoning_trail.map((item) => (
+                  <li
+                    key={item.seq}
+                    className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.10)] text-xs font-black text-[var(--axis-accent-strong)]">
+                      {item.seq}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--axis-ink)]">{item.label}</p>
+                      <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{item.one_liner}</p>
+                      {item.evidence_refs.length > 0 ? (
+                        <p className="mt-2 text-xs text-[var(--axis-muted)]">
+                          근거: {item.evidence_refs.join(', ')}
+                        </p>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              {mixerRaw.reasoning_steps.length > 0 ? (
+                <div className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowMixerSteps((prev) => !prev)}
+                    className="text-xs font-semibold text-[var(--axis-accent-strong)] underline-offset-2 hover:underline"
+                    aria-expanded={showMixerSteps}
+                  >
+                    {showMixerSteps ? '상세 단계 닫기 ▲' : '상세 단계 더 보기 ▼'}
+                  </button>
+                  {showMixerSteps ? (
+                    <ol className="mt-3 space-y-3">
+                      {mixerRaw.reasoning_steps.map((step) => (
+                        <li
+                          key={step.step_idx}
+                          className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-bold text-[var(--axis-accent-strong)]">
+                              Step {step.step_idx} · {step.phase}
+                            </p>
+                            <span className="text-xs text-[var(--axis-muted)]">
+                              conf {step.confidence.toFixed(2)}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-[var(--axis-ink)]">Q. {step.question}</p>
+                          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">A. {step.answer}</p>
+                          <p className="mt-2 text-xs italic leading-5 text-[var(--axis-muted)]">
+                            중간 결론: {step.intermediate_conclusion}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
+                </div>
+              ) : null}
+              {mixerRaw.langfuse_trace_id ? (
+                <div className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-2 text-right">
+                  <span className="text-[10px] font-mono text-[var(--axis-muted)]">
+                    trace: {mixerRaw.langfuse_trace_id}
+                  </span>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
+          {mixerRaw && mixerRaw.connections.length > 0 ? (
+            <section className="axis-panel-flat mt-5 p-5">
+              <p className="axis-kicker">Cross-card connections</p>
+              <h3 className="axis-section-heading mt-1">카드 간 연결 (cause / similar / contrast / reinforce)</h3>
+              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                {mixerRaw.connections.map((conn, index) => (
+                  <li
+                    key={`${conn.source_card_id}-${conn.target_card_id}-${index}`}
+                    className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-3 text-xs leading-5 text-[var(--axis-body)]"
+                  >
+                    <span className="inline-block rounded-full bg-[rgba(220,90,36,0.10)] px-2 py-0.5 text-[10px] font-bold text-[var(--axis-accent-strong)]">
+                      {conn.label}
+                    </span>
+                    <span className="ml-2 font-mono text-[10px] text-[var(--axis-muted)]">
+                      {conn.source_card_id} → {conn.target_card_id}
+                    </span>
+                    <span className="ml-2 text-[10px] text-[var(--axis-muted)]">w={conn.weight.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {mixerRaw && mixerRaw.follow_up_questions.length > 0 ? (
+            <section className="axis-panel-flat mt-5 overflow-hidden">
+              <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
+                <p className="axis-kicker">Follow up</p>
+                <h3 className="axis-section-heading mt-1">후속 질문</h3>
+              </div>
+              <ul className="space-y-2 p-5">
+                {mixerRaw.follow_up_questions.map((question, index) => (
+                  <li
+                    key={`${index}-${question}`}
+                    className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-3 text-sm leading-6 text-[var(--axis-body)]"
+                  >
+                    {question}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </ExecutiveContainer>
         {mixerDetailCard ? (
           <FloatingCardNewsOverlay
