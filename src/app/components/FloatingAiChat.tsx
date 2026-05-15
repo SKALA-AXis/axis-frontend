@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { FileText, Send, Sparkles, X } from 'lucide-react';
 import { uiText } from '../../shared/content/uiText';
 import { useChat } from '../../features/chat/hooks/useChat';
+import { AgentTimeline } from '../../features/chat/components/AgentTimeline';
 import type {
+  AgentTraceStep,
   ChatIntent,
   ChatLens,
   FollowUpSuggestion,
@@ -20,6 +22,7 @@ type ChatMessage = {
   sources?: ChatTurnResponse['sources'];
   confidence?: number;
   warning?: string | null;
+  agentTrace?: AgentTraceStep[];
 };
 
 const INTENT_LABEL: Record<ChatIntent, string> = {
@@ -108,6 +111,7 @@ export function FloatingAiChat() {
         sources: result.sources,
         confidence: result.confidence,
         warning: result.warning,
+        agentTrace: result.agent_trace,
       },
     ]);
   };
@@ -179,6 +183,9 @@ export function FloatingAiChat() {
                   ) : null}
                   {message.warning ? (
                     <p className="mt-2 text-[10px] font-semibold text-yellow-700">⚠️ {message.warning}</p>
+                  ) : null}
+                  {message.agentTrace && message.agentTrace.length > 0 ? (
+                    <AgentTimeline trace={message.agentTrace} />
                   ) : null}
                   {message.followUps && message.followUps.length > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-1">
