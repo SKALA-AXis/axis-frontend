@@ -55,6 +55,7 @@ import {
 } from '../../shared/mocks/homeDashboardPresentation';
 import { cardNewsItems as fallbackCardNewsItems } from '../../shared/mocks/cardNews';
 import { mockInsightResult } from '../../shared/mocks/insight';
+import { useInsightGeneration } from '../../features/insight/hooks/useInsightGeneration';
 import {
   graphCategoryColor,
   graphCompanyAliases,
@@ -2202,8 +2203,6 @@ export function CardNewsWorkspaceView({
   );
 }
 
-const insightResult = mockInsightResult;
-
 export function InsightResultView({
   bookmarkedIds = [],
   onToggleBookmark,
@@ -2214,7 +2213,18 @@ export function InsightResultView({
 }) {
   const { cards } = useCardNews();
   const contentViewMode = useContentViewMode();
-  const insightEvidenceCards = getExecutiveRank(cards).slice(0, 6);
+  const insightEvidenceCards = useMemo(() => getExecutiveRank(cards).slice(0, 6), [cards]);
+  const insightCardIds = useMemo(
+    () => insightEvidenceCards.map((card) => card.id),
+    [insightEvidenceCards],
+  );
+  const { result: generated, raw, isLoading: isGenerating, error: generateError, regenerate } =
+    useInsightGeneration({ cardIds: insightCardIds });
+  const insightResult = generated ?? mockInsightResult;
+  const isAiGenerated = generated !== null;
+  const confidence = raw?.confidence ?? null;
+  const lowConfidence = confidence !== null && confidence < 0.6;
+  const [showReasoningSteps, setShowReasoningSteps] = useState(false);
   const [insightDetailCardId, setInsightDetailCardId] = useState<string | null>(null);
   const [insightDetailSlideIndex, setInsightDetailSlideIndex] = useState(0);
   const [activeInsightStep, setActiveInsightStep] = useState(0);
@@ -2230,6 +2240,50 @@ export function InsightResultView({
           title={insightResult.title}
           subtitle="원인, 변화, 영향, 대응을 한 화면에서 연결해 읽을 수 있도록 재배치했습니다."
         />
+
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          {isAiGenerated ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(220,90,36,0.10)] px-3 py-1 text-xs font-semibold text-[var(--axis-accent-strong)]">
+              <Sparkles size={14} />
+              AI 초안
+              {confidence !== null ? (
+                <span className="ml-1 text-[var(--axis-muted)]">신뢰도 {Math.round(confidence * 100)}%</span>
+              ) : null}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--axis-surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--axis-muted)]">
+              샘플 데이터
+            </span>
+          )}
+          {isGenerating ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(220,90,36,0.06)] px-3 py-1 text-xs font-semibold text-[var(--axis-accent-strong)]">
+              분석 생성 중…
+            </span>
+          ) : null}
+          {lowConfidence ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
+              ⚠️ 근거 불충분 — 결과를 참고용으로만 사용
+            </span>
+          ) : null}
+          {raw?.warning ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
+              ⚠️ {raw.warning}
+            </span>
+          ) : null}
+          {generateError ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+              생성 실패: {generateError}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            onClick={regenerate}
+            disabled={isGenerating || insightCardIds.length === 0}
+            className="ml-auto inline-flex items-center gap-1 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            다시 분석
+          </button>
+        </div>
 
         <section className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
           <main className="space-y-5">
@@ -2402,6 +2456,101 @@ export function InsightResultView({
                 </section>
               </>
             )}
+
+            {raw && raw.reasoning_trail.length > 0 ? (
+              <section data-guide="insight-reasoning-trail" className="axis-panel-flat overflow-hidden">
+                <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
+                  <p className="axis-kicker">Reasoning trail</p>
+                  <h2 className="axis-section-heading mt-1">AI 판단 흐름</h2>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-[var(--axis-muted)]">
+                    InsightCascade 4-phase 가 어떤 순서로 결론을 도출했는지 한 줄씩 보여줍니다.
+                  </p>
+                </div>
+                <ol className="space-y-2 p-5">
+                  {raw.reasoning_trail.map((item) => (
+                    <li
+                      key={item.seq}
+                      className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4"
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.10)] text-xs font-black text-[var(--axis-accent-strong)]">
+                        {item.seq}
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--axis-ink)]">{item.label}</p>
+                        <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{item.one_liner}</p>
+                        {item.evidence_refs.length > 0 ? (
+                          <p className="mt-2 text-xs text-[var(--axis-muted)]">
+                            근거: {item.evidence_refs.join(', ')}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                {raw.reasoning_steps.length > 0 ? (
+                  <div className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-5 py-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowReasoningSteps((prev) => !prev)}
+                      className="text-xs font-semibold text-[var(--axis-accent-strong)] underline-offset-2 hover:underline"
+                      aria-expanded={showReasoningSteps}
+                    >
+                      {showReasoningSteps ? '상세 단계 닫기 ▲' : '상세 단계 더 보기 ▼'}
+                    </button>
+                    {showReasoningSteps ? (
+                      <ol className="mt-3 space-y-3">
+                        {raw.reasoning_steps.map((step) => (
+                          <li
+                            key={step.step_idx}
+                            className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-bold text-[var(--axis-accent-strong)]">
+                                Step {step.step_idx} · {step.phase}
+                              </p>
+                              <span className="text-xs text-[var(--axis-muted)]">
+                                conf {step.confidence.toFixed(2)}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm font-semibold text-[var(--axis-ink)]">Q. {step.question}</p>
+                            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">A. {step.answer}</p>
+                            <p className="mt-2 text-xs italic leading-5 text-[var(--axis-muted)]">
+                              중간 결론: {step.intermediate_conclusion}
+                            </p>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : null}
+                  </div>
+                ) : null}
+                {raw.langfuse_trace_id ? (
+                  <div className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-2 text-right">
+                    <span className="text-[10px] font-mono text-[var(--axis-muted)]">
+                      trace: {raw.langfuse_trace_id}
+                    </span>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            {raw && raw.follow_up_questions.length > 0 ? (
+              <section className="axis-panel-flat overflow-hidden">
+                <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
+                  <p className="axis-kicker">Follow up</p>
+                  <h2 className="axis-section-heading mt-1">후속 질문</h2>
+                </div>
+                <ul className="space-y-2 p-5">
+                  {raw.follow_up_questions.map((question, index) => (
+                    <li
+                      key={`${index}-${question}`}
+                      className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-3 text-sm leading-6 text-[var(--axis-body)]"
+                    >
+                      {question}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </main>
 
           <aside data-guide="insight-sources" className="2xl:sticky 2xl:top-4 2xl:self-start">
