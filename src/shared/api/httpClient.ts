@@ -46,9 +46,13 @@ class FetchHttpClient implements HttpClient {
   }
 }
 
-export const httpClient: HttpClient | null = env.apiBaseUrl
-  ? new FetchHttpClient(env.apiBaseUrl)
-  : null;
+// Always create the client. Empty baseUrl → relative URLs (same origin) which
+// nginx + ALB ingress routes /api/* 를 backend 로 proxy. 빌드 시 VITE_API_BASE_URL
+// 가 없어도 (cluster CI checkout) "API client not configured" 에러 안 남.
+//
+// 타입 `| null` 은 호환을 위해 유지 (기존 repository 들의 `if (!httpClient)` guard
+// 는 dead code 가 되지만 정상 통과).
+export const httpClient: HttpClient | null = new FetchHttpClient(env.apiBaseUrl);
 
 function isApiResponse(value: unknown): value is { success: boolean; data: unknown; timestamp: string } {
   if (!value || typeof value !== 'object') {
