@@ -979,6 +979,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/global/trends/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 글로벌 트렌드 분석 실행
+         * @description GlobalTrendsAgent (axis-ai) 위임. 글로벌 빅테크 6사 (NVIDIA/Apple/Microsoft/
+         *     Google/Amazon/Meta) 의 최근 동향이 SK AX 의 국내 IT 서비스 사업에 미치는
+         *     영향을 5-phase CoT 로 분석.
+         *
+         *     - Phase 1 (Snapshot, 산식): 회사별 카드 수 + top themes
+         *     - Phase 2 (Trend Detection, 산식): theme frequency ±20/30/50% band
+         *     - Phase 3 (Impact Mapping, LLM): trend × sk_ax_line 매트릭스
+         *     - Phase 4 (Forecast, LLM): 1Q/6M/1Y 시나리오
+         *     - Phase 5 (Synthesis, LLM): final_one_liner + sk_ax_implication
+         *
+         *     spec: axis-ai/design/30-analysis/global-trends.md
+         */
+        post: operations["runGlobalTrends"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/raw-articles": {
         parameters: {
             query?: never;
@@ -2581,6 +2611,60 @@ export interface components {
             /** @default false */
             bookmarked_only: boolean;
             user_question?: string | null;
+        };
+        /** @description GlobalTrendsAgent 입력. spec: axis-ai/design/30-analysis/global-trends.md §4. */
+        GlobalTrendsRequest: {
+            /** @description 분석 대상 글로벌 회사 ids. 비어 있으면 default 6사 (NVIDIA / Apple / MS / Google / Amazon / Meta). */
+            company_ids?: string[] | null;
+            /** @description 특정 theme 필터 (옵션) */
+            focus_themes?: string[] | null;
+            /** @default 30 */
+            window_days: number;
+            /** @description impact matrix 컬럼 축. 비어 있으면 default 5종 (ai_managed / cloud_msp / security / smart_factory / data_platform). */
+            sk_ax_business_lines?: string[] | null;
+        };
+        /**
+         * @description GlobalTrendsAgent 출력 (5-phase + 3-tier observability).
+         *     spec: axis-ai/design/30-analysis/global-trends.md §5.
+         */
+        GlobalTrendsResult: {
+            analysis_period?: {
+                [key: string]: unknown;
+            };
+            snapshots?: {
+                [key: string]: unknown;
+            }[];
+            trend_detections?: {
+                [key: string]: unknown;
+            }[];
+            impact_matrix?: {
+                [key: string]: unknown;
+            }[];
+            forecasts?: {
+                [key: string]: unknown;
+            }[];
+            final_one_liner?: string;
+            sk_ax_implication?: string;
+            follow_up_questions?: string[];
+            risk_assumptions?: string[];
+            /** @description 3-tier observability Tier 1 — 사용자 default */
+            reasoning_trail?: {
+                [key: string]: unknown;
+            }[];
+            /** @description 3-tier observability Tier 2 — 상세 */
+            reasoning_steps?: {
+                [key: string]: unknown;
+            }[];
+            /** @description 3-tier observability Tier 3 — admin deep link */
+            langfuse_trace_id?: string | null;
+            /** Format: float */
+            confidence?: number;
+            sources_used?: string[];
+            company_ids?: string[];
+            provenance?: {
+                [key: string]: unknown;
+            };
+            warning?: string | null;
         };
         RawArticleListResponse: {
             items?: components["schemas"]["RawArticle"][];
@@ -4476,6 +4560,37 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
+        };
+    };
+    runGlobalTrends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["GlobalTrendsRequest"];
+            };
+        };
+        responses: {
+            /** @description 글로벌 트렌드 분석 결과 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse"] & {
+                        data?: components["schemas"]["GlobalTrendsResult"];
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+            504: components["responses"]["GatewayTimeout"];
         };
     };
     listRawArticles: {
