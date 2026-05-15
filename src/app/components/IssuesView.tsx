@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { useCardNews } from '../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem, PeerId } from '../../features/card-news/model/cardNews';
-import { getExecutiveRank } from '../../features/card-news/mappers/cardNewsExecutive';
+import { getLatestFirst } from '../../features/card-news/mappers/cardNewsExecutive';
 import { CardNewsBookSpineList } from './CardNewsBookSpine';
 import { CardNewsDetailView } from './CardNewsDetailView';
 
@@ -28,8 +28,8 @@ export function IssuesView({ bookmarkedIds, onToggleBookmark }: IssuesViewProps)
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    const ranked = getExecutiveRank(cards);
-    return peerFilter === 'all' ? ranked : ranked.filter((c) => c.peer_id === peerFilter);
+    const latest = getLatestFirst(cards);
+    return peerFilter === 'all' ? latest : latest.filter((c) => c.peer_id === peerFilter);
   }, [cards, peerFilter]);
 
   if (isLoading) {

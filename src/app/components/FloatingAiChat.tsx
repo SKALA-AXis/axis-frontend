@@ -146,6 +146,7 @@ export function FloatingAiChat() {
       )}
 
       <button
+        data-guide="ai-chat"
         type="button"
         onClick={() => {
           setIsOpen((current) => !current);

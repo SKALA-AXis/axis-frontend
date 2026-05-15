@@ -1,4 +1,4 @@
-import { type CSSProperties, FormEvent, useEffect, useState } from 'react';
+import { type CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Moon, Sun, X } from 'lucide-react';
 import { AdminView } from './components/AdminView';
 import { BriefingsView } from './components/BriefingsView';
@@ -17,7 +17,7 @@ import { TopNav } from './components/TopNav';
 import { FloatingAiChat } from './components/FloatingAiChat';
 import { Input } from './components/ui/input';
 import { viewLabels } from '../shared/content/navigation';
-import { guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../shared/content/productGuide';
+import { commonGuideSteps, guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../shared/content/productGuide';
 import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../shared/mocks/peerPlus';
 
 type AuthMode = 'signIn' | 'signUp';
@@ -306,13 +306,14 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function createGuideLayout(rect: DOMRect): GuideLayout {
+function createGuideLayout(rect: DOMRect, targetKey?: string): GuideLayout {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   const gap = 18;
   const margin = 16;
+
   const panelWidth = Math.min(420, viewportWidth - margin * 2);
-  const estimatedPanelHeight = Math.min(360, viewportHeight - margin * 2);
+  const estimatedPanelHeight = Math.min(560, viewportHeight - margin * 2);
   const targetCenterX = rect.left + rect.width / 2;
   const targetCenterY = rect.top + rect.height / 2;
 
@@ -371,6 +372,31 @@ function resolveGuideSteps(baseSteps: ProductGuideStep[]) {
   return visibleSteps.length > 0 ? visibleSteps : baseSteps;
 }
 
+function scrollGuideTargetIntoView(targetElement: HTMLElement) {
+  const rect = targetElement.getBoundingClientRect();
+  const verticalMargin = 96;
+  const horizontalMargin = 48;
+  const isOutOfViewport =
+    rect.top < verticalMargin ||
+    rect.bottom > window.innerHeight - verticalMargin ||
+    rect.left < horizontalMargin ||
+    rect.right > window.innerWidth - horizontalMargin;
+
+  if (!isOutOfViewport) return;
+
+  targetElement.scrollIntoView({
+    block: 'center',
+    inline: 'nearest',
+    behavior: 'smooth',
+  });
+}
+
+function broadcastGuideStep(activeView: string, anchor: string | null, step?: ProductGuideStep) {
+  window.dispatchEvent(new CustomEvent('axis:guide-step-change', {
+    detail: { activeView, anchor, step },
+  }));
+}
+
 function InAppGuideOverlay({
   activeView,
   onClose,
@@ -378,23 +404,53 @@ function InAppGuideOverlay({
   activeView: string;
   onClose: () => void;
 }) {
-  const baseSteps = viewGuideMap[activeView] ?? viewGuideMap.home;
-  const [availableSteps, setAvailableSteps] = useState<ProductGuideStep[]>(baseSteps);
+  const viewSpecificSteps = viewGuideMap[activeView] ?? [];
+  const baseSteps = useMemo(
+    () => (activeView === 'home'
+      ? [...viewSpecificSteps, ...commonGuideSteps.slice(1)]
+      : viewSpecificSteps),
+    [activeView, viewSpecificSteps],
+  );
   const [stepIndex, setStepIndex] = useState(0);
   const [guideLayout, setGuideLayout] = useState<GuideLayout>({});
-  const steps = availableSteps.length > 0 ? availableSteps : baseSteps;
-  const step = steps[stepIndex] ?? steps[0];
-  const isLast = stepIndex === steps.length - 1;
-  const hasDynamicLayout = Boolean(guideLayout.panelStyle && guideLayout.highlightStyle);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const steps = useMemo(() => resolveGuideSteps(baseSteps), [baseSteps]);
+  const safeStepIndex = Math.min(stepIndex, Math.max(0, steps.length - 1));
+  const step = steps[safeStepIndex] ?? steps[0];
+  const isLast = safeStepIndex === steps.length - 1;
+  const hasDynamicPanel = Boolean(guideLayout.panelStyle);
+  const hasDynamicHighlight = Boolean(guideLayout.highlightStyle);
+  const shouldRenderGuide = true;
+
+  const handleGuideClose = () => {
+    setStepIndex(0);
+    setGuideLayout({});
+    onClose();
+  };
 
   useEffect(() => {
+    if (steps.length === 0) {
+      handleGuideClose();
+      return;
+    }
+
     const frameId = window.requestAnimationFrame(() => {
-      setAvailableSteps(resolveGuideSteps(baseSteps));
       setStepIndex(0);
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [activeView, baseSteps]);
+  }, [activeView]);
+
+  useEffect(() => {
+    if (steps.length === 0) return;
+    if (stepIndex !== safeStepIndex) {
+      setStepIndex(safeStepIndex);
+    }
+  }, [safeStepIndex, stepIndex, steps.length]);
+
+  if (!step) {
+    return null;
+  }
 
   useEffect(() => {
     const targetKey = guideTargetByAnchor[step.anchor];
@@ -411,7 +467,7 @@ function InAppGuideOverlay({
         return;
       }
 
-      setGuideLayout(createGuideLayout(targetElement.getBoundingClientRect()));
+      setGuideLayout(createGuideLayout(targetElement.getBoundingClientRect(), targetKey));
     };
 
     updateLayout();
@@ -424,25 +480,101 @@ function InAppGuideOverlay({
       window.removeEventListener('resize', updateLayout);
       window.removeEventListener('scroll', updateLayout, true);
     };
-  }, [activeView, step.anchor, stepIndex]);
+  }, [activeView, step.anchor, safeStepIndex]);
+
+  useEffect(() => {
+    const targetKey = guideTargetByAnchor[step.anchor];
+    if (!targetKey) return;
+
+    broadcastGuideStep(activeView, step.anchor, step);
+
+    let timeoutId: number | undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      const targetElement = document.querySelector<HTMLElement>(`[data-guide="${targetKey}"]`);
+      if (!targetElement) return;
+
+      scrollGuideTargetIntoView(targetElement);
+      timeoutId = window.setTimeout(() => {
+        const refreshedTarget = document.querySelector<HTMLElement>(`[data-guide="${targetKey}"]`);
+        if (!refreshedTarget) return;
+        setGuideLayout(createGuideLayout(refreshedTarget.getBoundingClientRect(), targetKey));
+      }, 220);
+    });
+
+    return () => {
+      broadcastGuideStep(activeView, null);
+      window.cancelAnimationFrame(frameId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [activeView, step.anchor, safeStepIndex]);
+
+  useEffect(() => {
+    const panelElement = panelRef.current;
+    if (!panelElement) return;
+
+    const margin = 16;
+    const rect = panelElement.getBoundingClientRect();
+    const maxHeight = window.innerHeight - margin * 2;
+    const nextLeft = clamp(rect.left, margin, Math.max(margin, window.innerWidth - rect.width - margin));
+    const nextTop = clamp(rect.top, margin, Math.max(margin, window.innerHeight - Math.min(rect.height, maxHeight) - margin));
+    const horizontalOverflow = rect.left < margin || rect.right > window.innerWidth - margin;
+    const verticalOverflow = rect.top < margin || rect.bottom > window.innerHeight - margin || rect.height > maxHeight;
+
+    if (!horizontalOverflow && !verticalOverflow) return;
+
+    setGuideLayout((current) => {
+      const currentPanelStyle = current.panelStyle ?? {};
+      const currentLeft = typeof currentPanelStyle.left === 'number' ? currentPanelStyle.left : rect.left;
+      const currentTop = typeof currentPanelStyle.top === 'number' ? currentPanelStyle.top : rect.top;
+      const nextWidth = typeof currentPanelStyle.width === 'number' ? currentPanelStyle.width : rect.width;
+
+      if (
+        Math.abs(currentLeft - nextLeft) < 1 &&
+        Math.abs(currentTop - nextTop) < 1 &&
+        currentPanelStyle.maxHeight === maxHeight &&
+        currentPanelStyle.right === 'auto' &&
+        currentPanelStyle.bottom === 'auto'
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        panelStyle: {
+          ...currentPanelStyle,
+          left: nextLeft,
+          top: nextTop,
+          width: nextWidth,
+          maxHeight,
+          right: 'auto',
+          bottom: 'auto',
+        },
+      };
+    });
+  }, [guideLayout.panelStyle, step.anchor, safeStepIndex]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-[rgba(10,14,22,0.38)] backdrop-blur-[1px]">
+    <div className="fixed inset-0 z-[70] bg-[rgba(10,14,22,0.38)] backdrop-blur-[1px]">
       <div
         className={`pointer-events-none absolute rounded-[18px] border-2 border-[var(--axis-accent)] bg-[rgba(220,90,36,0.08)] shadow-[0_0_0_9999px_rgba(10,14,22,0.28)] ${
-          hasDynamicLayout ? '' : `hidden lg:block ${step.highlight}`
+          shouldRenderGuide ? '' : 'hidden'
+        } ${
+          hasDynamicHighlight ? '' : `hidden lg:block ${step.highlight}`
         }`}
         style={guideLayout.highlightStyle}
       />
       <section
-        className={`absolute w-[min(420px,calc(100vw-32px))] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-6 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.58)] transition-all duration-300 ${
-          hasDynamicLayout ? '' : step.position
+        ref={panelRef}
+        className={`absolute max-h-[calc(100vh-32px)] w-[min(420px,calc(100vw-32px))] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-6 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.58)] transition-all duration-300 ${
+          shouldRenderGuide ? '' : 'hidden'
+        } ${
+          hasDynamicPanel ? '' : step.position
         }`}
         style={guideLayout.panelStyle}
       >
         <div
           className={`absolute h-5 w-5 rotate-45 border-[var(--axis-hairline)] bg-[var(--axis-canvas)] ${
-            hasDynamicLayout ? `border ${guideLayout.arrowClass ?? '-left-2 border-b border-l'}` : step.arrow
+            hasDynamicPanel ? `border ${guideLayout.arrowClass ?? '-left-2 border-b border-l'}` : step.arrow
           }`}
           style={guideLayout.arrowStyle}
         />
@@ -453,7 +585,11 @@ function InAppGuideOverlay({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              handleGuideClose();
+            }}
             className="flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-ink)]"
             aria-label="사용 가이드 닫기"
           >
@@ -461,17 +597,38 @@ function InAppGuideOverlay({
           </button>
         </div>
         <p className="mt-4 text-base font-medium leading-7 text-[var(--axis-body)]">{step.body}</p>
+        <div className="mt-5 space-y-3">
+          <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">사용자 관점</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{step.userFeeling}</p>
+          </div>
+          <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">주요 인사이트</p>
+            <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--axis-body)]">
+              {step.insights.map((insight) => (
+                <li key={insight} className="flex gap-2">
+                  <span className="mt-[2px] text-[var(--axis-accent-strong)]">•</span>
+                  <span>{insight}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
         <div className="mt-5 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">설명 위치</p>
           <p className="mt-1 text-sm font-semibold text-[var(--axis-ink)]">{step.anchor}</p>
         </div>
         <div className="mt-6 flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold text-[var(--axis-muted)]">{stepIndex + 1} / {steps.length}</span>
+          <span className="text-sm font-semibold text-[var(--axis-muted)]">{safeStepIndex + 1} / {steps.length}</span>
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={stepIndex === 0}
-              onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
+              disabled={safeStepIndex === 0}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setStepIndex((index) => Math.max(0, index - 1));
+              }}
               className="inline-flex h-10 items-center gap-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 text-sm font-semibold text-[var(--axis-body)] disabled:opacity-40"
             >
               <ArrowLeft size={15} />
@@ -479,7 +636,15 @@ function InAppGuideOverlay({
             </button>
             <button
               type="button"
-              onClick={() => (isLast ? onClose() : setStepIndex((index) => index + 1))}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (isLast) {
+                  handleGuideClose();
+                  return;
+                }
+                setStepIndex((index) => index + 1);
+              }}
               className="inline-flex h-10 items-center gap-1 rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--axis-accent-strong)]"
             >
               {isLast ? '닫기' : '다음'}

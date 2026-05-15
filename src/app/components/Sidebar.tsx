@@ -50,7 +50,7 @@ export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, 
         }`}
       >
         {/* Menu — 상단 TopNav 가 로고 표시. 사이드바는 메뉴만. */}
-        <nav className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${collapsed ? 'px-2' : 'px-4'} py-8`}>
+        <nav data-guide="sidebar-nav" className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${collapsed ? 'px-2' : 'px-4'} py-8`}>
           <div className="space-y-5">
             {menuItems.map((item) => {
               const Icon = menuIcons[item.id];
@@ -91,6 +91,7 @@ export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, 
           <button
             type="button"
             onClick={onThemeToggle}
+            data-guide="sidebar-nav"
             className={`flex w-full h-9 items-center justify-center gap-2 rounded-md text-stone hover:bg-surface transition-colors ${
               collapsed ? 'px-0' : 'px-2'
             }`}

@@ -120,6 +120,28 @@ export function getExecutiveRank(cards: CardNewsItem[]) {
   });
 }
 
+function getCardTimestamp(card: CardNewsItem) {
+  const value = card.published_date ?? card.date ?? card.created_at ?? '';
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+export function getLatestFirst(cards: CardNewsItem[]) {
+  return [...cards].sort((a, b) => {
+    const dateDelta = getCardTimestamp(b) - getCardTimestamp(a);
+    if (dateDelta !== 0) {
+      return dateDelta;
+    }
+
+    const exposureDelta = getExposureScore(b) - getExposureScore(a);
+    if (exposureDelta !== 0) {
+      return exposureDelta;
+    }
+
+    return getTrustScore(b) - getTrustScore(a);
+  });
+}
+
 export function getCardImage(card: CardNewsItem) {
   return card.display?.background_asset_url ?? card.slides?.find((slide) => slide.image_url)?.image_url ?? card.coverImageUrl;
 }

@@ -280,7 +280,7 @@ export function TopNav({
       {/* ─── 우측: 크롤링 업데이트 + 액션 ───────────────────────────── */}
       <div className="relative flex min-w-fit shrink-0 items-center justify-end gap-1">
         {/* 마지막 크롤링 업데이트 */}
-        <div className="mr-1 hidden items-center gap-2 rounded-md border border-hairline bg-cream-soft px-2.5 py-1.5 xl:flex">
+        <div data-guide="topnav-notifications" className="mr-1 hidden items-center gap-2 rounded-md border border-hairline bg-cream-soft px-2.5 py-1.5 xl:flex">
           <span className="text-[13px] font-semibold uppercase tracking-[0.08em] text-charcoal">
             업데이트
           </span>
@@ -291,6 +291,7 @@ export function TopNav({
 
         {/* 알림 */}
         <button
+          data-guide="topnav-notifications"
           type="button"
           onClick={() => {
             onNotificationsClick?.();
@@ -377,6 +378,7 @@ export function TopNav({
 
         {/* 도움말 */}
         <button
+          data-guide="topnav-help"
           type="button"
           onClick={onHelpClick}
           className="hidden h-9 w-9 items-center justify-center rounded-md text-stone transition-colors hover:bg-cream-soft hover:text-ink xl:flex"
@@ -387,6 +389,7 @@ export function TopNav({
 
         {/* User */}
         <button
+          data-guide="topnav-profile"
           type="button"
           onClick={onUserClick}
           className="flex h-9 items-center gap-2 rounded-md pl-1 pr-2.5 hover:bg-cream-soft transition-colors"

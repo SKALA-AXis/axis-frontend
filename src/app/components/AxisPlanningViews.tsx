@@ -1,6 +1,5 @@
-import { type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BarChart3,
   Bookmark,
   Box,
   CalendarDays,
@@ -20,10 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   Line,
   LineChart,
@@ -44,14 +40,15 @@ import type { CardNewsItem } from '../../features/card-news/model/cardNews';
 import {
   getDisplayDate,
   getExecutiveRank,
+  getLatestFirst,
   getPeerLabel,
   getSummaryLines,
 } from '../../features/card-news/mappers/cardNewsExecutive';
 import { useDashboard } from '../../features/dashboard/hooks/useDashboard';
 import type { DashboardKeywordSearchPoint } from '../../features/dashboard/model/dashboard';
 import {
-  homePeerFinancialData,
-  homePeerRadarData,
+  homeKeywordSpikeInsights,
+  homePositioningMapData,
 } from '../../shared/mocks/homeDashboardPresentation';
 import { cardNewsItems as fallbackCardNewsItems } from '../../shared/mocks/cardNews';
 import { mockInsightResult } from '../../shared/mocks/insight';
@@ -75,6 +72,24 @@ import {
 } from './executive/ExecutiveSystem';
 
 type NavigateHandler = (view: string) => void;
+type PositioningTone = 'accent' | 'company' | 'infra' | 'security' | 'deal' | 'success';
+
+type PositioningPoint = {
+  name: string;
+  shortLabel: string;
+  similarity: number;
+  influence: number;
+  size: number;
+  tone: PositioningTone;
+  caption: string;
+  impactTitle: string;
+  impactBody: string;
+  watchTitle: string;
+  watchBody: string;
+  insightBody: string;
+};
+
+type KeywordSpikeInsight = (typeof homeKeywordSpikeInsights)[number];
 
 function LoadingBlock({ label }: { label: string }) {
   return (
@@ -93,7 +108,42 @@ function EmptyBlock({ label }: { label: string }) {
 }
 
 function MixerAnalysisOverlay() {
-  const loadingSteps = ['카드 조합 정렬 중', '반복 신호 분석 중', '인사이트 문장 구성 중'];
+  const loadingSteps = [
+    {
+      title: '수집 에이전트',
+      description: '선택한 카드와 필터 조건을 읽고 비교 가능한 입력 묶음으로 정리합니다.',
+      detail: '카드 조합 정렬 중',
+      icon: <Box size={16} />,
+    },
+    {
+      title: '분류 에이전트',
+      description: '산업, 고객, 키워드 신호를 같은 문맥 안에서 다시 분류합니다.',
+      detail: '반복 신호 분석 중',
+      icon: <Filter size={16} />,
+    },
+    {
+      title: '비교 에이전트',
+      description: 'Peer와 선택 근거를 교차해 겹치는 패턴과 차이를 찾습니다.',
+      detail: '연결 관계 검토 중',
+      icon: <Network size={16} />,
+    },
+    {
+      title: '믹서',
+      description: '앞 단계 결과를 받아 최종 인사이트 문장 형태로 압축합니다.',
+      detail: '인사이트 문장 구성 중',
+      icon: <Sparkles size={16} />,
+    },
+  ];
+  const [activeStep, setActiveStep] = useState(0);
+  const [pulseCount, setPulseCount] = useState(0);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setActiveStep((current) => (current + 1) % loadingSteps.length);
+      setPulseCount((current) => current + 1);
+    }, 430);
+    return () => window.clearInterval(interval);
+  }, [loadingSteps.length]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-[rgba(250,248,245,0.80)] backdrop-blur-md">
@@ -138,17 +188,51 @@ function MixerAnalysisOverlay() {
               <p className="mt-3 text-sm leading-6 text-[var(--axis-muted)]">
                 선택한 카드, 산업, 키워드 사이의 반복 문맥을 정리하고 SK AX 관점의 제안 문장으로 압축하는 중입니다.
               </p>
+              <div className="mt-5 h-2 overflow-hidden rounded-full bg-[rgba(120,110,96,0.12)]">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,var(--axis-accent),rgba(220,90,36,0.45))] transition-[width] duration-300"
+                  style={{ width: `${((activeStep + 1) / loadingSteps.length) * 100}%` }}
+                />
+              </div>
               <div className="mt-5 grid gap-2">
-                {loadingSteps.map((step, index) => (
+                {loadingSteps.map((step, index) => {
+                  const isActive = index === activeStep;
+                  const isComplete = index < activeStep || pulseCount > loadingSteps.length;
+                  return (
                   <div
-                    key={step}
-                    className="mixer-step-row flex items-center gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-2"
-                    style={{ animationDelay: `${index * 0.36}s` }}
+                    key={step.title}
+                    className={`mixer-step-row rounded-[var(--axis-radius-md)] border px-3 py-3 transition ${
+                      isActive
+                        ? 'border-[rgba(220,90,36,0.34)] bg-[rgba(220,90,36,0.08)] shadow-[0_12px_32px_-28px_rgba(220,90,36,0.62)]'
+                        : isComplete
+                          ? 'border-[rgba(90,107,87,0.26)] bg-[rgba(90,107,87,0.07)]'
+                          : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)]'
+                    }`}
+                    style={{ animationDelay: `${index * 0.2}s` }}
                   >
-                    <span className="mixer-step-dot" />
-                    <span className="text-sm font-semibold text-[var(--axis-body)]">{step}</span>
+                    <div className="flex items-start gap-3">
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                        isActive
+                          ? 'bg-[rgba(220,90,36,0.14)] text-[var(--axis-accent-strong)]'
+                          : isComplete
+                            ? 'bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
+                            : 'bg-[var(--axis-canvas)] text-[var(--axis-muted)]'
+                      }`}>
+                        {step.icon}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-[var(--axis-ink)]">{step.title}</span>
+                          {isActive ? <span className="mixer-step-dot" /> : null}
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-[var(--axis-body)]">{step.description}</p>
+                        <p className="mt-1 text-[11px] font-semibold text-[var(--axis-muted)]">
+                          {isActive ? `${step.detail}...` : isComplete ? '분석 완료' : '대기 중'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           </div>
@@ -258,45 +342,33 @@ function ChartButton({
   title,
   helper,
   icon,
-  onClick,
   children,
   controls,
+  action,
 }: {
   title: string;
   helper: string;
   icon: ReactNode;
-  onClick: () => void;
   children: ReactNode;
   controls?: ReactNode;
+  action?: ReactNode;
 }) {
-  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onClick();
-    }
-  };
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={handleKeyDown}
-      className="axis-panel-flat min-h-[250px] cursor-pointer p-4 text-left transition hover:border-[var(--axis-accent)]"
-    >
+    <div className="axis-panel-flat min-h-[320px] p-4 text-left transition hover:border-[var(--axis-accent)]">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="axis-kicker">{helper}</p>
           <h3 className="axis-section-heading mt-1">{title}</h3>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          {action}
           {controls}
           <span className="flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] text-[var(--axis-accent)]">
             {icon}
           </span>
         </div>
       </div>
-      <div className="h-[170px]">{children}</div>
+      {children}
     </div>
   );
 }
@@ -406,56 +478,172 @@ function DonutCalloutChart({ data }: { data: DonutCalloutDatum[] }) {
   );
 }
 
-function GraphifyPreview({ large = false }: { large?: boolean }) {
-  const nodes = [
-    { id: 'today', label: 'Today', x: 160, y: 96, r: 34, color: 'var(--axis-graph-ax)' },
-    { id: 'ax', label: 'AX', x: 68, y: 174, r: 24, color: 'var(--axis-graph-security)' },
-    { id: 'dart', label: 'DART', x: 260, y: 172, r: 22, color: 'var(--axis-graph-infra)' },
-    { id: 'deal', label: '수주', x: 190, y: 220, r: 18, color: 'var(--axis-graph-deal)' },
-  ];
-  const links = [
-    ['today', 'ax'],
-    ['today', 'dart'],
-    ['today', 'deal'],
-    ['ax', 'deal'],
-  ];
-  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+function getPositioningToneStyle(tone: PositioningTone) {
+  switch (tone) {
+    case 'accent':
+      return {
+        bubble: 'rgba(220,90,36,0.24)',
+        border: 'rgba(220,90,36,0.72)',
+        glow: 'rgba(220,90,36,0.18)',
+        text: 'var(--axis-accent-strong)',
+      };
+    case 'company':
+      return {
+        bubble: 'rgba(74,120,255,0.18)',
+        border: 'rgba(74,120,255,0.58)',
+        glow: 'rgba(74,120,255,0.18)',
+        text: 'var(--axis-graph-company)',
+      };
+    case 'infra':
+      return {
+        bubble: 'rgba(136,94,255,0.18)',
+        border: 'rgba(136,94,255,0.56)',
+        glow: 'rgba(136,94,255,0.16)',
+        text: 'var(--axis-graph-infra)',
+      };
+    case 'security':
+      return {
+        bubble: 'rgba(55,161,124,0.18)',
+        border: 'rgba(55,161,124,0.56)',
+        glow: 'rgba(55,161,124,0.16)',
+        text: 'var(--axis-success)',
+      };
+    case 'deal':
+      return {
+        bubble: 'rgba(203,146,62,0.18)',
+        border: 'rgba(203,146,62,0.56)',
+        glow: 'rgba(203,146,62,0.16)',
+        text: 'var(--axis-graph-deal)',
+      };
+    case 'success':
+      return {
+        bubble: 'rgba(59,143,160,0.18)',
+        border: 'rgba(59,143,160,0.56)',
+        glow: 'rgba(59,143,160,0.16)',
+        text: 'var(--axis-success)',
+      };
+  }
+}
+
+function HomePositioningMap({
+  points,
+  selectedName,
+  onSelect,
+}: {
+  points: readonly PositioningPoint[];
+  selectedName: string | null;
+  onSelect: (pointName: string) => void;
+}) {
+  const minSimilarity = 0;
+  const maxSimilarity = 100;
+  const minInfluence = 0;
+  const maxInfluence = 100;
+  const averageSimilarity = 60;
+  const averageInfluence = 45.6;
+  const plotLeft = 74;
+  const plotTop = 30;
+  const plotWidth = 620;
+  const plotHeight = 270;
+  const plotRight = plotLeft + plotWidth;
+  const plotBottom = plotTop + plotHeight;
+  const xTicks = [0, 25, 50, 75, 100];
+  const yTicks = [0, 25, 50, 75, 100];
+  const xScale = (value: number) => plotLeft + ((value - minSimilarity) / (maxSimilarity - minSimilarity)) * plotWidth;
+  const yScale = (value: number) => plotBottom - ((value - minInfluence) / (maxInfluence - minInfluence)) * plotHeight;
 
   return (
-    <div className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-muted)]">Graphify ready</span>
-        <ExecutiveBadge tone="accent">관계 시각화</ExecutiveBadge>
-      </div>
-      <svg viewBox="0 0 320 280" className={`${large ? 'h-[270px]' : 'h-[154px]'} w-full`} role="img" aria-label="오늘 인사이트 관계 그래프 미리보기">
-        {links.map(([sourceId, targetId]) => {
-          const source = nodeMap.get(sourceId);
-          const target = nodeMap.get(targetId);
-          if (!source || !target) return null;
-          return (
-            <line
-              key={`${sourceId}-${targetId}`}
-              x1={source.x}
-              y1={source.y}
-              x2={target.x}
-              y2={target.y}
-              stroke="var(--axis-graph-edge)"
-              strokeOpacity="0.86"
-              strokeWidth="4"
-              strokeLinecap="round"
-            />
-          );
-        })}
-        {nodes.map((node) => (
-          <g key={node.id}>
-            <circle cx={node.x} cy={node.y} r={node.r} fill={node.color} fillOpacity="0.88" />
-            <text x={node.x} y={node.y + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill="white">
-              {node.label}
-            </text>
+    <svg viewBox="0 0 760 360" className="h-[360px] w-full overflow-visible">
+        <defs>
+          <linearGradient id="home-position-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fffaf3" />
+            <stop offset="55%" stopColor="#f7f0e5" />
+            <stop offset="100%" stopColor="#f4ede3" />
+          </linearGradient>
+          <filter id="home-position-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <rect x={plotLeft} y={plotTop} width={plotWidth} height={plotHeight} fill="rgba(255,255,255,0.58)" stroke="rgba(26,26,31,0.12)" />
+
+        <rect x={plotLeft} y={plotTop} width={xScale(averageSimilarity) - plotLeft} height={yScale(averageInfluence) - plotTop} fill="rgba(90,107,87,0.07)" />
+        <rect x={xScale(averageSimilarity)} y={plotTop} width={plotRight - xScale(averageSimilarity)} height={yScale(averageInfluence) - plotTop} fill="rgba(220,90,36,0.08)" />
+        <rect x={plotLeft} y={yScale(averageInfluence)} width={xScale(averageSimilarity) - plotLeft} height={plotBottom - yScale(averageInfluence)} fill="rgba(107,107,115,0.06)" />
+        <rect x={xScale(averageSimilarity)} y={yScale(averageInfluence)} width={plotRight - xScale(averageSimilarity)} height={plotBottom - yScale(averageInfluence)} fill="rgba(236,163,65,0.10)" />
+
+        {yTicks.map((tick) => (
+          <g key={`y-${tick}`}>
+            <line x1={plotLeft} y1={yScale(tick)} x2={plotRight} y2={yScale(tick)} stroke="rgba(26,26,31,0.08)" />
+            <text x={plotLeft - 16} y={yScale(tick) + 4} fill="var(--axis-muted)" fontSize="12" textAnchor="end">{tick}</text>
           </g>
         ))}
-      </svg>
-    </div>
+        {xTicks.map((tick) => (
+          <g key={`x-${tick}`}>
+            <line x1={xScale(tick)} y1={plotTop} x2={xScale(tick)} y2={plotBottom} stroke="rgba(26,26,31,0.08)" />
+            <text x={xScale(tick)} y={plotBottom + 24} fill="var(--axis-muted)" fontSize="12" textAnchor="middle">{tick.toLocaleString('ko-KR')}</text>
+          </g>
+        ))}
+
+        <line x1={xScale(averageSimilarity)} y1={plotTop} x2={xScale(averageSimilarity)} y2={plotBottom} stroke="rgba(220,90,36,0.44)" strokeDasharray="4 4" />
+        <line x1={plotLeft} y1={yScale(averageInfluence)} x2={plotRight} y2={yScale(averageInfluence)} stroke="rgba(90,107,87,0.44)" strokeDasharray="4 4" />
+
+        <text x="14" y="24" fill="var(--axis-ink)" fontSize="15" fontWeight="700">시장 파급력 (Market Influence)</text>
+        <text x="18" y="58" fill="var(--axis-accent-strong)" fontSize="12" fontWeight="700">높음</text>
+        <text x="18" y={plotBottom + 20} fill="var(--axis-muted)" fontSize="12" fontWeight="700">낮음</text>
+        <text x={plotLeft + plotWidth / 2} y="347" fill="var(--axis-ink)" fontSize="15" fontWeight="700" textAnchor="middle">SK AX와의 유사도 (Similarity to SK AX)</text>
+        <text x={plotLeft} y="338" fill="var(--axis-muted)" fontSize="12" fontWeight="700">낮음</text>
+        <text x={plotRight} y="338" fill="var(--axis-accent-strong)" fontSize="12" fontWeight="700" textAnchor="end">높음</text>
+
+        <rect x={xScale(averageSimilarity) - 48} y="10" width="126" height="28" rx="14" fill="rgba(255,255,255,0.92)" stroke="rgba(26,26,31,0.10)" />
+        <text x={xScale(averageSimilarity) + 15} y="29" fill="var(--axis-ink)" fontSize="12" fontWeight="700" textAnchor="middle">평균 유사도: {averageSimilarity}</text>
+        <rect x={plotRight - 102} y={yScale(averageInfluence) - 18} width="138" height="28" rx="14" fill="rgba(255,255,255,0.92)" stroke="rgba(26,26,31,0.10)" />
+        <text x={plotRight - 33} y={yScale(averageInfluence) + 1} fill="var(--axis-ink)" fontSize="12" fontWeight="700" textAnchor="middle">평균 파급력: {averageInfluence}</text>
+
+        <text x={plotLeft + 16} y={54} fill="var(--axis-success)" fontSize="13" fontWeight="800">다르지만 영향력 큼</text>
+        <text x={plotLeft + 16} y={71} fill="var(--axis-body)" fontSize="9.5" fontWeight="600">간접 벤치마크 축</text>
+        <text x={plotRight - 16} y={54} fill="var(--axis-accent-strong)" fontSize="13" fontWeight="800" textAnchor="end">직접 경쟁 핵심군</text>
+        <text x={plotRight - 16} y={71} fill="var(--axis-body)" fontSize="9.5" fontWeight="600" textAnchor="end">고유사도·고파급력</text>
+        <text x={plotLeft + 16} y={plotBottom - 22} fill="var(--axis-muted)" fontSize="13" fontWeight="800">거리 있는 관찰 대상</text>
+        <text x={plotLeft + 16} y={plotBottom - 8} fill="var(--axis-body)" fontSize="9.5" fontWeight="600">저유사도·저파급력</text>
+        <text x={plotRight - 16} y={plotBottom - 22} fill="var(--axis-warning)" fontSize="13" fontWeight="800" textAnchor="end">닮았지만 반응 제한적</text>
+        <text x={plotRight - 16} y={plotBottom - 8} fill="var(--axis-body)" fontSize="9.5" fontWeight="600" textAnchor="end">고유사도·저파급력</text>
+
+        {points.map((point) => {
+          const tone = getPositioningToneStyle(point.tone);
+          const cx = xScale(point.similarity);
+          const cy = yScale(point.influence);
+          const r = Math.max(11, point.size / 3.6);
+          const isSelected = selectedName === point.name;
+
+          return (
+            <g
+              key={point.name}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelect(point.name);
+              }}
+              className="cursor-pointer"
+            >
+              <circle cx={cx} cy={cy} r={r + 8} fill={tone.glow} opacity={isSelected ? '0.62' : '0.38'} />
+              <circle cx={cx} cy={cy} r={r} fill={tone.bubble} stroke={tone.border} strokeWidth={isSelected ? '3' : '2'} filter="url(#home-position-glow)" />
+              <text
+                x={cx}
+                y={cy + 4}
+                fill="var(--axis-ink)"
+                fontSize={point.shortLabel.length >= 3 ? '10' : '11'}
+                fontWeight="800"
+                textAnchor="middle"
+              >
+                {point.shortLabel}
+              </text>
+            </g>
+          );
+        })}
+    </svg>
   );
 }
 
@@ -473,11 +661,13 @@ export function HomeDashboardView({
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const filteredCards = rankedCards;
-  const summaryChoices = filteredCards.slice(0, 5);
+  const summaryChoices = filteredCards;
   const [summaryIndex, setSummaryIndex] = useState(0);
   const [interestChartIndex, setInterestChartIndex] = useState(0);
   const [homeDetailCardId, setHomeDetailCardId] = useState<string | null>(null);
   const [homeDetailSlideIndex, setHomeDetailSlideIndex] = useState(0);
+  const [selectedPositioningName, setSelectedPositioningName] = useState<string>('SK AX');
+  const [selectedKeywordInsight, setSelectedKeywordInsight] = useState<KeywordSpikeInsight | null>(null);
 
   useEffect(() => {
     if (summaryChoices.length <= 1) return undefined;
@@ -511,14 +701,38 @@ export function HomeDashboardView({
     hyundai: point.hyundaiAutoever,
     posco: point.poscoDx,
   }));
-  const homeDartSummary = dashboard.dartSummary;
-  const homeDartRadarData = homeDartSummary?.radarMetrics?.map((item) => ({
-    subject: item.axis,
-    value: item.score,
-    metric: item.metric,
-    displayValue: item.displayValue,
-  })) ?? [];
   const showStockChart = interestChartIndex % 2 === 1;
+  const positioningLead = homePositioningMapData.find((item) => item.name === 'SK AX') ?? homePositioningMapData[0];
+  const selectedPositioningPoint = homePositioningMapData.find((item) => item.name === selectedPositioningName) ?? positioningLead;
+  const staticPositioningCards = [
+    {
+      label: 'Peer사 관점',
+      tone: 'accent',
+      title: '그래프 결과를 보면 Peer사는 같은 고객 문제를 더 강한 반응으로 연결하는 방향으로 먼저 나아가고 있다고 볼 수 있습니다.',
+      body: '유사도와 파급력이 함께 높은 상단 경쟁군은 레퍼런스, 성과, 확산 신호를 앞세워 시장의 비교 기준을 먼저 만들어 가는 흐름으로 읽힙니다. 즉 Peer사는 단순히 많이 보이는 것이 아니라, 시장이 바로 반응하는 언어와 공개 구조를 더 적극적으로 확보하는 쪽으로 움직이고 있다고 해석할 수 있습니다.',
+    },
+    {
+      label: 'SK AX 관점 포인트',
+      tone: 'neutral',
+      title: '그래프상 SK AX는 경쟁의 중심축에는 있지만, 반응 강도를 더 끌어올려야 하는 위치에 있다고 볼 수 있습니다.',
+      body: '즉 우리 회사는 직접 경쟁군과 같은 고객 문제를 다루면서도 시장이 체감하는 반응 구간은 아직 더 키워야 하는 자리로 읽힙니다. 그래서 어떤 사례와 근거가 실제 반응을 만드는지 역으로 비교하고, 간접 영향군은 고객 기대치가 어디까지 올라왔는지를 점검하는 기준점으로 활용하는 해석이 필요합니다.',
+    },
+    {
+      label: '도출 인사이트',
+      tone: 'success',
+      title: '종합해서 꼭 봐야 할 포인트는 “누가 더 많이 말하는가”보다 “누가 더 설득되게 읽히는가”의 차이입니다.',
+      body: '이 그래프가 주는 인사이트는 경쟁력 차이가 기능 수 자체보다 고객 성과, 운영 전환, 실행 근거를 어떤 문맥으로 보여주느냐에서 벌어진다는 점입니다. 따라서 SK AX는 기능 나열보다 시장이 바로 이해하는 공개 신호와 제안 메시지 구조를 더 정교하게 설계하는 방향으로 해석을 가져가는 것이 중요합니다.',
+    },
+  ] as const;
+  const keywordChartAction = (
+    <button
+      type="button"
+      onClick={() => onNavigate(showStockChart ? 'peerPlus' : 'keywordGraph')}
+      className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+    >
+      자세히 보기
+    </button>
+  );
   const chartSwitcher = (
     <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
       <button
@@ -547,225 +761,214 @@ export function HomeDashboardView({
             type="button"
             data-guide="home-insight"
             onClick={() => onNavigate('insight')}
-            className="axis-panel-flat relative min-h-[430px] overflow-hidden p-5 text-left transition hover:border-[var(--axis-accent)]"
+            className="axis-panel-flat relative min-h-[700px] overflow-hidden p-5 text-left transition hover:border-[var(--axis-accent)]"
           >
             <div className="pointer-events-none absolute inset-0 opacity-80" style={{ background: 'radial-gradient(circle at 74% 42%, rgba(220,90,36,0.13), transparent 34%), radial-gradient(circle at 18% 18%, rgba(90,107,87,0.10), transparent 32%)' }} />
-            <div className="relative grid h-full gap-5 xl:grid-cols-[minmax(320px,1fr)_minmax(300px,420px)] xl:items-center">
-              <div className="min-w-0">
-                <p className="axis-kicker">Today insight</p>
-                <h2 className="mt-2 max-w-3xl text-[clamp(2rem,3.1vw,3.7rem)] font-display leading-[1.08] text-ink">
-                  과거와의 변화를 기반으로 오늘의 동향
-                </h2>
-                <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
-                  {heroCard
-                    ? getSummaryLines(heroCard)[0]
-                    : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.'}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {changeSummary.map((item, index) => (
-                    <span
-                      key={item.label}
-                      className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs text-[var(--axis-muted)]"
+            <div className="relative flex h-full flex-col gap-5">
+              <div className="rounded-[var(--axis-radius-xl)] border border-[rgba(220,90,36,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(250,248,245,0.72))] p-4 shadow-[0_24px_60px_-42px_rgba(26,26,31,0.24)]">
+                <div className="min-w-0">
+                  <p className="axis-kicker">Today insight</p>
+                  <h2 className="mt-2 max-w-2xl text-[clamp(2rem,3.1vw,3.6rem)] font-display leading-[1.04] text-ink">
+                    ITS 산업 동향 및 포지셔닝
+                  </h2>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--axis-body)]">
+                    그래프를 통해 직접 경쟁군과 간접 영향군의 현재 위치를 먼저 나누고, 아래에서는 Peer사 관점과 SK AX 관점에서 어떤 포인트를 읽어야 하는지, 그래서 어떤 인사이트가 나오는지를 함께 정리했습니다.
+                  </p>
+                  <div className="mt-5 rounded-[var(--axis-radius-lg)] bg-[rgba(255,255,255,0.62)] p-2">
+                    <HomePositioningMap
+                      points={homePositioningMapData}
+                      selectedName={selectedPositioningPoint.name}
+                      onSelect={setSelectedPositioningName}
+                    />
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-3 lg:grid-cols-3">
+                  {staticPositioningCards.map((card) => (
+                    <article
+                      key={card.label}
+                      className={`rounded-[var(--axis-radius-lg)] p-4 ${
+                        card.tone === 'accent'
+                          ? 'border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.08)]'
+                          : card.tone === 'success'
+                            ? 'border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)]'
+                            : 'border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]'
+                      }`}
                     >
-                      <span>{item.label}</span>
-                      <strong className={`text-sm ${index === 1 ? 'text-[var(--axis-success)]' : 'text-[var(--axis-accent-strong)]'}`}>
-                        {item.value}
-                      </strong>
-                    </span>
+                      <p className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                        card.tone === 'accent' ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-success)]'
+                      }`}>
+                        {card.label}
+                      </p>
+                      <p className="mt-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</p>
+                      <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{card.body}</p>
+                    </article>
                   ))}
                 </div>
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                  {[
-                    ['주요 신호', '공공 수주와 AI agent 언급이 함께 증가'],
-                    ['관찰 포인트', 'IR 수치와 카드뉴스 노출의 동시 상승'],
-                    ['다음 판단', '산업별 제안 메시지로 전환 필요'],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)]/82 p-3">
-                      <p className="text-[11px] font-semibold text-[var(--axis-muted)]">{label}</p>
-                      <p className="mt-1 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{value}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <GraphifyPreview large />
               </div>
             </div>
           </button>
 
-          <aside data-guide="home-summary" className="axis-panel-flat min-h-[430px] w-full max-w-full min-w-0 overflow-hidden p-4 [contain:inline-size]">
-            <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="axis-kicker">Card news</p>
-                <h3 className="axis-section-heading mt-1 truncate">오늘의 요약 카드뉴스</h3>
-              </div>
-              <span className="shrink-0"><ExecutiveBadge tone="accent">{filteredCards.length}건</ExecutiveBadge></span>
-            </div>
-            <button
-              type="button"
-              onClick={() => summaryCard && setHomeDetailCardId(summaryCard.id)}
-              className="relative block aspect-[16/9] w-full max-w-full overflow-hidden rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[#091524] text-left shadow-[0_16px_38px_-24px_rgba(0,0,0,0.45)] transition hover:border-[var(--axis-accent)]"
-            >
-              {summaryCard?.coverImageUrl ? (
-                <img
-                  src={summaryCard.coverImageUrl}
-                  alt={summaryCard.coverImageAlt}
-                  className="absolute inset-0 h-full w-full object-cover opacity-60"
-                />
-              ) : null}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#091524]/50 to-black/90" />
-              <div className="relative flex h-full min-h-0 min-w-0 flex-col justify-between overflow-hidden p-4 text-white">
-                <div className="flex min-w-0 items-start justify-between gap-3 text-xs font-semibold">
-                  <span className="shrink-0 rounded-sm border border-white/25 bg-white/10 px-2.5 py-1 tracking-[0.06em]">
-                    {summaryCard ? getDisplayDate(summaryCard) : 'TODAY'}
-                  </span>
-                  <span className="max-w-[44%] truncate rounded-sm border border-white/25 bg-white/10 px-2.5 py-1">
-                    {summaryCard?.category_label ?? summaryCard?.category ?? 'AX'}
-                  </span>
-                </div>
+          <aside className="grid gap-4">
+            <div data-guide="home-summary" className="axis-panel-flat min-h-[430px] w-full max-w-full min-w-0 overflow-hidden p-4 [contain:inline-size]">
+              <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/75">
-                    {summaryCard ? getPeerLabel(summaryCard) : 'AXIS'}
-                  </p>
-                  <p className="line-clamp-2 max-w-full overflow-hidden text-ellipsis break-keep text-[clamp(15px,1.2vw,19px)] font-semibold leading-tight text-white">
-                    {summaryCard?.title ?? '카드뉴스 후보가 없습니다.'}
-                  </p>
+                  <p className="axis-kicker">Card news</p>
+                  <h3 className="axis-section-heading mt-1 truncate">오늘의 요약 카드뉴스</h3>
+                </div>
+                <span className="shrink-0"><ExecutiveBadge tone="accent">{filteredCards.length}건</ExecutiveBadge></span>
+              </div>
+              <button
+                type="button"
+                onClick={() => summaryCard && setHomeDetailCardId(summaryCard.id)}
+                className="relative block aspect-[16/9] w-full max-w-full overflow-hidden rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[#091524] text-left shadow-[0_16px_38px_-24px_rgba(0,0,0,0.45)] transition hover:border-[var(--axis-accent)]"
+              >
+                {summaryCard?.coverImageUrl ? (
+                  <img
+                    src={summaryCard.coverImageUrl}
+                    alt={summaryCard.coverImageAlt}
+                    className="absolute inset-0 h-full w-full object-cover opacity-60"
+                  />
+                ) : null}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#091524]/50 to-black/90" />
+                <div className="relative flex h-full min-h-0 min-w-0 flex-col justify-between overflow-hidden p-4 text-white">
+                  <div className="flex min-w-0 items-start justify-between gap-3 text-xs font-semibold">
+                    <span className="shrink-0 rounded-sm border border-white/25 bg-white/10 px-2.5 py-1 tracking-[0.06em]">
+                      {summaryCard ? getDisplayDate(summaryCard) : 'TODAY'}
+                    </span>
+                    <span className="max-w-[44%] truncate rounded-sm border border-white/25 bg-white/10 px-2.5 py-1">
+                      {summaryCard?.category_label ?? summaryCard?.category ?? 'AX'}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/75">
+                      {summaryCard ? getPeerLabel(summaryCard) : 'AXIS'}
+                    </p>
+                    <p className="line-clamp-2 max-w-full overflow-hidden text-ellipsis break-keep text-[clamp(15px,1.2vw,19px)] font-semibold leading-tight text-white">
+                      {summaryCard?.title ?? '카드뉴스 후보가 없습니다.'}
+                    </p>
+                  </div>
+                </div>
+              </button>
+              <div className="mt-3 max-h-[154px] max-w-full overflow-y-auto overscroll-contain rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-2">
+                <div className="grid gap-2">
+                  {summaryChoices.map((card, index) => (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onMouseEnter={() => setSummaryIndex(index)}
+                      onFocus={() => setSummaryIndex(index)}
+                      onClick={() => {
+                        setSummaryIndex(index);
+                        setHomeDetailCardId(card.id);
+                      }}
+                      className={`flex min-w-0 items-center justify-between gap-3 overflow-hidden rounded-[var(--axis-radius-sm)] px-3 py-2 text-left transition ${
+                        index === summaryIndex
+                          ? 'bg-[var(--axis-canvas)] text-[var(--axis-ink)] shadow-[0_10px_26px_-22px_rgba(0,0,0,0.35)]'
+                          : 'text-[var(--axis-muted)] hover:bg-[var(--axis-canvas)]'
+                      }`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[11px] font-semibold text-[var(--axis-accent-strong)]">{getPeerLabel(card)}</span>
+                        <span className="mt-0.5 block truncate text-xs font-semibold">{card.title}</span>
+                      </span>
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${index === summaryIndex ? 'bg-[var(--axis-accent)]' : 'bg-[var(--axis-hairline)]'}`} />
+                    </button>
+                  ))}
                 </div>
               </div>
-            </button>
-            <div className="mt-3 max-h-[154px] max-w-full overflow-y-auto overscroll-contain rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-2">
-              <div className="grid gap-2">
-                {summaryChoices.map((card, index) => (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onMouseEnter={() => setSummaryIndex(index)}
-                    onFocus={() => setSummaryIndex(index)}
-                    onClick={() => {
-                      setSummaryIndex(index);
-                      setHomeDetailCardId(card.id);
-                    }}
-                    className={`flex min-w-0 items-center justify-between gap-3 overflow-hidden rounded-[var(--axis-radius-sm)] px-3 py-2 text-left transition ${
-                      index === summaryIndex
-                        ? 'bg-[var(--axis-canvas)] text-[var(--axis-ink)] shadow-[0_10px_26px_-22px_rgba(0,0,0,0.35)]'
-                        : 'text-[var(--axis-muted)] hover:bg-[var(--axis-canvas)]'
-                    }`}
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-[11px] font-semibold text-[var(--axis-accent-strong)]">{getPeerLabel(card)}</span>
-                      <span className="mt-0.5 block truncate text-xs font-semibold">{card.title}</span>
-                    </span>
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${index === summaryIndex ? 'bg-[var(--axis-accent)]' : 'bg-[var(--axis-hairline)]'}`} />
-                  </button>
-                ))}
+            </div>
+            <div data-guide="home-charts">
+            <ChartButton
+              title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
+              helper={showStockChart ? 'Stock compare' : 'Rate of change'}
+              icon={<LineChartIcon size={18} />}
+              controls={chartSwitcher}
+              action={keywordChartAction}
+            >
+              <div className="h-[170px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  {showStockChart ? (
+                    <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
+                      <CartesianGrid stroke="var(--axis-graph-edge)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: 'var(--axis-muted)' }}
+                        width={72}
+                        tickFormatter={(value: number) => value.toLocaleString('ko-KR')}
+                      />
+                      <Tooltip formatter={(value: number) => [`${value.toLocaleString('ko-KR')}원`, '종가']} />
+                      <Line type="monotone" dataKey="samsung" name="삼성SDS" stroke="var(--axis-graph-company)" strokeWidth={2.3} dot={false} />
+                      <Line type="monotone" dataKey="lg" name="LG CNS" stroke="var(--axis-graph-infra)" strokeWidth={2.3} dot={false} />
+                      <Line type="monotone" dataKey="hyundai" name="현대오토에버" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
+                      <Line type="monotone" dataKey="posco" name="포스코DX" stroke="var(--axis-graph-deal)" strokeWidth={2.2} dot={false} />
+                    </LineChart>
+                  ) : (
+                    <LineChart data={dashboard.keywordSearchPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
+                      <CartesianGrid stroke="var(--axis-graph-edge)" />
+                      <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
+                      <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
+                      <Tooltip formatter={(value: number) => [`${Number(value).toLocaleString('ko-KR')}`, '검색 지수']} />
+                      {dashboard.keywordSeries.map((series, index) => (
+                        <Line
+                          key={series.key}
+                          type="monotone"
+                          dataKey={series.key}
+                          name={series.name}
+                          stroke={series.color}
+                          strokeWidth={index === 0 ? 2.4 : 2.2}
+                          dot={({ cx, cy, payload }) => {
+                            if (typeof cx !== 'number' || typeof cy !== 'number' || !payload) return <></>;
+                            const matchedInsight = homeKeywordSpikeInsights.find(
+                              (item) => item.key === series.key && item.time === String(payload.time),
+                            );
+                            const isSelected = matchedInsight?.key === selectedKeywordInsight?.key && matchedInsight?.time === selectedKeywordInsight?.time;
+                            return (
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={matchedInsight ? (isSelected ? 5.5 : 4.5) : 2.5}
+                                fill={series.color}
+                                stroke={matchedInsight ? 'rgba(255,255,255,0.95)' : series.color}
+                                strokeWidth={matchedInsight ? 2 : 0}
+                                className={matchedInsight ? 'cursor-pointer' : undefined}
+                                onClick={() => {
+                                  if (matchedInsight) {
+                                    setSelectedKeywordInsight(matchedInsight);
+                                  }
+                                }}
+                              />
+                            );
+                          }}
+                          activeDot={{ r: 5 }}
+                        />
+                      ))}
+                    </LineChart>
+                  )}
+                </ResponsiveContainer>
               </div>
+              {!showStockChart && selectedKeywordInsight ? (
+                <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.18)] bg-[rgba(255,255,255,0.78)] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">튀는 값 원인</p>
+                      <h4 className="mt-2 text-sm font-semibold text-[var(--axis-ink)]">{selectedKeywordInsight.title}</h4>
+                    </div>
+                    <div className="grid min-w-[170px] gap-2 sm:grid-cols-2">
+                      <MiniStat label="발생 시점" value={selectedKeywordInsight.time} />
+                      <MiniStat label="검색 지수" value={selectedKeywordInsight.valueLabel} />
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{selectedKeywordInsight.reason}</p>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{selectedKeywordInsight.skAxPoint}</p>
+                </div>
+              ) : !showStockChart ? (
+                <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-dashed border-[rgba(220,90,36,0.22)] bg-[rgba(255,255,255,0.52)] px-4 py-3">
+                  <p className="text-sm font-semibold text-[var(--axis-ink)]">튀는 포인트를 클릭하면 원인과 SK AX 관점 해석이 표시됩니다.</p>
+                </div>
+              ) : null}
+            </ChartButton>
             </div>
           </aside>
-        </section>
-
-        <section data-guide="home-charts" className="mt-4 grid gap-4 xl:grid-cols-3">
-          <ChartButton
-            title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
-            helper={showStockChart ? 'Stock compare' : 'Rate of change'}
-            icon={<LineChartIcon size={18} />}
-            controls={chartSwitcher}
-            onClick={() => onNavigate(showStockChart ? 'peerPlus' : 'keywordGraph')}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              {showStockChart ? (
-                <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
-                  <CartesianGrid stroke="var(--axis-graph-edge)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: 'var(--axis-muted)' }}
-                    width={72}
-                    tickFormatter={(value: number) => value.toLocaleString('ko-KR')}
-                  />
-                  <Tooltip formatter={(value: number) => [`${value.toLocaleString('ko-KR')}원`, '종가']} />
-                  <Line type="monotone" dataKey="samsung" name="삼성SDS" stroke="var(--axis-graph-company)" strokeWidth={2.3} dot={false} />
-                  <Line type="monotone" dataKey="lg" name="LG CNS" stroke="var(--axis-graph-infra)" strokeWidth={2.3} dot={false} />
-                  <Line type="monotone" dataKey="hyundai" name="현대오토에버" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
-                  <Line type="monotone" dataKey="posco" name="포스코DX" stroke="var(--axis-graph-deal)" strokeWidth={2.2} dot={false} />
-                </LineChart>
-              ) : (
-                <LineChart data={dashboard.keywordSearchPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
-                  <CartesianGrid stroke="var(--axis-graph-edge)" />
-                  <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} tickFormatter={(value: number) => `${value}%`} />
-                  <Tooltip formatter={(value: number) => [`${value.toFixed(2)}%`, '전일 대비 증감률']} />
-                  {dashboard.keywordSeries.map((series, index) => (
-                    <Line
-                      key={series.key}
-                      type="monotone"
-                      dataKey={series.key}
-                      name={series.name}
-                      stroke={series.color}
-                      strokeWidth={index === 0 ? 2.4 : 2.2}
-                      dot={false}
-                    />
-                  ))}
-                </LineChart>
-              )}
-            </ResponsiveContainer>
-          </ChartButton>
-          <ChartButton
-            title="DART 재무 체질 비교"
-            helper={homeDartSummary ? 'DART radar metric' : 'Radar chart'}
-            icon={<Radar size={18} />}
-            onClick={() => onNavigate('peerPlus')}
-          >
-            {homeDartRadarData.length > 0 ? (
-              <div className="flex h-full flex-col">
-                <div className="min-h-0 flex-1">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart data={homeDartRadarData} outerRadius={54} margin={{ top: 32, right: 28, bottom: 18, left: 28 }}>
-                      <PolarGrid stroke="var(--axis-graph-edge)" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                      <PolarRadiusAxis tick={false} axisLine={false} domain={[0, 100]} />
-                      <RadarShape name="DART" dataKey="value" stroke="var(--axis-graph-ax)" fill="var(--axis-graph-ax)" fillOpacity={0.2} />
-                      <Tooltip formatter={(value: number, _name, item) => [`${value}`, `${item.payload.metric} · ${item.payload.displayValue}`]} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-semibold text-[var(--axis-muted)]">
-                  <span>기준 보고서: {homeDartSummary?.reportName ?? '-'}</span>
-                  <span>기준 기간: {homeDartSummary?.period ?? '-'}</span>
-                  <span>출처: DART</span>
-                </div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={homePeerRadarData} outerRadius={72}>
-                  <PolarGrid stroke="var(--axis-graph-edge)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <PolarRadiusAxis tick={false} axisLine={false} />
-                  <RadarShape name="SK AX" dataKey="sk" stroke="var(--axis-graph-ax)" fill="var(--axis-graph-ax)" fillOpacity={0.2} />
-                  <RadarShape name="Peer" dataKey="peer" stroke="var(--axis-graph-security)" fill="var(--axis-graph-security)" fillOpacity={0.14} />
-                  <Tooltip />
-                </RadarChart>
-              </ResponsiveContainer>
-            )}
-          </ChartButton>
-          <ChartButton
-            title="Peer사 수주 수"
-            helper="Peer order count"
-            icon={<BarChart3 size={18} />}
-            onClick={() => onNavigate('peerPlus')}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={homePeerFinancialData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
-                <CartesianGrid stroke="var(--axis-graph-edge)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                <Tooltip formatter={(value: number) => [`${value}건`, '수주 수']} />
-                <Bar dataKey="backlog" name="수주 수" radius={[6, 6, 0, 0]}>
-                  {homePeerFinancialData.map((item) => (
-                    <Cell key={`backlog-${item.name}`} fill={item.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartButton>
         </section>
       </ExecutiveContainer>
       {homeDetailCard ? (
@@ -790,9 +993,22 @@ export function HomeDashboardView({
   );
 }
 
+type MixerResultInsight = {
+  title: string;
+  summary: string;
+  reasoning: string[];
+  evidenceTags: string[];
+  evidenceCards: {
+    peer: string;
+    title: string;
+    snippet: string;
+  }[];
+  skAxMeaning: string;
+};
+
 type MixerResultView = {
   summary: string;
-  insightBrief: string[];
+  insightBrief: MixerResultInsight[];
   evidenceLogic: string[];
   actions: string[];
   connections: string[];
@@ -816,6 +1032,7 @@ export function MixerView({
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<MixerResultView | null>(null);
+  const [activeResultInsightIndex, setActiveResultInsightIndex] = useState(0);
   const [mixerDetailCardId, setMixerDetailCardId] = useState<string | null>(null);
   const [mixerDetailSlideIndex, setMixerDetailSlideIndex] = useState(0);
   const generationTimeoutRef = useRef<number | null>(null);
@@ -880,6 +1097,44 @@ export function MixerView({
     const summaryLines = selectedCards.flatMap((item) => getSummaryLines(item.card));
     const primaryIndustries = selectedIndustries.slice(0, 2).join(' · ') || '고객 산업';
     const primaryKeywords = selectedKeywords.slice(0, 3).join(' · ') || 'AX 신호';
+    const primaryCustomers = selectedCustomers.slice(0, 2).join(' · ') || '주요 고객군';
+    const selectedEvidenceCards = selectedCards.slice(0, 3).map((item) => {
+      const lines = [
+        ...getSummaryLines(item.card),
+        ...(item.card.insights ?? []),
+        ...(item.card.actionItems ?? []),
+        ...(item.card.detailPoints ?? []),
+      ].filter((line): line is string => typeof line === 'string' && line.trim().length > 0);
+      return {
+        peer: item.peer,
+        title: item.card.title,
+        snippet: lines[0] ?? item.card.detailDescription,
+      };
+    });
+    const evidenceTitles = selectedEvidenceCards.map((item) => item.title);
+    const bookmarkedEvidenceCount = selectedCards.filter((item) => bookmarkedIds.includes(item.card.id)).length;
+    const keywordHitStats = selectedKeywords
+      .map((keyword) => {
+        const normalizedKeyword = keyword.toLowerCase();
+        const count = selectedCards.reduce((acc, item) => {
+          const haystack = [
+            item.card.title,
+            ...getSummaryLines(item.card),
+            ...(item.card.insights ?? []),
+            ...(item.card.actionItems ?? []),
+            ...(item.card.detailPoints ?? []),
+          ]
+            .join(' ')
+            .toLowerCase();
+          return acc + (haystack.includes(normalizedKeyword) ? 1 : 0);
+        }, 0);
+        return { keyword, count };
+      })
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count);
+    const keywordHitSummary = keywordHitStats.length > 0
+      ? keywordHitStats.slice(0, 3).map((item) => `${item.keyword}(${item.count}건)`).join(', ')
+      : primaryKeywords;
     const connections = Array.from(
       new Set(
         summaryLines
@@ -892,20 +1147,53 @@ export function MixerView({
     return {
       summary: `${mockMixerConfig.insightTemplate.leadPrefix} ${peers.join(', ')}의 ${primaryKeywords} 신호를 ${primaryIndustries} 제안 맥락으로 재조합해 ${mockMixerConfig.insightTemplate.leadSuffix}`,
       insightBrief: [
-        `${peers.join(', ')}에서 반복된 메시지는 단순 기술 발표보다 고객 운영 성과, 수주 근거, 실행 레퍼런스 쪽으로 모입니다.`,
-        `${primaryIndustries} 고객에게는 “기능 도입”보다 “업무 KPI 개선과 안정적 운영 전환”을 먼저 제안하는 편이 설득력이 큽니다.`,
-        `북마크와 카드뉴스를 함께 묶으면 경쟁사 공개 신호를 SK AX의 산업별 제안 문장으로 바꾸는 근거 패키지가 됩니다.`,
+        {
+          title: '반복 신호 묶음',
+          summary: `${peers.join(', ')} 카드에서는 ${primaryKeywords}가 단일 기술 소개보다 실행 신호 묶음으로 반복됩니다.`,
+          reasoning: [
+            `이번 인사이트는 ${selectedCards.length}건의 선택 카드 중 ${evidenceTitles.join(' / ')}를 우선 근거로 삼아 묶었습니다.`,
+            `선택 키워드를 카드 본문과 요약에 다시 대조하면 ${keywordHitSummary} 순으로 반복되어, 단순 단어 매칭이 아니라 여러 카드에 걸친 공통 신호가 확인됩니다.`,
+            `특히 "${selectedEvidenceCards[0]?.snippet ?? '관련 실행 신호가 반복됩니다.'}" 같은 문장이 먼저 잡혀, 기능 설명보다 실행 장면과 성과 맥락이 함께 부각되는 구조가 보입니다.`,
+          ],
+          evidenceTags: evidenceTitles.slice(0, 2),
+          evidenceCards: selectedEvidenceCards.slice(0, 2),
+          skAxMeaning: 'SK AX는 개별 기능 소개보다 반복적으로 검증된 실행 장면과 성과 표현을 먼저 제시할 때 더 경쟁력 있는 제안 문장을 만들 수 있습니다.',
+        },
+        {
+          title: '고객 설득 포인트',
+          summary: `${primaryIndustries} · ${primaryCustomers} 맥락에서는 기능 도입보다 운영 KPI와 안정적 전환을 먼저 말하는 편이 더 설득력 있습니다.`,
+          reasoning: [
+            `입력 조건상 고객·산업 조합은 ${primaryIndustries} · ${primaryCustomers}로 모였고, 근거 카드에서도 이 조합과 맞닿은 운영형 표현이 반복됩니다.`,
+            `예를 들어 "${selectedEvidenceCards[1]?.snippet ?? selectedEvidenceCards[0]?.snippet ?? '운영 안정성과 KPI 개선 표현이 반복됩니다.'}"처럼 실제 도입 이후 효과를 먼저 설명하는 문장이 우세합니다.`,
+            '따라서 고객 설득 포인트는 기술 스펙 소개보다 업무 KPI 개선, 운영 안정성, 적용 이후 전환 효과를 먼저 보여주는 쪽으로 정리하는 것이 더 타당합니다.',
+          ],
+          evidenceTags: [primaryIndustries, primaryCustomers, `${selectedCustomers.length}개 고객군`],
+          evidenceCards: selectedEvidenceCards.slice(0, 2),
+          skAxMeaning: 'SK AX는 제안 초반부터 운영 KPI 개선, 리스크 완화, 적용 이후 안정성까지 한 문장으로 묶는 방식이 더 효과적입니다.',
+        },
+        {
+          title: 'SK AX 활용 인사이트',
+          summary: '선택 카드와 북마크를 함께 묶으면 경쟁사 공개 신호를 SK AX 제안 문장으로 재구성할 수 있는 근거 패키지가 만들어집니다.',
+          reasoning: [
+            `현재 선택 조합에는 북마크 ${bookmarkedEvidenceCount}건이 포함되어 있어 사용자가 중요하다고 본 카드와 반복 신호가 동시에 반영되었습니다.`,
+            `즉 이 인사이트는 임의 추론이 아니라 ${selectedCards.length}건 카드 중 실제 선택 카드와 북마크 카드가 겹치는 지점을 우선 반영한 결과입니다.`,
+            `결론적으로 믹서는 "${selectedEvidenceCards[0]?.title ?? '선택 카드'}" 같은 근거를 SK AX 제안 문장으로 다시 압축하는 역할에 더 가깝다고 볼 수 있습니다.`,
+          ],
+          evidenceTags: [`북마크 ${bookmarkedEvidenceCount}건`, ...connections.slice(0, 2)],
+          evidenceCards: selectedEvidenceCards,
+          skAxMeaning: 'SK AX는 믹서 결과를 통해 경쟁사 신호를 내부 보고용 정리에서 끝내지 않고 실제 제안 문장과 브리핑 문장으로 변환하는 출발점을 얻을 수 있습니다.',
+        },
       ],
       evidenceLogic: [
         `선택 카드 ${selectedCards.length}건`,
         `Peer ${peers.length}개사`,
         `키워드 ${selectedKeywords.length}개`,
-        `북마크 근거 ${selectedCards.filter((item) => bookmarkedIds.includes(item.card.id)).length}건`,
+        `북마크 근거 ${bookmarkedEvidenceCount}건`,
       ],
       actions: [
         '고객 미팅 전 카드뉴스 묶음을 3문장 브리핑으로 변환',
         '제안서 첫 장에 수주/운영/보안 근거를 함께 배치',
-        'Graphify 관계도를 통해 예상 밖 연결 키워드를 후속 검토',
+        '반복 키워드와 근거 카드를 함께 검토해 제안 문장으로 재정리',
       ],
       connections: connections.length > 0 ? connections : [...selectedKeywords, '고객 제안'].slice(0, 5),
       skAxPerspective: selectedCards[0]?.card.actionItems?.[0] ?? '선택한 카드 묶음을 산업별 제안 근거와 실행 문장으로 재구성할 수 있습니다.',
@@ -922,6 +1210,7 @@ export function MixerView({
 
     generationTimeoutRef.current = window.setTimeout(() => {
       setResult(buildMixerResult());
+      setActiveResultInsightIndex(0);
       setMode('result');
       setIsGenerating(false);
       generationTimeoutRef.current = null;
@@ -932,13 +1221,14 @@ export function MixerView({
   if (error) return <LoadingBlock label={error} />;
 
   if (mode === 'result' && result) {
+    const activeResultInsight = result.insightBrief[activeResultInsightIndex] ?? result.insightBrief[0];
     return (
       <ExecutivePage>
         <ExecutiveContainer className="pb-12">
           <ExecutiveHeader
             eyebrow="Mixer output"
             title="믹서 결과"
-            subtitle="선택한 뉴스, 산업, 키워드 비율을 기반으로 New 인사이트와 연결 그래프를 구성했습니다."
+            subtitle="선택한 카드와 조건에서 반복된 신호를 묶어, SK AX 관점에서 바로 활용할 수 있는 인사이트와 연결 구조로 정리한 결과 화면입니다."
             actions={
               <ExecutiveButton variant="secondary" onClick={() => setMode('select')}>
                 선택으로 돌아가기
@@ -946,7 +1236,7 @@ export function MixerView({
             }
           />
 
-          <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+          <section>
             <article data-guide="mixer-result" className="axis-panel-flat min-h-[360px] overflow-hidden border-[rgba(220,90,36,0.26)]">
               <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
                 <p className="axis-kicker">New insight</p>
@@ -955,25 +1245,87 @@ export function MixerView({
                 </h2>
               </div>
               <div className="p-6">
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,0.88fr)_minmax(360px,1.12fr)]">
                   <div className="space-y-3">
-                    {result.insightBrief.map((item, index) => (
-                      <div key={item} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
-                          {index + 1}
-                        </span>
-                        <p className="text-base font-semibold leading-7 text-[var(--axis-ink)]">{item}</p>
-                      </div>
-                    ))}
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">도출된 인사이트</p>
+                    {result.insightBrief.map((item, index) => {
+                      const isActive = index === activeResultInsightIndex;
+                      return (
+                        <button
+                          key={item.title}
+                          type="button"
+                          onClick={() => setActiveResultInsightIndex(index)}
+                          className={`block w-full rounded-[var(--axis-radius-md)] border p-4 text-left transition ${
+                            isActive
+                              ? 'border-[rgba(220,90,36,0.30)] bg-[rgba(220,90,36,0.08)] shadow-[0_18px_42px_-34px_rgba(220,90,36,0.55)]'
+                              : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] hover:border-[var(--axis-accent)]'
+                          }`}
+                          aria-pressed={isActive}
+                        >
+                          <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
+                              {index + 1}
+                            </span>
+                            <div>
+                              <p className="text-sm font-semibold text-[var(--axis-accent-strong)]">{item.title}</p>
+                              <p className="mt-2 text-base font-semibold leading-7 text-[var(--axis-ink)]">{item.summary}</p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
-                    <p className="text-xs font-semibold text-[var(--axis-success)]">{mockMixerConfig.insightTemplate.evidenceLabel}</p>
-                    <div className="mt-3 grid gap-2">
-                      {result.evidenceLogic.map((item) => (
-                        <span key={item} className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm font-semibold text-[var(--axis-ink)]">
-                          {item}
-                        </span>
-                      ))}
+                  <div className="space-y-4">
+                    <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">Agent reasoning trace</p>
+                          <h3 className="mt-2 text-lg font-semibold text-[var(--axis-ink)]">{activeResultInsight?.title}</h3>
+                        </div>
+                        <ExecutiveBadge tone="success">설득 근거</ExecutiveBadge>
+                      </div>
+                      <div className="mt-4 space-y-3">
+                        {activeResultInsight?.reasoning.map((item, index) => (
+                          <div key={`${activeResultInsight.title}-${index}`} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-3">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(90,107,87,0.12)] text-xs font-bold text-[var(--axis-success)]">
+                              {index + 1}
+                            </span>
+                            <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {activeResultInsight?.evidenceTags.map((item) => (
+                          <ExecutiveBadge key={item} tone="accent">{item}</ExecutiveBadge>
+                        ))}
+                      </div>
+                      {activeResultInsight?.evidenceCards.length ? (
+                        <div className="mt-4 grid gap-3">
+                          {activeResultInsight.evidenceCards.map((card) => (
+                            <div key={`${activeResultInsight.title}-${card.title}`} className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-3">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">{card.peer}</p>
+                              <p className="mt-1 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</p>
+                              <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{card.snippet}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+                      <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
+                        <p className="text-xs font-semibold text-[var(--axis-success)]">{mockMixerConfig.insightTemplate.evidenceLabel}</p>
+                        <div className="mt-3 grid gap-2">
+                          {result.evidenceLogic.map((item) => (
+                            <span key={item} className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm font-semibold text-[var(--axis-ink)]">
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-4">
+                        <p className="text-xs font-semibold text-[var(--axis-accent-strong)]">SK AX 활용 해석</p>
+                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{activeResultInsight?.skAxMeaning ?? result.skAxPerspective}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -996,14 +1348,6 @@ export function MixerView({
                 </div>
               </div>
             </article>
-
-            <aside className="axis-panel-flat p-5">
-              <p className="axis-kicker">Graphify ready</p>
-              <h2 className="axis-section-heading mt-1">생각하지 못한 연결 후보</h2>
-              <div className="mt-4">
-                <GraphifyPreview />
-              </div>
-            </aside>
           </section>
 
           <section className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
@@ -1094,10 +1438,10 @@ export function MixerView({
   return (
     <ExecutivePage className="relative">
       <ExecutiveContainer className="pb-12">
-        <ExecutiveHeader
-          eyebrow="Mixer workbench"
-          title="믹서"
-          subtitle="뉴스, Peer, 고객사, 산업, 키워드를 고른 뒤 믹서 결과를 생성합니다."
+          <ExecutiveHeader
+            eyebrow="Mixer workbench"
+            title="믹서"
+            subtitle="뉴스, Peer, 고객사, 산업, 키워드를 조합해 어떤 카드 묶음이 실제 인사이트로 이어지는지 실험하는 작업 화면입니다."
           actions={
             <>
               <ExecutiveButton
@@ -1229,7 +1573,7 @@ export function MixerView({
               )}
             </div>
             <div className="mt-5 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4 text-sm leading-6 text-[var(--axis-muted)]">
-              카드 2개 이상을 선택하면 선택 비율을 기반으로 믹서 결과 페이지가 생성됩니다.
+              카드 2개 이상을 선택하면 선택 조합을 바탕으로 결과 화면이 생성되고, 어떤 신호가 인사이트로 이어졌는지 바로 확인할 수 있습니다.
             </div>
           </aside>
         </section>
@@ -1252,11 +1596,10 @@ export function PeerPlusView({
 }) {
   const { dashboard } = useDashboard();
   const { cards, isLoading, error } = useCardNews();
-  const contentViewMode = useContentViewMode();
   const peerOptions = mockPeerPlusOptions;
-  const [selectedPeerId, setSelectedPeerId] = useState<PeerPlusPeerId>(() => {
+  const [selectedPeerId, setSelectedPeerId] = useState<'all' | PeerPlusPeerId>(() => {
     const stored = window.localStorage.getItem(peerPlusSelectionStorageKey);
-    return mockPeerPlusOptions.some((peer) => peer.id === stored) ? (stored as PeerPlusPeerId) : 'samsung_sds';
+    return stored === 'all' || mockPeerPlusOptions.some((peer) => peer.id === stored) ? (stored as 'all' | PeerPlusPeerId) : 'all';
   });
   const [peerDetailCardId, setPeerDetailCardId] = useState<string | null>(null);
   const [peerDetailSlideIndex, setPeerDetailSlideIndex] = useState(0);
@@ -1268,60 +1611,141 @@ export function PeerPlusView({
       setSelectedPeerId(externalSelectedPeerId);
     }
   }, [externalSelectedPeerId]);
-  const selectedPeer = peerOptions.find((peer) => peer.id === selectedPeerId) ?? peerOptions[0];
-  const peerCards = rankedCards.filter((card) => card.peer_id === selectedPeerId);
+  const isAllFilter = selectedPeerId === 'all';
+  const selectedPeer = !isAllFilter ? peerOptions.find((peer) => peer.id === selectedPeerId) ?? peerOptions[0] : null;
+  const relevantPeerIds = isAllFilter ? peerOptions.map((peer) => peer.id) : [selectedPeer!.id];
+  const peerCards = rankedCards.filter((card) => isAllFilter ? relevantPeerIds.includes(card.peer_id as PeerPlusPeerId) : card.peer_id === selectedPeer!.id);
   const companyNews = (peerCards.length > 0 ? peerCards : rankedCards).slice(0, 4);
   const peerDetailCard = peerDetailCardId ? cards.find((card) => card.id === peerDetailCardId) ?? null : null;
-  const selectedIr = mockPeerPlusIrProfiles[selectedPeerId];
-  const selectedDartSummary = selectedPeerId === 'samsung_sds' ? dashboard?.dartSummary ?? null : null;
-  const peerInsightItems = [
-    {
-      label: '포지셔닝',
-      body: `SK AX는 운영 KPI와 보안 거버넌스를 결합한 제안 메시지가 강점이고, ${selectedPeer.label}는 공개 레퍼런스와 사업 메시지가 먼저 보입니다.`,
-    },
-    ...selectedIr.summary.map((item, index) => ({ label: index === 0 ? '사업 신호' : '기술 신호', body: item })),
-    {
-      label: '영업 활용',
-      body: `${selectedPeer.label}의 강한 공개 신호는 고객 제안서에서 비교 근거로 쓰고, SK AX는 운영 전환 이후의 관리 지표를 더 전면에 배치하는 편이 좋습니다.`,
-    },
-    {
-      label: '리스크',
-      body: 'IR 수치가 개선되어도 카드뉴스 노출이 특정 산업에 치우치면 실제 수주 전환까지는 추가 검증이 필요합니다.',
-    },
-  ];
-  const irMetricCards = selectedDartSummary
-    ? [
-        { label: '매출', value: formatEokValue(selectedDartSummary.revenueTotalKrwBn), delta: 0 },
-        { label: '영업이익', value: formatEokValue(selectedDartSummary.operatingProfitKrwBn), delta: 0 },
-        { label: '영업이익률', value: `${selectedDartSummary.operatingMarginPct.toFixed(2)}%`, delta: 0 },
-        { label: '순이익률', value: `${(selectedDartSummary.netMarginPct ?? 0).toFixed(2)}%`, delta: 0 },
-        { label: '부채비율', value: `${(selectedDartSummary.debtRatioPct ?? 0).toFixed(2)}%`, delta: 0 },
-        { label: 'CAPEX 비율', value: `${(selectedDartSummary.capexRatioPct ?? 0).toFixed(2)}%`, delta: 0 },
-      ]
-    : [
-        { label: '매출', value: selectedIr.revenue, delta: selectedIr.deltas.revenue },
-        { label: '영업이익', value: selectedIr.operatingProfit, delta: selectedIr.deltas.operatingProfit },
-        { label: 'AX 비중', value: selectedIr.axRatio, delta: selectedIr.deltas.axRatio },
-        { label: '수주잔고', value: selectedIr.orderBacklog, delta: selectedIr.deltas.orderBacklog },
-        { label: '영업이익률', value: selectedIr.margin, delta: selectedIr.deltas.margin },
-        { label: '투자/Capex', value: selectedIr.capex, delta: selectedIr.deltas.capex },
-      ];
-  const dartData = selectedDartSummary?.radarMetrics?.length
-    ? selectedDartSummary.radarMetrics.map((item) => ({
-        subject: item.axis,
-        value: item.score,
-        metric: item.metric,
-        displayValue: item.displayValue,
-      }))
-    : [
-        { subject: '매출 성장', value: Number(selectedIr.revenue.replace(/[^0-9.]/g, '')) > 2 ? 86 : 72, metric: '목업 지표', displayValue: selectedIr.revenue },
-        { subject: 'AX 투자', value: Number(selectedIr.axRatio.replace('%', '')) + 48, metric: '목업 지표', displayValue: selectedIr.axRatio },
-        { subject: '수주 모멘텀', value: Number(selectedIr.orderBacklog.replace(/[^0-9.]/g, '')) * 18 + 50, metric: '목업 지표', displayValue: selectedIr.orderBacklog },
-        { subject: '운영 효율', value: Number(selectedIr.margin.replace('%', '')) * 8 + 18, metric: '목업 지표', displayValue: selectedIr.margin },
-        { subject: '시장 노출', value: 82, metric: '목업 지표', displayValue: '82' },
-      ];
-  const selectedKeywordCloud = mockPeerPlusKeywordCloud[selectedPeerId];
-  const isVisualMode = contentViewMode === 'visual';
+  const peerOrderCountMap: Record<'sk_ax' | PeerPlusPeerId, { label: string; orderCount: string }> = {
+    sk_ax: { label: 'SK AX', orderCount: '내부 기준' },
+    samsung_sds: { label: '삼성 SDS', orderCount: '공시 미기재' },
+    lg_cns: { label: 'LG CNS', orderCount: '공시 미기재' },
+    hyundai_autoever: { label: '현대 오토에버', orderCount: '공시 미기재' },
+    posco_dx: { label: '포스코 DX', orderCount: '공시 미기재' },
+  };
+  const skAxProfile = {
+    id: 'sk_ax',
+    label: 'SK AX',
+    revenue: '1.22조',
+    operatingProfit: '910억',
+    margin: '7.4%',
+    axRatio: '34%',
+    topKeyword: '운영형 AX',
+    orderCount: peerOrderCountMap.sk_ax.orderCount,
+  };
+  const peerInsightCatalog: Record<'all' | PeerPlusPeerId, Array<{ label: '포지셔닝' | '사업 신호' | '기술 신호' | '리스크'; body: string }>> = {
+    all: [
+      { label: '포지셔닝', body: '전체 비교에서는 SK AX를 기준축으로 두고, 삼성 SDS는 ITS·클라우드·AI, LG CNS는 금융·공공·클라우드, 현대 오토에버는 모빌리티·운영, 포스코 DX는 산업DX·이차전지 문맥으로 나뉘어 보입니다.' },
+      { label: '사업 신호', body: '공시 수치 기준 2025Q4 매출은 삼성 SDS 3.54조, LG CNS 1.94조, 현대 오토에버 1.32조, 포스코 DX 2,608억 수준으로 읽히며, 기업별로 규모 차이가 크게 나타납니다.' },
+      { label: '기술 신호', body: '키워드 기준으로는 FabriX·Brity, 금융·공공 AI/DX, 커넥티드카·OTA, 산업DX·LLM처럼 각사가 반복적으로 내세우는 기술 문맥이 분명하게 갈립니다.' },
+      { label: '리스크', body: 'AX 비중과 수주 수처럼 공시에서 직접 확인되지 않는 값은 비교 해석에 한계가 있어, 현재 화면은 실수치와 키워드 중심의 1차 비교로 읽는 편이 안전합니다.' },
+    ],
+    samsung_sds: [
+      { label: '포지셔닝', body: '삼성 SDS는 2025Q4 기준 매출 3.54조, 영업이익 2,261억원 수준으로 규모 우위가 크고, SK AX와 비교할 때 ITS·클라우드·AI가 동시에 보이는 복합 신호 축으로 읽힙니다.' },
+      { label: '사업 신호', body: '공시 실수치 기준으로는 분기 매출이 3조원대 중반을 유지하고 있어 사업 규모 자체가 비교 기준점으로 작동합니다.' },
+      { label: '기술 신호', body: 'FabriX, Brity, 에이전틱 AI, ITS, 클라우드 같은 키워드가 함께 나타나 기술 메시지가 운영형 AI와 서비스 축으로 묶여 보입니다.' },
+      { label: '리스크', body: 'AX 비중이나 수주 수는 공시에서 직접 확인되지 않기 때문에, 현재 단계에서는 규모와 키워드 강도 중심으로만 비교하는 편이 적절합니다.' },
+    ],
+    lg_cns: [
+      { label: '포지셔닝', body: 'LG CNS는 2025Q4 기준 매출 1.94조, 영업이익 2,119억원 수준이며 금융·공공·클라우드/MSP·AI/DX가 함께 보이는 다축형 경쟁군으로 읽힙니다.' },
+      { label: '사업 신호', body: '공시 실수치 기준으로 영업이익률이 10%대를 보여 수익성 측면에서는 네 곳 중 상대적으로 안정적으로 읽히는 편입니다.' },
+      { label: '기술 신호', body: '금융, 공공, 클라우드 MSP, AI/DX, 스마트물류 키워드가 반복돼 기술 신호가 특정 산업보다 플랫폼형 문맥으로 넓게 퍼져 있습니다.' },
+      { label: '리스크', body: '실수치는 강하지만 AX 비중, 수주 수 등 직접 비교 지표는 공시 미기재라서, 현재 화면만으로는 확장 속도까지 단정하기 어렵습니다.' },
+    ],
+    hyundai_autoever: [
+      { label: '포지셔닝', body: '현대 오토에버는 2025Q4 기준 매출 1.32조, 영업이익 764억원 수준이며 스마트모빌리티, SI, ITES/유지운영 축으로 포지셔닝이 읽힙니다.' },
+      { label: '사업 신호', body: '분기별로 2025Q1 8,330억에서 2025Q4 1.32조까지 올라오는 흐름이 보여 하반기 매출 확대 신호는 비교적 분명합니다.' },
+      { label: '기술 신호', body: '커넥티드카, OTA, 자율주행, 차량, ERP, 운영 키워드가 반복돼 모빌리티와 운영 유지보수 문맥이 함께 나타납니다.' },
+      { label: '리스크', body: 'AI 비중과 세부 부문 매출은 공시에서 직접 확인되지 않아, 현재 해석은 모빌리티·운영 키워드와 총실적 중심 비교에 머물러야 합니다.' },
+    ],
+    posco_dx: [
+      { label: '포지셔닝', body: '포스코 DX는 2025Q4 기준 매출 2,608억원, 영업이익 -13억원 수준이며 산업DX, 이차전지/EV, AI/지능화 키워드가 주된 구분축으로 보입니다.' },
+      { label: '사업 신호', body: '2025Q4에는 영업이익이 적자로 전환되어 실적 측면에서는 다른 Peer보다 보수적으로 읽을 필요가 있습니다.' },
+      { label: '기술 신호', body: '산업DX, 스마트팩토리, 이차전지, EV, AI, LLM 키워드가 반복돼 산업 현장형 기술 문맥이 강하게 남아 있습니다.' },
+      { label: '리스크', body: '분기 이익 변동성이 크고 세부 부문 매출과 AX 비중이 공시 미기재라서, 현재 단계에서는 산업 키워드 강도와 총실적만 우선 비교하는 편이 적절합니다.' },
+    ],
+  };
+  const swotCatalog: Record<'all' | PeerPlusPeerId, Array<{ label: 'Strength' | 'Weakness' | 'Opportunity' | 'Threat'; body: string }>> = {
+    all: [
+      { label: 'Strength', body: 'SK AX는 운영 KPI와 실행 관리 프레임을 기준축으로 세우기 좋아 전체 비교에서 관점 중심을 잡을 수 있습니다.' },
+      { label: 'Weakness', body: '전체 모드는 산업별 차이를 압축해 보여주기 때문에 SK AX의 세부 강점이 다소 넓고 추상적으로 보일 수 있습니다.' },
+      { label: 'Opportunity', body: '전체 Peer를 함께 보면 어떤 시장 축에서 메시지 공백이 생기는지 빠르게 포착할 수 있습니다.' },
+      { label: 'Threat', body: '강한 공개 신호를 가진 경쟁사들이 시장 기준선을 먼저 점유하면 SK AX 제안 메시지가 후행처럼 읽힐 수 있습니다.' },
+    ],
+    samsung_sds: [
+      { label: 'Strength', body: 'SK AX는 운영 전환 이후 KPI 설계와 실행 관리 체계를 차별 포인트로 밀 수 있습니다.' },
+      { label: 'Weakness', body: '삼성 SDS 대비 대형 레퍼런스와 공개 검증 근거가 약하게 보이면 직접 경쟁에서 밀릴 수 있습니다.' },
+      { label: 'Opportunity', body: '삼성 SDS가 키운 시장 관심을 활용해 SK AX의 운영 중심 후속 대안을 제시할 수 있습니다.' },
+      { label: 'Threat', body: '엔터프라이즈 고객군에서는 삼성 SDS의 기준점 효과가 강하게 작동할 가능성이 큽니다.' },
+    ],
+    lg_cns: [
+      { label: 'Strength', body: 'SK AX는 실행 속도와 운영 밀착형 AX 프레임을 더 전면에 내세울 수 있습니다.' },
+      { label: 'Weakness', body: 'LG CNS보다 공공·금융 신뢰 신호가 약하면 안정성 인식에서 불리할 수 있습니다.' },
+      { label: 'Opportunity', body: '안정성을 중시하는 고객에게는 SK AX의 전환 관리와 운영 민첩성을 추가 가치로 제시할 수 있습니다.' },
+      { label: 'Threat', body: '보안·거버넌스 축에서 LG CNS가 기준선을 선점하면 SK AX 메시지가 보조 대안처럼 보일 수 있습니다.' },
+    ],
+    hyundai_autoever: [
+      { label: 'Strength', body: 'SK AX는 제조 외 산업까지 확장 가능한 운영형 AX 서사를 제시할 수 있습니다.' },
+      { label: 'Weakness', body: '현장 밀착성과 제조 특화 이미지는 현대 오토에버 쪽이 더 강하게 읽힐 수 있습니다.' },
+      { label: 'Opportunity', body: '제조 고객에게는 특화 솔루션 위에 운영 관리 프레임까지 덧붙인 대안으로 포지셔닝할 수 있습니다.' },
+      { label: 'Threat', body: '디지털 트윈, 차량 데이터 같은 특화 기술 신호가 강하면 SK AX의 범용 메시지가 흐려질 수 있습니다.' },
+    ],
+    posco_dx: [
+      { label: 'Strength', body: 'SK AX는 산업 자동화 이후 운영 관리 전반까지 연결하는 상위 프레임을 보여줄 수 있습니다.' },
+      { label: 'Weakness', body: '현장 실행감과 인프라-운영 연결성은 포스코 DX 대비 약하게 보일 수 있습니다.' },
+      { label: 'Opportunity', body: '산업 고객에게는 실행성 위에 확장 가능한 운영 체계까지 포함한 대안으로 접근할 수 있습니다.' },
+      { label: 'Threat', body: '대형 프로젝트와 산업 자동화 실적이 부각되면 SK AX가 상대적으로 추상적인 대안으로 읽힐 위험이 있습니다.' },
+    ],
+  };
+  const peerRadarData = [
+    { subject: '수익성', sk_ax: 72, samsung_sds: 63, lg_cns: 68, hyundai_autoever: 67, posco_dx: 59 },
+    { subject: '성장성', sk_ax: 70, samsung_sds: 82, lg_cns: 78, hyundai_autoever: 66, posco_dx: 71 },
+    { subject: 'AX 집중도', sk_ax: 78, samsung_sds: 79, lg_cns: 85, hyundai_autoever: 72, posco_dx: 76 },
+    { subject: '수주 모멘텀', sk_ax: 73, samsung_sds: 81, lg_cns: 87, hyundai_autoever: 69, posco_dx: 75 },
+    { subject: '운영 효율', sk_ax: 74, samsung_sds: 67, lg_cns: 70, hyundai_autoever: 69, posco_dx: 61 },
+    { subject: '시장 노출', sk_ax: 69, samsung_sds: 88, lg_cns: 80, hyundai_autoever: 65, posco_dx: 72 },
+  ] as const;
+  const radarLegendConfig: Record<'sk_ax' | PeerPlusPeerId, { label: string; color: string }> = {
+    sk_ax: { label: 'SK AX', color: 'var(--axis-accent)' },
+    samsung_sds: { label: '삼성 SDS', color: 'var(--axis-graph-company)' },
+    lg_cns: { label: 'LG CNS', color: 'var(--axis-graph-infra)' },
+    hyundai_autoever: { label: '현대 오토에버', color: 'var(--axis-graph-security)' },
+    posco_dx: { label: '포스코 DX', color: 'var(--axis-graph-deal)' },
+  };
+  const radarKeys = (isAllFilter
+    ? (['sk_ax', ...peerOptions.map((peer) => peer.id)] as Array<'sk_ax' | PeerPlusPeerId>)
+    : (['sk_ax', selectedPeer!.id] as Array<'sk_ax' | PeerPlusPeerId>));
+  const peerInsightItems = peerInsightCatalog[isAllFilter ? 'all' : selectedPeer!.id];
+  const swotItems = swotCatalog[isAllFilter ? 'all' : selectedPeer!.id];
+  const allKeywordCloud = Object.values(mockPeerPlusKeywordCloud)
+    .flat()
+    .reduce<Array<{ label: string; weight: number; tone: 'accent' | 'success' | 'neutral' }>>((acc, item) => {
+      const existing = acc.find((entry) => entry.label === item.label);
+      if (!existing) {
+        acc.push({ ...item });
+      } else {
+        existing.weight = Math.max(existing.weight, item.weight);
+      }
+      return acc;
+    }, [])
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 10);
+  const selectedKeywordCloud = isAllFilter ? allKeywordCloud : mockPeerPlusKeywordCloud[selectedPeer!.id];
+  const peerOverviewRows = peerOptions.map((peer) => {
+    const profile = mockPeerPlusIrProfiles[peer.id];
+    const topKeyword = mockPeerPlusKeywordCloud[peer.id][0]?.label ?? '-';
+    return {
+      id: peer.id,
+      label: peer.label,
+      revenue: profile.revenue,
+      operatingProfit: profile.operatingProfit,
+      margin: profile.margin,
+      axRatio: profile.axRatio,
+      orderCount: peerOrderCountMap[peer.id].orderCount,
+      topKeyword,
+    };
+  });
   const wordCloudLayout = [
     { left: '50%', top: '50%', rotate: 0 },
     { left: '23%', top: '35%', rotate: -6 },
@@ -1329,6 +1753,10 @@ export function PeerPlusView({
     { left: '26%', top: '72%', rotate: 0 },
     { left: '74%', top: '72%', rotate: -4 },
     { left: '50%', top: '20%', rotate: 0 },
+    { left: '18%', top: '55%', rotate: -8 },
+    { left: '82%', top: '56%', rotate: 7 },
+    { left: '38%', top: '16%', rotate: 0 },
+    { left: '62%', top: '84%', rotate: -3 },
   ];
   const openKeywordCard = (keyword: string) => {
     const normalizedKeyword = normalizeGraphTerm(keyword);
@@ -1359,10 +1787,10 @@ export function PeerPlusView({
         <ExecutiveHeader
           eyebrow="Peer+ analysis"
           title="Peer+"
-          subtitle="Peer사의 IR 수치, 재무 흐름, 관련 카드뉴스를 하나의 화면에서 비교합니다."
+          subtitle="전체 모드에서는 시장 전반 비교를, 기업별 모드에서는 SK AX와 선택 기업의 신호·재무·키워드 차이를 바로 읽을 수 있도록 정리한 화면입니다."
           actions={
             <div data-guide="peer-selector" className="flex flex-wrap justify-end gap-1.5">
-              {peerOptions.map((peer) => (
+              {[{ id: 'all' as const, label: '전체' }, ...peerOptions].map((peer) => (
                 <button
                   key={peer.id}
                   type="button"
@@ -1383,235 +1811,244 @@ export function PeerPlusView({
           }
         />
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-          <article data-guide="peer-insight" className="axis-panel-flat min-h-[360px] p-5">
-            <p className="axis-kicker">AI comparison summary</p>
-            <h2 className="mt-2 text-lg font-display font-semibold leading-tight text-ink">
-              경쟁 메시지 차이와 SK AX 대응 포인트
-            </h2>
-            {isVisualMode ? (
-              <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                <div className="relative min-h-[300px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[radial-gradient(circle_at_50%_48%,rgba(220,90,36,0.10),transparent_46%),var(--axis-surface-muted)] p-5">
-                  <div className="absolute left-[18%] right-[18%] top-1/2 h-px bg-[var(--axis-hairline)]" />
-                  {[
-                    { label: 'SK AX', sub: '운영 KPI', left: '16%', top: '52%', tone: 'accent', text: peerInsightItems[0].body },
-                    { label: selectedPeer.label, sub: '공개 신호', left: '84%', top: '52%', tone: 'success', text: peerInsightItems[2]?.body ?? peerInsightItems[0].body },
-                    { label: 'GAP', sub: '제안 전환', left: '50%', top: '26%', tone: 'neutral', text: peerInsightItems[peerInsightItems.length - 2]?.body ?? peerInsightItems[0].body },
-                    { label: 'Risk', sub: '수주 검증', left: '50%', top: '78%', tone: 'muted', text: peerInsightItems[peerInsightItems.length - 1]?.body ?? peerInsightItems[0].body },
-                  ].map((node) => (
-                    <button
-                      key={`${node.label}-${node.sub}`}
-                      type="button"
-                      className={`group absolute flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border p-3 text-center transition hover:scale-105 ${
-                        node.tone === 'accent'
-                          ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.16)] text-[var(--axis-accent-strong)]'
-                          : node.tone === 'success'
-                            ? 'border-[var(--axis-success)] bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
-                            : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
-                      }`}
-                      style={{ left: node.left, top: node.top }}
-                    >
-                      <span className="text-base font-black leading-tight">{node.label}</span>
-                      <span className="mt-1 text-[11px] font-semibold text-[var(--axis-muted)]">{node.sub}</span>
-                      <InsightRevealBubble text={node.text} />
-                    </button>
-                  ))}
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {peerInsightItems.map((item, index) => (
-                    <article
-                      key={`${item.label}-${item.body}`}
-                      tabIndex={0}
-                      className={`group relative min-h-28 overflow-hidden rounded-[var(--axis-radius-lg)] border p-4 text-left transition hover:-translate-y-0.5 hover:border-[var(--axis-accent)] focus-visible:border-[var(--axis-accent)] focus-visible:outline-none ${
-                        index === 0
-                          ? 'sm:col-span-2 border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)]'
-                          : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</span>
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--axis-canvas)] text-xs font-bold text-[var(--axis-muted)]">{index + 1}</span>
-                      </div>
-                      <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
-                      <InsightRevealBubble text={item.body} />
-                    </article>
-                  ))}
-                </div>
+        <section className="mb-5">
+          <article data-guide="peer-overview" className="axis-panel-flat p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="axis-kicker">Overview</p>
+                <h2 className="axis-section-heading mt-1">Peer 한눈 비교</h2>
               </div>
-            ) : (
-              <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-                <div className="relative min-h-[230px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] p-4">
-                  <div className="absolute left-9 top-10 bottom-10 w-px bg-[var(--axis-hairline)]" />
-                  {[
-                    ['SK AX', '운영 KPI'],
-                    [selectedPeer.label, '공개 신호'],
-                    ['GAP', '제안 전환'],
-                  ].map(([label, sub], index) => (
+              <ExecutiveBadge tone="accent">목업</ExecutiveBadge>
+            </div>
+            <div className="mt-4 overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)]">
+              <div className="grid grid-cols-[1.08fr_0.98fr_0.98fr_0.88fr_0.82fr_0.88fr_1fr] gap-px bg-[var(--axis-hairline)] text-xs font-semibold text-[var(--axis-muted)]">
+                {['기업', '매출', '영업이익', '영업이익률', 'AX 비중', '수주 수', '핵심 키워드'].map((label) => (
+                  <div key={label} className="bg-[var(--axis-surface-soft)] px-3 py-3">{label}</div>
+                ))}
+                {[skAxProfile, ...peerOverviewRows].filter((row) => isAllFilter || row.id === 'sk_ax' || row.id === selectedPeer!.id).map((row) => (
+                  <div key={row.id} className="contents">
                     <div
-                      key={label}
-                      className="relative z-10 mb-5 flex items-center gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/88 p-2.5 shadow-[0_14px_36px_-32px_rgba(0,0,0,0.42)]"
-                    >
-                      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-xs font-black ${
-                        index === 0
-                          ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.16)] text-[var(--axis-accent-strong)]'
-                          : index === 1
-                            ? 'border-[var(--axis-success)] bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
-                            : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
-                      }`}>
-                        {index + 1}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-[var(--axis-ink)]">{label}</span>
-                        <span className="mt-0.5 block text-[11px] font-semibold text-[var(--axis-muted)]">{sub}</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {peerInsightItems.map((item, index) => (
-                    <div
-                      key={`${item.label}-${item.body}`}
-                      className={`rounded-[var(--axis-radius-lg)] border p-4 ${
-                        index === 0
-                          ? 'md:col-span-2 border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)]'
-                          : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)]'
+                      className={`px-3 py-3 text-left text-sm font-semibold ${
+                        row.id === 'sk_ax' || row.id === selectedPeerId ? 'bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]' : 'bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
                       }`}
                     >
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
-                          {item.label}
-                        </span>
-                        <span className="text-xs font-semibold text-[var(--axis-muted)]">{String(index + 1).padStart(2, '0')}</span>
-                      </div>
-                      <p className={`${index === 0 ? 'text-base leading-7' : 'text-sm leading-6'} font-semibold text-[var(--axis-ink)]`}>
-                        {item.body}
-                      </p>
+                      {row.label}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </article>
-
-          <button
-            type="button"
-            data-guide="peer-ir"
-            onClick={() => onNavigate('keywordGraph')}
-            className="axis-panel-flat min-h-[360px] p-5 text-left transition hover:border-[var(--axis-accent)]"
-          >
-            <p className="axis-kicker">IR numeric pack</p>
-            {selectedDartSummary ? (
-              <p className="mt-1 text-xs font-semibold text-[var(--axis-accent-strong)]">
-                {selectedDartSummary.reportName} · {selectedDartSummary.period}
-              </p>
-            ) : null}
-            <div className="mt-3 grid grid-cols-2 gap-2.5">
-              {irMetricCards.map((item) => (
-                <div key={item.label} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] px-3 py-4">
-                  <p className="text-sm font-semibold leading-tight text-[var(--axis-muted)]">{item.label}</p>
-                  <div className="mt-2 flex items-end justify-between gap-3">
-                    <p className="text-[22px] font-semibold leading-none text-[var(--axis-ink)]">{item.value}</p>
-                    <p className={`shrink-0 text-base font-bold leading-none ${item.delta >= 0 ? 'text-[var(--axis-success)]' : 'text-[var(--axis-danger)]'}`}>
-                      {item.delta === 0 ? 'DART' : `${item.delta >= 0 ? '+' : ''}${item.delta.toFixed(2)}%`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </button>
-        </section>
-
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <article className="axis-panel-flat p-5">
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
-              <div className="min-w-0">
-                <p className="axis-kicker">Quarterly trend</p>
-                <h2 className="axis-section-heading mt-1">IR 기반 분기 흐름</h2>
-                <div className="mt-4 h-[112px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={selectedIr.quarterly} margin={{ top: 8, right: 10, left: -24, bottom: 0 }}>
-                      <CartesianGrid stroke="rgba(128,128,128,0.14)" />
-                      <XAxis dataKey="quarter" tick={{ fontSize: 10, fill: 'var(--axis-muted)' }} />
-                      <YAxis tick={{ fontSize: 10, fill: 'var(--axis-muted)' }} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="revenue" name="매출" stroke="var(--axis-graph-ax)" strokeWidth={2.2} dot={false} />
-                      <Line type="monotone" dataKey="profit" name="영업이익" stroke="var(--axis-graph-security)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="ax" name="AX 비중" stroke="var(--axis-graph-infra)" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div data-guide="peer-wordcloud" className="min-w-0 rounded-[var(--axis-radius-lg)] bg-[var(--axis-surface-soft)] p-4">
-                <p className="axis-kicker">AI / 사업 / MOU cloud</p>
-                <h3 className="axis-section-heading mt-1">최근 도입·협력 워드클라우드</h3>
-                <div className="relative mt-4 h-[210px] overflow-hidden rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]">
-                  <div className="absolute inset-5 rounded-full border border-dashed border-[var(--axis-hairline)] opacity-55" />
-                  {selectedKeywordCloud.map((item, index) => {
-                    const position = wordCloudLayout[index % wordCloudLayout.length];
-                    return (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => openKeywordCard(item.label)}
-                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-1.5 font-display font-semibold leading-none transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--axis-accent)] ${
-                        item.weight === 3 ? 'text-3xl' : item.weight === 2 ? 'text-xl' : 'text-sm'
-                      } ${
-                        item.tone === 'accent'
-                          ? 'text-[var(--axis-accent-strong)]'
-                          : item.tone === 'success'
-                            ? 'text-[var(--axis-success)]'
-                            : 'text-[var(--axis-body)]'
-                      }`}
-                      style={{
-                        left: position.left,
-                        top: position.top,
-                        transform: `translate(-50%, -50%) rotate(${position.rotate}deg)`,
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <article className="axis-panel-flat p-5">
-            <p className="axis-kicker">DART balance</p>
-            <h2 className="axis-section-heading mt-1">
-              {selectedDartSummary ? `${selectedPeer.label} 재무 체질 레이더` : '수치형 자료 요약'}
-            </h2>
-            <div className="mt-4 h-[220px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={dartData} outerRadius={58} margin={{ top: 32, right: 28, bottom: 18, left: 28 }}>
-                  <PolarGrid stroke="rgba(128,128,128,0.16)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                  <PolarRadiusAxis tick={false} axisLine={false} />
-                  <RadarShape name="DART" dataKey="value" stroke="var(--axis-graph-ax)" fill="var(--axis-graph-ax)" fillOpacity={0.2} />
-                  <Tooltip formatter={(value: number, _name, item) => [`${value}`, `${item.payload.metric} · ${item.payload.displayValue}`]} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            {selectedDartSummary?.radarMetrics?.length ? (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {selectedDartSummary.radarMetrics.map((item) => (
-                  <div key={`${item.axis}-${item.metric}`} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2.5">
-                    <p className="text-[11px] font-semibold text-[var(--axis-muted)]">{item.axis}</p>
-                    <p className="mt-1 text-sm font-semibold text-[var(--axis-ink)]">{item.metric}</p>
-                    <p className="mt-1 text-sm text-[var(--axis-accent-strong)]">{item.displayValue}</p>
+                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.revenue}</div>
+                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.operatingProfit}</div>
+                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.margin}</div>
+                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.axRatio}</div>
+                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.orderCount}</div>
+                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.topKeyword}</div>
                   </div>
                 ))}
               </div>
-            ) : null}
+            </div>
+            <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3 text-sm text-[var(--axis-muted)]">
+              비교 기준: IR 자료 및 DART 기반 목업 값. 전체 모드에서는 SK AX를 포함한 시장 비교, 기업별 모드에서는 SK AX와 선택 기업만 남겨 바로 읽을 수 있게 구성했습니다.
+            </div>
           </article>
         </section>
 
-        <section className="mt-5">
+        <section>
+          <article data-guide="peer-insight" className="axis-panel-flat min-h-[360px] p-5">
+            <p className="axis-kicker">Comparison summary</p>
+            <h2 className="mt-2 text-lg font-display font-semibold leading-tight text-ink">
+              경쟁 메시지 차이와 SK AX 대응 포인트
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+              왼쪽은 실무 비교에 바로 쓰는 핵심 신호만, 오른쪽은 포지셔닝 관점까지 포함한 SWOT 해석만 따로 분리해 읽도록 구성했습니다.
+            </p>
+            <div className="mt-5 grid gap-5 xl:grid-cols-2">
+              <section className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">핵심 비교 포인트</h3>
+                  <span className="text-xs font-semibold text-[var(--axis-muted)]">SK AX vs {isAllFilter ? 'Peer 전체' : selectedPeer!.label}</span>
+                </div>
+                <p className="mb-4 text-xs leading-5 text-[var(--axis-muted)]">
+                  사업 신호, 기술 신호, 리스크만 남겨 실제 제안이나 내부 브리핑에서 바로 비교 가능한 축으로 압축했습니다.
+                </p>
+                <div className="grid gap-3">
+                  {peerInsightItems.filter((item) => item.label !== '포지셔닝').map((item, index) => (
+                    <article
+                      key={`${item.label}-${item.body}`}
+                      className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</span>
+                        <span className="text-xs font-semibold text-[var(--axis-muted)]">{String(index + 1).padStart(2, '0')}</span>
+                      </div>
+                      <p className={`${index === 0 ? 'text-base leading-7' : 'text-sm leading-6'} font-semibold text-[var(--axis-ink)]`}>{item.body}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+              <section className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">SWOT 분석</h3>
+                  <span className="text-xs font-semibold text-[var(--axis-muted)]">전략 해석</span>
+                </div>
+                <p className="mb-4 text-xs leading-5 text-[var(--axis-muted)]">
+                  포지셔닝은 SWOT 안에서 해석하고, 각 항목이 SK AX의 대응 방향에 어떤 의미를 갖는지 한 번에 보이도록 정리했습니다.
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {swotItems.map((item) => (
+                    <article
+                      key={`${item.label}-${item.body}`}
+                      className={`overflow-hidden rounded-[var(--axis-radius-lg)] border p-4 shadow-[0_16px_32px_-28px_rgba(26,26,31,0.24)] ${
+                        item.label === 'Strength'
+                          ? 'border-[rgba(220,90,36,0.28)] bg-[linear-gradient(180deg,rgba(220,90,36,0.14),rgba(255,255,255,0.92))]'
+                          : item.label === 'Weakness'
+                            ? 'border-[rgba(107,107,115,0.22)] bg-[linear-gradient(180deg,rgba(107,107,115,0.10),rgba(255,255,255,0.94))]'
+                            : item.label === 'Opportunity'
+                              ? 'border-[rgba(90,107,87,0.28)] bg-[linear-gradient(180deg,rgba(90,107,87,0.14),rgba(255,255,255,0.92))]'
+                              : 'border-[rgba(30,41,59,0.18)] bg-[linear-gradient(180deg,rgba(30,41,59,0.10),rgba(255,255,255,0.94))]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-sm font-black ${
+                            item.label === 'Strength'
+                              ? 'border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.14)] text-[var(--axis-accent-strong)]'
+                              : item.label === 'Weakness'
+                                ? 'border-[rgba(107,107,115,0.22)] bg-[rgba(107,107,115,0.10)] text-[var(--axis-muted)]'
+                                : item.label === 'Opportunity'
+                                  ? 'border-[rgba(90,107,87,0.28)] bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
+                                  : 'border-[rgba(30,41,59,0.18)] bg-[rgba(30,41,59,0.08)] text-[var(--axis-ink)]'
+                          }`}
+                        >
+                          {item.label.charAt(0)}
+                        </span>
+                        <div className="min-w-0">
+                          <p
+                            className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                              item.label === 'Strength'
+                                ? 'text-[var(--axis-accent-strong)]'
+                                : item.label === 'Weakness'
+                                  ? 'text-[var(--axis-muted)]'
+                                  : item.label === 'Opportunity'
+                                    ? 'text-[var(--axis-success)]'
+                                    : 'text-[var(--axis-ink)]'
+                            }`}
+                          >
+                            {item.label}
+                          </p>
+                          <p className="mt-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </article>
+        </section>
+
+        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.98fr)]">
+          <article data-guide="peer-wordcloud" className="axis-panel-flat p-5">
+            <p className="axis-kicker">Issue theme cloud</p>
+            <h3 className="axis-section-heading mt-1">최근 도입·협력 핵심 키워드</h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+              {isAllFilter
+                ? '전체 모드에서는 모든 Peer사에서 반복되는 키워드를 한 화면에 합쳐 시장 전체의 신호를 먼저 읽게 했습니다.'
+                : `${selectedPeer!.label} 기준 키워드만 남겨 해당 기업의 최근 사업·기술 문맥을 더 직접적으로 볼 수 있게 했습니다.`}
+            </p>
+            <div className="relative mt-4 h-[250px] overflow-hidden rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]">
+              <div className="absolute inset-5 rounded-full border border-dashed border-[var(--axis-hairline)] opacity-55" />
+              {selectedKeywordCloud.map((item, index) => {
+                const position = wordCloudLayout[index % wordCloudLayout.length];
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => openKeywordCard(item.label)}
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-1.5 font-display font-semibold leading-none transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--axis-accent)] ${
+                      item.weight === 3 ? 'text-3xl' : item.weight === 2 ? 'text-xl' : 'text-sm'
+                    } ${
+                      item.tone === 'accent'
+                        ? 'text-[var(--axis-accent-strong)]'
+                        : item.tone === 'success'
+                          ? 'text-[var(--axis-success)]'
+                          : 'text-[var(--axis-body)]'
+                    }`}
+                    style={{
+                      left: position.left,
+                      top: position.top,
+                      transform: `translate(-50%, -50%) rotate(${position.rotate}deg)`,
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-[var(--axis-muted)]">
+              {isAllFilter
+                ? '키워드를 클릭하면 전체 모드에서도 관련 카드뉴스를 통해 어떤 문맥에서 반복됐는지 바로 확인할 수 있습니다.'
+                : '키워드를 클릭하면 해당 기업 관련 카드뉴스와 연결해 실제 이슈 맥락을 같이 볼 수 있습니다.'}
+            </p>
+          </article>
+
+          <article data-guide="peer-radar" className="axis-panel-flat p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="axis-kicker">DART balance</p>
+                <h2 className="axis-section-heading mt-1">
+                  {isAllFilter ? 'Peer 재무 체질 레이더 비교' : `${selectedPeer!.label} vs SK AX 재무 체질 레이더`}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+                  {isAllFilter
+                    ? '전체 모드에서는 SK AX와 주요 Peer를 한 번에 겹쳐 시장 평균 대비 어디가 두드러지는지 보는 용도입니다.'
+                    : '기업별 모드에서는 SK AX와 선택 기업만 겹쳐 재무 체질 차이를 빠르게 읽는 비교 레이어로 사용합니다.'}
+                </p>
+              </div>
+              <ExecutiveBadge tone="accent">Radar</ExecutiveBadge>
+            </div>
+            <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[rgba(255,255,255,0.88)] p-3">
+              <div className="mb-3 flex flex-wrap gap-2">
+                {radarKeys.map((key) => (
+                  <span
+                    key={key}
+                    className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)]"
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: radarLegendConfig[key].color }} />
+                    {radarLegendConfig[key].label}
+                  </span>
+                ))}
+              </div>
+            <div className="h-[380px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={[...peerRadarData]} outerRadius={122} margin={{ top: 10, right: 34, bottom: 10, left: 34 }}>
+                  <PolarGrid stroke="rgba(117,117,128,0.22)" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: 'var(--axis-body)', fontWeight: 700 }} />
+                  <PolarRadiusAxis tick={false} axisLine={false} />
+                  {radarKeys.map((key) => (
+                    <RadarShape
+                      key={key}
+                      name={radarLegendConfig[key].label}
+                      dataKey={key}
+                      stroke={radarLegendConfig[key].color}
+                      fill={radarLegendConfig[key].color}
+                      fillOpacity={key === 'sk_ax' ? 0.2 : 0.1}
+                      strokeWidth={key === 'sk_ax' ? 2.6 : 2}
+                    />
+                  ))}
+                  <Tooltip formatter={(value: number, name: string) => [`${value}`, name]} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-[var(--axis-muted)]">축 기준은 수익성, 성장성, AX 집중도, 수주 모멘텀, 운영 효율, 시장 노출이며, 수치 자체보다 상대적 모양과 벌어진 구간을 읽는 비교용 목업입니다.</p>
+          </article>
+        </section>
+
+        {!isAllFilter ? (
+        <section data-guide="peer-related-cardnews" className="mt-5">
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="axis-kicker">Related card news</p>
-              <h2 className="axis-section-heading mt-1">{selectedPeer.label} 관련 카드뉴스</h2>
+              <h2 className="axis-section-heading mt-1">{selectedPeer!.label} 관련 카드뉴스</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">선택 기업의 최근 카드뉴스를 함께 보며 위 비교 결과가 어떤 공개 신호에서 나왔는지 바로 연결해 확인할 수 있습니다.</p>
             </div>
             <ExecutiveBadge tone="accent">{companyNews.length}건</ExecutiveBadge>
           </div>
@@ -1641,6 +2078,7 @@ export function PeerPlusView({
             ))}
           </div>
         </section>
+        ) : null}
       </ExecutiveContainer>
       {peerKeywordMatches ? (
         <div
@@ -1721,7 +2159,7 @@ export function PeerPlusView({
 }
 
 function buildCardNewsRows(cards: CardNewsItem[]) {
-  const catalog = buildCardCatalog(cards);
+  const catalog = buildCardCatalog(getLatestFirst(cards));
   const rows = [...catalog];
   while (rows.length < 6 && catalog.length > 0) {
     rows.push(catalog[rows.length % catalog.length]);
@@ -1843,26 +2281,28 @@ export function FloatingCardNewsOverlay({
           </div>
 
           <div className="flex min-h-0 flex-col p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="axis-kicker">{activeSlide.kicker}</p>
-                <h3 className="mt-2 text-heading-4 font-display leading-tight text-[var(--axis-ink)]">{activeSlide.title}</h3>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="axis-kicker">{activeSlide.kicker}</p>
+                  <h3 className="mt-2 text-heading-4 font-display leading-tight text-[var(--axis-ink)]">{activeSlide.title}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
+                >
+                  닫기
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
-              >
-                닫기
-              </button>
-            </div>
 
-            <div className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-              {activeSlide.lines.map((line, index) => (
-                <p key={`${activeSlide.kicker}-${index}`} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-3 text-sm leading-6 text-[var(--axis-body)]">
-                  {line}
-                </p>
-              ))}
+              <div className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+                {activeSlide.lines.map((line, index) => (
+                  <p key={`${activeSlide.kicker}-${index}`} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-3 text-sm leading-6 text-[var(--axis-body)]">
+                    {line}
+                  </p>
+                ))}
+              </div>
             </div>
 
             <div className="mt-auto pt-6">
@@ -1884,18 +2324,22 @@ export function FloatingCardNewsOverlay({
                 <ExecutiveButton variant="secondary" onClick={() => onSlideChange((activeIndex + 1) % slides.length)}>
                   다음
                 </ExecutiveButton>
-                <ExecutiveButton variant={bookmarked ? 'primary' : 'secondary'} onClick={onBookmark}>
-                  {bookmarked ? '북마크됨' : '북마크'}
-                </ExecutiveButton>
-                <ExecutiveButton
-                  variant="secondary"
-                  icon={<Share2 size={15} />}
-                  onClick={() => {
-                    void shareCardNews(card).then(setShareFeedback).catch(() => setShareFeedback('공유를 처리하지 못했습니다.'));
-                  }}
-                >
-                  공유
-                </ExecutiveButton>
+                <div>
+                  <ExecutiveButton variant={bookmarked ? 'primary' : 'secondary'} onClick={onBookmark}>
+                    {bookmarked ? '북마크됨' : '북마크'}
+                  </ExecutiveButton>
+                </div>
+                <div>
+                  <ExecutiveButton
+                    variant="secondary"
+                    icon={<Share2 size={15} />}
+                    onClick={() => {
+                      void shareCardNews(card).then(setShareFeedback).catch(() => setShareFeedback('공유를 처리하지 못했습니다.'));
+                    }}
+                  >
+                    공유
+                  </ExecutiveButton>
+                </div>
                 <div className="relative">
                   <button
                     type="button"
@@ -2048,7 +2492,7 @@ export function CardNewsWorkspaceView({
         <ExecutiveHeader
           eyebrow="Card news workspace"
           title="카드뉴스"
-          subtitle="뉴스를 카드 커버 단위로 확인하고, 클릭하면 AI 요약과 시사점 상세를 확인합니다."
+          subtitle="카드 커버 단위로 전체 흐름을 빠르게 훑고, 필요한 카드만 열어 AI 요약, 시사점, 원문 링크까지 이어서 확인할 수 있는 화면입니다."
         />
 
         <section data-guide="cardnews-filter" className="mb-5 flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
@@ -2241,7 +2685,7 @@ export function InsightResultView({
         <ExecutiveHeader
           eyebrow="Insight result"
           title={insightResult.title}
-          subtitle="원인, 변화, 영향, 대응을 한 화면에서 연결해 읽을 수 있도록 재배치했습니다."
+          subtitle="원인, 변화, 영향, 대응을 한 흐름으로 묶어 오늘 바로 판단해야 할 신호와 근거를 한 화면에서 읽을 수 있도록 정리한 화면입니다."
         />
 
         <section className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">

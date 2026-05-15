@@ -71,6 +71,21 @@ const sourceNameByHost: Record<string, string> = {
   'www.srtimes.kr': 'SR타임스',
   'www.pointdaily.co.kr': '포인트데일리',
   'www.nspna.com': 'NSP통신',
+  'www.news1.kr': '뉴스1',
+  'news1.kr': '뉴스1',
+  'www.asiatoday.co.kr': '아시아투데이',
+  'asiatoday.co.kr': '아시아투데이',
+  'www.aitimes.com': 'AI타임스',
+  'aitimes.com': 'AI타임스',
+  'science.ytn.co.kr': 'YTN 사이언스',
+  'www.shinailbo.co.kr': '신아일보',
+  'shinailbo.co.kr': '신아일보',
+  'www.datanet.co.kr': '데이터넷',
+  'datanet.co.kr': '데이터넷',
+  'www.ddaily.co.kr': '디지털데일리',
+  'ddaily.co.kr': '디지털데일리',
+  'www.newstomato.com': '뉴스토마토',
+  'newstomato.com': '뉴스토마토',
 };
 
 function resolveSourceName(sourceName?: string, url?: string) {
