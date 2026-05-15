@@ -58,6 +58,7 @@ import { mockInsightResult } from '../../shared/mocks/insight';
 import { useInsightGeneration } from '../../features/insight/hooks/useInsightGeneration';
 import { useMixerAnalysis } from '../../features/mixer/hooks/useMixerAnalysis';
 import { MIXER_RADAR_LABELS, type MixerAnalysisResponse } from '../../features/mixer/model/mixer';
+import { usePeerStrategy } from '../../features/peer-strategy/hooks/usePeerStrategy';
 import {
   graphCategoryColor,
   graphCompanyAliases,
@@ -1477,6 +1478,13 @@ export function PeerPlusView({
   const [peerDetailCardId, setPeerDetailCardId] = useState<string | null>(null);
   const [peerDetailSlideIndex, setPeerDetailSlideIndex] = useState(0);
   const [peerKeywordMatches, setPeerKeywordMatches] = useState<{ keyword: string; cards: CardNewsItem[] } | null>(null);
+  const [showPeerStrategySteps, setShowPeerStrategySteps] = useState(false);
+  const {
+    data: peerStrategyData,
+    isLoading: isStrategyLoading,
+    error: peerStrategyError,
+    refetch: refetchPeerStrategy,
+  } = usePeerStrategy({ peerId: selectedPeerId });
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
 
   useEffect(() => {
@@ -1598,6 +1606,205 @@ export function PeerPlusView({
             </div>
           }
         />
+
+        <section className="axis-panel-flat mb-5 overflow-hidden border-[rgba(220,90,36,0.26)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-5 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-accent-strong)]">
+                <Sparkles size={14} />
+                AI 초안
+              </span>
+              {peerStrategyData ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-ink)]">
+                  전략 라벨: {peerStrategyData.strategy_label || '미분류'}
+                </span>
+              ) : null}
+              {peerStrategyData ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-muted)]">
+                  신뢰도 {Math.round((peerStrategyData.confidence ?? 0) * 100)}%
+                </span>
+              ) : null}
+              {peerStrategyData && (peerStrategyData.confidence ?? 0) < 0.6 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
+                  ⚠️ 근거 불충분 — 참고용
+                </span>
+              ) : null}
+              {peerStrategyData?.warning ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
+                  ⚠️ {peerStrategyData.warning}
+                </span>
+              ) : null}
+              {isStrategyLoading ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-accent-strong)]">
+                  분석 중…
+                </span>
+              ) : null}
+              {peerStrategyError ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                  분석 실패: {peerStrategyError}
+                </span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={refetchPeerStrategy}
+              disabled={isStrategyLoading}
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              다시 분석
+            </button>
+          </div>
+
+          {peerStrategyData ? (
+            <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+              <div>
+                {peerStrategyData.final_one_liner ? (
+                  <p className="text-xl font-semibold leading-9 text-[var(--axis-ink)]">{peerStrategyData.final_one_liner}</p>
+                ) : null}
+                {peerStrategyData.sk_ax_implication ? (
+                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{peerStrategyData.sk_ax_implication}</p>
+                ) : null}
+                {peerStrategyData.differentiators.length > 0 ? (
+                  <ul className="mt-4 space-y-2">
+                    {peerStrategyData.differentiators.map((diff, index) => (
+                      <li
+                        key={`${index}-${diff.aspect}`}
+                        className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3"
+                      >
+                        <p className="text-sm font-semibold text-[var(--axis-ink)]">{diff.aspect}</p>
+                        {diff.peer_position || diff.skax_position ? (
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2 text-xs leading-5 text-[var(--axis-body)]">
+                            {diff.peer_position ? (
+                              <div>
+                                <span className="font-bold text-[var(--axis-muted)]">Peer:</span> {diff.peer_position}
+                              </div>
+                            ) : null}
+                            {diff.skax_position ? (
+                              <div>
+                                <span className="font-bold text-[var(--axis-muted)]">SK AX:</span> {diff.skax_position}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {diff.opportunity ? (
+                          <p className="mt-2 text-xs italic leading-5 text-[var(--axis-accent-strong)]">기회: {diff.opportunity}</p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              <div className="space-y-3">
+                {peerStrategyData.trend_deltas.length > 0 ? (
+                  <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] p-4">
+                    <p className="axis-kicker">Trend deltas (산식)</p>
+                    <ul className="mt-2 space-y-1 text-xs leading-5 text-[var(--axis-body)]">
+                      {peerStrategyData.trend_deltas.map((delta) => (
+                        <li key={delta.metric} className="flex items-center justify-between gap-3">
+                          <span className="font-semibold text-[var(--axis-ink)]">{delta.label ?? delta.metric}</span>
+                          <span className="font-mono">
+                            QoQ {delta.qoq_pct !== null && delta.qoq_pct !== undefined ? `${delta.qoq_pct.toFixed(1)}%` : 'N/A'} · YoY{' '}
+                            {delta.yoy_pct !== null && delta.yoy_pct !== undefined ? `${delta.yoy_pct.toFixed(1)}%` : 'N/A'}
+                          </span>
+                          <span className="rounded-full bg-[var(--axis-canvas)] px-2 py-0.5 text-[10px] font-bold text-[var(--axis-accent-strong)]">
+                            {delta.band}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] p-3 text-xs text-[var(--axis-muted)]">
+                    peer_financials 부재 — 정량 추세 산출 불가
+                  </div>
+                )}
+                {peerStrategyData.strengths_of_peer.length > 0 ? (
+                  <div className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.06)] p-3">
+                    <p className="axis-kicker">Peer 강점</p>
+                    <ul className="mt-2 list-disc pl-4 text-xs leading-5 text-[var(--axis-body)]">
+                      {peerStrategyData.strengths_of_peer.map((s, idx) => (
+                        <li key={`s-${idx}`}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {peerStrategyData.weaknesses_of_peer.length > 0 ? (
+                  <div className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.24)] bg-[rgba(220,90,36,0.06)] p-3">
+                    <p className="axis-kicker">Peer 약점</p>
+                    <ul className="mt-2 list-disc pl-4 text-xs leading-5 text-[var(--axis-body)]">
+                      {peerStrategyData.weaknesses_of_peer.map((s, idx) => (
+                        <li key={`w-${idx}`}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className="p-5 text-sm text-[var(--axis-muted)]">분석 결과를 불러오는 중이거나 데이터가 없습니다.</div>
+          )}
+
+          {peerStrategyData && peerStrategyData.reasoning_trail.length > 0 ? (
+            <div className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-5 py-4">
+              <p className="axis-kicker">Reasoning trail</p>
+              <h3 className="axis-section-heading mt-1">AI 분석 흐름</h3>
+              <ol className="mt-3 space-y-2">
+                {peerStrategyData.reasoning_trail.map((item) => (
+                  <li
+                    key={item.seq}
+                    className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.10)] text-xs font-black text-[var(--axis-accent-strong)]">
+                      {item.seq}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--axis-ink)]">{item.label}</p>
+                      <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{item.one_liner}</p>
+                      {item.evidence_refs.length > 0 ? (
+                        <p className="mt-1 text-xs text-[var(--axis-muted)]">근거: {item.evidence_refs.join(', ')}</p>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              {peerStrategyData.reasoning_steps.length > 0 ? (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPeerStrategySteps((prev) => !prev)}
+                    className="text-xs font-semibold text-[var(--axis-accent-strong)] underline-offset-2 hover:underline"
+                    aria-expanded={showPeerStrategySteps}
+                  >
+                    {showPeerStrategySteps ? '상세 단계 닫기 ▲' : '상세 단계 더 보기 ▼'}
+                  </button>
+                  {showPeerStrategySteps ? (
+                    <ol className="mt-3 space-y-2">
+                      {peerStrategyData.reasoning_steps.map((step) => (
+                        <li
+                          key={step.step_idx}
+                          className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-bold text-[var(--axis-accent-strong)]">
+                              Step {step.step_idx} · {step.phase}
+                            </p>
+                            <span className="text-xs text-[var(--axis-muted)]">conf {step.confidence.toFixed(2)}</span>
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-[var(--axis-ink)]">Q. {step.question}</p>
+                          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">A. {step.answer}</p>
+                          <p className="mt-2 text-xs italic leading-5 text-[var(--axis-muted)]">중간 결론: {step.intermediate_conclusion}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
+                </div>
+              ) : null}
+              {peerStrategyData.langfuse_trace_id ? (
+                <p className="mt-2 text-right text-[10px] font-mono text-[var(--axis-muted)]">trace: {peerStrategyData.langfuse_trace_id}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
           <article data-guide="peer-insight" className="axis-panel-flat min-h-[360px] p-5">
