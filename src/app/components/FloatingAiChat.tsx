@@ -1,11 +1,44 @@
 import { useState } from 'react';
 import { FileText, Send, Sparkles, X } from 'lucide-react';
 import { uiText } from '../../shared/content/uiText';
+import { useChat } from '../../features/chat/hooks/useChat';
+import type {
+  ChatIntent,
+  ChatLens,
+  FollowUpSuggestion,
+  ChatTurnResponse,
+} from '../../features/chat/model/chat';
 
 type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   reportPreview?: boolean;
+  intent?: ChatIntent;
+  followUps?: FollowUpSuggestion[];
+  finalOneLiner?: string | null;
+  skAxImplication?: string | null;
+  sources?: ChatTurnResponse['sources'];
+  confidence?: number;
+  warning?: string | null;
+};
+
+const INTENT_LABEL: Record<ChatIntent, string> = {
+  insight: '인사이트',
+  mixer: '믹서',
+  peer_compare: 'Peer 비교',
+  global_trends: '글로벌 동향',
+  link_verify: '출처 검증',
+  search: '검색',
+  summary: '요약',
+  smalltalk: '대화',
+};
+
+const LENS_LABEL: Record<ChatLens, string> = {
+  technical: '기술',
+  financial: '재무',
+  competitive: '경쟁',
+  regulatory: '규제',
+  customer: '고객',
 };
 
 export function FloatingAiChat() {
@@ -16,47 +49,77 @@ export function FloatingAiChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: `${uiText.dashboard.chatGreeting} “오늘 인사이트로 PDF 보고서 만들어줘”라고 요청하면 미리보기까지 만들어드릴게요.`,
+      content: `${uiText.dashboard.chatGreeting} "삼성SDS 전략", "오늘 인사이트", "글로벌 동향" 같이 물어보시면 적절한 분석을 실행해드릴게요.`,
     },
   ]);
+  const { send, isLoading } = useChat();
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmedQuery = query.trim();
+    if (!trimmedQuery || isLoading) return;
 
-    if (!trimmedQuery) {
+    const asksForReport = /pdf|보고서|리포트|문서|출력/i.test(trimmedQuery);
+    if (asksForReport) {
+      // PDF preview flow (기존 mock 동작 유지)
+      setMessages((prev) => [
+        ...prev,
+        { role: 'user', content: trimmedQuery },
+        {
+          role: 'assistant',
+          content:
+            '좋습니다. 오늘 인사이트, 근거 카드뉴스, SK AX 대응 방향을 묶어 PDF 보고서 초안을 만들었습니다. 아래 미리보기에서 형식을 확인해보세요.',
+          reportPreview: true,
+        },
+      ]);
+      setQuery('');
       return;
     }
 
-    const asksForReport = /pdf|보고서|리포트|문서|출력/i.test(trimmedQuery);
-
-    setMessages((currentMessages) => {
-      const nextMessages: ChatMessage[] = [
-        ...currentMessages,
-        { role: 'user', content: trimmedQuery },
-      ];
-
-      if (asksForReport) {
-        nextMessages.push({
-          role: 'assistant',
-          content: '좋습니다. 오늘 인사이트, 근거 카드뉴스, SK AX 대응 방향을 묶어 PDF 보고서 초안을 만들었습니다. 아래 미리보기에서 형식을 확인해보세요.',
-          reportPreview: true,
-        });
-      } else {
-        nextMessages.push({
-          role: 'assistant',
-          content: '관련 카드뉴스와 인사이트 흐름을 기준으로 정리해보면, 지금은 수주 신호와 AI 인프라 투자가 함께 움직이는지 먼저 확인하는 것이 좋습니다. 원하시면 “PDF 보고서로 만들어줘”라고 이어서 요청해보세요.',
-        });
-      }
-
-      return nextMessages;
-    });
+    // 실 API 호출
+    const userMessage: ChatMessage = { role: 'user', content: trimmedQuery };
+    const historyForApi = messages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role, content: m.content }));
+    setMessages((prev) => [...prev, userMessage]);
     setQuery('');
+
+    const result = await send(trimmedQuery, historyForApi);
+
+    if (!result) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: '죄송해요, 지금은 응답을 가져올 수 없어요. 잠시 후 다시 시도해주세요.',
+        },
+      ]);
+      return;
+    }
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: result.reply,
+        intent: result.intent,
+        followUps: result.follow_up_suggestions,
+        finalOneLiner: result.final_one_liner,
+        skAxImplication: result.sk_ax_implication,
+        sources: result.sources,
+        confidence: result.confidence,
+        warning: result.warning,
+      },
+    ]);
+  };
+
+  const handleFollowUp = (label: string) => {
+    setQuery(label);
   };
 
   return (
     <div className="fixed bottom-20 right-4 z-[55] flex flex-col items-end gap-3 md:bottom-5 md:right-6">
       {isOpen ? (
-        <section className="mb-2 flex h-[420px] w-[330px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-[0_24px_80px_-42px_rgba(0,0,0,0.62)]">
+        <section className="mb-2 flex h-[480px] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-[0_24px_80px_-42px_rgba(0,0,0,0.62)]">
           <div className="flex items-center justify-between border-b border-[var(--axis-hairline)] px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)]">
@@ -84,13 +147,55 @@ export function FloatingAiChat() {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[78%] rounded-[var(--axis-radius-lg)] px-3 py-2 text-sm leading-relaxed ${
+                  className={`max-w-[82%] rounded-[var(--axis-radius-lg)] px-3 py-2 text-sm leading-relaxed ${
                     message.role === 'user'
                       ? 'bg-[var(--axis-navy)] text-white'
                       : 'border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)]'
                   }`}
                 >
-                  <p>{message.content}</p>
+                  {message.intent && message.role === 'assistant' ? (
+                    <div className="mb-2 flex flex-wrap items-center gap-1">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(220,90,36,0.10)] px-2 py-0.5 text-[10px] font-bold text-[var(--axis-accent-strong)]">
+                        <Sparkles size={10} />
+                        {INTENT_LABEL[message.intent]}
+                      </span>
+                      {message.confidence !== undefined && message.confidence > 0 ? (
+                        <span className="text-[10px] font-semibold text-[var(--axis-muted)]">
+                          신뢰도 {Math.round(message.confidence * 100)}%
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  {message.skAxImplication ? (
+                    <p className="mt-2 rounded-[var(--axis-radius-sm)] bg-[var(--axis-surface-muted)] p-2 text-xs italic text-[var(--axis-body)]">
+                      SK AX 시사점: {message.skAxImplication}
+                    </p>
+                  ) : null}
+                  {message.sources && message.sources.length > 0 ? (
+                    <p className="mt-2 text-[10px] font-mono text-[var(--axis-muted)]">
+                      근거: {message.sources.map((s) => s.card_id).filter(Boolean).slice(0, 5).join(', ')}
+                    </p>
+                  ) : null}
+                  {message.warning ? (
+                    <p className="mt-2 text-[10px] font-semibold text-yellow-700">⚠️ {message.warning}</p>
+                  ) : null}
+                  {message.followUps && message.followUps.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {message.followUps.slice(0, 5).map((f, i) => (
+                        <button
+                          key={`${index}-fu-${i}`}
+                          type="button"
+                          onClick={() => handleFollowUp(f.label)}
+                          className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-0.5 text-[10px] font-semibold text-[var(--axis-ink)] hover:border-[var(--axis-accent)]"
+                          title={f.topic_anchor ?? undefined}
+                        >
+                          {f.lens ? `${LENS_LABEL[f.lens]} 관점 · ` : ''}
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   {message.reportPreview ? (
                     <button
                       type="button"
@@ -104,6 +209,13 @@ export function FloatingAiChat() {
                 </div>
               </div>
             ))}
+            {isLoading ? (
+              <div className="flex justify-start">
+                <div className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm text-[var(--axis-muted)]">
+                  분석 중… (30~60초 소요)
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3">
@@ -113,17 +225,19 @@ export function FloatingAiChat() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
+                  if (event.key === 'Enter' && !isLoading) {
                     handleSend();
                   }
                 }}
                 placeholder={uiText.dashboard.chatPlaceholder}
-                className="min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm text-[var(--axis-ink)] outline-none transition placeholder:text-[var(--axis-muted)] focus:border-[var(--axis-accent)]"
+                disabled={isLoading}
+                className="min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm text-[var(--axis-ink)] outline-none transition placeholder:text-[var(--axis-muted)] focus:border-[var(--axis-accent)] disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={handleSend}
-                className="flex size-10 shrink-0 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] text-white transition-colors hover:bg-[var(--axis-ink)] focus:outline-none"
+                disabled={isLoading}
+                className="flex size-10 shrink-0 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] text-white transition-colors hover:bg-[var(--axis-ink)] focus:outline-none disabled:opacity-50"
                 aria-label="메시지 전송"
               >
                 <Send className="size-4" />
