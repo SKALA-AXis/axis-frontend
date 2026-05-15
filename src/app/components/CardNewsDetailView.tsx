@@ -4,8 +4,9 @@
  * Hero 는 피어사별 시그니처 색으로 flooding.
  */
 import { useEffect } from 'react';
-import { ArrowUpRight, Bookmark, X } from 'lucide-react';
+import { ArrowUpRight, Bookmark, ShieldCheck, X } from 'lucide-react';
 import type { CardNewsItem } from '../../features/card-news/model/cardNews';
+import { useLinkVerify } from '../../features/link-verify/hooks/useLinkVerify';
 import {
   getDisplayDate,
   getFollowUpQuestions,
@@ -62,6 +63,12 @@ export function CardNewsDetailView({
   const suggestedActions = getSuggestedActions(card);
   const followUps = getFollowUpQuestions(card);
   const sources = card.sources ?? [];
+  const {
+    data: linkVerifyData,
+    isLoading: isVerifying,
+    error: linkVerifyError,
+    verify: verifyLinks,
+  } = useLinkVerify();
 
   /* ESC 닫기 + 배경 스크롤 잠금 ───────────────────────── */
   useEffect(() => {
@@ -364,6 +371,73 @@ export function CardNewsDetailView({
           </section>
         )}
 
+        {/* ─── LinkVerify 결과 패널 ─────────────────────────── */}
+        {linkVerifyData || linkVerifyError ? (
+          <section className="mt-12 rounded-md border border-hairline bg-cream-soft p-5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-micro-eyebrow text-stone">Link verification</p>
+              {linkVerifyData ? (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-fine-print font-bold ${
+                    linkVerifyData.overall_status === 'all_live'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : linkVerifyData.overall_status === 'all_dead'
+                        ? 'bg-rose-100 text-rose-800'
+                        : linkVerifyData.overall_status === 'content_changed'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {linkVerifyData.overall_status}
+                </span>
+              ) : null}
+            </div>
+            {linkVerifyError ? (
+              <p className="mt-2 text-body-sm text-rose-700">검증 실패: {linkVerifyError}</p>
+            ) : null}
+            {linkVerifyData ? (
+              <ul className="mt-3 space-y-2">
+                {linkVerifyData.sources.map((s, idx) => (
+                  <li
+                    key={`${idx}-${s.url}`}
+                    className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-hairline bg-canvas p-3 text-body-sm"
+                  >
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-fine-print font-bold ${
+                        s.status === 'live'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : s.status === 'dead'
+                            ? 'bg-rose-100 text-rose-800'
+                            : s.status === 'redirected'
+                              ? 'bg-amber-100 text-amber-800'
+                              : s.status === 'live (content_changed)'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {s.status}
+                    </span>
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-body-sm text-action hover:underline"
+                    >
+                      {s.url}
+                    </a>
+                    <span className="text-fine-print font-mono text-stone">
+                      {s.http_code !== null && s.http_code !== undefined ? s.http_code : '-'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {linkVerifyData?.warning ? (
+              <p className="mt-2 text-fine-print text-amber-800">⚠️ {linkVerifyData.warning}</p>
+            ) : null}
+          </section>
+        ) : null}
+
         {/* ─── 액션 바 (하단) ───────────────────────────────── */}
         <div className="mt-16 flex flex-wrap gap-3 border-t border-hairline pt-8">
           <button
@@ -377,6 +451,15 @@ export function CardNewsDetailView({
           >
             <Bookmark size={15} className={bookmarked ? 'fill-current' : ''} />
             {bookmarked ? '북마크됨' : '북마크'}
+          </button>
+          <button
+            type="button"
+            onClick={() => verifyLinks(card.id)}
+            disabled={isVerifying || sources.length === 0}
+            className="inline-flex items-center gap-2 rounded-md border border-hairline-strong px-4 py-2.5 text-body-sm-strong text-ink hover:bg-cream-soft transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ShieldCheck size={15} />
+            {isVerifying ? '검증 중…' : '출처 검증'}
           </button>
           <button
             type="button"
