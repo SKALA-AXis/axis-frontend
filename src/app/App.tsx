@@ -10,6 +10,7 @@ import {
   MixerView,
   PeerPlusView,
 } from './components/AxisPlanningViews';
+import { GlobalTrendsView } from './components/GlobalTrendsView';
 import { RawArticlesView } from './components/RawArticlesView';
 import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
@@ -624,6 +625,8 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
             onToggleBookmark={toggleBookmark}
           />
         );
+      case 'globalTrends':
+        return <GlobalTrendsView />;
       case 'briefings':
         return <BriefingsView />;
       case 'rawArticles':

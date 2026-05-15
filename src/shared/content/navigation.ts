@@ -6,6 +6,7 @@ export const viewLabels: Record<string, string> = {
   issues: '카드뉴스',
   insight: '인사이트',
   keywordGraph: '키워드 그래프',
+  globalTrends: '글로벌 동향',
   monitoring: 'Peer+',
   mixer: '믹서',
   briefings: '브리핑',
@@ -22,6 +23,7 @@ export const primaryNavigationItems = [
   { id: 'issues', label: '카드뉴스' },
   { id: 'mixer', label: '믹서' },
   { id: 'keywordGraph', label: '키워드 그래프' },
+  { id: 'globalTrends', label: '글로벌 동향' },
 ] as const;
 
 export const adminNavigationItem = { id: 'admin', label: '관리자' } as const;
