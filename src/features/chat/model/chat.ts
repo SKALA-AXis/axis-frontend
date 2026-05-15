@@ -36,6 +36,22 @@ export interface ChatHistoryTurn {
   content: string;
 }
 
+export type AgentTraceStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+
+export interface AgentTraceStep {
+  step_idx: number;
+  agent: string;
+  phase: string;
+  status: AgentTraceStatus;
+  started_at?: string | null;
+  ended_at?: string | null;
+  duration_ms?: number | null;
+  input_summary: string;
+  output_summary: string;
+  model?: string | null;
+  parent_step_idx?: number | null;
+}
+
 export interface ChatTurnResponse {
   reply: string;
   intent: ChatIntent;
@@ -46,6 +62,7 @@ export interface ChatTurnResponse {
   sk_ax_implication?: string | null;
   deep_dive_depth: number;
   reasoning_steps?: Array<Record<string, unknown>> | null;
+  agent_trace?: AgentTraceStep[];
   confidence: number;
   session_id: string;
   provenance: Record<string, unknown>;
