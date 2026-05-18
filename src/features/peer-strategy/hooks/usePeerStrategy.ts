@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { peerStrategyRepository } from '../api/peerStrategyRepository';
 import type { PeerComparisonResponse } from '../model/peerStrategy';
 
@@ -16,6 +16,11 @@ interface UsePeerStrategyResult {
   refetch: () => void;
 }
 
+// Module-level cache — 같은 (peerId, windowDays, focusSector) 조합 재진입 시
+// cached 반환. LLM 호출 비용/시간 절감. page reload 시까지 유지. refetch() 호출
+// 시 무효화.
+const _strategyCache = new Map<string, PeerComparisonResponse>();
+
 export function usePeerStrategy({
   peerId,
   windowDays,
@@ -32,10 +37,24 @@ export function usePeerStrategy({
     [peerId, windowDays, focusSector],
   );
 
+  const refetch = useCallback(() => {
+    _strategyCache.delete(stableKey);
+    setToken((prev) => prev + 1);
+  }, [stableKey]);
+
   useEffect(() => {
     if (!enabled || !peerId) {
       return;
     }
+
+    // Cache hit — LLM 호출 스킵
+    const cached = _strategyCache.get(stableKey);
+    if (cached) {
+      setData(cached);
+      setError(null);
+      return;
+    }
+
     let cancelled = false;
     setIsLoading(true);
     setError(null);
@@ -44,6 +63,7 @@ export function usePeerStrategy({
       .fetch({ peerId, windowDays, focusSector })
       .then((result) => {
         if (cancelled) return;
+        _strategyCache.set(stableKey, result);
         setData(result);
       })
       .catch((err: unknown) => {
@@ -65,6 +85,6 @@ export function usePeerStrategy({
     data,
     isLoading,
     error,
-    refetch: () => setToken((prev) => prev + 1),
+    refetch,
   };
 }
