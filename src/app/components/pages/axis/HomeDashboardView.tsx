@@ -38,6 +38,7 @@ import {
   MiniStat,
   type KeywordSpikeInsight,
 } from './AxisPlanningShared';
+import { HomeCompetitorMoves, PositioningAlertBar } from './HomeCuratedWidgets';
 
 type NavigateHandler = (view: string) => void;
 
@@ -266,9 +267,11 @@ export function HomeDashboardView({
           </aside>
         </section>
 
-        {/* 하단 — RoC/Stock 토글 차트 단독. 미디어 노출 추적은 보조 위젯이라 Peer+ 로 이관.
-            추후 이 자리에 '오늘의 주목 경쟁사 카드 피드' (event_type 필터 + credibility 정렬) 추가 예정. */}
-        <section data-guide="home-charts" className="mt-4">
+        {/* 포지셔닝 변화 알림 — 임계 돌파 시에만 strip 으로 등장 (Phase 2). 변화 없으면 hide. */}
+        <PositioningAlertBar onNavigate={onNavigate} />
+
+        {/* 하단 2-col — 좌: RoC/Stock 트렌드 차트, 우: 오늘 주목 경쟁사 움직임 (event_type 큐레이션) */}
+        <section data-guide="home-charts" className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
           {/* 1) RoC/Stock 토글 — designing 의 풍부한 차트 */}
           <ChartButton
             title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
@@ -276,7 +279,7 @@ export function HomeDashboardView({
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
           >
-            <div className="h-[280px]">
+            <div className="flex-1 min-h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 {showStockChart ? (
                   <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
@@ -381,6 +384,9 @@ export function HomeDashboardView({
               </div>
             ) : null}
           </ChartButton>
+
+          {/* 우측 — 오늘의 주목 Peer 경쟁 움직임 (event_type 큐레이션). 사이드바 시간순 queue 와는 다른 차원. */}
+          <HomeCompetitorMoves cards={cards} onCardClick={setHomeDetailCardId} />
         </section>
       </ExecutiveContainer>
       {homeDetailCard ? (

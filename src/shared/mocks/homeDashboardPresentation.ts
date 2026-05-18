@@ -165,3 +165,29 @@ export const homePositioningMapData = [
     evidenceNote: '근거: `card.json`의 "모빌린트 AI반도체로 산업용 제어시스템 고도화" 카드에서 파트너십과 기술 실증 신호가 강하게 확인돼, LLM이 실행력과 시장 영향력을 모두 중상단으로 평가했습니다.',
   },
 ] as const;
+
+/**
+ * 포지셔닝 변화 알림 — 임계 돌파/주요 변화가 발생했을 때만 Home 에 1줄 strip 으로.
+ * 변화 없으면 빈 배열 → Home 에서 hide. 실제 운영에서는 quarterly DART 재무 갱신 시 자동 생성.
+ */
+export type PositioningAlert = {
+  readonly id: string;
+  readonly severity: 'high' | 'mid' | 'low';
+  readonly message: string;
+  readonly peer: string;
+};
+
+export const homePositioningAlerts: readonly PositioningAlert[] = [
+  {
+    id: 'hae-3jo-breach',
+    severity: 'high',
+    message: '현대오토에버 IT서비스 부문 매출 3.42조 — 메이저 SI 임계 (3조) 돌파, 성장률 +17.7% 유지',
+    peer: '현대오토에버',
+  },
+  {
+    id: 'sk-growth-negative',
+    severity: 'mid',
+    message: 'SK AX (별도) 2025 매출 −2.5% — 동종 4사 평균 (+5.9%) 대비 후행',
+    peer: 'SK AX',
+  },
+];
