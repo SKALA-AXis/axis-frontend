@@ -48,6 +48,8 @@ export type CardNewsSource = {
   archive_url?: string | null;
   source_name?: string;
   published_at?: string;
+  credibility_grade?: 'High' | 'Medium' | 'Low' | 'Unverified';
+  credibility_score?: number;
   link_status?: 'ok' | 'broken' | 'archived';
 };
 
@@ -64,6 +66,7 @@ export type CardNewsEvidenceChain = {
     title?: string;
     source_name?: string;
     url?: string;
+    credibility_score?: number;
   }>;
   provenance?: {
     raw_article_ids?: number[];
@@ -150,6 +153,7 @@ export type CardNewsItem = {
   sector?: SectorId;
   exposure_band?: ExposureBand;
   exposure_score?: number;
+  trust_score?: number;
   implication?: CardNewsImplication;
   sources?: CardNewsSource[];
   source_count?: number | null;

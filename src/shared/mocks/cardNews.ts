@@ -63,6 +63,7 @@ export const cardNewsItems: CardNewsItem[] = [
     sector: 'ax',
     exposure_band: 'high',
     exposure_score: 0.87,
+    trust_score: 91,
     implication: {
       why_important: 'AX 투자 경쟁이 실적과 고객 제안 메시지로 동시에 전이되는 신호입니다.',
       potential_impact: '대형 고객 제안에서 실행 레퍼런스와 중장기 플랫폼 로드맵의 비교 요구가 늘어날 수 있습니다.',
@@ -84,6 +85,8 @@ export const cardNewsItems: CardNewsItem[] = [
         url: 'https://example.com/cards/sector-2026-05-02',
         source_name: 'AXIS News',
         published_at: '2026-05-02T09:00:00+09:00',
+        credibility_grade: 'High',
+        credibility_score: 0.91,
         link_status: 'ok',
       },
     ],
@@ -94,6 +97,7 @@ export const cardNewsItems: CardNewsItem[] = [
           title: '실적 비교 원문',
           source_name: 'AXIS News',
           url: 'https://example.com/cards/sector-2026-05-02',
+          credibility_score: 0.91,
         },
       ],
       provenance: {
@@ -231,6 +235,7 @@ export const cardNewsItems: CardNewsItem[] = [
     sector: 'deal',
     exposure_band: 'high',
     exposure_score: 0.82,
+    trust_score: 88,
     implication: {
       why_important: '시장 구매 기준이 기술 데모에서 운영 안정성과 확산성으로 이동하고 있습니다.',
       potential_impact: '제안서에서 기술 우위보다 운영 체계, 보안, KPI 증명력이 더 강하게 요구될 수 있습니다.',
@@ -252,6 +257,8 @@ export const cardNewsItems: CardNewsItem[] = [
         url: 'https://example.com/cards/ai-market-2026-05-03',
         source_name: 'AX Trend Brief',
         published_at: '2026-05-03T08:30:00+09:00',
+        credibility_grade: 'High',
+        credibility_score: 0.88,
         link_status: 'ok',
       },
     ],
@@ -262,6 +269,7 @@ export const cardNewsItems: CardNewsItem[] = [
           title: 'AX 시장 전환 리포트',
           source_name: 'AX Trend Brief',
           url: 'https://example.com/cards/ai-market-2026-05-03',
+          credibility_score: 0.88,
         },
       ],
       provenance: {
@@ -379,6 +387,7 @@ export const cardNewsItems: CardNewsItem[] = [
     sector: 'infra',
     exposure_band: 'medium',
     exposure_score: 0.76,
+    trust_score: 84,
     implication: {
       why_important: '경쟁사 메시지가 기능 소개에서 운영 정착과 산업별 패키지로 이동하고 있습니다.',
       potential_impact: '고객은 단일 솔루션보다 구축 이후 안착률과 운영 확산 프로그램을 비교할 가능성이 큽니다.',
@@ -400,6 +409,8 @@ export const cardNewsItems: CardNewsItem[] = [
         url: 'https://example.com/cards/peer-2026-05-04',
         source_name: 'Peer Monitoring Daily',
         published_at: '2026-05-04T07:40:00+09:00',
+        credibility_grade: 'Medium',
+        credibility_score: 0.84,
         link_status: 'ok',
       },
     ],
@@ -410,6 +421,7 @@ export const cardNewsItems: CardNewsItem[] = [
           title: 'Peer 모니터링 원문 묶음',
           source_name: 'Peer Monitoring Daily',
           url: 'https://example.com/cards/peer-2026-05-04',
+          credibility_score: 0.84,
         },
       ],
       provenance: {
@@ -515,6 +527,7 @@ export const cardNewsItems: CardNewsItem[] = [
     sector: 'infra',
     exposure_band: 'high',
     exposure_score: 0.82,
+    trust_score: 88,
     sources: [
       {
         index: 1,
@@ -522,6 +535,8 @@ export const cardNewsItems: CardNewsItem[] = [
         url: 'https://example.com/cards/infra-2026-05-05',
         source_name: 'Infra Monitoring Daily',
         published_at: '2026-05-05T08:00:00+09:00',
+        credibility_grade: 'High',
+        credibility_score: 0.88,
         link_status: 'ok',
       },
     ],
@@ -588,6 +603,7 @@ export const cardNewsItems: CardNewsItem[] = [
     sector: 'deal',
     exposure_band: 'high',
     exposure_score: 0.87,
+    trust_score: 92,
     sources: [
       {
         index: 1,
@@ -595,6 +611,8 @@ export const cardNewsItems: CardNewsItem[] = [
         url: 'https://example.com/cards/deal-2026-05-06',
         source_name: 'Deal Monitoring Daily',
         published_at: '2026-05-06T07:30:00+09:00',
+        credibility_grade: 'High',
+        credibility_score: 0.92,
         link_status: 'ok',
       },
     ],

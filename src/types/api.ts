@@ -129,153 +129,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/dashboard/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 홈 대시보드 요약
-         * @description 프론트 `HomeDashboardView`가 필요로 하는 홈 화면 데이터입니다.
-         *     기존 `/dashboard` root compatibility endpoint를 정규 `/api/**` 경로로 승격합니다.
-         */
-        get: operations["getDashboardSummary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 전역 검색 실행
-         * @description TopNav 검색 submit, 카드뉴스 검색 fallback, AI 검색 진입점에서 사용합니다.
-         *     RAG/Generative Search 결과는 AI 서버 내부 API를 통해 생성하되, 프론트에는 이 REST 응답만 노출합니다.
-         */
-        post: operations["runGlobalSearch"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/search/suggestions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 전역 검색 추천어·즉시 결과
-         * @description TopNav 검색 패널의 추천 키워드, Peer 바로가기, 카드뉴스 미리보기 결과를 반환합니다.
-         */
-        get: operations["getSearchSuggestions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/peers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Peer+ 요약 데이터
-         * @description 프론트 `PeersData`에 맞춘 Peer+ 목록, 기간 라벨, Peer별 분석 텍스트를 반환합니다.
-         *     기존 백엔드의 단순 `peer_companies` 엔티티 반환은 프론트 요구 타입과 맞지 않으므로 응답 형태를 본 스키마로 맞춥니다.
-         */
-        get: operations["getPeerPlusSummary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/peers/{peerId}/profile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Peer+ 상세 프로필
-         * @description `PeerPlusView`의 IR numeric pack, 분기 흐름, 워드클라우드, 관련 카드뉴스를 한 번에 조회합니다.
-         *     화면이 Peer 선택 시 즉시 재렌더링되므로 목록 API와 분리된 상세 API로 둡니다.
-         */
-        get: operations["getPeerPlusProfile"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/issues": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 카드 뉴스 목록 — legacy path (Deprecated Candidate)
-         * @deprecated
-         * @description 초기 백엔드 `IssueCardResponse` (현 `CardNewsResponse`) 호환용 legacy endpoint. v5 (2026-05) 에서
-         *     DB 테이블 `issue_cards` → `card_news` 로 rename 됐고 신규 화면은 `/api/cards` 의 풍부한 `CardNews`
-         *     모델을 요구합니다. 본 path 는 frontend 외부 계약 유지를 위해 보존.
-         */
-        get: operations["listIssuesDeprecated"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/issues/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 카드 뉴스 상세 — legacy path (Deprecated Candidate)
-         * @deprecated
-         */
-        get: operations["getIssueDeprecated"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/cards": {
         parameters: {
             query?: never;
@@ -515,108 +368,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/insights/latest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 최신 인사이트 결과
-         * @description `InsightResultView`가 표시하는 핵심 판단, 흐름 단계, 판단 근거, 시사점, 근거 카드뉴스 목록을 반환합니다.
-         */
-        get: operations["getLatestInsight"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/insights/generate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 인사이트 생성
-         * @description 선택 카드뉴스 또는 필터 조건으로 인사이트를 생성합니다.
-         *     AI 파이프라인 실행이 오래 걸릴 수 있으므로 202 Accepted + status endpoint 패턴을 사용합니다.
-         */
-        post: operations["generateInsight"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/keyword-graph": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 키워드 관계 그래프
-         * @description `KeywordGraphView`의 2D/3D 그래프 노드, 엣지, 선택 노드 기본 통계를 반환합니다.
-         */
-        get: operations["getKeywordGraph"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/keyword-graph/{nodeId}/cards": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 키워드 노드 관련 카드뉴스
-         * @description 키워드 그래프 노드 클릭 시 모달/오버레이에 표시할 관련 카드뉴스를 반환합니다.
-         */
-        get: operations["getKeywordGraphNodeCards"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/briefings/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 브리핑 화면용 요약
-         * @description `BriefingsView`가 날짜/월/주차 선택 후 즉시 표시하는 브리핑 본문, 신호 카드, 근거 카드뉴스 큐를 반환합니다.
-         *     기존 `/api/briefings/today`는 일간 고정이어서 주간/월간 목업 플로우를 충족하지 못합니다.
-         */
-        get: operations["getBriefingSummary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/briefings/today": {
         parameters: {
             query?: never;
@@ -731,26 +482,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/briefings/{briefingId}/share": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 브리핑 공유 링크 생성
-         * @description 브리핑 공유·인쇄 미리보기에서 팀 내부 공유 URL을 생성할 때 사용합니다.
-         */
-        post: operations["shareBriefing"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/alerts": {
         parameters: {
             query?: never;
@@ -759,49 +490,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 알림 화면 데이터
-         * @description `AlertsView`의 이력 탭, 규칙 탭, 조건 옵션, 채널 옵션을 한 번에 반환합니다.
-         *     TopNav 전역 알림 드롭다운은 `/api/notifications`를 사용합니다.
+         * 알림 목록 (FR-024 결과)
+         * @description FR-024에서 탐지된 선제적 이벤트 알림 목록
          */
         get: operations["listAlerts"];
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/alerts/rules": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 알림 규칙 생성 */
-        post: operations["createAlertRule"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/alerts/rules/{ruleId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** 알림 규칙 수정 */
-        put: operations["updateAlertRule"];
-        post?: never;
-        /** 알림 규칙 삭제 */
-        delete: operations["deleteAlertRule"];
         options?: never;
         head?: never;
         patch?: never;
@@ -818,44 +513,6 @@ export interface paths {
         put?: never;
         /** 알림 읽음 처리 */
         post: operations["markAlertAsRead"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 전역 알림 드롭다운 목록
-         * @description TopNav 알림 버튼이 표시하는 in-app notification 목록입니다.
-         */
-        get: operations["listNotifications"];
-        put?: never;
-        post?: never;
-        /** 전역 알림 모두 지우기 */
-        delete: operations["clearNotifications"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/{id}/read": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 전역 알림 읽음 처리 */
-        post: operations["markNotificationAsRead"];
         delete?: never;
         options?: never;
         head?: never;
@@ -917,27 +574,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/mixer/options": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 믹서 입력 옵션
-         * @description `MixerView`의 Peer사, 고객사, 산업, 키워드 선택칩과 기본 선택값을 반환합니다.
-         *     mockMixerConfig 제거 대상입니다.
-         */
-        get: operations["getMixerOptions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/mixer": {
         parameters: {
             query?: never;
@@ -979,98 +615,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/global/trends/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 글로벌 트렌드 분석 실행
-         * @description GlobalTrendsAgent (axis-ai) 위임. 글로벌 빅테크 6사 (NVIDIA/Apple/Microsoft/
-         *     Google/Amazon/Meta) 의 최근 동향이 SK AX 의 국내 IT 서비스 사업에 미치는
-         *     영향을 5-phase CoT 로 분석.
-         *
-         *     - Phase 1 (Snapshot, 산식): 회사별 카드 수 + top themes
-         *     - Phase 2 (Trend Detection, 산식): theme frequency ±20/30/50% band
-         *     - Phase 3 (Impact Mapping, LLM): trend × sk_ax_line 매트릭스
-         *     - Phase 4 (Forecast, LLM): 1Q/6M/1Y 시나리오
-         *     - Phase 5 (Synthesis, LLM): final_one_liner + sk_ax_implication
-         *
-         *     spec: axis-ai/design/30-analysis/global-trends.md
-         */
-        post: operations["runGlobalTrends"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/raw-articles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 원문 기사 아카이브 목록
-         * @description PostgreSQL에 보관된 크롤링 원문 메타데이터를 조회합니다.
-         *     Qdrant payload에는 원문 전체 텍스트를 저장하지 않는 원칙을 유지하고, 필요 시 이 API로 원문 메타를 확인합니다.
-         */
-        get: operations["listRawArticles"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/raw-articles/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 원문 기사 상세
-         * @description 원문 전문은 권한이 있는 사용자에게만 반환합니다.
-         */
-        get: operations["getRawArticleById"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/assistant/chat": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 플로팅 AI 채팅 메시지 전송
-         * @description `FloatingAiChat` 메시지 전송 API입니다.
-         *     MVP는 일반 JSON 응답을 사용하며, 토큰 스트리밍은 Future Consideration으로 분리합니다.
-         */
-        post: operations["sendAssistantChatMessage"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/settings/alert-rules": {
         parameters: {
             query?: never;
@@ -1080,15 +624,10 @@ export interface paths {
         };
         /**
          * 알림 규칙 조회 (FR-040)
-         * @deprecated
-         * @description Deprecated Candidate: 현재 AlertsView는 개별 규칙 CRUD(`/api/alerts/rules`)를 요구합니다.
-         *     키워드 배열형 설정은 백엔드 내부 저장 모델로만 유지할지 결정이 필요합니다.
+         * @description FR-040 알림 키워드·조건 커스터마이징
          */
         get: operations["getMyAlertRules"];
-        /**
-         * 알림 규칙 수정 (FR-040)
-         * @deprecated
-         */
+        /** 알림 규칙 수정 (FR-040) */
         put: operations["updateMyAlertRules"];
         post?: never;
         delete?: never;
@@ -1125,37 +664,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * 프로필 조회
-         * @description Settings 회원 정보 탭 초기 표시 데이터입니다.
-         */
-        get: operations["getProfile"];
+        get?: never;
         /**
          * 프로필 수정 (FR-042)
          * @description FR-042 프로필 정보 수정 (이메일, 부서, 비밀번호 변경)
          */
         put: operations["updateProfile"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/settings/view-preferences": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 보기 설정 조회
-         * @description 브리핑, 인사이트, Peer+의 기본 보기 모드(`visual`/`text`)를 조회합니다.
-         */
-        get: operations["getViewPreferences"];
-        /** 보기 설정 수정 */
-        put: operations["updateViewPreferences"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1502,11 +1016,6 @@ export interface components {
         SectorEnum: "ax" | "security" | "infra" | "deal" | "other";
         /** @enum {string} */
         ExposureBandEnum: "high" | "medium" | "low";
-        /**
-         * @description 레거시 Issue API 중요도. 신규 카드뉴스 화면은 `ExposureBandEnum` 사용.
-         * @enum {string}
-         */
-        IssueImportanceEnum: "urgent" | "notable" | "reference";
         /** @enum {string} */
         EventTypeEnum: "partnership" | "ma" | "personnel" | "tech" | "regulation" | "new_biz" | "contract";
         /**
@@ -1545,50 +1054,6 @@ export interface components {
             cluster_id?: number | null;
             /** @example 삼성 SDS와 LG CNS의 1분기 실적이 엇갈리며 AX 투자 전략 차이가 뚜렷해졌습니다. */
             title: string;
-            /**
-             * @description 프론트 레거시 표시 분류명. `category_label`과 함께 한동안 병행 제공합니다.
-             * @example AI
-             */
-            category?: string;
-            /**
-             * @description 프론트 레거시 표시 날짜(`YYYY.MM.DD`). 신규 구현은 `published_date`를 우선 사용합니다.
-             * @example 2026.05.11
-             */
-            date?: string;
-            /**
-             * @description 카드 커버 이미지 URL. 이미지가 없으면 `/png.png` 같은 기본 에셋 또는 null.
-             * @example /api/images/101
-             */
-            coverImageUrl?: string | null;
-            /** @example AX 경쟁 신호를 나타내는 카드 이미지 */
-            coverImageAlt?: string | null;
-            /** @description 프론트 상세/오버레이용 요약 배열. `summary_lines`와 동일 내용을 camelCase 레거시 UI에 맞게 제공. */
-            summary?: string[];
-            /** @description 카드 상세 본문 페이지 */
-            articlePages?: components["schemas"]["CardNewsArticlePage"][];
-            /** @description 핵심 인사이트 문장 */
-            insights?: string[];
-            /**
-             * @description 대표 출처명
-             * @example 전자신문
-             */
-            source?: string | null;
-            /**
-             * Format: uri
-             * @description 대표 원문 URL
-             */
-            sourceUrl?: string | null;
-            /** @description 상세 오버레이 시사점 탭 제목 */
-            detailTitle?: string | null;
-            /** @description 카드 상세 리드 문장 */
-            detailDescription?: string | null;
-            detailPoints?: string[];
-            actionItems?: string[];
-            mediaAssets?: components["schemas"]["CardNewsMediaAsset"][];
-            textFields?: components["schemas"]["CardNewsTextField"][];
-            valueFields?: components["schemas"]["CardNewsValueField"][];
-            /** @description 카드뉴스 워크스페이스/믹서 후보 grid 생성용 표시 엔트리 */
-            displayEntries?: components["schemas"]["CardNewsDisplayEntry"][];
             subtitle?: string | null;
             /**
              * @description 홈 캐러셀 상단에 표시되는 분류 라벨
@@ -1607,6 +1072,8 @@ export interface components {
             exposure_band?: components["schemas"]["ExposureBandEnum"];
             /** Format: float */
             exposure_score?: number;
+            /** Format: float */
+            trust_score?: number;
             implication?: components["schemas"]["Implication"];
             sources?: components["schemas"]["Source"][];
             /** @description 카드 뉴스 생성에 사용된 출처 수 */
@@ -1626,40 +1093,6 @@ export interface components {
             share_count?: number | null;
             /** Format: date-time */
             created_at: string;
-        };
-        CardNewsArticlePage: {
-            title: string;
-            paragraphs: string[];
-        };
-        CardNewsMediaAsset: {
-            id: string;
-            /** @enum {string} */
-            type: "image";
-            url: string;
-            alt: string;
-        };
-        CardNewsTextField: {
-            id: string;
-            label: string;
-            value: string;
-        };
-        CardNewsValueField: {
-            id: string;
-            label: string;
-            value: number | string;
-            unit?: string | null;
-        };
-        CardNewsDisplayEntry: {
-            id: string;
-            title: string;
-            subtitle?: string | null;
-            peerCompany?: string | null;
-            sector?: string | null;
-            sourceType?: string | null;
-            badgeLabel?: string | null;
-            displayDate?: string | null;
-            coverStyle?: string | null;
-            previewImageStyle?: string | null;
         };
         CardNewsSlide: {
             order: number;
@@ -1768,6 +1201,10 @@ export interface components {
             source_name?: string;
             /** Format: date-time */
             published_at: string;
+            /** @enum {string} */
+            credibility_grade?: "High" | "Medium" | "Low" | "Unverified";
+            /** Format: float */
+            credibility_score?: number;
             /**
              * @default ok
              * @enum {string}
@@ -1783,6 +1220,8 @@ export interface components {
                 title?: string;
                 source_name?: string;
                 url?: string;
+                /** Format: float */
+                credibility_score?: number;
             }[];
             provenance?: {
                 raw_article_ids?: number[];
@@ -1924,8 +1363,6 @@ export interface components {
         PeerCompany: {
             id: components["schemas"]["PeerIdEnum"];
             name: string;
-            /** @enum {string} */
-            tier: "self" | "domestic" | "overseas";
             full_name?: string;
             keywords?: string[];
             /**
@@ -2049,26 +1486,6 @@ export interface components {
         };
         /** @description FR-041 알림 채널·시간 설정 */
         NotificationSettings: {
-            /**
-             * @description 프론트 SettingsView 직접 바인딩 필드
-             * @default true
-             */
-            email: boolean;
-            /**
-             * @description 프론트 SettingsView 직접 바인딩 필드
-             * @default true
-             */
-            inApp: boolean;
-            /**
-             * @description 프론트 SettingsView 직접 바인딩 필드
-             * @default false
-             */
-            msTeams: boolean;
-            /** @example 08:30 */
-            briefingTime?: string;
-            /** @default true */
-            eventImmediate: boolean;
-            /** @description 백엔드 저장용 정규화 필드. 프론트 camelCase 필드와 병행 제공. */
             channels?: {
                 /** @default true */
                 email: boolean;
@@ -2080,7 +1497,7 @@ export interface components {
             email_recipients?: string[];
             ms_teams_webhook_url?: string | null;
             schedule?: {
-                /** @example 08:30 */
+                /** @example 30600 */
                 briefing_time?: string;
                 /** @default true */
                 event_immediate: boolean;
@@ -2124,25 +1541,6 @@ export interface components {
                 /** Format: float */
                 confidence?: number;
             };
-            /** @description 프론트 결과 화면 상단 New insight 문장. `generated_implication.summary`와 동일하게 채울 수 있습니다. */
-            summary?: string;
-            /** @description 믹서 결과 본문 3줄 브리프 */
-            insightBrief?: string[];
-            /** @description 선택 카드 수, Peer 수, 키워드 수 등 근거 연결 라벨 */
-            evidenceLogic?: string[];
-            /** @description 후속 액션 카드 */
-            actions?: string[];
-            /** @description 결과 태그. `generated_implication.connections`와 동일하게 채울 수 있습니다. */
-            connections?: string[];
-            /** @description 프론트 camelCase 필드. `generated_implication.sk_ax_perspective`와 동일하게 채울 수 있습니다. */
-            skAxPerspective?: string;
-            /** Format: float */
-            confidence?: number;
-            /** @description 결과 신호 분포 레이더 차트 데이터 */
-            radarMetrics?: {
-                subject?: string;
-                mixed?: number;
-            }[];
             /** Format: date-time */
             created_at?: string;
         };
@@ -2231,491 +1629,6 @@ export interface components {
                 status?: "idle" | "running" | "error";
                 last_count?: number;
             };
-        };
-        /** @description 프론트 `DashboardData`와 동일한 홈 화면 응답 모델 */
-        DashboardSummary: {
-            trends: components["schemas"]["DashboardTrend"][];
-            articles: components["schemas"]["DashboardArticle"][];
-            keywords: components["schemas"]["DashboardKeyword"][];
-            keywordSearchPoints: components["schemas"]["DashboardKeywordSearchPoint"][];
-            keywordSeries: components["schemas"]["DashboardKeywordSeries"][];
-            stockPoints: components["schemas"]["DashboardStockPoint"][];
-            notifications: components["schemas"]["DashboardNotification"][];
-            /** @example 11,104 */
-            keywordNewsCount: string;
-            /** Format: date-time */
-            updatedAt?: string | null;
-        };
-        DashboardTrend: {
-            peer: string;
-            title: string;
-            reason: string;
-            /** @enum {string} */
-            reviewLevel: "primary" | "watch";
-            status: string;
-        };
-        DashboardArticle: {
-            peer?: string;
-            title?: string;
-            source?: string;
-            /** @example 2026.05.11 08:30 */
-            publishedAt?: string;
-            note?: string;
-        };
-        DashboardKeyword: {
-            text?: string;
-            /** @enum {string} */
-            type?: "tech" | "org" | "place";
-            /** @example text-2xl */
-            size?: string;
-            /** @example 48% */
-            x?: string;
-            /** @example 20% */
-            y?: string;
-        };
-        DashboardKeywordSearchPoint: {
-            /** @example 09:00 */
-            time: string;
-        } & {
-            [key: string]: number | string;
-        };
-        DashboardKeywordSeries: {
-            /** @example agenticAi */
-            key?: string;
-            /** @example Agentic AI */
-            name?: string;
-            /** @example #EE7501 */
-            color?: string;
-            /** @example 249 */
-            total?: string;
-        };
-        DashboardStockPoint: {
-            /** @example 05.11 */
-            date?: string;
-            samsungSds?: number;
-            lgCns?: number;
-            hyundaiAutoever?: number;
-            poscoDx?: number;
-        };
-        DashboardNotification: {
-            title?: string;
-            detail?: string;
-            time?: string;
-            /** @enum {string} */
-            tone?: "urgent" | "info";
-        };
-        GlobalSearchRequest: {
-            query: string;
-            scopes?: ("cards" | "peers" | "briefings" | "raw_articles")[];
-            /** @default 8 */
-            limit: number;
-        };
-        GlobalSearchResponse: {
-            query?: string;
-            /**
-             * @example [
-             *       "AX",
-             *       "AI 에이전트",
-             *       "공공 메가딜"
-             *     ]
-             */
-            keywords?: string[];
-            peers?: components["schemas"]["SearchPeerResult"][];
-            cards?: components["schemas"]["SearchCardResult"][];
-            /** @enum {string|null} */
-            fallbackTarget?: "issues" | "peerPlus" | null;
-        };
-        SearchPeerResult: {
-            id?: components["schemas"]["PeerIdEnum"];
-            label?: string;
-            matchedKeyword?: string | null;
-        };
-        SearchCardResult: {
-            id?: string;
-            title?: string;
-            peerLabel?: string;
-            displayDate?: string;
-            summary?: string;
-        };
-        PeerPlusData: {
-            peers: components["schemas"]["FrontendPeerSummary"][];
-            /**
-             * @example {
-             *       "yearly": "연간",
-             *       "quarterly": "분기",
-             *       "monthly": "월간"
-             *     }
-             */
-            periodLabels: {
-                [key: string]: string;
-            };
-            periodDescriptions: {
-                [key: string]: string;
-            };
-            analyses: {
-                [key: string]: components["schemas"]["PeerAnalysis"];
-            };
-        };
-        FrontendPeerSummary: {
-            id: components["schemas"]["PeerIdEnum"];
-            name: string;
-            keywords: string[];
-            /** @enum {string} */
-            priority: "high" | "medium";
-            stats: {
-                primary?: number;
-                watch?: number;
-                archive?: number;
-            };
-            direction: string;
-            implication: string;
-        };
-        PeerAnalysis: {
-            source?: string;
-            title?: string;
-            summary?: string;
-            highlightsTitle?: string;
-            highlights?: string[];
-            pillars?: {
-                name?: string;
-                details?: string[];
-            }[];
-        };
-        PeerPlusProfile: {
-            peer: components["schemas"]["FrontendPeerSummary"];
-            analysis?: components["schemas"]["PeerAnalysis"];
-            irProfile: components["schemas"]["PeerPlusIrProfile"];
-            keywordCloud: components["schemas"]["PeerPlusKeyword"][];
-            relatedCards: components["schemas"]["CardNews"][];
-        };
-        PeerPlusIrProfile: {
-            /** @example 3.42조 */
-            revenue?: string;
-            /** @example 2,430억 */
-            operatingProfit?: string;
-            /** @example 31% */
-            axRatio?: string;
-            /** @example 1.8조 */
-            orderBacklog?: string;
-            /** @example 7.1% */
-            margin?: string;
-            /** @example 4,800억 */
-            capex?: string;
-            deltas?: {
-                revenue?: number;
-                operatingProfit?: number;
-                axRatio?: number;
-                orderBacklog?: number;
-                margin?: number;
-                capex?: number;
-            };
-            quarterly?: {
-                quarter?: string;
-                revenue?: number;
-                profit?: number;
-                ax?: number;
-            }[];
-            summary?: string[];
-        };
-        PeerPlusKeyword: {
-            label?: string;
-            weight?: number;
-            /** @enum {string} */
-            tone?: "accent" | "success" | "neutral";
-        };
-        IssueSummary: {
-            id?: string;
-            peerId?: string;
-            peerName?: string;
-            title?: string;
-            summaryLines?: string[];
-            importance?: components["schemas"]["IssueImportanceEnum"];
-            /** Format: date-time */
-            createdAt?: string;
-            sourceUrl?: string | null;
-        };
-        InsightResult: {
-            id: string;
-            title: string;
-            summary: string;
-            flowSteps: components["schemas"]["InsightFlowStep"][];
-            evidence: string[];
-            implications: string[];
-            /** @description 근거 카드뉴스 ID 목록. 상세 표시는 `/api/cards` 또는 included 카드로 처리합니다. */
-            evidenceCards?: string[];
-            /** Format: date-time */
-            generatedAt?: string | null;
-        };
-        InsightFlowStep: {
-            /** @example detect */
-            id?: string;
-            /** @example 감지 */
-            label?: string;
-            description?: string;
-        };
-        InsightGenerateRequest: {
-            card_ids?: string[];
-            query?: string | null;
-            peer_ids?: components["schemas"]["PeerIdEnum"][];
-            /** Format: date */
-            date_from?: string;
-            /** Format: date */
-            date_to?: string;
-        };
-        AsyncJobAccepted: {
-            job_id?: string;
-            /** @enum {string} */
-            status?: "queued" | "running";
-            status_url?: string;
-        };
-        KeywordGraph: {
-            nodes?: components["schemas"]["KeywordNode"][];
-            edges?: components["schemas"]["KeywordEdge"][];
-            selectedId?: string;
-            trendData?: components["schemas"]["DashboardKeywordSearchPoint"][];
-        };
-        KeywordNode: {
-            id: string;
-            label: string;
-            /** @enum {string} */
-            category: "기업" | "AX" | "보안" | "인프라" | "수주";
-            size: number;
-            changeRate?: number;
-            /** @enum {string} */
-            sourceType?: "cardnews" | "search" | "financial" | "manual";
-            x?: number | null;
-            y?: number | null;
-        };
-        KeywordEdge: {
-            source?: string;
-            target?: string;
-            weight?: number;
-        };
-        BriefingWorkspace: {
-            id?: string;
-            briefing_type?: components["schemas"]["BriefingTypeEnum"];
-            title?: string;
-            window?: string;
-            leadLabel?: string;
-            displayLabel?: string;
-            briefingLead?: string;
-            signalCards?: components["schemas"]["BriefingSignalCard"][];
-            whatHappenedDigest?: string[];
-            meaning?: string[];
-            response?: string[];
-            benchmark?: string[];
-            ideas?: string[];
-            selectedCards?: components["schemas"]["CardNews"][];
-            reportText?: string;
-        };
-        BriefingSignalCard: {
-            label?: string;
-            value?: string;
-            metric?: string;
-        };
-        ShareLink: {
-            share_url?: string;
-            /** Format: date-time */
-            expires_at?: string | null;
-        };
-        AlertsData: {
-            rules: components["schemas"]["AlertRule"][];
-            history: components["schemas"]["AlertHistoryItem"][];
-            conditionOptions: string[];
-            channelOptions: ("email" | "in_app" | "ms_teams")[];
-        };
-        AlertRule: {
-            /** @example RULE-001 */
-            id: string;
-            name: string;
-            description: string;
-            enabled: boolean;
-            channels: ("email" | "in_app" | "ms_teams")[];
-            /** Format: date-time */
-            lastTriggered?: string | null;
-        };
-        AlertRuleUpsertRequest: {
-            name: string;
-            description: string;
-            enabled: boolean;
-            channels: ("email" | "in_app" | "ms_teams")[];
-        };
-        AlertHistoryItem: {
-            id?: string;
-            title?: string;
-            message?: string;
-            channel?: string;
-            /** @enum {string} */
-            status?: "sent" | "pending";
-            /** Format: date-time */
-            triggeredAt?: string;
-        };
-        NotificationList: {
-            items?: components["schemas"]["NotificationItem"][];
-            unreadCount?: number;
-        };
-        NotificationItem: {
-            id?: string;
-            peer?: string;
-            title?: string;
-            tone?: string;
-            /**
-             * @description 프론트 activeView id
-             * @example keywordGraph
-             */
-            target?: string;
-            time?: string;
-            read?: boolean;
-        };
-        MixerOptions: {
-            defaults?: {
-                peers?: string[];
-                customers?: string[];
-                industries?: string[];
-                keywords?: string[];
-            };
-            options?: components["schemas"]["MixerOptionGroup"][];
-            connectionKeywords?: string[];
-            radarMetrics?: components["schemas"]["MixerRadarMetric"][];
-        };
-        MixerOptionGroup: {
-            /** @enum {string} */
-            title?: "Peer사" | "고객사" | "산업" | "키워드";
-            values?: string[];
-        };
-        MixerRadarMetric: {
-            subject?: string;
-            base?: number;
-            cardWeight?: number | null;
-            keyword?: string | null;
-            keywordValue?: number | null;
-            industryWeight?: number | null;
-            bookmarkWeight?: number | null;
-            customerWeight?: number | null;
-            max?: number;
-        };
-        MixerRunRequest: {
-            card_ids: string[];
-            peers?: string[];
-            customers?: string[];
-            industries?: string[];
-            keywords?: string[];
-            /** @default false */
-            bookmarked_only: boolean;
-            user_question?: string | null;
-        };
-        /** @description GlobalTrendsAgent 입력. spec: axis-ai/design/30-analysis/global-trends.md §4. */
-        GlobalTrendsRequest: {
-            /** @description 분석 대상 글로벌 회사 ids. 비어 있으면 default 6사 (NVIDIA / Apple / MS / Google / Amazon / Meta). */
-            company_ids?: string[] | null;
-            /** @description 특정 theme 필터 (옵션) */
-            focus_themes?: string[] | null;
-            /** @default 30 */
-            window_days: number;
-            /** @description impact matrix 컬럼 축. 비어 있으면 default 5종 (ai_managed / cloud_msp / security / smart_factory / data_platform). */
-            sk_ax_business_lines?: string[] | null;
-        };
-        /**
-         * @description GlobalTrendsAgent 출력 (5-phase + 3-tier observability).
-         *     spec: axis-ai/design/30-analysis/global-trends.md §5.
-         */
-        GlobalTrendsResult: {
-            analysis_period?: {
-                [key: string]: unknown;
-            };
-            snapshots?: {
-                [key: string]: unknown;
-            }[];
-            trend_detections?: {
-                [key: string]: unknown;
-            }[];
-            impact_matrix?: {
-                [key: string]: unknown;
-            }[];
-            forecasts?: {
-                [key: string]: unknown;
-            }[];
-            final_one_liner?: string;
-            sk_ax_implication?: string;
-            follow_up_questions?: string[];
-            risk_assumptions?: string[];
-            /** @description 3-tier observability Tier 1 — 사용자 default */
-            reasoning_trail?: {
-                [key: string]: unknown;
-            }[];
-            /** @description 3-tier observability Tier 2 — 상세 */
-            reasoning_steps?: {
-                [key: string]: unknown;
-            }[];
-            /** @description 3-tier observability Tier 3 — admin deep link */
-            langfuse_trace_id?: string | null;
-            /** Format: float */
-            confidence?: number;
-            sources_used?: string[];
-            company_ids?: string[];
-            provenance?: {
-                [key: string]: unknown;
-            };
-            warning?: string | null;
-        };
-        RawArticleListResponse: {
-            items?: components["schemas"]["RawArticle"][];
-            total?: number;
-            limit?: number;
-            offset?: number;
-        };
-        RawArticle: {
-            id?: number;
-            title?: string;
-            /** Format: uri */
-            url?: string;
-            sourceName?: string;
-            peerId?: string;
-            /** Format: date-time */
-            publishedAt?: string;
-            /** Format: date-time */
-            collectedAt?: string;
-            /** @enum {string|null} */
-            importanceLevel?: "urgent" | "notable" | null;
-            processingStatus?: string | null;
-        };
-        RawArticleDetail: components["schemas"]["RawArticle"] & {
-            content?: string;
-            clusterId?: number | null;
-            metadata?: Record<string, never>;
-        };
-        AssistantChatRequest: {
-            conversation_id?: string | null;
-            message: string;
-            context?: {
-                active_view?: string;
-                selected_card_ids?: string[];
-            };
-        };
-        AssistantChatResponse: {
-            conversation_id?: string;
-            message?: components["schemas"]["ChatMessage"];
-            report_draft?: components["schemas"]["ReportDraft"];
-            suggested_actions?: string[];
-        };
-        ChatMessage: {
-            /** @enum {string} */
-            role?: "user" | "assistant";
-            content?: string;
-            /** @default false */
-            reportPreview: boolean;
-        };
-        ReportDraft: {
-            title?: string;
-            sections?: {
-                title?: string;
-                body?: string;
-            }[];
-            source_card_ids?: string[];
-        };
-        ViewPreferences: {
-            /** @enum {string} */
-            contentViewMode: "visual" | "text";
         };
     };
     responses: {
@@ -3036,221 +1949,6 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    getDashboardSummary: {
-        parameters: {
-            query?: {
-                /** @description 기준일. 생략 시 서버 기준 오늘(KST) */
-                date?: string;
-                peer_id?: components["schemas"]["PeerIdEnum"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 홈 대시보드 데이터 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["DashboardSummary"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    runGlobalSearch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GlobalSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description 전역 검색 결과 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["GlobalSearchResponse"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            422: components["responses"]["ValidationError"];
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["ServiceUnavailable"];
-            504: components["responses"]["GatewayTimeout"];
-        };
-    };
-    getSearchSuggestions: {
-        parameters: {
-            query?: {
-                /** @description 입력 중인 검색어. 빈 값이면 추천 키워드를 반환합니다. */
-                q?: string;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 검색 추천 결과 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["GlobalSearchResponse"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    getPeerPlusSummary: {
-        parameters: {
-            query?: {
-                /** @description Peer명 또는 키워드 검색어 */
-                q?: string;
-                priority?: "high" | "medium";
-                active_only?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Peer+ 요약 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["PeerPlusData"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    getPeerPlusProfile: {
-        parameters: {
-            query?: {
-                period_unit?: components["schemas"]["MonitoringPeriodUnitEnum"];
-                period_value?: string;
-                include_cards?: boolean;
-            };
-            header?: never;
-            path: {
-                peerId: components["schemas"]["PeerIdEnum"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Peer+ 상세 데이터 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["PeerPlusProfile"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    listIssuesDeprecated: {
-        parameters: {
-            query?: {
-                peerId?: components["schemas"]["PeerIdEnum"];
-                importance?: components["schemas"]["IssueImportanceEnum"];
-                eventType?: components["schemas"]["EventTypeEnum"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 레거시 카드 뉴스 목록 (legacy issue card 호환) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["IssueSummary"][];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    getIssueDeprecated: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 레거시 카드 뉴스 상세 (legacy issue card 호환) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["IssueSummary"];
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -3665,170 +2363,6 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    getLatestInsight: {
-        parameters: {
-            query?: {
-                date?: string;
-                peer_id?: components["schemas"]["PeerIdEnum"];
-                limit_evidence_cards?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 인사이트 결과 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["InsightResult"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    generateInsight: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["InsightGenerateRequest"];
-            };
-        };
-        responses: {
-            /** @description 생성 요청 접수 */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["AsyncJobAccepted"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            422: components["responses"]["ValidationError"];
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["ServiceUnavailable"];
-            504: components["responses"]["GatewayTimeout"];
-        };
-    };
-    getKeywordGraph: {
-        parameters: {
-            query?: {
-                category?: "전체" | "기업" | "AX" | "보안" | "인프라" | "수주";
-                date_from?: string;
-                date_to?: string;
-                min_weight?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 키워드 그래프 데이터 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["KeywordGraph"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    getKeywordGraphNodeCards: {
-        parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path: {
-                nodeId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 관련 카드뉴스 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["CardListResponse"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    getBriefingSummary: {
-        parameters: {
-            query: {
-                briefing_type: components["schemas"]["BriefingTypeEnum"];
-                /** @description 일간 브리핑 기준일 */
-                date?: string;
-                /** @description 주간/월간 브리핑 기준 월(`YYYY-MM`) */
-                month?: string;
-                /** @description 주간 브리핑 주차(1~5) */
-                week_index?: number;
-                peer_id?: components["schemas"]["PeerIdEnum"];
-                include_cards?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 브리핑 화면 요약 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["BriefingWorkspace"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
     getTodayBriefing: {
         parameters: {
             query?: never;
@@ -4045,56 +2579,11 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    shareBriefing: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                briefingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                /**
-                 * @example {
-                 *       "expires_in_hours": 168,
-                 *       "include_source_cards": true
-                 *     }
-                 */
-                "application/json": {
-                    /** @default 168 */
-                    expires_in_hours?: number;
-                    /** @default true */
-                    include_source_cards?: boolean;
-                };
-            };
-        };
-        responses: {
-            /** @description 공유 링크 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["ShareLink"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
     listAlerts: {
         parameters: {
             query?: {
-                status?: "sent" | "pending";
+                unread_only?: boolean;
                 limit?: number;
-                offset?: number;
             };
             header?: never;
             path?: never;
@@ -4102,121 +2591,23 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 알림 화면 데이터 */
+            /** @description 알림 목록 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["AlertsData"];
+                        data?: {
+                            items?: components["schemas"]["Alert"][];
+                            unread_count?: number;
+                        };
                     };
                 };
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    createAlertRule: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "name": "Agentic AI/산업 AX 알림",
-                 *       "description": "Agentic AI, 제조 AX, 금융 AX 키워드 포함 시 알림",
-                 *       "enabled": true,
-                 *       "channels": [
-                 *         "email"
-                 *       ]
-                 *     }
-                 */
-                "application/json": components["schemas"]["AlertRuleUpsertRequest"];
-            };
-        };
-        responses: {
-            /** @description 알림 규칙 생성 */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["AlertRule"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            422: components["responses"]["ValidationError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    updateAlertRule: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ruleId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AlertRuleUpsertRequest"];
-            };
-        };
-        responses: {
-            /** @description 알림 규칙 수정 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["AlertRule"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            422: components["responses"]["ValidationError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    deleteAlertRule: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ruleId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 삭제 성공 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -4246,94 +2637,10 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    listNotifications: {
-        parameters: {
-            query?: {
-                unread_only?: boolean;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 전역 알림 목록 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["NotificationList"];
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    clearNotifications: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 삭제 성공 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    markNotificationAsRead: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 읽음 처리 결과 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: {
-                            id?: string;
-                            read?: boolean;
-                        };
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
     listBookmarks: {
         parameters: {
             query?: {
                 limit?: number;
-                offset?: number;
-                sort?: "bookmarked_desc" | "latest" | "exposure_desc";
             };
             header?: never;
             path?: never;
@@ -4461,31 +2768,6 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    getMixerOptions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 믹서 옵션 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["MixerOptions"];
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
     runMixer: {
         parameters: {
             query?: never;
@@ -4495,7 +2777,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MixerRunRequest"];
+                "application/json": {
+                    card_ids: string[];
+                };
             };
         };
         responses: {
@@ -4550,134 +2834,6 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
-        };
-    };
-    runGlobalTrends: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["GlobalTrendsRequest"];
-            };
-        };
-        responses: {
-            /** @description 글로벌 트렌드 분석 결과 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["GlobalTrendsResult"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            422: components["responses"]["ValidationError"];
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["ServiceUnavailable"];
-            504: components["responses"]["GatewayTimeout"];
-        };
-    };
-    listRawArticles: {
-        parameters: {
-            query?: {
-                peer_id?: components["schemas"]["PeerIdEnum"];
-                importance_level?: "urgent" | "notable";
-                processing_status?: "RAW" | "EMBEDDED" | "SKIPPED_QUALITY" | "SKIPPED_CREDIBILITY" | "CLUSTERED_DUPE" | "ERROR";
-                q?: string;
-                date_from?: string;
-                date_to?: string;
-                sort?: "collected_desc" | "published_desc" | "importance_desc";
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 원문 기사 목록 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["RawArticleListResponse"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    getRawArticleById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 원문 기사 상세 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["RawArticleDetail"];
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    sendAssistantChatMessage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AssistantChatRequest"];
-            };
-        };
-        responses: {
-            /** @description 채팅 응답 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["AssistantChatResponse"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            422: components["responses"]["ValidationError"];
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["ServiceUnavailable"];
-            504: components["responses"]["GatewayTimeout"];
         };
     };
     getMyAlertRules: {
@@ -4788,31 +2944,6 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    getProfile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 프로필 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["UserProfile"];
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
     updateProfile: {
         parameters: {
             query?: never;
@@ -4842,67 +2973,6 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    getViewPreferences: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 보기 설정 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["ViewPreferences"];
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    updateViewPreferences: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "contentViewMode": "visual"
-                 *     }
-                 */
-                "application/json": components["schemas"]["ViewPreferences"];
-            };
-        };
-        responses: {
-            /** @description 수정 성공 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse"] & {
-                        data?: components["schemas"]["ViewPreferences"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -5395,14 +3465,12 @@ export interface operations {
     };
     triggerPipeline: {
         parameters: {
-            query?: {
-                track?: "A" | "B" | "C" | "ALL";
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
                     /** @enum {string} */
@@ -5420,9 +3488,8 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponse"] & {
                         data?: {
+                            run_id?: string;
                             status?: string;
-                            track?: string;
-                            peer_ids?: string[];
                         };
                     };
                 };

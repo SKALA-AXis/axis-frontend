@@ -1,7 +1,6 @@
 import { httpClient } from '../../../shared/api/httpClient';
 import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
 import { cardNewsItems } from '../../../shared/mocks/cardNews';
-import { getPeerLogo } from '../../../shared/utils/peerLogo';
 import type { CardNewsItem } from '../model/cardNews';
 
 export interface CardNewsRepository {
@@ -72,6 +71,21 @@ const sourceNameByHost: Record<string, string> = {
   'www.srtimes.kr': 'SR타임스',
   'www.pointdaily.co.kr': '포인트데일리',
   'www.nspna.com': 'NSP통신',
+  'www.news1.kr': '뉴스1',
+  'news1.kr': '뉴스1',
+  'www.asiatoday.co.kr': '아시아투데이',
+  'asiatoday.co.kr': '아시아투데이',
+  'www.aitimes.com': 'AI타임스',
+  'aitimes.com': 'AI타임스',
+  'science.ytn.co.kr': 'YTN 사이언스',
+  'www.shinailbo.co.kr': '신아일보',
+  'shinailbo.co.kr': '신아일보',
+  'www.datanet.co.kr': '데이터넷',
+  'datanet.co.kr': '데이터넷',
+  'www.ddaily.co.kr': '디지털데일리',
+  'ddaily.co.kr': '디지털데일리',
+  'www.newstomato.com': '뉴스토마토',
+  'newstomato.com': '뉴스토마토',
 };
 
 function resolveSourceName(sourceName?: string, url?: string) {
@@ -120,7 +134,7 @@ function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
     card.coverImageUrl ??
     card.display?.background_asset_url ??
     primarySlide?.image_url ??
-    getPeerLogo(card.peer_id);
+    '/png.png';
   const normalizedSources = card.sources?.map((source) => ({
     ...source,
     source_name: resolveSourceName(source.source_name, source.url),
@@ -170,6 +184,7 @@ function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
     sector: card.sector,
     exposure_band: card.exposure_band,
     exposure_score: card.exposure_score,
+    trust_score: card.trust_score,
     implication: card.implication,
     sources: normalizedSources,
     source_count: card.source_count ?? card.sources?.length ?? null,

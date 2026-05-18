@@ -6,7 +6,6 @@ import {
   cardNewsPeerTitleAliases,
   cardNewsSectorLabels,
 } from '../../../shared/content/cardNewsLabels';
-import { getPeerLogo } from '../../../shared/utils/peerLogo';
 
 export function getPeerLabel(card: CardNewsItem) {
   if (card.peer_id) {
@@ -39,6 +38,19 @@ export function getExposureScore(card: CardNewsItem) {
 
   const legacyScore = card.valueFields?.find((field) => /score|노출|중요/i.test(field.label));
   return typeof legacyScore?.value === 'number' ? legacyScore.value : cardNewsExecutiveDefaults.exposureScore;
+}
+
+export function getTrustScore(card: CardNewsItem) {
+  if (typeof card.trust_score === 'number') {
+    return card.trust_score > 1 ? Math.round(card.trust_score) : Math.round(card.trust_score * 100);
+  }
+
+  const sourceScore = card.sources?.find((source) => typeof source.credibility_score === 'number')?.credibility_score;
+  if (typeof sourceScore === 'number') {
+    return sourceScore > 1 ? Math.round(sourceScore) : Math.round(sourceScore * 100);
+  }
+
+  return cardNewsExecutiveDefaults.trustScore;
 }
 
 export function getSummaryLines(card: CardNewsItem) {
@@ -104,17 +116,34 @@ export function getExecutiveRank(cards: CardNewsItem[]) {
       return exposureDelta;
     }
 
-    return String(getDisplayDate(b) ?? '').localeCompare(String(getDisplayDate(a) ?? ''));
+    return getTrustScore(b) - getTrustScore(a);
+  });
+}
+
+function getCardTimestamp(card: CardNewsItem) {
+  const value = card.published_date ?? card.date ?? card.created_at ?? '';
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+export function getLatestFirst(cards: CardNewsItem[]) {
+  return [...cards].sort((a, b) => {
+    const dateDelta = getCardTimestamp(b) - getCardTimestamp(a);
+    if (dateDelta !== 0) {
+      return dateDelta;
+    }
+
+    const exposureDelta = getExposureScore(b) - getExposureScore(a);
+    if (exposureDelta !== 0) {
+      return exposureDelta;
+    }
+
+    return getTrustScore(b) - getTrustScore(a);
   });
 }
 
 export function getCardImage(card: CardNewsItem) {
-  return (
-    card.display?.background_asset_url ??
-    card.slides?.find((slide) => slide.image_url)?.image_url ??
-    card.coverImageUrl ??
-    getPeerLogo(card.peer_id)
-  );
+  return card.display?.background_asset_url ?? card.slides?.find((slide) => slide.image_url)?.image_url ?? card.coverImageUrl;
 }
 
 export function getCardImageAlt(card: CardNewsItem) {
@@ -127,6 +156,7 @@ export function getEvidenceChain(card: CardNewsItem): CardNewsEvidenceChain {
       title: source.title,
       source_name: source.source_name,
       url: source.url,
+      credibility_score: source.credibility_score,
     })),
     financial_refs: [],
     mbb_refs: [],

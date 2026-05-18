@@ -28,6 +28,7 @@ import {
   getSourceCount,
   getSuggestedActions,
   getSummaryLines,
+  getTrustScore,
   getWhyImportant,
 } from '../../../features/card-news/mappers/cardNewsExecutive';
 
@@ -176,6 +177,7 @@ export function ExecutiveCard({
   onSelect?: () => void;
 }) {
   const exposure = getExposureScore(card);
+  const trust = getTrustScore(card);
   const evidence = getEvidenceStatus(card);
   const tone = card.exposure_band === 'high' ? 'danger' : card.exposure_band === 'medium' ? 'warning' : 'neutral';
   const summaryLines = getSummaryLines(card).slice(0, compact ? 2 : 3);
@@ -225,7 +227,7 @@ export function ExecutiveCard({
 
       <div className="mt-4 grid grid-cols-3 gap-2">
         <MiniMetric label="Exposure" value={`${exposure}`} />
-        <MiniMetric label="Sources" value={String(getSourceCount(card))} />
+        <MiniMetric label="Trust" value={`${trust}`} />
         <MiniMetric label="Evidence" value={`${getEvidenceCompleteness(card)}%`} />
       </div>
 
@@ -336,7 +338,7 @@ export function EvidenceChainPanel({ card }: { card: CardNewsItem }) {
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-[var(--axis-ink)]">{source.title ?? '원문 기사'}</span>
                     <span className="mt-1 block text-xs text-[var(--axis-muted)]">
-                      {source.source_name ?? 'Source'}
+                      {source.source_name ?? 'Source'} · 신뢰도 {Math.round((source.credibility_score ?? 0.8) * 100)}
                     </span>
                   </span>
                   <ExternalLink size={15} className="shrink-0 text-[var(--axis-accent)]" />
@@ -397,7 +399,7 @@ export function CardDecisionPanel({ card }: { card: CardNewsItem }) {
       <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{getWhyImportant(card)}</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <MiniMetric label="Source count" value={String(getSourceCount(card))} />
-        <MiniMetric label="Sources" value={String(getSourceCount(card))} />
+        <MiniMetric label="Trust score" value={String(getTrustScore(card))} />
         <MiniMetric label="Evidence" value={`${getEvidenceCompleteness(card)}%`} />
       </div>
     </section>
