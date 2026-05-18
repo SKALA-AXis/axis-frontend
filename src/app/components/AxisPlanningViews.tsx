@@ -78,6 +78,8 @@ import { shareCardNews } from '../../features/card-news/utils/cardSharing';
 import { FloatingCardNewsOverlay } from '../../features/card-news/components/FloatingCardNewsOverlay';
 import { ChartButton } from '../../features/home/components/ChartButton';
 import { adaptMixerToView, type MixerResultView } from '../../features/mixer/utils/adaptMixerView';
+import { MixerAnalysisOverlay } from '../../features/mixer/components/MixerAnalysisOverlay';
+import { DonutCalloutChart } from '../../features/mixer/components/DonutCalloutChart';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -87,73 +89,6 @@ import {
 } from './executive/ExecutiveSystem';
 
 type NavigateHandler = (view: string) => void;
-
-function MixerAnalysisOverlay() {
-  const loadingSteps = ['카드 조합 정렬 중', '반복 신호 분석 중', '인사이트 문장 구성 중'];
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-[rgba(250,248,245,0.80)] backdrop-blur-md">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(220,90,36,0.12),transparent_26%),radial-gradient(circle_at_82%_24%,rgba(90,107,87,0.16),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.58),rgba(245,238,228,0.72))]" />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(120,110,96,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(120,110,96,0.08)_1px,transparent_1px)] bg-[size:34px_34px] opacity-55" />
-
-      <div className="absolute inset-0 flex items-center justify-center px-5">
-        <div className="axis-panel-flat mixer-analysis-shell relative w-full max-w-[640px] overflow-hidden rounded-[var(--axis-radius-xl)] px-7 py-7 shadow-[0_36px_90px_-44px_rgba(26,26,31,0.38)]">
-          <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(220,90,36,0.45),transparent)]" />
-          <div className="grid items-center gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="relative mx-auto h-[180px] w-[180px]">
-              <div className="mixer-ring mixer-ring-outer" />
-              <div className="mixer-ring mixer-ring-middle" />
-              <div className="mixer-ring mixer-ring-inner" />
-
-              <div className="mixer-signal mixer-signal-one" />
-              <div className="mixer-signal mixer-signal-two" />
-              <div className="mixer-signal mixer-signal-three" />
-
-              <div className="mixer-card mixer-card-left">
-                <div className="mixer-card-chip" />
-                <div className="mixer-card-line mixer-card-line-long" />
-                <div className="mixer-card-line mixer-card-line-short" />
-              </div>
-              <div className="mixer-card mixer-card-center">
-                <div className="mixer-card-chip" />
-                <div className="mixer-card-line mixer-card-line-long" />
-                <div className="mixer-card-line mixer-card-line-short" />
-              </div>
-              <div className="mixer-card mixer-card-right">
-                <div className="mixer-card-chip" />
-                <div className="mixer-card-line mixer-card-line-long" />
-                <div className="mixer-card-line mixer-card-line-short" />
-              </div>
-            </div>
-
-            <div>
-              <p className="axis-kicker">Mixer analysis</p>
-              <h3 className="mt-2 text-[1.95rem] font-display font-semibold leading-tight tracking-[-0.04em] text-[var(--axis-ink)]">
-                카드뉴스를 연결 가능한 인사이트로 재구성하고 있습니다.
-              </h3>
-              <p className="mt-3 text-sm leading-6 text-[var(--axis-muted)]">
-                선택한 카드, 산업, 키워드 사이의 반복 문맥을 정리하고 SK AX 관점의 제안 문장으로 압축하는 중입니다.
-              </p>
-              <div className="mt-5 grid gap-2">
-                {loadingSteps.map((step, index) => (
-                  <div
-                    key={step}
-                    className="mixer-step-row flex items-center gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-2"
-                    style={{ animationDelay: `${index * 0.36}s` }}
-                  >
-                    <span className="mixer-step-dot" />
-                    <span className="text-sm font-semibold text-[var(--axis-body)]">{step}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 
 function FilterChip({
   children,
@@ -194,112 +129,6 @@ function formatEokValue(value: number) {
   }
   return `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(value)}억`;
 }
-
-type DonutCalloutDatum = {
-  name: string;
-  value: number;
-  color: string;
-};
-
-function polarPoint(cx: number, cy: number, radius: number, angle: number) {
-  return {
-    x: cx + radius * Math.cos(angle),
-    y: cy + radius * Math.sin(angle),
-  };
-}
-
-function donutArcPath(cx: number, cy: number, innerRadius: number, outerRadius: number, startAngle: number, endAngle: number) {
-  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
-  const outerStart = polarPoint(cx, cy, outerRadius, startAngle);
-  const outerEnd = polarPoint(cx, cy, outerRadius, endAngle);
-  const innerEnd = polarPoint(cx, cy, innerRadius, endAngle);
-  const innerStart = polarPoint(cx, cy, innerRadius, startAngle);
-  return [
-    `M ${outerStart.x} ${outerStart.y}`,
-    `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`,
-    `L ${innerEnd.x} ${innerEnd.y}`,
-    `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`,
-    'Z',
-  ].join(' ');
-}
-
-function DonutCalloutChart({ data }: { data: DonutCalloutDatum[] }) {
-  const total = Math.max(1, data.reduce((sum, item) => sum + item.value, 0));
-  let cursor = -Math.PI / 2;
-  const cx = 180;
-  const cy = 118;
-  const outerRadius = 68;
-  const innerRadius = 26;
-  const segments = data.map((item, index) => {
-    const startAngle = cursor;
-    const angle = (item.value / total) * Math.PI * 2;
-    cursor += angle;
-    const endAngle = cursor;
-    const midAngle = startAngle + angle / 2;
-    const side = Math.cos(midAngle) >= 0 ? 'right' : 'left';
-    const anchor = polarPoint(cx, cy, outerRadius + 2, midAngle);
-    const elbow = polarPoint(cx, cy, outerRadius + 18, midAngle);
-    const y = Math.min(202, Math.max(28, elbow.y + (index % 2 === 0 ? -2 : 8)));
-    const labelX = side === 'right' ? 300 : 60;
-    const lineEndX = side === 'right' ? labelX - 24 : labelX + 24;
-    return {
-      ...item,
-      startAngle,
-      endAngle,
-      anchor,
-      elbow: { ...elbow, y },
-      labelX,
-      lineEndX,
-      side,
-      percentage: Math.round((item.value / total) * 100),
-    };
-  });
-
-  return (
-    <svg viewBox="0 0 360 236" className="h-full w-full overflow-visible" role="img" aria-label="선택 비율 도넛 차트">
-      <g>
-        {segments.map((item) => (
-          <path
-            key={item.name}
-            d={donutArcPath(cx, cy, innerRadius, outerRadius, item.startAngle, item.endAngle)}
-            fill={item.color}
-            opacity="0.9"
-          />
-        ))}
-      </g>
-      <circle cx={cx} cy={cy} r={innerRadius - 1} fill="var(--axis-canvas)" />
-      {segments.map((item) => (
-        <g key={`label-${item.name}`}>
-          <path
-            d={`M ${item.anchor.x} ${item.anchor.y} L ${item.elbow.x} ${item.elbow.y} L ${item.lineEndX} ${item.elbow.y}`}
-            fill="none"
-            stroke="var(--axis-muted)"
-            strokeOpacity="0.72"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-          <text
-            x={item.labelX}
-            y={item.elbow.y - 4}
-            textAnchor={item.side === 'right' ? 'end' : 'start'}
-            className="fill-[var(--axis-ink)] text-[13px] font-bold"
-          >
-            {item.name}
-          </text>
-          <text
-            x={item.labelX}
-            y={item.elbow.y + 14}
-            textAnchor={item.side === 'right' ? 'end' : 'start'}
-            className="fill-[var(--axis-muted)] text-[12px] font-semibold"
-          >
-            {item.value} · {item.percentage}%
-          </text>
-        </g>
-      ))}
-    </svg>
-  );
-}
-
 
 export function MixerView({
   bookmarkedIds,
