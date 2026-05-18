@@ -14,7 +14,7 @@ import {
   ExecutiveContainer,
   ExecutivePage,
 } from './executive/ExecutiveSystem';
-import { FloatingCardNewsOverlay } from './AxisPlanningViews';
+import { FloatingCardNewsOverlay } from '../../features/card-news/components/FloatingCardNewsOverlay';
 import { useContentViewMode } from '../../shared/hooks/useContentViewMode';
 
 type BriefingPeriod = 'daily' | 'weekly' | 'monthly';
