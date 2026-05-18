@@ -38,7 +38,7 @@ import {
   MiniStat,
   type KeywordSpikeInsight,
 } from './AxisPlanningShared';
-import { PositioningAlertBar } from './HomeCuratedWidgets';
+import { HomeDeltaFeed } from './HomeCuratedWidgets';
 
 type NavigateHandler = (view: string) => void;
 
@@ -267,12 +267,9 @@ export function HomeDashboardView({
           </aside>
         </section>
 
-        {/* 포지셔닝 변화 알림 — 임계 돌파 시에만 strip 으로 등장 (Phase 2). 변화 없으면 hide. */}
-        <PositioningAlertBar onNavigate={onNavigate} />
-
-        {/* 하단 — RoC/Stock 트렌드 차트 풀폭. 사이드바가 이미 카드 queue 를 표시하므로
-            바닥 right 슬롯에 추가 카드 뷰는 중복. 깊이 분석은 /briefings, /peer 로 진입. */}
-        <section data-guide="home-charts" className="mt-3">
+        {/* 하단 2-col — 좌: RoC/Stock 트렌드 차트 (추세선), 우: DELTA 피드 (차트에 안 보이는
+            차원의 변화: 카드 풀 / 신규 키워드 / peer 순위 / 포지셔닝 임계 통과). */}
+        <section data-guide="home-charts" className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
           {/* 1) RoC/Stock 토글 — designing 의 풍부한 차트 */}
           <ChartButton
             title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
@@ -280,7 +277,7 @@ export function HomeDashboardView({
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
           >
-            <div className="h-[300px]">
+            <div className="flex-1 min-h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 {showStockChart ? (
                   <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
@@ -385,6 +382,9 @@ export function HomeDashboardView({
               </div>
             ) : null}
           </ChartButton>
+
+          {/* 우측 — DELTA 피드. 차트 추세선에 없는 차원 변화 (포지셔닝 임계, 카드 풀, 신규 키워드, peer 순위). */}
+          <HomeDeltaFeed onNavigate={onNavigate} />
         </section>
       </ExecutiveContainer>
       {homeDetailCard ? (

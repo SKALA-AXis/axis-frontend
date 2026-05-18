@@ -177,6 +177,80 @@ export type PositioningAlert = {
   readonly peer: string;
 };
 
+/**
+ * 일간 델타 mock seed — Home 의 'DELTA · 어제 이후 변화' 위젯이 읽는 구조.
+ *
+ * 실제 운영에서는 axis-ai pipeline 이 매일 KST 자정 기준으로 이 구조를 생성:
+ *  - card 풀 일자 분해 → today / prev card_count + event_type 카운트
+ *  - 키워드 검색 트렌드 일별 snapshot 비교 → newKeywords + surgingKeywords
+ *  - peer 별 카드 활동 주간 집계 → peerRankShift
+ *
+ * 현재는 정적 mock seed — 컴포넌트가 *진짜 데이터처럼* 읽을 수 있는 구조만 제공.
+ */
+export type HomeDailyDeltas = {
+  readonly asOf: string;
+  readonly comparedTo: string;
+  readonly generatedAt: string;
+  readonly cardCount: { readonly today: number; readonly prev: number };
+  readonly eventTypeDelta: ReadonlyArray<{
+    readonly type: string;
+    readonly label: string;
+    readonly today: number;
+    readonly prev: number;
+  }>;
+  readonly newKeywords: ReadonlyArray<{
+    readonly keyword: string;
+    readonly firstDetectedAt: string;
+    readonly context: string;
+  }>;
+  readonly peerRankShiftWeekly: {
+    readonly current: ReadonlyArray<{ readonly peer: string; readonly label: string; readonly count: number }>;
+    readonly prev: ReadonlyArray<{ readonly peer: string; readonly label: string; readonly count: number }>;
+  };
+};
+
+export const homeDailyDeltas: HomeDailyDeltas = {
+  asOf: '2026-05-18',
+  comparedTo: '2026-05-17',
+  generatedAt: '2026-05-18T08:30:00+09:00',
+
+  cardCount: {
+    today: 3,
+    prev: 1,
+  },
+
+  eventTypeDelta: [
+    { type: 'partnership', label: '파트너십', today: 1, prev: 0 },
+    { type: 'new_biz', label: '신사업', today: 1, prev: 0 },
+    { type: 'contract', label: '수주', today: 1, prev: 1 },
+  ],
+
+  /** RoC 차트가 추적하지 않는 *완전 신규 등장* 키워드만. (추세 surge 는 차트 영역) */
+  newKeywords: [
+    {
+      keyword: 'Agentic AI Native',
+      firstDetectedAt: '08:14',
+      context: '삼성SDS 컨퍼런스 발표에서 처음 등장',
+    },
+  ],
+
+  /** 주간 peer 카드 활동량 — 순위 변동 감지용. */
+  peerRankShiftWeekly: {
+    current: [
+      { peer: 'posco_dx', label: 'POSCO DX', count: 4 },
+      { peer: 'samsung_sds', label: '삼성SDS', count: 3 },
+      { peer: 'lg_cns', label: 'LG CNS', count: 2 },
+      { peer: 'hyundai_autoever', label: '현대오토에버', count: 2 },
+    ],
+    prev: [
+      { peer: 'samsung_sds', label: '삼성SDS', count: 5 },
+      { peer: 'lg_cns', label: 'LG CNS', count: 3 },
+      { peer: 'hyundai_autoever', label: '현대오토에버', count: 2 },
+      { peer: 'posco_dx', label: 'POSCO DX', count: 1 },
+    ],
+  },
+};
+
 export const homePositioningAlerts: readonly PositioningAlert[] = [
   {
     id: 'hae-3jo-breach',
