@@ -9,7 +9,7 @@ import { mockPeerPlusIrProfiles, mockPeerPlusKeywordCloud, mockPeerPlusOptions, 
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { LoadingBlock } from './AxisPlanningShared';
-import { PositioningPanel } from './PositioningPanels';
+import { MediaExposurePanel, PositioningPanel } from './PositioningPanels';
 
 type NavigateHandler = (view: string) => void;
 
@@ -246,9 +246,11 @@ export function PeerPlusView({
           }
         />
 
-        {/* 산업 포지셔닝 차트 — Peer+ 진입 시 한 눈에 보이는 객관 지표 (미디어 노출도는 홈) */}
-        <section className="mb-5">
+        {/* 산업 포지셔닝 (메인) + 미디어 노출도 (보조 AUXILIARY) — Peer 비교의 두 축.
+            메인은 매출×성장률 사업 위상, 보조는 PR/IR 도달량 (self-peer bias 격리). */}
+        <section className="mb-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
           <PositioningPanel />
+          <MediaExposurePanel />
         </section>
 
         <section className="mb-5">

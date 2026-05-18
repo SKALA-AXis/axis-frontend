@@ -342,8 +342,9 @@ export function MediaExposurePanel() {
       <p className="mt-3 rounded-md border border-[#E0822F] bg-[rgba(220,90,36,0.05)] px-3 py-2 text-[10px] leading-5 text-[var(--axis-muted)]">
         <span className="font-semibold text-[var(--axis-accent-strong)]">⚠️ 해석 주의 — self-peer bias:</span>{' '}
         자사는 보도자료·IR 을 직접 발행하므로 자사 출처가 자동으로 많아짐. 이는 회사가 잘하고 있다는 신호가 아니라
-        PR 부서의 활동량 신호. <strong>총 노출량 (자사+외부) 만 보면 SK 1위지만, 외부 출처만 보면 SDS 가 1위, SK 가 2위</strong>.
-        본 위젯은 사업 위상 비교가 아니라 PR/IR 도달 추적 용도. 사업 위상은 위 메인 차트 (매출 × 성장률) 참조.
+        PR 부서의 활동량 신호. raw count 로는 외부에서도 SK 가 1위 (219건) 지만,{' '}
+        <strong>자사 1건당 외부 픽업 효율 (leverage) 로 보면 SDS 10.75× / HAE 6.90× / SK 1.24× / POS 0.77× / LGC 0.50×</strong>{' '}
+        — SDS 의 PR 메시지가 외부에서 가장 잘 받아 적힘. 본 위젯은 사업 위상 비교가 아니라 PR/IR 도달 효율 추적 용도. 사업 위상은 좌측 메인 차트 (매출 × 성장률) 참조.
         <br />
         <span className="mt-1 inline-block italic">
           SK 는 점선 테두리 = "자사 — 다른 4 peer 와 같은 자로 재지 않음" 표기.

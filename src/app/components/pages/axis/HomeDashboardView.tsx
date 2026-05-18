@@ -38,7 +38,6 @@ import {
   MiniStat,
   type KeywordSpikeInsight,
 } from './AxisPlanningShared';
-import { MediaExposurePanel } from './PositioningPanels';
 
 type NavigateHandler = (view: string) => void;
 
@@ -267,8 +266,9 @@ export function HomeDashboardView({
           </aside>
         </section>
 
-        {/* 하단 2 차트 — RoC/Stock 토글 + 미디어 노출도 (자사 vs 외부) */}
-        <section data-guide="home-charts" className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        {/* 하단 — RoC/Stock 토글 차트 단독. 미디어 노출 추적은 보조 위젯이라 Peer+ 로 이관.
+            추후 이 자리에 '오늘의 주목 경쟁사 카드 피드' (event_type 필터 + credibility 정렬) 추가 예정. */}
+        <section data-guide="home-charts" className="mt-4">
           {/* 1) RoC/Stock 토글 — designing 의 풍부한 차트 */}
           <ChartButton
             title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
@@ -276,7 +276,7 @@ export function HomeDashboardView({
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
           >
-            <div className="flex-1 min-h-[200px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 {showStockChart ? (
                   <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
@@ -355,23 +355,12 @@ export function HomeDashboardView({
                     }))
               }
             />
-            {/* 차트 안내 — 우측 미디어 노출도 패널의 caveat 와 시각 균형 + 사용법 명시 */}
-            <div className="mt-3 rounded-md border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-2.5 text-[11px] leading-5 text-[var(--axis-muted)]">
-              <p className="font-semibold text-[var(--axis-accent-strong)]">AUXILIARY · 차트 안내</p>
-              {showStockChart ? (
-                <p className="mt-1">
-                  Peer 4 사 (삼성SDS · LG CNS · 현대오토에버 · 포스코DX) <span className="font-semibold text-[var(--axis-ink)]">종가 일별 추이</span>.
-                  같은 기간 안 <strong>상대 변동</strong> 비교용 — 절대값보다 같이 움직이는 시점이 더 의미 있는 신호.
-                  데이터 출처: KRX / Yahoo Finance.
-                </p>
-              ) : (
-                <p className="mt-1">
-                  네이버 데이터랩 기반 <span className="font-semibold text-[var(--axis-ink)]">키워드별 시간대 검색 트렌드</span>.
-                  선 위 강조된 <span className="font-semibold text-[var(--axis-accent-strong)]">⭕ 포인트</span> 를 클릭하면 그 시점의
-                  <strong> 급등 원인 + SK AX 관점 해석</strong> 을 함께 볼 수 있습니다.
-                </p>
-              )}
-            </div>
+            {/* 차트 안내 — heavy 박스가 아니라 1-line footer 캡션 (홈은 입구. 깊은 설명은 차트별 detail 페이지로) */}
+            <p className="mt-2 text-[10px] leading-4 text-[var(--axis-muted)]">
+              {showStockChart
+                ? 'Peer 4사 종가 일별 추이 · KRX / Yahoo Finance'
+                : '키워드 검색 트렌드 (네이버 데이터랩) · ⭕ 포인트 클릭 = 급등 원인 + 해석'}
+            </p>
             {!showStockChart && selectedKeywordInsight ? (
               <div
                 className="mt-3 rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.18)] bg-[rgba(255,255,255,0.78)] p-3"
@@ -392,9 +381,6 @@ export function HomeDashboardView({
               </div>
             ) : null}
           </ChartButton>
-
-          {/* 2) 미디어 노출도 — 자사 보도자료 vs 외부 출처 (self-peer bias 격리) */}
-          <MediaExposurePanel />
         </section>
       </ExecutiveContainer>
       {homeDetailCard ? (
