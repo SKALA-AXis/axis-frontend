@@ -73,6 +73,7 @@ import { useContentViewMode } from '../../shared/hooks/useContentViewMode';
 import { getPeerLogo } from '../../shared/utils/peerLogo';
 import { LoadingBlock, EmptyBlock } from '../../shared/ui/page-state';
 import { GraphifyPreview } from '../../shared/ui/graphify-preview';
+import { getCardSourceOptions, dedupeCardsById } from '../../features/card-news/utils/cardSources';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -160,50 +161,6 @@ async function shareCardNews(card: CardNewsItem) {
 }
 
 export { shareCardNews };
-
-function getCardSourceOptions(card: CardNewsItem) {
-  const fromSources = (card.sources ?? []).map((source, index) => ({
-    id: `source-${index}`,
-    title: source.title || source.source_name || `원문 ${index + 1}`,
-    meta: source.source_name ?? source.published_at ?? '',
-    url: source.url,
-  }));
-  const fromEvidence = (card.evidence_chain?.source_links ?? [])
-    .filter((source) => typeof source.url === 'string' && source.url.trim().length > 0)
-    .map((source, index) => ({
-      id: `evidence-${index}`,
-      title: source.title || source.source_name || `관련 기사 ${index + 1}`,
-      meta: source.source_name ?? '',
-      url: source.url as string,
-    }));
-  const fallback = card.sourceUrl && card.sourceUrl !== '#'
-    ? [{
-        id: 'fallback',
-        title: card.source || '대표 원문',
-        meta: '',
-        url: card.sourceUrl,
-      }]
-    : [];
-
-  const seen = new Set<string>();
-  return [...fromSources, ...fromEvidence, ...fallback].filter((item) => {
-    if (!item.url || seen.has(item.url)) {
-      return false;
-    }
-    seen.add(item.url);
-    return true;
-  });
-}
-
-function dedupeCardsById(cards: CardNewsItem[]) {
-  const byId = new Map<string, CardNewsItem>();
-  cards.forEach((card) => {
-    if (!byId.has(card.id)) {
-      byId.set(card.id, card);
-    }
-  });
-  return Array.from(byId.values());
-}
 
 function FilterChip({
   children,
