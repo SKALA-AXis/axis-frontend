@@ -4,8 +4,8 @@
  */
 import { AlertCircle, FileSearch } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { cn } from '../../shared/ui/utils';
-import { Button } from '../../shared/ui/button';
+import { cn } from './utils';
+import { Button } from './button';
 
 /* ─── Skeleton — 카드 자리 placeholder ─────────────────────── */
 export function CardSkeleton({ ratio = '4/3' }: { ratio?: '4/3' | '16/9' }) {
