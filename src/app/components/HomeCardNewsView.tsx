@@ -20,8 +20,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
-import { Button } from './ui/button';
+} from '../../shared/ui/dialog';
+import { Button } from '../../shared/ui/button';
 import { FloatingAiChat } from './FloatingAiChat';
 import { PlaceholderPattern } from './PlaceholderPattern';
 import { CardNewsDetailView } from './CardNewsDetailView';

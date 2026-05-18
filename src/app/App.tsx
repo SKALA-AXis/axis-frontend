@@ -16,7 +16,7 @@ import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
 import { TopNav } from './components/TopNav';
 import { FloatingAiChat } from './components/FloatingAiChat';
-import { Input } from './components/ui/input';
+import { Input } from '../shared/ui/input';
 import { viewLabels } from '../shared/content/navigation';
 import { useViewRouting } from '../shared/hooks/useViewRouting';
 import { guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../shared/content/productGuide';

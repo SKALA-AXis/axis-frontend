@@ -2,7 +2,7 @@
  * PlaceholderPattern — 이미지 없는 카드의 시각 자산 (§18.2)
  * Peer 별 abstract gradient + 반복 도트 패턴 + 워터마크.
  */
-import { cn } from './ui/utils';
+import { cn } from '../../shared/ui/utils';
 
 const peerGradients: Record<string, string> = {
   // 코퍼레이트 컬러 기반
