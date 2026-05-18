@@ -6,6 +6,7 @@ import {
   cardNewsPeerTitleAliases,
   cardNewsSectorLabels,
 } from '../../../shared/content/cardNewsLabels';
+import { getPeerLogo } from '../../../shared/utils/peerLogo';
 
 export function getPeerLabel(card: CardNewsItem) {
   if (card.peer_id) {
@@ -121,7 +122,12 @@ export function getExecutiveRank(cards: CardNewsItem[]) {
 }
 
 export function getCardImage(card: CardNewsItem) {
-  return card.display?.background_asset_url ?? card.slides?.find((slide) => slide.image_url)?.image_url ?? card.coverImageUrl;
+  return (
+    card.display?.background_asset_url ??
+    card.slides?.find((slide) => slide.image_url)?.image_url ??
+    card.coverImageUrl ??
+    getPeerLogo(card.peer_id)
+  );
 }
 
 export function getCardImageAlt(card: CardNewsItem) {
