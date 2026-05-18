@@ -276,7 +276,7 @@ export function HomeDashboardView({
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
           >
-            <div className="h-[170px]">
+            <div className="flex-1 min-h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 {showStockChart ? (
                   <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>

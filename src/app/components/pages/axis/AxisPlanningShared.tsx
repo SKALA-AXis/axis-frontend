@@ -70,7 +70,7 @@ export function ChartButton({
   controls?: ReactNode;
 }) {
   return (
-    <div className="axis-panel-flat p-4 text-left transition hover:border-[var(--axis-accent)]">
+    <div className="axis-panel-flat flex h-full flex-col p-4 text-left transition hover:border-[var(--axis-accent)]">
       <div className="mb-2.5 flex items-start justify-between gap-3">
         <div>
           <p className="axis-kicker">{helper}</p>
@@ -83,7 +83,7 @@ export function ChartButton({
           </span>
         </div>
       </div>
-      {children}
+      <div className="flex flex-1 flex-col">{children}</div>
     </div>
   );
 }
