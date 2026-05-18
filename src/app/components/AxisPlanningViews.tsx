@@ -73,6 +73,7 @@ import { getCardSourceOptions, dedupeCardsById } from '../../features/card-news/
 import { shareCardNews } from '../../features/card-news/utils/cardSharing';
 import { FloatingCardNewsOverlay } from '../../features/card-news/components/FloatingCardNewsOverlay';
 import { ChartButton } from '../../features/home/components/ChartButton';
+import { formatEokValue } from '../../features/peer-strategy/utils/formatEokValue';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -114,13 +115,6 @@ function MiniStat({ label, value }: { label: string; value: string | number }) {
       <p className="mt-1 text-sm font-semibold text-[var(--axis-ink)]">{value}</p>
     </div>
   );
-}
-
-function formatEokValue(value: number) {
-  if (value >= 10000) {
-    return `${(value / 10000).toFixed(2)}조`;
-  }
-  return `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(value)}억`;
 }
 
 export function PeerPlusView({
