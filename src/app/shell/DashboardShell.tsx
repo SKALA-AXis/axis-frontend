@@ -4,11 +4,11 @@ import { BriefingsView } from '../components/BriefingsView';
 import {
   InsightResultView,
   KeywordGraphView,
-  PeerPlusView,
 } from '../components/AxisPlanningViews';
 import { CardNewsWorkspaceView } from '../../features/card-news/components/CardNewsWorkspaceView';
 import { HomeDashboardView } from '../../features/home/components/HomeDashboardView';
 import { MixerView } from '../../features/mixer/components/MixerView';
+import { PeerPlusView } from '../../features/peer-strategy/components/PeerPlusView';
 import { GlobalTrendsView } from '../components/GlobalTrendsView';
 import { RawArticlesView } from '../components/RawArticlesView';
 import { SettingsView } from '../components/SettingsView';
