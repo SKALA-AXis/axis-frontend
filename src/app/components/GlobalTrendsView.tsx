@@ -1,5 +1,5 @@
 import { Globe, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useGlobalTrends } from '../../features/global-trends/hooks/useGlobalTrends';
 import type { GlobalTrendsResponse } from '../../features/global-trends/model/globalTrends';
 
@@ -43,10 +43,8 @@ export function GlobalTrendsView() {
   const [windowDays, setWindowDays] = useState<number>(30);
   const [showSteps, setShowSteps] = useState(false);
 
-  useEffect(() => {
-    run({ windowDays });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // mount 시 자동 실행 제거 — 사용자가 "분석 실행" 버튼 클릭해야 LLM 호출.
+  // hook 의 module-level cache 가 같은 input 재호출 시 cache hit 으로 LLM 스킵.
 
   const handleRun = () => {
     run({ windowDays });

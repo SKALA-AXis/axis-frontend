@@ -90,6 +90,10 @@ interface UseInsightGenerationResult {
   regenerate: () => void;
 }
 
+// Module-level cache — 같은 cardIds 조합 재진입 시 cached result 반환.
+// LLM 호출 비용/시간 절감. page reload 시까지 유지. regenerate() 호출 시 무효화.
+const _resultCache = new Map<string, InsightDisplayResult>();
+
 export function useInsightGeneration({
   cardIds,
   autoRun = true,
@@ -102,11 +106,21 @@ export function useInsightGeneration({
   const stableKey = useMemo(() => cardIds.join('|'), [cardIds]);
 
   const regenerate = useCallback(() => {
+    // cache invalidate — 같은 입력이라도 강제 재호출
+    _resultCache.delete(stableKey);
     setRunToken((prev) => prev + 1);
-  }, []);
+  }, [stableKey]);
 
   useEffect(() => {
     if (!autoRun || cardIds.length === 0) {
+      return;
+    }
+
+    // Cache hit — LLM 호출 스킵
+    const cached = _resultCache.get(stableKey);
+    if (cached) {
+      setResult(cached);
+      setError(null);
       return;
     }
 
@@ -118,7 +132,9 @@ export function useInsightGeneration({
       .generate({ cardIds })
       .then((raw) => {
         if (cancelled) return;
-        setResult(adaptInsightResponse(raw));
+        const adapted = adaptInsightResponse(raw);
+        _resultCache.set(stableKey, adapted);
+        setResult(adapted);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
