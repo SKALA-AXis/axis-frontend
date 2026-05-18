@@ -74,6 +74,7 @@ import { getPeerLogo } from '../../shared/utils/peerLogo';
 import { LoadingBlock, EmptyBlock } from '../../shared/ui/page-state';
 import { GraphifyPreview } from '../../shared/ui/graphify-preview';
 import { getCardSourceOptions, dedupeCardsById } from '../../features/card-news/utils/cardSources';
+import { shareCardNews } from '../../features/card-news/utils/cardSharing';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -150,17 +151,6 @@ function MixerAnalysisOverlay() {
   );
 }
 
-async function shareCardNews(card: CardNewsItem) {
-  const text = `${card.title}\n${getSummaryLines(card).join('\n')}\n${card.sourceUrl}`;
-  if (navigator.share) {
-    await navigator.share({ title: card.title, text, url: card.sourceUrl });
-    return '공유를 열었습니다.';
-  }
-  await navigator.clipboard.writeText(text);
-  return '카드뉴스 링크를 복사했습니다.';
-}
-
-export { shareCardNews };
 
 function FilterChip({
   children,
