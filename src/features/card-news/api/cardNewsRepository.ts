@@ -170,7 +170,6 @@ function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
     sector: card.sector,
     exposure_band: card.exposure_band,
     exposure_score: card.exposure_score,
-    trust_score: card.trust_score,
     implication: card.implication,
     sources: normalizedSources,
     source_count: card.source_count ?? card.sources?.length ?? null,

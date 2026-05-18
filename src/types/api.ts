@@ -1607,8 +1607,6 @@ export interface components {
             exposure_band?: components["schemas"]["ExposureBandEnum"];
             /** Format: float */
             exposure_score?: number;
-            /** Format: float */
-            trust_score?: number;
             implication?: components["schemas"]["Implication"];
             sources?: components["schemas"]["Source"][];
             /** @description 카드 뉴스 생성에 사용된 출처 수 */
@@ -1770,10 +1768,6 @@ export interface components {
             source_name?: string;
             /** Format: date-time */
             published_at: string;
-            /** @enum {string} */
-            credibility_grade?: "High" | "Medium" | "Low" | "Unverified";
-            /** Format: float */
-            credibility_score?: number;
             /**
              * @default ok
              * @enum {string}
@@ -1789,8 +1783,6 @@ export interface components {
                 title?: string;
                 source_name?: string;
                 url?: string;
-                /** Format: float */
-                credibility_score?: number;
             }[];
             provenance?: {
                 raw_article_ids?: number[];
@@ -2689,8 +2681,6 @@ export interface components {
         };
         RawArticleDetail: components["schemas"]["RawArticle"] & {
             content?: string;
-            credibilityScore?: number | null;
-            credibilityGrade?: string | null;
             clusterId?: number | null;
             metadata?: Record<string, never>;
         };

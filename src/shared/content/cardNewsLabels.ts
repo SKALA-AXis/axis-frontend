@@ -25,7 +25,6 @@ export const cardNewsExecutiveDefaults = {
   peerLabel: '전체 Peer',
   exposureLabel: 'Watch',
   exposureScore: 74,
-  trustScore: 86,
   financialNarrative: '재무 연결 정보는 상세 근거에서 확인하세요.',
 } as const;
 

@@ -15,7 +15,6 @@ import {
   getSourceCount,
   getSummaryLines,
   getSuggestedActions,
-  getTrustScore,
   getWhyImportant,
 } from '../../features/card-news/mappers/cardNewsExecutive';
 import { getPeerTheme } from '../../features/card-news/peerTheme';
@@ -180,8 +179,6 @@ export function CardNewsDetailView({
             <span>{getDisplayDate(card)}</span>
             <span className="text-white/30">·</span>
             <span>출처 {getSourceCount(card)}건</span>
-            <span className="text-white/30">·</span>
-            <span>신뢰도 {getTrustScore(card)}%</span>
           </div>
         </div>
       </section>
@@ -343,12 +340,6 @@ export function CardNewsDetailView({
                           <>
                             <span className="text-hairline-strong">·</span>
                             <span>{src.published_at.slice(0, 10)}</span>
-                          </>
-                        )}
-                        {typeof src.credibility_score === 'number' && (
-                          <>
-                            <span className="text-hairline-strong">·</span>
-                            <span>신뢰도 {Math.round(src.credibility_score * 100)}%</span>
                           </>
                         )}
                       </div>

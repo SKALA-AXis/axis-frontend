@@ -41,19 +41,6 @@ export function getExposureScore(card: CardNewsItem) {
   return typeof legacyScore?.value === 'number' ? legacyScore.value : cardNewsExecutiveDefaults.exposureScore;
 }
 
-export function getTrustScore(card: CardNewsItem) {
-  if (typeof card.trust_score === 'number') {
-    return card.trust_score > 1 ? Math.round(card.trust_score) : Math.round(card.trust_score * 100);
-  }
-
-  const sourceScore = card.sources?.find((source) => typeof source.credibility_score === 'number')?.credibility_score;
-  if (typeof sourceScore === 'number') {
-    return sourceScore > 1 ? Math.round(sourceScore) : Math.round(sourceScore * 100);
-  }
-
-  return cardNewsExecutiveDefaults.trustScore;
-}
-
 export function getSummaryLines(card: CardNewsItem) {
   return card.summary_lines && card.summary_lines.length > 0 ? card.summary_lines : card.summary;
 }
@@ -117,7 +104,7 @@ export function getExecutiveRank(cards: CardNewsItem[]) {
       return exposureDelta;
     }
 
-    return getTrustScore(b) - getTrustScore(a);
+    return String(getDisplayDate(b) ?? '').localeCompare(String(getDisplayDate(a) ?? ''));
   });
 }
 
@@ -140,7 +127,6 @@ export function getEvidenceChain(card: CardNewsItem): CardNewsEvidenceChain {
       title: source.title,
       source_name: source.source_name,
       url: source.url,
-      credibility_score: source.credibility_score,
     })),
     financial_refs: [],
     mbb_refs: [],

@@ -12,7 +12,6 @@ import {
   getSuggestedActions,
   getSummaryLines,
   getSourceCount,
-  getTrustScore,
 } from '../../features/card-news/mappers/cardNewsExecutive';
 import {
   Dialog,
@@ -193,9 +192,6 @@ export function HomeCardNewsView({ activeCardId, bookmarkedIds, onToggleBookmark
   // Stats
   const totalCount = rankedCards.length;
   const urgentCount = rankedCards.filter((c) => c.exposure_band === 'high').length;
-  const avgTrust = rankedCards.length
-    ? Math.round(rankedCards.reduce((a, c) => a + getTrustScore(c), 0) / rankedCards.length)
-    : 0;
   const peerSet = new Set(rankedCards.map((c) => c.peer_id ?? 'unknown'));
 
   // 오늘 날짜
@@ -343,8 +339,7 @@ export function HomeCardNewsView({ activeCardId, bookmarkedIds, onToggleBookmark
               <div className="flex flex-wrap items-center gap-3 text-caption text-stone mb-8">
                 <span>AXIS AI</span><span className="text-hairline-strong">·</span>
                 <span>{getDisplayDate(heroCard)}</span><span className="text-hairline-strong">·</span>
-                <span>출처 {getSourceCount(heroCard)}건</span><span className="text-hairline-strong">·</span>
-                <span>신뢰도 {getTrustScore(heroCard)}%</span>
+                <span>출처 {getSourceCount(heroCard)}건</span>
               </div>
               <div className="flex items-center gap-3">
                 <Button onClick={() => setDetailCardId(heroCard.id)}>
@@ -360,10 +355,9 @@ export function HomeCardNewsView({ activeCardId, bookmarkedIds, onToggleBookmark
       {/* ─── 3. STATS STRIP (Hero 아래로 이동) ──────────────────── */}
       <section className="border-b border-hairline-soft">
         <div className="mx-auto max-w-[1280px] px-6 py-12 lg:px-12">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-12">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-3 md:gap-12">
             <Stat label="오늘 동향 카드" value={totalCount} unit="건" />
             <Stat label="우선 검토" value={urgentCount} unit="건" />
-            <Stat label="평균 신뢰도" value={avgTrust} unit="%" />
             <Stat label="모니터링 Peer" value={peerSet.size} unit="사" />
           </div>
         </div>

@@ -19,7 +19,6 @@ import {
   getExposureScore,
   getPeerLabel,
   getSuggestedActions,
-  getTrustScore,
 } from '../../features/card-news/mappers/cardNewsExecutive';
 import {
   ExecutiveBadge,
@@ -222,7 +221,6 @@ function TrendPanel({
   const exposureSeries = cards.map((card, index) => ({
     label: `${index + 1}`,
     exposure: getExposureScore(card),
-    trust: getTrustScore(card),
   }));
 
   return (
@@ -230,7 +228,7 @@ function TrendPanel({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="axis-kicker">Trend</p>
-          <h2 className="axis-section-heading mt-1">{metric === 'stock' ? 'Peer사 주가 흐름' : '카드 노출도와 신뢰도'}</h2>
+          <h2 className="axis-section-heading mt-1">{metric === 'stock' ? 'Peer사 주가 흐름' : '카드 노출도'}</h2>
         </div>
         <ExecutiveBadge tone="accent">{metric === 'stock' ? 'Financial' : 'CardNews'}</ExecutiveBadge>
       </div>
@@ -254,7 +252,6 @@ function TrendPanel({
             <YAxis tick={{ fontSize: 11, fill: '#6B6B73' }} domain={[0, 100]} />
             <Tooltip />
             <Line type="monotone" dataKey="exposure" name="노출 점수" stroke="#DC5A24" strokeWidth={2.4} />
-            <Line type="monotone" dataKey="trust" name="신뢰도" stroke="#E0822F" strokeWidth={2.2} />
           </LineChart>
         )}
       </ResponsiveContainer>
