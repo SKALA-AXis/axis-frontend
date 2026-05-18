@@ -1,7 +1,7 @@
 import { Globe, Sparkles } from 'lucide-react';
 import { useState } from 'react';
-import { useGlobalTrends } from '../../features/global-trends/hooks/useGlobalTrends';
-import type { GlobalTrendsResponse } from '../../features/global-trends/model/globalTrends';
+import { useGlobalTrends } from '../hooks/useGlobalTrends';
+import type { GlobalTrendsResponse } from '../model/globalTrends';
 
 const COMPANY_LABEL: Record<string, string> = {
   nvidia: 'NVIDIA',

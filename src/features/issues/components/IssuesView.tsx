@@ -3,11 +3,11 @@
  * Peer 칩 필터만 최소로 유지. 책등 클릭 시 CardNewsDetailView 풀스크린.
  */
 import { useMemo, useState } from 'react';
-import { useCardNews } from '../../features/card-news/hooks/useCardNews';
-import type { CardNewsItem, PeerId } from '../../features/card-news/model/cardNews';
-import { getExecutiveRank } from '../../features/card-news/mappers/cardNewsExecutive';
-import { CardNewsBookSpineList } from '../../features/card-news/components/CardNewsBookSpine';
-import { CardNewsDetailView } from '../../features/card-news/components/CardNewsDetailView';
+import { useCardNews } from '../../card-news/hooks/useCardNews';
+import type { CardNewsItem, PeerId } from '../../card-news/model/cardNews';
+import { getExecutiveRank } from '../../card-news/mappers/cardNewsExecutive';
+import { CardNewsBookSpineList } from '../../card-news/components/CardNewsBookSpine';
+import { CardNewsDetailView } from '../../card-news/components/CardNewsDetailView';
 
 interface IssuesViewProps {
   bookmarkedIds: string[];

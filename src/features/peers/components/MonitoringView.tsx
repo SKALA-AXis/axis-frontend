@@ -11,16 +11,16 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useCardNews } from '../../features/card-news/hooks/useCardNews';
-import { useDashboard } from '../../features/dashboard/hooks/useDashboard';
-import type { CardNewsItem, PeerId } from '../../features/card-news/model/cardNews';
+import { useCardNews } from '../../card-news/hooks/useCardNews';
+import { useDashboard } from '../../dashboard/hooks/useDashboard';
+import type { CardNewsItem, PeerId } from '../../card-news/model/cardNews';
 import {
   getExecutiveRank,
   getExposureScore,
   getPeerLabel,
   getSuggestedActions,
   getTrustScore,
-} from '../../features/card-news/mappers/cardNewsExecutive';
+} from '../../card-news/mappers/cardNewsExecutive';
 import {
   ExecutiveBadge,
   ExecutiveCard,
@@ -28,8 +28,8 @@ import {
   ExecutiveHeader,
   ExecutivePage,
   TrustSeal,
-} from './executive/ExecutiveSystem';
-import { FloatingAiChat } from './FloatingAiChat';
+} from '../../../app/components/executive/ExecutiveSystem';
+import { FloatingAiChat } from '../../../app/components/FloatingAiChat';
 
 type PeerFilter = 'all' | PeerId;
 

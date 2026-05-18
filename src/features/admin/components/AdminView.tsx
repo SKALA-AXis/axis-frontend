@@ -7,14 +7,14 @@ import {
   ExecutiveHeader,
   ExecutiveMetric,
   ExecutivePage,
-} from './executive/ExecutiveSystem';
+} from '../../../app/components/executive/ExecutiveSystem';
 import {
   mockAdminAuditLogs,
   mockAdminPeers,
   mockAdminPrompts,
   mockAdminSchedulerJobs,
   mockAdminSources,
-} from '../../shared/mocks/admin';
+} from '../../../shared/mocks/admin';
 
 type AdminTab = 'peers' | 'sources' | 'prompts' | 'scheduler' | 'usage' | 'audit';
 

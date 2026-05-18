@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { GitMerge, Share2, Wand2 } from 'lucide-react';
-import { useCardNews } from '../../features/card-news/hooks/useCardNews';
-import type { CardNewsItem } from '../../features/card-news/model/cardNews';
+import { useCardNews } from '../../card-news/hooks/useCardNews';
+import type { CardNewsItem } from '../../card-news/model/cardNews';
 import {
   getExecutiveRank,
   getExposureScore,
   getPeerLabel,
   getSuggestedActions,
   getSummaryLines,
-} from '../../features/card-news/mappers/cardNewsExecutive';
+} from '../../card-news/mappers/cardNewsExecutive';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -17,7 +17,7 @@ import {
   ExecutiveHeader,
   ExecutiveMetric,
   ExecutivePage,
-} from './executive/ExecutiveSystem';
+} from '../../../app/components/executive/ExecutiveSystem';
 
 interface RawArticlesViewProps {
   bookmarkedIds: string[];

@@ -1,8 +1,8 @@
 import { Bell, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { useAlerts } from '../../features/alerts/hooks/useAlerts';
-import type { AlertRule } from '../../features/alerts/model/alert';
-import { uiText } from '../../shared/content/uiText';
+import { useAlerts } from '../hooks/useAlerts';
+import type { AlertRule } from '../model/alert';
+import { uiText } from '../../../shared/content/uiText';
 
 export function AlertsView() {
   const { alertsData, isLoading, error } = useAlerts();

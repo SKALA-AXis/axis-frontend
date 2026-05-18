@@ -6,13 +6,13 @@ import {
   ExecutiveContainer,
   ExecutiveHeader,
   ExecutivePage,
-} from './executive/ExecutiveSystem';
+} from '../../../app/components/executive/ExecutiveSystem';
 import {
   getStoredContentViewMode,
   setStoredContentViewMode,
   type ContentViewMode,
-} from '../../shared/config/viewPreferences';
-import { mockLoginHistory } from '../../shared/mocks/userSettings';
+} from '../../../shared/config/viewPreferences';
+import { mockLoginHistory } from '../../../shared/mocks/userSettings';
 
 type SettingsTab = 'account' | 'view' | 'history' | 'notifications';
 
