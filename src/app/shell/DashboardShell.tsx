@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AdminView } from '../../features/admin/components/AdminView';
-import { BriefingsView } from '../components/BriefingsView';
+import { BriefingsView } from '../../features/briefings/components/BriefingsView';
 import { CardNewsWorkspaceView } from '../../features/card-news/components/CardNewsWorkspaceView';
 import { HomeDashboardView } from '../../features/home/components/HomeDashboardView';
 import { MixerView } from '../../features/mixer/components/MixerView';
