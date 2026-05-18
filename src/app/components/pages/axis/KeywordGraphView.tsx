@@ -509,7 +509,7 @@ export function KeywordGraphView({
               role="button"
               tabIndex={0}
               onClick={() => selectGraphNode(node.id)}
-              onDoubleClick={() => onNavigate(node.sourceType === 'cardnews' ? 'issues' : 'insight')}
+              onDoubleClick={() => onNavigate(node.sourceType === 'cardnews' ? 'issues' : 'briefings')}
               onMouseEnter={() => setHoveredId(node.id)}
               onMouseLeave={() => setHoveredId(null)}
               className="cursor-pointer"
@@ -705,8 +705,8 @@ export function KeywordGraphView({
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
-                  <ExecutiveButton variant="secondary" onClick={() => onNavigate('insight')}>
-                    관련 인사이트 보기
+                  <ExecutiveButton variant="secondary" onClick={() => onNavigate('briefings')}>
+                    관련 브리핑 보기
                   </ExecutiveButton>
                 </div>
               ) : null}

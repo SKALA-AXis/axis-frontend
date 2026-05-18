@@ -5,7 +5,6 @@ import {
   BriefingsView,
   CardNewsWorkspaceView,
   HomeDashboardView,
-  InsightResultView,
   KeywordGraphView,
   MixerView,
   PeerPlusView,
@@ -17,6 +16,7 @@ import { TopNav } from './components/layout/TopNav';
 import { FloatingAiChat } from './components/shared/FloatingAiChat';
 import { Input } from './components/ui/input';
 import { viewLabels } from '../shared/content/navigation';
+import { useViewRouting } from '../shared/hooks/useViewRouting';
 import { commonGuideSteps, guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../shared/content/productGuide';
 import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../shared/mocks/peerPlus';
 
@@ -658,7 +658,8 @@ function InAppGuideOverlay({
 }
 
 function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => void; showGuide: boolean; onGuideDone: () => void }) {
-  const [activeView, setActiveView] = useState('home');
+  // URL ↔ view state 양방향 동기화 — 브라우저 back/forward / direct URL / share link 지원
+  const [activeView, setActiveView] = useViewRouting('home');
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
   const [peerPlusSelectedPeer, setPeerPlusSelectedPeer] = useState<PeerPlusPeerId | undefined>(undefined);
   const [cardNewsSearchQuery, setCardNewsSearchQuery] = useState('');
@@ -680,6 +681,14 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
   });
 
   const isAdmin = currentUserRole === 'admin';
+
+  // direct URL `/admin` 진입 시 비관리자라면 home 으로. handleViewChange 는 sidebar 클릭만
+  // 가드 → URL 직진입 우회 케이스 보완.
+  useEffect(() => {
+    if (activeView === 'admin' && !isAdmin) {
+      setActiveView('home');
+    }
+  }, [activeView, isAdmin, setActiveView]);
 
   useEffect(() => {
     window.localStorage.setItem(bookmarksStorageKey, JSON.stringify(bookmarkedIds));
@@ -736,6 +745,11 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
       setActiveView('mixer');
       return;
     }
+    // 인사이트 페이지는 브리핑에 흡수됨 — back-compat redirect
+    if (view === 'insight') {
+      setActiveView('briefings');
+      return;
+    }
     setActiveView(view);
   };
 
@@ -771,14 +785,6 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
         );
       case 'issues':
         return <CardNewsWorkspaceView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} initialQuery={cardNewsSearchQuery} />;
-      case 'insight':
-        return (
-          <InsightResultView
-            onNavigate={handleViewChange}
-            bookmarkedIds={bookmarkedIds}
-            onToggleBookmark={toggleBookmark}
-          />
-        );
       case 'mixer':
         return <MixerView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
       case 'keywordGraph':

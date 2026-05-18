@@ -4,7 +4,6 @@ export const viewLabels: Record<string, string> = {
   matching: '믹서',
   peerPlus: 'Peer+',
   issues: '카드뉴스',
-  insight: '인사이트',
   keywordGraph: '키워드 그래프',
   monitoring: 'Peer+',
   mixer: '믹서',
@@ -17,7 +16,6 @@ export const viewLabels: Record<string, string> = {
 export const primaryNavigationItems = [
   { id: 'home', label: '홈' },
   { id: 'briefings', label: '브리핑' },
-  { id: 'insight', label: '인사이트' },
   { id: 'peerPlus', label: 'Peer+' },
   { id: 'issues', label: '카드뉴스' },
   { id: 'mixer', label: '믹서' },
