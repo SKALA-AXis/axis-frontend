@@ -17,7 +17,7 @@ import {
   ExecutiveHeader,
   ExecutiveMetric,
   ExecutivePage,
-} from '../../../app/components/executive/ExecutiveSystem';
+} from '../../../shared/ui/ExecutiveSystem';
 
 interface RawArticlesViewProps {
   bookmarkedIds: string[];

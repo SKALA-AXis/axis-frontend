@@ -7,7 +7,7 @@ import {
   ExecutiveHeader,
   ExecutiveMetric,
   ExecutivePage,
-} from '../../../app/components/executive/ExecutiveSystem';
+} from '../../../shared/ui/ExecutiveSystem';
 import {
   mockAdminAuditLogs,
   mockAdminPeers,

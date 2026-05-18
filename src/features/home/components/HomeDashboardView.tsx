@@ -40,7 +40,7 @@ import {
   ExecutiveBadge,
   ExecutiveContainer,
   ExecutivePage,
-} from '../../../app/components/executive/ExecutiveSystem';
+} from '../../../shared/ui/ExecutiveSystem';
 import { ChartButton } from './ChartButton';
 
 export function HomeDashboardView({

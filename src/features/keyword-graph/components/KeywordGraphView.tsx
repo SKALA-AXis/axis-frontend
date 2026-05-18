@@ -48,7 +48,7 @@ import {
   ExecutiveButton,
   ExecutiveContainer,
   ExecutivePage,
-} from '../../../app/components/executive/ExecutiveSystem';
+} from '../../../shared/ui/ExecutiveSystem';
 
 export function KeywordGraphView({
   onNavigate,

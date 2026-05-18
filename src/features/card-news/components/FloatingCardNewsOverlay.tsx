@@ -5,7 +5,7 @@ import { getDisplayDate, getPeerLabel, getSummaryLines } from '../mappers/cardNe
 import { getCardSourceOptions, dedupeCardsById } from '../utils/cardSources';
 import { shareCardNews } from '../utils/cardSharing';
 import { getPeerLogo } from '../../../shared/utils/peerLogo';
-import { ExecutiveButton } from '../../../app/components/executive/ExecutiveSystem';
+import { ExecutiveButton } from '../../../shared/ui/ExecutiveSystem';
 
 export function FloatingCardNewsOverlay({
   card,

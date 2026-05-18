@@ -28,7 +28,7 @@ import {
   ExecutiveHeader,
   ExecutivePage,
   TrustSeal,
-} from '../../../app/components/executive/ExecutiveSystem';
+} from '../../../shared/ui/ExecutiveSystem';
 import { FloatingAiChat } from '../../../app/shell/FloatingAiChat';
 
 type PeerFilter = 'all' | PeerId;

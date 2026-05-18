@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
-import type { CardNewsItem } from '../../../features/card-news/model/cardNews';
+import type { CardNewsItem } from '../../features/card-news/model/cardNews';
 import {
   getEvidenceChain,
   getEvidenceCompleteness,
@@ -30,7 +30,7 @@ import {
   getSummaryLines,
   getTrustScore,
   getWhyImportant,
-} from '../../../features/card-news/mappers/cardNewsExecutive';
+} from '../../features/card-news/mappers/cardNewsExecutive';
 
 export function ExecutivePage({
   children,

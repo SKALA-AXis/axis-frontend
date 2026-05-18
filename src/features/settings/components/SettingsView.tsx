@@ -6,7 +6,7 @@ import {
   ExecutiveContainer,
   ExecutiveHeader,
   ExecutivePage,
-} from '../../../app/components/executive/ExecutiveSystem';
+} from '../../../shared/ui/ExecutiveSystem';
 import {
   getStoredContentViewMode,
   setStoredContentViewMode,

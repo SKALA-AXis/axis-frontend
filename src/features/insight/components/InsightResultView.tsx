@@ -17,7 +17,7 @@ import {
   ExecutiveContainer,
   ExecutiveHeader,
   ExecutivePage,
-} from '../../../app/components/executive/ExecutiveSystem';
+} from '../../../shared/ui/ExecutiveSystem';
 
 export function InsightResultView({
   bookmarkedIds = [],

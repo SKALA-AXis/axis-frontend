@@ -1,4 +1,4 @@
-import { ExecutivePage } from '../../app/components/executive/ExecutiveSystem';
+import { ExecutivePage } from './ExecutiveSystem';
 
 /**
  * 페이지 전역 loading 메시지. ExecutivePage 컨테이너 안에 중앙 정렬 텍스트.

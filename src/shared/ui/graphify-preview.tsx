@@ -1,4 +1,4 @@
-import { ExecutiveBadge } from '../../app/components/executive/ExecutiveSystem';
+import { ExecutiveBadge } from './ExecutiveSystem';
 
 /**
  * 데모/티저 용도의 정적 SVG 노드 그래프 — "Graphify ready" 마케팅 미리보기.

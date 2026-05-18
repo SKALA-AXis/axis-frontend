@@ -13,7 +13,7 @@ import {
   ExecutiveButton,
   ExecutiveContainer,
   ExecutivePage,
-} from '../../../app/components/executive/ExecutiveSystem';
+} from '../../../shared/ui/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../card-news/components/FloatingCardNewsOverlay';
 import { useContentViewMode } from '../../../shared/hooks/useContentViewMode';
 
