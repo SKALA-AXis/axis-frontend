@@ -76,6 +76,7 @@ import { GraphifyPreview } from '../../shared/ui/graphify-preview';
 import { getCardSourceOptions, dedupeCardsById } from '../../features/card-news/utils/cardSources';
 import { shareCardNews } from '../../features/card-news/utils/cardSharing';
 import { FloatingCardNewsOverlay } from '../../features/card-news/components/FloatingCardNewsOverlay';
+import { ChartButton } from '../../features/home/components/ChartButton';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -191,53 +192,6 @@ function formatEokValue(value: number) {
     return `${(value / 10000).toFixed(2)}조`;
   }
   return `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(value)}억`;
-}
-
-function ChartButton({
-  title,
-  helper,
-  icon,
-  onClick,
-  children,
-  controls,
-}: {
-  title: string;
-  helper: string;
-  icon: ReactNode;
-  onClick: () => void;
-  children: ReactNode;
-  controls?: ReactNode;
-}) {
-  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onClick();
-    }
-  };
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={handleKeyDown}
-      className="axis-panel-flat min-h-[250px] cursor-pointer p-4 text-left transition hover:border-[var(--axis-accent)]"
-    >
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <p className="axis-kicker">{helper}</p>
-          <h3 className="axis-section-heading mt-1">{title}</h3>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {controls}
-          <span className="flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] text-[var(--axis-accent)]">
-            {icon}
-          </span>
-        </div>
-      </div>
-      <div className="h-[170px]">{children}</div>
-    </div>
-  );
 }
 
 type DonutCalloutDatum = {
