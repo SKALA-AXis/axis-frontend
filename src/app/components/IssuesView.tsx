@@ -6,8 +6,8 @@ import { useMemo, useState } from 'react';
 import { useCardNews } from '../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem, PeerId } from '../../features/card-news/model/cardNews';
 import { getExecutiveRank } from '../../features/card-news/mappers/cardNewsExecutive';
-import { CardNewsBookSpineList } from './CardNewsBookSpine';
-import { CardNewsDetailView } from './CardNewsDetailView';
+import { CardNewsBookSpineList } from '../../features/card-news/components/CardNewsBookSpine';
+import { CardNewsDetailView } from '../../features/card-news/components/CardNewsDetailView';
 
 interface IssuesViewProps {
   bookmarkedIds: string[];

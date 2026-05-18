@@ -24,7 +24,7 @@ import {
 import { Button } from '../../../shared/ui/button';
 import { FloatingAiChat } from '../../../app/components/FloatingAiChat';
 import { PlaceholderPattern } from '../../../app/components/PlaceholderPattern';
-import { CardNewsDetailView } from '../../../app/components/CardNewsDetailView';
+import { CardNewsDetailView } from '../../card-news/components/CardNewsDetailView';
 import { getCardImage, unsplashUrl } from '../../card-news/cardImages';
 
 interface HomeCardNewsViewProps {

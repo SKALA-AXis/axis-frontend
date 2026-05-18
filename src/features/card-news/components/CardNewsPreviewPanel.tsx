@@ -1,6 +1,6 @@
 import { Bookmark, Share2 } from 'lucide-react';
-import { useCardNews } from '../../features/card-news/hooks/useCardNews';
-import { getPeerLogo } from '../../shared/utils/peerLogo';
+import { useCardNews } from '../hooks/useCardNews';
+import { getPeerLogo } from '../../../shared/utils/peerLogo';
 
 interface CardNewsPreviewPanelProps {
   cardId: string | null;

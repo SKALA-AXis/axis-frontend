@@ -5,8 +5,8 @@
  */
 import { useEffect } from 'react';
 import { ArrowUpRight, Bookmark, ShieldCheck, X } from 'lucide-react';
-import type { CardNewsItem } from '../../features/card-news/model/cardNews';
-import { useLinkVerify } from '../../features/link-verify/hooks/useLinkVerify';
+import type { CardNewsItem } from '../model/cardNews';
+import { useLinkVerify } from '../../link-verify/hooks/useLinkVerify';
 import {
   getDisplayDate,
   getFollowUpQuestions,
@@ -17,8 +17,8 @@ import {
   getSuggestedActions,
   getTrustScore,
   getWhyImportant,
-} from '../../features/card-news/mappers/cardNewsExecutive';
-import { getPeerTheme } from '../../features/card-news/peerTheme';
+} from '../mappers/cardNewsExecutive';
+import { getPeerTheme } from '../peerTheme';
 
 interface CardNewsDetailViewProps {
   card: CardNewsItem;

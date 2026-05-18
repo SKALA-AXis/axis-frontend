@@ -6,10 +6,10 @@
  * 정적 트랜지션·hover·entrance 정의는 theme.css `.axis-spine` 블록 참조.
  */
 import { useEffect, useRef, useState } from 'react';
-import type { CardNewsItem } from '../../features/card-news/model/cardNews';
-import { getPeerLabel } from '../../features/card-news/mappers/cardNewsExecutive';
-import { getPeerTheme } from '../../features/card-news/peerTheme';
-import { getCardImage, unsplashUrl } from '../../features/card-news/cardImages';
+import type { CardNewsItem } from '../model/cardNews';
+import { getPeerLabel } from '../mappers/cardNewsExecutive';
+import { getPeerTheme } from '../peerTheme';
+import { getCardImage, unsplashUrl } from '../cardImages';
 
 interface CardNewsBookSpineProps {
   card: CardNewsItem;
