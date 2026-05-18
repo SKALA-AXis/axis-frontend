@@ -166,10 +166,6 @@ function getBenchmarkTitle(card: CardNewsItem) {
   return `${peer}의 공개 메시지 구성 방식`;
 }
 
-export function formatInsightItems(items: BriefingInsightItem[]) {
-  return items.map((item) => `${item.title} 이유: ${item.reason}`);
-}
-
 export function buildBriefing(period: BriefingPeriod, cards: CardNewsItem[], range: BriefingRange): BriefingReport {
   const meta = periodMeta[period];
   const selectedCards = rotateCardsByKey(cards, range.seedKey).slice(0, meta.count);

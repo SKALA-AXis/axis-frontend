@@ -38,7 +38,6 @@ import {
   MiniStat,
   type KeywordSpikeInsight,
 } from './AxisPlanningShared';
-import { MediaExposurePanel } from './PositioningPanels';
 
 type NavigateHandler = (view: string) => void;
 
@@ -267,8 +266,9 @@ export function HomeDashboardView({
           </aside>
         </section>
 
-        {/* 하단 2 차트 — RoC/Stock 토글 + 미디어 노출도 (자사 vs 외부) */}
-        <section data-guide="home-charts" className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        {/* 하단 — RoC/Stock 토글 차트 단독. 미디어 노출 추적은 보조 위젯이라 Peer+ 로 이관.
+            추후 이 자리에 '오늘의 주목 경쟁사 카드 피드' (event_type 필터 + credibility 정렬) 추가 예정. */}
+        <section data-guide="home-charts" className="mt-4">
           {/* 1) RoC/Stock 토글 — designing 의 풍부한 차트 */}
           <ChartButton
             title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
@@ -276,7 +276,7 @@ export function HomeDashboardView({
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
           >
-            <div className="h-[170px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 {showStockChart ? (
                   <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
@@ -355,6 +355,12 @@ export function HomeDashboardView({
                     }))
               }
             />
+            {/* 차트 안내 — heavy 박스가 아니라 1-line footer 캡션 (홈은 입구. 깊은 설명은 차트별 detail 페이지로) */}
+            <p className="mt-2 text-[10px] leading-4 text-[var(--axis-muted)]">
+              {showStockChart
+                ? 'Peer 4사 종가 일별 추이 · KRX / Yahoo Finance'
+                : '키워드 검색 트렌드 (네이버 데이터랩) · ⭕ 포인트 클릭 = 급등 원인 + 해석'}
+            </p>
             {!showStockChart && selectedKeywordInsight ? (
               <div
                 className="mt-3 rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.18)] bg-[rgba(255,255,255,0.78)] p-3"
@@ -375,9 +381,6 @@ export function HomeDashboardView({
               </div>
             ) : null}
           </ChartButton>
-
-          {/* 2) 미디어 노출도 — 자사 보도자료 vs 외부 출처 (self-peer bias 격리) */}
-          <MediaExposurePanel />
         </section>
       </ExecutiveContainer>
       {homeDetailCard ? (
