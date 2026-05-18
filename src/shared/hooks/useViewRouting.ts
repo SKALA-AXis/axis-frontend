@@ -1,52 +1,65 @@
 /**
  * URL ↔ view state 양방향 동기화 훅.
  *
- * - mount 시 현재 URL pathname 의 첫 segment 를 view 로 인식. unknown 이면 default.
+ * - mount 시 현재 URL pathname 의 첫 segment 를 view 로 인식 (slug 매핑 적용).
+ *   unknown 이면 default.
  * - setView(next) 호출 시 `window.history.pushState` 로 URL push. 동일 view 는 no-op.
  * - 브라우저 back/forward (popstate) → URL 재읽기 → state 동기화.
  *
- * nginx (`try_files $uri $uri/ /index.html;`) + ALB SPA fallback 와 호환 — 어떤
- * 경로로 직접 진입해도 index.html 이 로딩되고 본 훅이 view 를 복원.
+ * nginx (`try_files $uri $uri/ /index.html;`) + ALB SPA fallback 와 호환.
  *
- * Scope: view-level (e.g. `/peerPlus`). subview state (선택 peer / card id / search
- * query) 는 별도 PR 에서 query param 으로 진화 가능.
+ * Internal viewId ↔ URL slug 매핑 — 내부 코드는 viewId 유지, URL 만 깔끔.
+ * 예: viewId='peerPlus' ↔ URL='/peer'.
+ *
+ * Scope: view-level. subview state (선택 peer / card id / search query) 는 별도
+ * PR 에서 query param 으로 진화 가능.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 
-const VALID_VIEWS = new Set([
-  'home',
-  'briefings',
-  'insight',
-  'peerPlus',
-  'issues',
-  'mixer',
-  'keywordGraph',
-  'globalTrends',
-  'rawArticles',
-  'settings',
-  'admin',
-]);
+// Internal viewId → URL pathname. 'home' 은 root `/`.
+const VIEW_TO_PATH: Record<string, string> = {
+  home: '/',
+  briefings: '/briefings',
+  insight: '/insight',
+  peerPlus: '/peer',
+  issues: '/issues',
+  mixer: '/mixer',
+  keywordGraph: '/graph',
+  globalTrends: '/global',
+  rawArticles: '/articles',
+  settings: '/settings',
+  admin: '/admin',
+};
+
+// URL slug (root 이외) → internal viewId. 자동 역매핑.
+const SLUG_TO_VIEW: Record<string, string> = Object.entries(VIEW_TO_PATH).reduce(
+  (acc, [view, path]) => {
+    const slug = path.replace(/^\/+|\/+$/g, '');
+    if (slug) acc[slug] = view;
+    return acc;
+  },
+  {} as Record<string, string>,
+);
 
 function readViewFromUrl(defaultView: string): string {
   if (typeof window === 'undefined') return defaultView;
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '');
-  if (!path) return defaultView;
-  // 첫 segment 만 사용 — 향후 `/peerPlus/samsung_sds` 같은 nested 경로 호환.
+  if (!path) return defaultView; // root → default (home)
+  // 첫 segment 만 사용 — 향후 `/peer/samsung_sds` 같은 nested 경로 호환.
   const first = path.split('/')[0];
-  return VALID_VIEWS.has(first) ? first : defaultView;
+  return SLUG_TO_VIEW[first] ?? defaultView;
 }
 
 function viewToPath(view: string): string {
-  // 'home' 은 root path `/` 로 매핑 — URL 깔끔하게.
-  return view === 'home' ? '/' : `/${view}`;
+  return VIEW_TO_PATH[view] ?? '/';
 }
 
 export function useViewRouting(defaultView = 'home'): [string, (next: string) => void] {
   const [view, setViewState] = useState<string>(() => readViewFromUrl(defaultView));
 
-  // 초기 URL 정합 — `/foobar` 같은 unknown 진입 시 resolved view 의 정상 path 로
-  // replaceState (back stack 오염 방지). `/` ↔ `home` 자연 매핑은 둘 다 valid 라 변환 X.
+  // 초기 URL 정합 — unknown 진입 또는 viewId 가 매핑된 path 와 다르면 정상 path 로
+  // replaceState (back stack 오염 방지).
   useEffect(() => {
     const expected = viewToPath(view);
     if (window.location.pathname !== expected) {
