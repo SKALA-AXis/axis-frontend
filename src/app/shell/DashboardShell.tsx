@@ -10,9 +10,9 @@ import { KeywordGraphView } from '../../features/keyword-graph/components/Keywor
 import { GlobalTrendsView } from '../../features/global-trends/components/GlobalTrendsView';
 import { RawArticlesView } from '../../features/raw-articles/components/RawArticlesView';
 import { SettingsView } from '../../features/settings/components/SettingsView';
-import { Sidebar } from '../components/Sidebar';
-import { TopNav } from '../components/TopNav';
-import { FloatingAiChat } from '../components/FloatingAiChat';
+import { Sidebar } from './Sidebar';
+import { TopNav } from './TopNav';
+import { FloatingAiChat } from './FloatingAiChat';
 import { useViewRouting } from '../../shared/hooks/useViewRouting';
 import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../shared/mocks/peerPlus';
 import { bookmarksStorageKey, themeStorageKey } from '../storage';

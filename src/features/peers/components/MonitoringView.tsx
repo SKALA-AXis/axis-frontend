@@ -29,7 +29,7 @@ import {
   ExecutivePage,
   TrustSeal,
 } from '../../../app/components/executive/ExecutiveSystem';
-import { FloatingAiChat } from '../../../app/components/FloatingAiChat';
+import { FloatingAiChat } from '../../../app/shell/FloatingAiChat';
 
 type PeerFilter = 'all' | PeerId;
 

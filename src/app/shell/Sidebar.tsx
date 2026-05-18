@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
-import type { UserRole } from '../shell/DashboardShell';
+import type { UserRole } from './DashboardShell';
 import { adminNavigationItem, primaryNavigationItems } from '../../shared/content/navigation';
 
 interface SidebarProps {
