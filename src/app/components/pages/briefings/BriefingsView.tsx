@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CalendarDays, FileText, Lightbulb, Share2, Sparkles, TrendingUp, X } from 'lucide-react';
+import { CalendarDays, Share2, Sparkles, TrendingUp, X } from 'lucide-react';
 
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { getDisplayDate, getExecutiveRank, getPeerLabel } from '../../../../features/card-news/mappers/cardNewsExecutive';
@@ -12,14 +12,12 @@ import {
 } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { useContentViewMode } from '../../../../shared/hooks/useContentViewMode';
-import { BriefingBlock, BriefingVisualBlock } from './BriefingBlocks';
 import { buildBriefingPrintHtml, buildBriefingReportText } from './print';
 import type { BriefingPeriod } from './types';
 import {
   briefingFocusTitle,
   buildBriefing,
   buildBriefingRange,
-  formatInsightItems,
   getWeekOptions,
   periodMeta,
   toDateInputValue,
@@ -275,61 +273,52 @@ export function BriefingsView() {
                   </div>
                 </section>
 
-                <section className="space-y-5">
-                  <BriefingVisualBlock icon={<Lightbulb size={18} />} title="의미와 시사점" items={briefing.meaning} />
-                  <BriefingVisualBlock icon={<FileText size={18} />} title="벤치마킹 포인트" items={briefing.benchmark} />
-                </section>
-
-                {/* — Insight 영역: 브리핑이 오늘의 변화를 정리한다면, 인사이트는 그 변화들이 함께 놓였을 때 시장이 무엇을 더 신뢰하는지 읽음. */}
-                <section data-guide="insight-summary" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
+                {/* 핵심 판단 — 4단계 flow narrative (관찰→패턴→시사→핵심). 헤드라인 summary 는 lead 와 중복이라 제거. */}
+                <section data-guide="insight-flow" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
                   <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
                         <Sparkles size={18} />
                       </span>
-                      <h2 className="axis-section-heading">핵심 판단</h2>
+                      <h2 className="axis-section-heading">핵심 판단 — 해석 흐름</h2>
                     </div>
                   </div>
                   <div className="p-6">
-                    <div className="overflow-hidden rounded-[calc(var(--axis-radius-xl)+2px)] border border-[rgba(220,90,36,0.24)] bg-[linear-gradient(145deg,rgba(255,249,241,0.98),rgba(248,242,233,0.92))] p-6">
-                      <p className="text-2xl font-semibold leading-9 text-[var(--axis-ink)]">{mockInsightResult.summary}</p>
-                      <p className="mt-4 text-base leading-7 text-[var(--axis-body)]">{mockInsightResult.focusQuestion}</p>
-                      <div className="mt-6 flex flex-wrap items-center gap-2">
-                        {mockInsightResult.flowSteps.map((step, index) => (
-                          <button
-                            key={step.id}
-                            type="button"
-                            onClick={() => setActiveInsightStep(index)}
-                            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-left transition hover:border-[var(--axis-accent)] ${
-                              activeInsightStep === index
-                                ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.12)] text-[var(--axis-accent-strong)]'
-                                : 'border-[var(--axis-hairline)] bg-white/82 text-[var(--axis-body)]'
-                            }`}
-                            aria-pressed={activeInsightStep === index}
-                          >
-                            <span className="text-[11px] font-black">{String(index + 1).padStart(2, '0')}</span>
-                            <span className="text-sm font-semibold">{step.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                      <div className="mt-6 grid gap-5 xl:grid-cols-[148px_minmax(0,1fr)]">
-                        <div className="flex items-start xl:justify-center">
-                          <div className="rounded-[28px] bg-[rgba(220,90,36,0.12)] px-5 py-6 text-center">
-                            <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">Step</span>
-                            <span className="mt-2 block text-[2rem] font-display font-semibold text-[var(--axis-ink)]">
-                              {String(activeInsightStep + 1).padStart(2, '0')}
-                            </span>
-                            <span className="mt-2 block text-sm font-semibold text-[var(--axis-body)]">{activeFlowStep.label}</span>
-                          </div>
-                        </div>
-                        <article className="relative overflow-hidden rounded-[var(--axis-radius-xl)] bg-white/72 px-6 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)]">
-                          <div className="absolute inset-y-6 left-0 w-1 rounded-full bg-[linear-gradient(180deg,var(--axis-accent),rgba(220,90,36,0.18))]" />
-                          <p className="axis-kicker">{activeFlowStep.label}</p>
-                          <h3 className="mt-2 text-[1.2rem] font-semibold leading-8 text-[var(--axis-ink)]">{activeFlowStep.headline}</h3>
-                          <p className="mt-4 text-base leading-7 text-[var(--axis-body)]">{activeFlowStep.description}</p>
-                        </article>
-                      </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {mockInsightResult.flowSteps.map((step, index) => (
+                        <button
+                          key={step.id}
+                          type="button"
+                          onClick={() => setActiveInsightStep(index)}
+                          className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-left transition hover:border-[var(--axis-accent)] ${
+                            activeInsightStep === index
+                              ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.12)] text-[var(--axis-accent-strong)]'
+                              : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] text-[var(--axis-body)]'
+                          }`}
+                          aria-pressed={activeInsightStep === index}
+                        >
+                          <span className="text-[11px] font-black">{String(index + 1).padStart(2, '0')}</span>
+                          <span className="text-sm font-semibold">{step.label}</span>
+                        </button>
+                      ))}
                     </div>
+                    <article className="mt-5 grid gap-5 xl:grid-cols-[120px_minmax(0,1fr)]">
+                      <div className="flex items-start xl:justify-center">
+                        <div className="rounded-[20px] border border-[rgba(220,90,36,0.18)] bg-[rgba(220,90,36,0.08)] px-4 py-5 text-center">
+                          <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">Step</span>
+                          <span className="mt-1.5 block text-[1.7rem] font-display font-semibold text-[var(--axis-ink)]">
+                            {String(activeInsightStep + 1).padStart(2, '0')}
+                          </span>
+                          <span className="mt-1.5 block text-xs font-semibold text-[var(--axis-body)]">{activeFlowStep.label}</span>
+                        </div>
+                      </div>
+                      <div className="relative overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-5 py-5">
+                        <div className="absolute inset-y-5 left-0 w-1 rounded-full bg-[linear-gradient(180deg,var(--axis-accent),rgba(220,90,36,0.18))]" />
+                        <p className="axis-kicker">{activeFlowStep.label}</p>
+                        <h3 className="mt-2 text-[1.1rem] font-semibold leading-8 text-[var(--axis-ink)]">{activeFlowStep.headline}</h3>
+                        <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{activeFlowStep.description}</p>
+                      </div>
+                    </article>
                   </div>
                 </section>
 
@@ -406,25 +395,18 @@ export function BriefingsView() {
                   </div>
                 </section>
 
-                <section className="space-y-5">
-                  <BriefingBlock icon={<Lightbulb size={18} />} title="의미와 시사점" items={briefing.meaning} />
-                  <BriefingBlock icon={<FileText size={18} />} title="벤치마킹 포인트" items={briefing.benchmark} />
-                </section>
-
-                {/* — Insight 영역 (텍스트 모드) */}
-                <section data-guide="insight-summary" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
+                {/* 핵심 판단 — flowSteps 컴팩트 (텍스트 모드). summary/focusQuestion 은 lead 와 중복이라 제거. */}
+                <section data-guide="insight-flow" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
                   <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
                         <Sparkles size={18} />
                       </span>
-                      <h2 className="axis-section-heading">핵심 판단</h2>
+                      <h2 className="axis-section-heading">핵심 판단 — 해석 흐름</h2>
                     </div>
                   </div>
                   <div className="p-6">
-                    <p className="text-2xl font-semibold leading-9 text-[var(--axis-ink)]">{mockInsightResult.summary}</p>
-                    <p className="mt-4 text-base leading-7 text-[var(--axis-body)]">{mockInsightResult.focusQuestion}</p>
-                    <div className="mt-6 flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {mockInsightResult.flowSteps.map((step, index) => (
                         <button
                           key={step.id}
@@ -442,10 +424,10 @@ export function BriefingsView() {
                         </button>
                       ))}
                     </div>
-                    <div className="mt-6 rounded-[var(--axis-radius-xl)] bg-[linear-gradient(135deg,rgba(255,250,243,0.9),rgba(247,240,229,0.82))] px-6 py-5">
+                    <div className="mt-5 rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-5 py-4">
                       <p className="axis-kicker">{activeFlowStep.label}</p>
-                      <h3 className="mt-2 text-lg font-semibold text-[var(--axis-ink)]">{activeFlowStep.headline}</h3>
-                      <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{activeFlowStep.description}</p>
+                      <h3 className="mt-1.5 text-base font-semibold text-[var(--axis-ink)]">{activeFlowStep.headline}</h3>
+                      <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{activeFlowStep.description}</p>
                     </div>
                   </div>
                 </section>
@@ -543,18 +525,31 @@ export function BriefingsView() {
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#DC5A24]">AXIS {briefing.label} briefing</p>
                 <h1 className="mt-2 text-2xl font-semibold leading-tight text-[#1A1A1F]">{briefing.title}</h1>
                 <p className="mt-4 text-base font-semibold leading-7 text-[#2D2D33]">{briefing.briefingLead}</p>
+                <section className="mt-6 rounded-[10px] border border-[#EDE4D8] bg-[#FFFCF7] p-4">
+                  <h2 className="text-base font-bold text-[#1A1A1F]">{briefingFocusTitle}</h2>
+                  <ol className="mt-3 space-y-2">
+                    {briefing.whatHappenedDigest.map((item, index) => (
+                      <li key={item} className="grid grid-cols-[24px_minmax(0,1fr)] gap-2 text-sm leading-6 text-[#2D2D33]">
+                        <span className="font-bold text-[#B8451A]">{index + 1}</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
                 {[
-                  [briefingFocusTitle, briefing.whatHappenedDigest],
-                  ['의미와 시사점', formatInsightItems(briefing.meaning)],
-                  ['벤치마킹 포인트', formatInsightItems(briefing.benchmark)],
-                ].map(([title, items]) => (
-                  <section key={title as string} className="mt-6 rounded-[10px] border border-[#EDE4D8] bg-[#FFFCF7] p-4">
-                    <h2 className="text-base font-bold text-[#1A1A1F]">{title as string}</h2>
-                    <ol className="mt-3 space-y-2">
-                      {(items as string[]).map((item, index) => (
-                        <li key={item} className="grid grid-cols-[24px_minmax(0,1fr)] gap-2 text-sm leading-6 text-[#2D2D33]">
+                  { title: '시장 해석 포인트', items: mockInsightResult.problemChain },
+                  { title: 'SK AX 시사점', items: mockInsightResult.solutionChain },
+                ].map((group) => (
+                  <section key={group.title} className="mt-6 rounded-[10px] border border-[#EDE4D8] bg-[#FFFCF7] p-4">
+                    <h2 className="text-base font-bold text-[#1A1A1F]">{group.title}</h2>
+                    <ol className="mt-3 space-y-3">
+                      {group.items.map((item, index) => (
+                        <li key={item.title} className="grid grid-cols-[24px_minmax(0,1fr)] gap-2 text-sm leading-6 text-[#2D2D33]">
                           <span className="font-bold text-[#B8451A]">{index + 1}</span>
-                          <span>{item}</span>
+                          <div>
+                            <p className="font-semibold">{item.title}</p>
+                            <p className="mt-1">{item.body}</p>
+                          </div>
                         </li>
                       ))}
                     </ol>

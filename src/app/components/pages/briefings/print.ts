@@ -1,5 +1,12 @@
-import { briefingFocusTitle, formatInsightItems } from './utils';
+import { briefingFocusTitle } from './utils';
 import type { BriefingReport } from './types';
+import { mockInsightResult } from '../../../../shared/mocks/insight';
+
+type RichItem = { readonly title: string; readonly body: string };
+
+function richLines(items: readonly RichItem[]): string[] {
+  return items.map((item, index) => `${index + 1}) ${item.title} — ${item.body}`);
+}
 
 export function buildBriefingReportText(briefing: BriefingReport) {
   return [
@@ -11,11 +18,11 @@ export function buildBriefingReportText(briefing: BriefingReport) {
     `2. ${briefingFocusTitle}`,
     ...briefing.whatHappenedDigest.map((item, index) => `${index + 1}) ${item}`),
     '',
-    '3. 의미와 시사점',
-    ...formatInsightItems(briefing.meaning).map((item, index) => `${index + 1}) ${item}`),
+    '3. 시장 해석 포인트',
+    ...richLines(mockInsightResult.problemChain),
     '',
-    '4. 벤치마킹 포인트',
-    ...formatInsightItems(briefing.benchmark).map((item, index) => `${index + 1}) ${item}`),
+    '4. SK AX 시사점',
+    ...richLines(mockInsightResult.solutionChain),
   ].join('\n');
 }
 
@@ -34,6 +41,22 @@ function renderPrintSection(title: string, items: string[]) {
       <h2>${escapeHtml(title)}</h2>
       <ol>
         ${items.map((item, index) => `<li><strong>${index + 1}</strong><span>${escapeHtml(item)}</span></li>`).join('')}
+      </ol>
+    </section>
+  `;
+}
+
+function renderRichPrintSection(title: string, items: readonly RichItem[]) {
+  return `
+    <section class="report-section">
+      <h2>${escapeHtml(title)}</h2>
+      <ol>
+        ${items
+          .map(
+            (item, index) =>
+              `<li><strong>${index + 1}</strong><span><b>${escapeHtml(item.title)}</b> — ${escapeHtml(item.body)}</span></li>`,
+          )
+          .join('')}
       </ol>
     </section>
   `;
@@ -131,8 +154,8 @@ export function buildBriefingPrintHtml(briefing: BriefingReport) {
         <h1>${escapeHtml(briefing.title)}</h1>
         <p class="lead">${escapeHtml(briefing.briefingLead)}</p>
         ${renderPrintSection(briefingFocusTitle, briefing.whatHappenedDigest)}
-        ${renderPrintSection('의미와 시사점', formatInsightItems(briefing.meaning))}
-        ${renderPrintSection('벤치마킹 포인트', formatInsightItems(briefing.benchmark))}
+        ${renderRichPrintSection('시장 해석 포인트', mockInsightResult.problemChain)}
+        ${renderRichPrintSection('SK AX 시사점', mockInsightResult.solutionChain)}
         <p class="footer">AXIS 브리핑 리포트 · ${escapeHtml(briefing.window)}</p>
       </main>
     </body>
