@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { AdminView } from '../components/AdminView';
 import { BriefingsView } from '../components/BriefingsView';
 import {
-  CardNewsWorkspaceView,
   HomeDashboardView,
   InsightResultView,
   KeywordGraphView,
   MixerView,
   PeerPlusView,
 } from '../components/AxisPlanningViews';
+import { CardNewsWorkspaceView } from '../../features/card-news/components/CardNewsWorkspaceView';
 import { GlobalTrendsView } from '../components/GlobalTrendsView';
 import { RawArticlesView } from '../components/RawArticlesView';
 import { SettingsView } from '../components/SettingsView';

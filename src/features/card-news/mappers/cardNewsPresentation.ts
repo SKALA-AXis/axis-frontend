@@ -137,6 +137,31 @@ export function buildCardCatalog(cards: CardNewsItem[]): CardCatalogItem[] {
   }));
 }
 
+export type CardNewsRow = CardCatalogItem & {
+  sourceId: string;
+  originalTitle: string;
+  cardNewsTitle: string;
+  sourceType: string;
+  keywords: string[];
+};
+
+export function buildCardNewsRows(cards: CardNewsItem[]): CardNewsRow[] {
+  const catalog = buildCardCatalog(cards);
+  const rows = [...catalog];
+  while (rows.length < 6 && catalog.length > 0) {
+    rows.push(catalog[rows.length % catalog.length]);
+  }
+  return rows.slice(0, Math.max(6, rows.length)).map((card, index) => ({
+    ...card,
+    id: `${card.id}-${index}`,
+    sourceId: card.card.id,
+    originalTitle: card.card.title,
+    cardNewsTitle: card.title,
+    sourceType: card.sector,
+    keywords: [card.peer, card.sector, card.accentLabel].filter(Boolean) as string[],
+  }));
+}
+
 export function buildMixerCards(cards: CardNewsItem[]): MixerCardItem[] {
   return buildDisplayEntries(cards).map((entry) => ({
     id: entry.id,
