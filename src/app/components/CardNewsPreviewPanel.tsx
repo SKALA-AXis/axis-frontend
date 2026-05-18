@@ -1,5 +1,6 @@
 import { Bookmark, Share2 } from 'lucide-react';
 import { useCardNews } from '../../features/card-news/hooks/useCardNews';
+import { getPeerLogo } from '../../shared/utils/peerLogo';
 
 interface CardNewsPreviewPanelProps {
   cardId: string | null;
@@ -35,13 +36,11 @@ export function CardNewsPreviewPanel({ cardId, bookmarkedIds, onToggleBookmark }
   return (
     <aside className="overflow-hidden rounded-[1.1rem] border border-[var(--axis-hairline)] bg-[#081324] shadow-[0_18px_38px_rgba(17,17,17,0.10)]">
       <div className="relative aspect-[4/5] overflow-hidden">
-        {card.coverImageUrl ? (
-          <img
-            src={card.coverImageUrl}
-            alt={card.coverImageAlt}
-            className="absolute inset-0 h-full w-full object-cover opacity-60"
-          />
-        ) : null}
+        <img
+          src={card.coverImageUrl ?? getPeerLogo(card.peer_id)}
+          alt={card.coverImageAlt ?? card.title}
+          className="absolute inset-0 h-full w-full object-cover opacity-60"
+        />
         <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#081324]/50 to-black/92" />
         <div className="relative flex h-full flex-col justify-between p-5 text-white">
           <div className="flex items-start justify-between gap-3">

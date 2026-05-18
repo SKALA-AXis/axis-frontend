@@ -70,6 +70,7 @@ import {
 import { mockMixerConfig } from '../../shared/mocks/mixer';
 import { mockPeerPlusIrProfiles, mockPeerPlusKeywordCloud, mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../shared/mocks/peerPlus';
 import { useContentViewMode } from '../../shared/hooks/useContentViewMode';
+import { getPeerLogo } from '../../shared/utils/peerLogo';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -610,10 +611,10 @@ export function HomeDashboardView({
               onClick={() => summaryCard && setHomeDetailCardId(summaryCard.id)}
               className="relative block aspect-[16/9] w-full max-w-full overflow-hidden rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[#091524] text-left shadow-[0_16px_38px_-24px_rgba(0,0,0,0.45)] transition hover:border-[var(--axis-accent)]"
             >
-              {summaryCard?.coverImageUrl ? (
+              {summaryCard ? (
                 <img
-                  src={summaryCard.coverImageUrl}
-                  alt={summaryCard.coverImageAlt}
+                  src={summaryCard.coverImageUrl ?? getPeerLogo(summaryCard.peer_id)}
+                  alt={summaryCard.coverImageAlt ?? summaryCard.title}
                   className="absolute inset-0 h-full w-full object-cover opacity-60"
                 />
               ) : null}
@@ -1089,9 +1090,11 @@ export function MixerView({
                     className="flex w-full gap-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-3 text-left transition hover:bg-[var(--axis-surface-soft)] hover:ring-1 hover:ring-[var(--axis-accent)]"
                   >
                     <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-[var(--axis-radius-sm)] bg-[#081324]">
-                      {item.card.coverImageUrl ? (
-                        <img src={item.card.coverImageUrl} alt={item.card.coverImageAlt} className="h-full w-full object-cover opacity-70" />
-                      ) : null}
+                      <img
+                        src={item.card.coverImageUrl ?? getPeerLogo(item.card.peer_id)}
+                        alt={item.card.coverImageAlt ?? item.peer}
+                        className="h-full w-full object-cover opacity-70"
+                      />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-[var(--axis-accent-strong)]">{item.peer}</p>
@@ -1394,9 +1397,11 @@ export function MixerView({
                       onClick={() => toggleSelection(item.id)}
                       className="relative block aspect-[4/5] w-full overflow-hidden text-left"
                     >
-                      {item.card.coverImageUrl ? (
-                        <img src={item.card.coverImageUrl} alt={item.card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
-                      ) : null}
+                      <img
+                        src={item.card.coverImageUrl ?? getPeerLogo(item.card.peer_id)}
+                        alt={item.card.coverImageAlt ?? item.peer}
+                        className="absolute inset-0 h-full w-full object-cover opacity-55"
+                      />
                       <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#081324]/48 to-black/92" />
                       <div className="relative flex h-full flex-col justify-between p-4 text-white">
                         <div className="flex items-start justify-between gap-2 text-xs font-semibold">
@@ -2046,9 +2051,11 @@ export function PeerPlusView({
                 onClick={() => setPeerDetailCardId(card.id)}
                 className="relative aspect-[4/5] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[#081324] text-left transition hover:border-[var(--axis-accent)]"
               >
-                {card.coverImageUrl ? (
-                  <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
-                ) : null}
+                <img
+                  src={card.coverImageUrl ?? getPeerLogo(card.peer_id)}
+                  alt={card.coverImageAlt ?? card.title}
+                  className="absolute inset-0 h-full w-full object-cover opacity-55"
+                />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/34 via-[#081324]/48 to-black/92" />
                 <div className="relative flex h-full flex-col justify-between p-4 text-white">
                   <div className="flex items-start justify-between gap-2 text-xs font-semibold">
@@ -2101,9 +2108,11 @@ export function PeerPlusView({
                     className="grid w-full grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)] hover:bg-[var(--axis-canvas)]"
                   >
                     <div className="relative aspect-[4/5] overflow-hidden rounded-[var(--axis-radius-sm)] bg-[#081324]">
-                      {card.coverImageUrl ? (
-                        <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-70" />
-                      ) : null}
+                      <img
+                        src={card.coverImageUrl ?? getPeerLogo(card.peer_id)}
+                        alt={card.coverImageAlt ?? card.title}
+                        className="absolute inset-0 h-full w-full object-cover opacity-70"
+                      />
                       <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/60" />
                     </div>
                     <div className="min-w-0">
@@ -2373,9 +2382,11 @@ export function FloatingCardNewsOverlay({
           className="absolute left-[max(16px,calc(50%-584px))] top-1/2 hidden w-[156px] -translate-y-1/2 overflow-hidden rounded-[var(--axis-radius-lg)] border border-white/20 bg-[rgba(16,16,20,0.28)] text-left shadow-[0_28px_90px_-42px_rgba(0,0,0,0.55)] backdrop-blur md:block"
         >
           <div className="relative h-[128px]">
-            {previousCard.coverImageUrl ? (
-              <img src={previousCard.coverImageUrl} alt={previousCard.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]" />
-            ) : null}
+            <img
+              src={previousCard.coverImageUrl ?? getPeerLogo(previousCard.peer_id)}
+              alt={previousCard.coverImageAlt ?? previousCard.title}
+              className="absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]"
+            />
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
             <span className="absolute left-3 top-3 rounded-full bg-white/12 px-2 py-1 text-[10px] font-semibold text-white/80">이전 카드</span>
             <div className="absolute inset-x-3 bottom-3">
@@ -2392,9 +2403,11 @@ export function FloatingCardNewsOverlay({
           className="absolute right-[max(16px,calc(50%-584px))] top-1/2 hidden w-[156px] -translate-y-1/2 overflow-hidden rounded-[var(--axis-radius-lg)] border border-white/20 bg-[rgba(16,16,20,0.28)] text-left shadow-[0_28px_90px_-42px_rgba(0,0,0,0.55)] backdrop-blur md:block"
         >
           <div className="relative h-[128px]">
-            {nextCard.coverImageUrl ? (
-              <img src={nextCard.coverImageUrl} alt={nextCard.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]" />
-            ) : null}
+            <img
+              src={nextCard.coverImageUrl ?? getPeerLogo(nextCard.peer_id)}
+              alt={nextCard.coverImageAlt ?? nextCard.title}
+              className="absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]"
+            />
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
             <span className="absolute right-3 top-3 rounded-full bg-white/12 px-2 py-1 text-[10px] font-semibold text-white/80">다음 카드</span>
             <div className="absolute inset-x-3 bottom-3">
@@ -2556,15 +2569,11 @@ export function CardNewsWorkspaceView({
                       }}
                       className="relative block aspect-[3/4] w-full overflow-hidden text-left sm:aspect-[4/5]"
                     >
-                      {row.card.coverImageUrl ? (
-                        <img
-                          src={row.card.coverImageUrl}
-                          alt={row.card.coverImageAlt}
-                          className="absolute inset-0 h-full w-full object-cover opacity-55"
-                        />
-                      ) : (
-                        <div className="absolute inset-0" style={{ background: row.coverStyle }} />
-                      )}
+                      <img
+                        src={row.card.coverImageUrl ?? getPeerLogo(row.card.peer_id)}
+                        alt={row.card.coverImageAlt ?? row.card.title}
+                        className="absolute inset-0 h-full w-full object-cover opacity-55"
+                      />
                       <div className="absolute inset-0 bg-gradient-to-b from-black/38 via-[#081324]/48 to-black/92" />
                       <div className="relative flex h-full flex-col justify-between p-3 text-white sm:p-4">
                         <div className="flex items-start justify-between gap-2 text-[10px] font-semibold sm:text-xs">
@@ -3683,9 +3692,11 @@ export function KeywordGraphView({
                           className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)]"
                         >
                           <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-[var(--axis-radius-md)] bg-[#081324]">
-                            {card.coverImageUrl ? (
-                              <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
-                            ) : null}
+                            <img
+                              src={card.coverImageUrl ?? getPeerLogo(card.peer_id)}
+                              alt={card.coverImageAlt ?? card.title}
+                              className="absolute inset-0 h-full w-full object-cover opacity-55"
+                            />
                             <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
                             <span className="absolute bottom-2 left-2 text-xs font-semibold text-white">{getPeerLabel(card)}</span>
                           </div>
@@ -3884,9 +3895,11 @@ export function KeywordGraphView({
                       className="min-w-0 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)]"
                     >
                       <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-[var(--axis-radius-md)] bg-[#081324]">
-                        {card.coverImageUrl ? (
-                          <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
-                        ) : null}
+                        <img
+                          src={card.coverImageUrl ?? getPeerLogo(card.peer_id)}
+                          alt={card.coverImageAlt ?? card.title}
+                          className="absolute inset-0 h-full w-full object-cover opacity-55"
+                        />
                         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
                         <span className="absolute bottom-2 left-2 text-xs font-semibold text-white">{getPeerLabel(card)}</span>
                       </div>

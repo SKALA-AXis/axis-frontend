@@ -1,6 +1,7 @@
 import { httpClient } from '../../../shared/api/httpClient';
 import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
 import { cardNewsItems } from '../../../shared/mocks/cardNews';
+import { getPeerLogo } from '../../../shared/utils/peerLogo';
 import type { CardNewsItem } from '../model/cardNews';
 
 export interface CardNewsRepository {
@@ -119,7 +120,7 @@ function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
     card.coverImageUrl ??
     card.display?.background_asset_url ??
     primarySlide?.image_url ??
-    '/png.png';
+    getPeerLogo(card.peer_id);
   const normalizedSources = card.sources?.map((source) => ({
     ...source,
     source_name: resolveSourceName(source.source_name, source.url),
