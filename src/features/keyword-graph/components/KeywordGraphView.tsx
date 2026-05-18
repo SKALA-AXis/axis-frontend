@@ -1,100 +1,61 @@
-import { type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BarChart3,
-  Bookmark,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
   Box,
-  CalendarDays,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  CircleDot,
-  Filter,
-  LineChart as LineChartIcon,
   Maximize2,
   Minus,
   Network,
   Plus,
-  Radar,
-  Share2,
-  Sparkles,
-  X,
 } from 'lucide-react';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
-  Legend,
   Line,
   LineChart,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar as RadarShape,
-  RadarChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import * as THREE from 'three';
-import { useCardNews } from '../../features/card-news/hooks/useCardNews';
-import { buildCardCatalog } from '../../features/card-news/mappers/cardNewsPresentation';
-import type { CardNewsItem } from '../../features/card-news/model/cardNews';
+import { useCardNews } from '../../card-news/hooks/useCardNews';
 import {
   getDisplayDate,
   getExecutiveRank,
   getPeerLabel,
-  getSummaryLines,
-} from '../../features/card-news/mappers/cardNewsExecutive';
-import { useDashboard } from '../../features/dashboard/hooks/useDashboard';
-import type { DashboardKeywordSearchPoint } from '../../features/dashboard/model/dashboard';
-import {
-  homePeerFinancialData,
-  homePeerRadarData,
-} from '../../shared/mocks/homeDashboardPresentation';
-import { mockInsightResult } from '../../shared/mocks/insight';
-import { useInsightGeneration } from '../../features/insight/hooks/useInsightGeneration';
-import { usePeerStrategy } from '../../features/peer-strategy/hooks/usePeerStrategy';
+} from '../../card-news/mappers/cardNewsExecutive';
+import { FloatingCardNewsOverlay } from '../../card-news/components/FloatingCardNewsOverlay';
+import { useDashboard } from '../../dashboard/hooks/useDashboard';
+import type { DashboardKeywordSearchPoint } from '../../dashboard/model/dashboard';
+import { FilterChip } from './FilterChip';
+import { MiniStat } from './MiniStat';
+import { KeywordSphereGraph } from './KeywordSphereGraph';
 import {
   graphCategoryColor,
   graphCompanyAliases,
   graphEdges,
   graphNodes,
-  type KeywordEdge,
   type KeywordNode,
-} from '../../shared/mocks/keywordGraph';
-import { mockPeerPlusIrProfiles, mockPeerPlusKeywordCloud, mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../shared/mocks/peerPlus';
-import { useContentViewMode } from '../../shared/hooks/useContentViewMode';
-import { getPeerLogo } from '../../shared/utils/peerLogo';
-import { LoadingBlock, EmptyBlock } from '../../shared/ui/page-state';
-import { GraphifyPreview } from '../../shared/ui/graphify-preview';
-import { getCardSourceOptions, dedupeCardsById } from '../../features/card-news/utils/cardSources';
-import { shareCardNews } from '../../features/card-news/utils/cardSharing';
-import { FloatingCardNewsOverlay } from '../../features/card-news/components/FloatingCardNewsOverlay';
-import { ChartButton } from '../../features/home/components/ChartButton';
-import { formatEokValue } from '../../features/peer-strategy/utils/formatEokValue';
-import { normalizeGraphTerm } from '../../shared/utils/normalizeGraphTerm';
-import { InsightRevealBubble } from '../../shared/ui/insight-reveal-bubble';
-import { FilterChip } from '../../features/keyword-graph/components/FilterChip';
-import { MiniStat } from '../../features/keyword-graph/components/MiniStat';
-import { KeywordSphereGraph } from '../../features/keyword-graph/components/KeywordSphereGraph';
+} from '../../../shared/mocks/keywordGraph';
+import { getPeerLogo } from '../../../shared/utils/peerLogo';
+import { normalizeGraphTerm } from '../../../shared/utils/normalizeGraphTerm';
 import {
   ExecutiveBadge,
   ExecutiveButton,
   ExecutiveContainer,
-  ExecutiveHeader,
   ExecutivePage,
-} from './executive/ExecutiveSystem';
-
-type NavigateHandler = (view: string) => void;
+} from '../../../app/components/executive/ExecutiveSystem';
 
 export function KeywordGraphView({
   onNavigate,
   bookmarkedIds = [],
   onToggleBookmark,
 }: {
-  onNavigate: NavigateHandler;
+  onNavigate: (view: string) => void;
   bookmarkedIds?: string[];
   onToggleBookmark?: (cardId: string) => void;
 }) {

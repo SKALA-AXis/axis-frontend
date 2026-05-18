@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { AdminView } from '../components/AdminView';
 import { BriefingsView } from '../components/BriefingsView';
-import { KeywordGraphView } from '../components/AxisPlanningViews';
 import { CardNewsWorkspaceView } from '../../features/card-news/components/CardNewsWorkspaceView';
 import { HomeDashboardView } from '../../features/home/components/HomeDashboardView';
 import { MixerView } from '../../features/mixer/components/MixerView';
 import { PeerPlusView } from '../../features/peer-strategy/components/PeerPlusView';
 import { InsightResultView } from '../../features/insight/components/InsightResultView';
+import { KeywordGraphView } from '../../features/keyword-graph/components/KeywordGraphView';
 import { GlobalTrendsView } from '../components/GlobalTrendsView';
 import { RawArticlesView } from '../components/RawArticlesView';
 import { SettingsView } from '../components/SettingsView';
