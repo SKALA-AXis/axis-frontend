@@ -280,7 +280,10 @@ export function BriefingsView() {
                       <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
                         <Sparkles size={18} />
                       </span>
-                      <h2 className="axis-section-heading">핵심 판단 — 해석 흐름</h2>
+                      <div>
+                        <p className="axis-kicker">Interpretation flow</p>
+                        <h2 className="axis-section-heading mt-1">해석 흐름 — 관찰부터 시사까지</h2>
+                      </div>
                     </div>
                   </div>
                   <div className="p-6">
@@ -402,7 +405,10 @@ export function BriefingsView() {
                       <span className="flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] text-[var(--axis-accent)]">
                         <Sparkles size={18} />
                       </span>
-                      <h2 className="axis-section-heading">핵심 판단 — 해석 흐름</h2>
+                      <div>
+                        <p className="axis-kicker">Interpretation flow</p>
+                        <h2 className="axis-section-heading mt-1">해석 흐름 — 관찰부터 시사까지</h2>
+                      </div>
                     </div>
                   </div>
                   <div className="p-6">
@@ -480,23 +486,42 @@ export function BriefingsView() {
 
           <aside data-guide="briefing-evidence" className="space-y-4">
             <section className="axis-panel-flat p-5">
-              <p className="axis-kicker">Briefing queue</p>
-              <h2 className="axis-section-heading mt-1">근거 카드뉴스</h2>
+              <p className="axis-kicker">Evidence &amp; Sources</p>
+              <h2 className="axis-section-heading mt-1">판단 근거 · 출처</h2>
+              <p className="mt-1.5 text-[11px] leading-5 text-[var(--axis-muted)]">
+                이 브리핑이 참조한 카드뉴스 <span className="font-semibold text-[var(--axis-ink)]">{evidenceCards.length}건</span>.
+                카드를 누르면 원문 출처와 함께 상세를 확인합니다.
+              </p>
               <div className="mt-4 space-y-3">
-                {evidenceCards.map((card) => (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => setDetailCardId(card.id)}
-                    className="block w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:bg-[var(--axis-canvas)]"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold text-[var(--axis-accent-strong)]">{getPeerLabel(card)}</span>
-                      <span className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</span>
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</p>
-                  </button>
-                ))}
+                {evidenceCards.map((card, index) => {
+                  const sourceName = card.sources?.[0]?.source_name ?? card.source;
+                  const sourceUrl = card.sources?.[0]?.url ?? card.sourceUrl;
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => setDetailCardId(card.id)}
+                      className="group block w-full rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:bg-[var(--axis-canvas)]"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--axis-accent-strong)]">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-[10px] font-black">
+                            {index + 1}
+                          </span>
+                          {getPeerLabel(card)}
+                        </span>
+                        <span className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</span>
+                      </div>
+                      <p className="mt-1.5 line-clamp-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</p>
+                      {sourceName ? (
+                        <p className="mt-1.5 text-[11px] leading-5 text-[var(--axis-muted)]">
+                          <span className="font-semibold text-[var(--axis-ink)]">출처:</span> {sourceName}
+                          {sourceUrl ? <span className="ml-1 text-[var(--axis-accent-strong)]">↗</span> : null}
+                        </p>
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
             </section>
           </aside>

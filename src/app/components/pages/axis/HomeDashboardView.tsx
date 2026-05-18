@@ -355,6 +355,23 @@ export function HomeDashboardView({
                     }))
               }
             />
+            {/* 차트 안내 — 우측 미디어 노출도 패널의 caveat 와 시각 균형 + 사용법 명시 */}
+            <div className="mt-3 rounded-md border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-2.5 text-[11px] leading-5 text-[var(--axis-muted)]">
+              <p className="font-semibold text-[var(--axis-accent-strong)]">AUXILIARY · 차트 안내</p>
+              {showStockChart ? (
+                <p className="mt-1">
+                  Peer 4 사 (삼성SDS · LG CNS · 현대오토에버 · 포스코DX) <span className="font-semibold text-[var(--axis-ink)]">종가 일별 추이</span>.
+                  같은 기간 안 <strong>상대 변동</strong> 비교용 — 절대값보다 같이 움직이는 시점이 더 의미 있는 신호.
+                  데이터 출처: KRX / Yahoo Finance.
+                </p>
+              ) : (
+                <p className="mt-1">
+                  네이버 데이터랩 기반 <span className="font-semibold text-[var(--axis-ink)]">키워드별 시간대 검색 트렌드</span>.
+                  선 위 강조된 <span className="font-semibold text-[var(--axis-accent-strong)]">⭕ 포인트</span> 를 클릭하면 그 시점의
+                  <strong> 급등 원인 + SK AX 관점 해석</strong> 을 함께 볼 수 있습니다.
+                </p>
+              )}
+            </div>
             {!showStockChart && selectedKeywordInsight ? (
               <div
                 className="mt-3 rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.18)] bg-[rgba(255,255,255,0.78)] p-3"
