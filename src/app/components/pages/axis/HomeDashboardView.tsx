@@ -267,10 +267,13 @@ export function HomeDashboardView({
           </aside>
         </section>
 
-        {/* 하단 2-col — 좌: RoC/Stock 트렌드 차트 (추세선), 우: DELTA 피드 (차트에 안 보이는
-            차원의 변화: 카드 풀 / 신규 키워드 / peer 순위 / 포지셔닝 임계 통과). */}
-        <section data-guide="home-charts" className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-          {/* 1) RoC/Stock 토글 — designing 의 풍부한 차트 */}
+        {/* 하단 2-col — 좌: DELTA 피드 (차트에 안 보이는 차원의 변화), 우: RoC/Stock 트렌드 차트 (시계열).
+            list 는 narrow column, 시계열 chart 는 wide column 으로 콘텐츠 폭에 맞춰 배치. */}
+        <section data-guide="home-charts" className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+          {/* 1) DELTA 피드 — 좌측. 포지셔닝 임계 / 신규 카드 / 신규 키워드 / peer 순위 */}
+          <HomeDeltaFeed onNavigate={onNavigate} />
+
+          {/* 2) RoC/Stock 토글 — 우측. designing 의 풍부한 차트 */}
           <ChartButton
             title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
             helper={showStockChart ? 'Stock compare' : 'Rate of change'}
@@ -382,9 +385,6 @@ export function HomeDashboardView({
               </div>
             ) : null}
           </ChartButton>
-
-          {/* 우측 — DELTA 피드. 차트 추세선에 없는 차원 변화 (포지셔닝 임계, 카드 풀, 신규 키워드, peer 순위). */}
-          <HomeDeltaFeed onNavigate={onNavigate} />
         </section>
       </ExecutiveContainer>
       {homeDetailCard ? (
