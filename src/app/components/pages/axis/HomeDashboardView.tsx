@@ -38,6 +38,7 @@ import {
   MiniStat,
   type KeywordSpikeInsight,
 } from './AxisPlanningShared';
+import { HomeDeltaFeed } from './HomeCuratedWidgets';
 
 type NavigateHandler = (view: string) => void;
 
@@ -266,17 +267,20 @@ export function HomeDashboardView({
           </aside>
         </section>
 
-        {/* 하단 — RoC/Stock 토글 차트 단독. 미디어 노출 추적은 보조 위젯이라 Peer+ 로 이관.
-            추후 이 자리에 '오늘의 주목 경쟁사 카드 피드' (event_type 필터 + credibility 정렬) 추가 예정. */}
-        <section data-guide="home-charts" className="mt-4">
-          {/* 1) RoC/Stock 토글 — designing 의 풍부한 차트 */}
+        {/* 하단 2-col — 좌: DELTA 피드 (차트에 안 보이는 차원의 변화), 우: RoC/Stock 트렌드 차트 (시계열).
+            list 는 narrow column, 시계열 chart 는 wide column 으로 콘텐츠 폭에 맞춰 배치. */}
+        <section data-guide="home-charts" className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+          {/* 1) DELTA 피드 — 좌측. 포지셔닝 임계 / 신규 카드 / 신규 키워드 / peer 순위 */}
+          <HomeDeltaFeed onNavigate={onNavigate} />
+
+          {/* 2) RoC/Stock 토글 — 우측. designing 의 풍부한 차트 */}
           <ChartButton
             title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
             helper={showStockChart ? 'Stock compare' : 'Rate of change'}
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
           >
-            <div className="h-[280px]">
+            <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 {showStockChart ? (
                   <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
