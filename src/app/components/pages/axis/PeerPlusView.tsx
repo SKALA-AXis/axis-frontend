@@ -9,6 +9,7 @@ import { mockPeerPlusIrProfiles, mockPeerPlusKeywordCloud, mockPeerPlusOptions, 
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { LoadingBlock } from './AxisPlanningShared';
+import { PositioningPanel } from './PositioningPanels';
 
 type NavigateHandler = (view: string) => void;
 
@@ -244,6 +245,11 @@ export function PeerPlusView({
             </div>
           }
         />
+
+        {/* 산업 포지셔닝 차트 — Peer+ 진입 시 한 눈에 보이는 객관 지표 (미디어 노출도는 홈) */}
+        <section className="mb-5">
+          <PositioningPanel />
+        </section>
 
         <section className="mb-5">
           <article data-guide="peer-overview" className="axis-panel-flat p-5">
