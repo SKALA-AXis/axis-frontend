@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, Bookmark, ChevronLeft, ChevronRight, Copy, ExternalLink, Mail, RotateCcw, Send, Share2 } from 'lucide-react';
 import * as THREE from 'three';
-import { useCardNews } from '../../features/card-news/hooks/useCardNews';
-import type { CardNewsItem } from '../../features/card-news/model/cardNews';
+import { useCardNews } from '../../card-news/hooks/useCardNews';
+import type { CardNewsItem } from '../../card-news/model/cardNews';
 import {
   getDisplayDate,
   getExecutiveRank,
@@ -13,19 +13,19 @@ import {
   getSummaryLines,
   getSourceCount,
   getTrustScore,
-} from '../../features/card-news/mappers/cardNewsExecutive';
+} from '../../card-news/mappers/cardNewsExecutive';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '../../shared/ui/dialog';
-import { Button } from '../../shared/ui/button';
-import { FloatingAiChat } from './FloatingAiChat';
-import { PlaceholderPattern } from './PlaceholderPattern';
-import { CardNewsDetailView } from './CardNewsDetailView';
-import { getCardImage, unsplashUrl } from '../../features/card-news/cardImages';
+} from '../../../shared/ui/dialog';
+import { Button } from '../../../shared/ui/button';
+import { FloatingAiChat } from '../../../app/components/FloatingAiChat';
+import { PlaceholderPattern } from '../../../app/components/PlaceholderPattern';
+import { CardNewsDetailView } from '../../../app/components/CardNewsDetailView';
+import { getCardImage, unsplashUrl } from '../../card-news/cardImages';
 
 interface HomeCardNewsViewProps {
   activeCardId?: string | null;
