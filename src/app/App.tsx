@@ -1,20 +1,20 @@
 import { type CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Moon, Sun, X } from 'lucide-react';
-import { AdminView } from './components/AdminView';
-import { BriefingsView } from './components/BriefingsView';
 import {
+  AdminView,
+  BriefingsView,
   CardNewsWorkspaceView,
   HomeDashboardView,
   InsightResultView,
   KeywordGraphView,
   MixerView,
   PeerPlusView,
-} from './components/AxisPlanningViews';
-import { RawArticlesView } from './components/RawArticlesView';
-import { SettingsView } from './components/SettingsView';
-import { Sidebar } from './components/Sidebar';
-import { TopNav } from './components/TopNav';
-import { FloatingAiChat } from './components/FloatingAiChat';
+  RawArticlesView,
+  SettingsView,
+} from './components/pages';
+import { Sidebar } from './components/layout/Sidebar';
+import { TopNav } from './components/layout/TopNav';
+import { FloatingAiChat } from './components/shared/FloatingAiChat';
 import { Input } from './components/ui/input';
 import { viewLabels } from '../shared/content/navigation';
 import { commonGuideSteps, guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../shared/content/productGuide';
