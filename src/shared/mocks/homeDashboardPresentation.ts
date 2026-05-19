@@ -167,14 +167,16 @@ export const homePositioningMapData = [
 ] as const;
 
 /**
- * Today's Insight 의 주요 신호 카드들. 클릭 시 해당 신호의 근거·달라진 점·관련 키워드가
- * 하단 evidence 패널에서 펼쳐짐. 실 데이터 연결 시에는 axis-ai pipeline 이 카드 풀·검색
- * 트렌드·peer 활동을 분석해 N개 (>=1) 의 signal 을 생성.
+ * Today's Insight 의 주요 신호 카드들. 클릭 시 해당 신호의 AI 추론 과정 + 근거 +
+ * 달라진 점 + 관련 키워드가 하단 evidence 패널에서 펼쳐짐. 실 데이터 연결 시에는
+ * axis-ai pipeline 이 카드 풀·검색 트렌드·peer 활동을 분석해 N개 (>=1) 의 signal
+ * 을 생성하고 각 signal 의 추론 chain 도 함께 기록.
  */
 export type TodayInsightSignal = {
   readonly id: string;
   readonly label: string;
   readonly value: string;
+  readonly reasoning: ReadonlyArray<{ readonly stage: string; readonly detail: string }>;
   readonly evidence: {
     readonly grounds: ReadonlyArray<string>;
     readonly changes: ReadonlyArray<string>;
@@ -187,6 +189,12 @@ export const homeTodayInsightSignals: ReadonlyArray<TodayInsightSignal> = [
     id: 'signal-public-aiagent',
     label: '주요 신호',
     value: '공공 수주와 AI agent 언급이 함께 증가',
+    reasoning: [
+      { stage: '관찰', detail: '오늘 카드뉴스 풀에서 "AI agent" 언급 빈도 모니터링 → 검색지수 전주 대비 +18% 감지' },
+      { stage: '교차', detail: '같은 시점 공공 부문 신규 카드 카운트 비교 → 1건 → 3건 (+200%)' },
+      { stage: '패턴', detail: '두 변수의 동시 상승 — 단순 우연이 아닌 공동 driver (공공 발주가 agent 아키텍처를 요구) 존재 가능성' },
+      { stage: '판단', detail: '"공공 수주 사업이 AI agent 아키텍처를 중심으로 재편 중" 신호로 분류' },
+    ],
     evidence: {
       grounds: [
         '포스코DX 디지털플랫폼정부 우선협상 (1,200억) — AI agent 아키텍처 명시',
@@ -205,6 +213,12 @@ export const homeTodayInsightSignals: ReadonlyArray<TodayInsightSignal> = [
     id: 'signal-ir-cardnews',
     label: '관찰 포인트',
     value: 'IR 수치와 카드뉴스 노출의 동시 상승',
+    reasoning: [
+      { stage: '관찰', detail: '최근 30일 IR 발표 12건 추출 → 각 발표 후 24h 내 카드뉴스 매칭 카운트' },
+      { stage: '비교', detail: '전월 매칭율 60% → 이번 달 85% 변화 감지 (+25pp)' },
+      { stage: '회귀', detail: '매출 증감률 ↔ 노출량 회귀: 매출 +9% 시 노출 +24% — 상관 0.62' },
+      { stage: '판단', detail: 'IR 수치와 미디어 노출이 동조 시작 — strategic 관찰 포인트로 분류 (의사결정 직접 신호 X)' },
+    ],
     evidence: {
       grounds: [
         '삼성SDS 1Q 매출 +12% (IR) — 같은 시점 카드뉴스 노출 5건',
@@ -223,6 +237,13 @@ export const homeTodayInsightSignals: ReadonlyArray<TodayInsightSignal> = [
     id: 'signal-industry-message',
     label: '다음 판단',
     value: '산업별 제안 메시지로 전환 필요',
+    reasoning: [
+      { stage: '관찰', detail: 'Peer 4사 산업 특화 보도자료 비중 추적 → 평균 42% (전년 28%, +14pp)' },
+      { stage: '효율 비교', detail: '범용 메시지 외부 픽업 효율 8.2× → 6.4× (둔화) vs 산업 특화 평균 10.75×' },
+      { stage: '케이스 검증', detail: 'SDS 금융 특화 보도자료 12.5× 효율 / POSCO DX 제조·에너지 특화 → 수주 전환율 31% (범용 18%)' },
+      { stage: '추론', detail: '산업별 메시지가 *효율*(외부 픽업) + *전환*(수주율) 둘 다 우위인 시점 도래' },
+      { stage: '판단', detail: 'SK AX 도 산업별 제안 메시지로 전환 필요 — 범용 AI 메시지 효율 둔화 추세가 confirm signal' },
+    ],
     evidence: {
       grounds: [
         'Peer 4사 산업 특화 메시지 비중 평균 42% (전년 28%)',

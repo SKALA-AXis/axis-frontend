@@ -10,7 +10,7 @@
  *   - 첫번째 ChartButton 을 designing 의 풍부한 RoC/Stock 차트로 (keywordSeries 동적 + spike insight 인터랙션)
  */
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, LineChart as LineChartIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LineChart as LineChartIcon, Sparkles } from 'lucide-react';
 import {
   CartesianGrid,
   Line,
@@ -207,6 +207,28 @@ export function HomeDashboardView({
                     닫기 ✕
                   </button>
                 </header>
+
+                {/* AI 추론 과정 — 근거 위쪽. agent 가 어떤 데이터 → 어떤 추론 → 결론에 도달했는지 chain 으로 노출. */}
+                <section className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.18)] bg-[rgba(220,90,36,0.05)] p-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={14} className="text-[var(--axis-accent-strong)]" />
+                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">AI 추론 과정</p>
+                  </div>
+                  <ol className="mt-2.5 space-y-2">
+                    {selectedSignal.reasoning.map((step, idx) => (
+                      <li key={step.stage} className="grid grid-cols-[30px_minmax(0,1fr)] gap-2 text-[13px] leading-5">
+                        <span className="flex h-5 w-7 items-center justify-center rounded bg-[var(--axis-canvas)] text-[10px] font-black text-[var(--axis-accent-strong)]">
+                          0{idx + 1}
+                        </span>
+                        <span className="text-[var(--axis-body)]">
+                          <span className="font-semibold text-[var(--axis-ink)]">{step.stage}</span>
+                          <span className="mx-1.5 text-[var(--axis-muted)]">—</span>
+                          <span>{step.detail}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   {/* 근거 */}
