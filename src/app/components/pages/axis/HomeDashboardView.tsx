@@ -10,7 +10,7 @@
  *   - 첫번째 ChartButton 을 designing 의 풍부한 RoC/Stock 차트로 (keywordSeries 동적 + spike insight 인터랙션)
  */
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, LineChart as LineChartIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LineChart as LineChartIcon, Sparkles } from 'lucide-react';
 import {
   CartesianGrid,
   Line,
@@ -38,7 +38,6 @@ import {
   MiniStat,
   type KeywordSpikeInsight,
 } from './AxisPlanningShared';
-import { HomeDeltaFeed } from './HomeCuratedWidgets';
 
 type NavigateHandler = (view: string) => void;
 
@@ -127,12 +126,13 @@ export function HomeDashboardView({
     <ExecutivePage>
       <ExecutiveContainer className="pb-10 pt-3">
         <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]">
-          {/* 좌측 — Today insight 박스 (GraphifyPreview 폐기, 좌측이 한 컬럼 다 차지) */}
+          {/* 좌측 — Today's Insight 박스. 상단: 히어로 + 3 주요 신호 카드. 하단 placeholder:
+              실 데이터 연결 시 주요 신호 클릭 → 근거·달라진 점·관련 카드가 펼쳐지는 영역. */}
           <button
             type="button"
             data-guide="home-insight"
             onClick={() => onNavigate('briefings')}
-            className="axis-panel-flat relative min-h-[430px] overflow-hidden p-5 text-left transition hover:border-[var(--axis-accent)]"
+            className="axis-panel-flat relative flex min-h-[880px] flex-col overflow-hidden p-5 text-left transition hover:border-[var(--axis-accent)]"
           >
             <div
               className="pointer-events-none absolute inset-0 opacity-80"
@@ -143,7 +143,7 @@ export function HomeDashboardView({
             />
             <div className="relative flex h-full flex-col gap-5">
               <div className="min-w-0">
-                <p className="axis-kicker">Today insight</p>
+                <p className="axis-kicker">Today&apos;s insight</p>
                 <h2 className="mt-2 max-w-3xl text-[clamp(2rem,3.1vw,3.7rem)] font-display leading-[1.08] text-ink">
                   과거와의 변화를 기반으로 오늘의 동향
                 </h2>
@@ -182,10 +182,26 @@ export function HomeDashboardView({
                   ))}
                 </div>
               </div>
+
+              {/* Placeholder — 주요 신호 클릭 시 근거·달라진 점·관련 카드가 펼쳐질 영역.
+                  실 데이터 연결 후 활성화 예정. */}
+              <div className="flex flex-1 items-center justify-center rounded-[var(--axis-radius-lg)] border-2 border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)]/40 p-6 text-center">
+                <div>
+                  <Sparkles size={24} className="mx-auto text-[var(--axis-muted)]" />
+                  <p className="mt-3 max-w-md text-sm font-semibold leading-6 text-[var(--axis-muted)]">
+                    위 주요 신호 카드를 클릭하면<br />
+                    근거 · 달라진 점 · 관련 카드가 여기에 펼쳐집니다
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-[var(--axis-muted)]">
+                    실 데이터 연결 후 활성화 예정
+                  </p>
+                </div>
+              </div>
             </div>
           </button>
 
-          {/* 우측 — 카드뉴스 사이드바 */}
+          {/* 우측 — 카드뉴스 사이드바 + RoC 차트 적층. flex-col 로 두 패널이 위아래로. */}
+          <div className="flex flex-col gap-4">
           <aside
             data-guide="home-summary"
             className="axis-panel-flat min-h-[430px] w-full max-w-full min-w-0 overflow-hidden p-4 [contain:inline-size]"
@@ -265,22 +281,15 @@ export function HomeDashboardView({
               </div>
             </div>
           </aside>
-        </section>
 
-        {/* 하단 2-col — 좌: DELTA 피드 (차트에 안 보이는 차원의 변화), 우: RoC/Stock 트렌드 차트 (시계열).
-            list 는 narrow column, 시계열 chart 는 wide column 으로 콘텐츠 폭에 맞춰 배치. */}
-        <section data-guide="home-charts" className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
-          {/* 1) DELTA 피드 — 좌측. 포지셔닝 임계 / 신규 카드 / 신규 키워드 / peer 순위 */}
-          <HomeDeltaFeed onNavigate={onNavigate} />
-
-          {/* 2) RoC/Stock 토글 — 우측. designing 의 풍부한 차트 */}
+          {/* 우측 하단 — RoC/Stock 토글 차트. 카드뉴스 사이드바 (min-h-[430px]) 와 같은 크기로 적층. */}
           <ChartButton
             title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
             helper={showStockChart ? 'Stock compare' : 'Rate of change'}
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
           >
-            <div className="h-[220px]">
+            <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 {showStockChart ? (
                   <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
@@ -385,6 +394,7 @@ export function HomeDashboardView({
               </div>
             ) : null}
           </ChartButton>
+          </div>
         </section>
       </ExecutiveContainer>
       {homeDetailCard ? (
