@@ -166,3 +166,76 @@ export const homePositioningMapData = [
   },
 ] as const;
 
+/**
+ * Today's Insight 의 주요 신호 카드들. 클릭 시 해당 신호의 근거·달라진 점·관련 키워드가
+ * 하단 evidence 패널에서 펼쳐짐. 실 데이터 연결 시에는 axis-ai pipeline 이 카드 풀·검색
+ * 트렌드·peer 활동을 분석해 N개 (>=1) 의 signal 을 생성.
+ */
+export type TodayInsightSignal = {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly evidence: {
+    readonly grounds: ReadonlyArray<string>;
+    readonly changes: ReadonlyArray<string>;
+    readonly relatedKeywords: ReadonlyArray<string>;
+  };
+};
+
+export const homeTodayInsightSignals: ReadonlyArray<TodayInsightSignal> = [
+  {
+    id: 'signal-public-aiagent',
+    label: '주요 신호',
+    value: '공공 수주와 AI agent 언급이 함께 증가',
+    evidence: {
+      grounds: [
+        '포스코DX 디지털플랫폼정부 우선협상 (1,200억) — AI agent 아키텍처 명시',
+        'LG CNS 공공 AX 사업 5건 수주 발표 — agent 기반 service mesh',
+        '현대오토에버 K-IFRS 1108 IT서비스 부문 매출 3.42조 진입 (성장률 +17.7%)',
+      ],
+      changes: [
+        '오늘 공공 수주 카드 3건 (전일 1건 대비 +2)',
+        '"AI agent" 키워드 검색지수 전주 대비 +18%',
+        '공공 + AI agent 동시 언급 카드 비중 12% → 28%',
+      ],
+      relatedKeywords: ['Agentic AI', 'AI 에이전트', '공공 클라우드', '디지털플랫폼정부'],
+    },
+  },
+  {
+    id: 'signal-ir-cardnews',
+    label: '관찰 포인트',
+    value: 'IR 수치와 카드뉴스 노출의 동시 상승',
+    evidence: {
+      grounds: [
+        '삼성SDS 1Q 매출 +12% (IR) — 같은 시점 카드뉴스 노출 5건',
+        'LG CNS 4Q AX 매출 비중 24% (IR) — 카드뉴스 노출 3건',
+        '현대오토에버 ITO+SI 매출 3.42조 발표 — 외부 미디어 픽업 145건',
+      ],
+      changes: [
+        'IR 발표 후 24h 이내 카드뉴스 매칭율 85% (전월 60% 대비)',
+        '평균 매출 +9% 시 노출량 +24% — 상관 0.62',
+        'SK AX 후행 (−2.5%) 구간에서 노출 비중 12% (4사 평균 22%)',
+      ],
+      relatedKeywords: ['IR 컨센서스', '실적 발표', 'AX 매출 비중', 'self-press leverage'],
+    },
+  },
+  {
+    id: 'signal-industry-message',
+    label: '다음 판단',
+    value: '산업별 제안 메시지로 전환 필요',
+    evidence: {
+      grounds: [
+        'Peer 4사 산업 특화 메시지 비중 평균 42% (전년 28%)',
+        'SDS 의 금융 특화 보도자료 외부 픽업률 12.5× (전체 평균 10.75×)',
+        'POSCO DX 의 제조·에너지 특화 메시지 → 수주 전환율 31% (범용 18%)',
+      ],
+      changes: [
+        '"산업 솔루션" 키워드 카드뉴스 비중 18% → 31%',
+        '범용 AI 메시지 효율 (외부 픽업률) 8.2× → 6.4× (둔화)',
+        '제조 · 금융 · 공공 산업별 keyword cluster 분리도 +14%',
+      ],
+      relatedKeywords: ['산업 솔루션', '금융 AX', '제조 AX', '공공 AX', '산업 특화 메시지'],
+    },
+  },
+];
+

@@ -10,7 +10,7 @@
  *   - 첫번째 ChartButton 을 designing 의 풍부한 RoC/Stock 차트로 (keywordSeries 동적 + spike insight 인터랙션)
  */
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, LineChart as LineChartIcon, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LineChart as LineChartIcon } from 'lucide-react';
 import {
   CartesianGrid,
   Line,
@@ -28,7 +28,7 @@ import {
   getSummaryLines,
 } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
-import { homeKeywordSpikeInsights } from '../../../../shared/mocks/homeDashboardPresentation';
+import { homeKeywordSpikeInsights, homeTodayInsightSignals } from '../../../../shared/mocks/homeDashboardPresentation';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import {
@@ -61,6 +61,11 @@ export function HomeDashboardView({
   const [homeDetailCardId, setHomeDetailCardId] = useState<string | null>(null);
   const [homeDetailSlideIndex, setHomeDetailSlideIndex] = useState(0);
   const [selectedKeywordInsight, setSelectedKeywordInsight] = useState<KeywordSpikeInsight | null>(null);
+  const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
+  const selectedSignal = useMemo(
+    () => homeTodayInsightSignals.find((s) => s.id === selectedSignalId) ?? null,
+    [selectedSignalId],
+  );
 
   useEffect(() => {
     if (summaryChoices.length <= 1) return undefined;
@@ -126,79 +131,130 @@ export function HomeDashboardView({
     <ExecutivePage>
       <ExecutiveContainer className="pb-10 pt-3">
         <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]">
-          {/* 좌측 — Today's Insight 박스. 상단: 히어로 + 3 주요 신호 카드. 하단 placeholder:
-              실 데이터 연결 시 주요 신호 클릭 → 근거·달라진 점·관련 카드가 펼쳐지는 영역. */}
-          <button
-            type="button"
-            data-guide="home-insight"
-            onClick={() => onNavigate('briefings')}
-            className="axis-panel-flat relative flex min-h-[880px] flex-col overflow-hidden p-5 text-left transition hover:border-[var(--axis-accent)]"
-          >
-            <div
-              className="pointer-events-none absolute inset-0 opacity-80"
-              style={{
-                background:
-                  'radial-gradient(circle at 74% 42%, rgba(220,90,36,0.13), transparent 34%), radial-gradient(circle at 18% 18%, rgba(90,107,87,0.10), transparent 32%)',
-              }}
-            />
-            <div className="relative flex h-full flex-col gap-5">
-              <div className="min-w-0">
-                <p className="axis-kicker">Today&apos;s insight</p>
-                <h2 className="mt-2 max-w-3xl text-[clamp(2rem,3.1vw,3.7rem)] font-display leading-[1.08] text-ink">
-                  과거와의 변화를 기반으로 오늘의 동향
-                </h2>
-                <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
-                  {heroCard
-                    ? getSummaryLines(heroCard)[0]
-                    : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.'}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {changeSummary.map((item, index) => (
-                    <span
-                      key={item.label}
-                      className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs text-[var(--axis-muted)]"
+          {/* 좌측 — Today's Insight 영역. 박스 styling 제거하고 페이지 배경과 융합.
+              주요 신호 카드 click → 하단 evidence 패널 toggle (동적 크기). 외부 nav 연결 없음. */}
+          <div data-guide="home-insight" className="relative flex flex-col gap-5 p-1">
+            <div className="min-w-0">
+              <p className="axis-kicker">Today&apos;s insight</p>
+              <h2 className="mt-2 max-w-3xl text-[clamp(2rem,3.1vw,3.7rem)] font-display leading-[1.08] text-ink">
+                과거와의 변화를 기반으로 오늘의 동향
+              </h2>
+              <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
+                {heroCard
+                  ? getSummaryLines(heroCard)[0]
+                  : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.'}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {changeSummary.map((item, index) => (
+                  <span
+                    key={item.label}
+                    className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs text-[var(--axis-muted)]"
+                  >
+                    <span>{item.label}</span>
+                    <strong
+                      className={`text-sm ${
+                        index === 1 ? 'text-[var(--axis-success)]' : 'text-[var(--axis-accent-strong)]'
+                      }`}
                     >
-                      <span>{item.label}</span>
-                      <strong
-                        className={`text-sm ${
-                          index === 1 ? 'text-[var(--axis-success)]' : 'text-[var(--axis-accent-strong)]'
-                        }`}
-                      >
-                        {item.value}
-                      </strong>
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                  {[
-                    ['주요 신호', '공공 수주와 AI agent 언급이 함께 증가'],
-                    ['관찰 포인트', 'IR 수치와 카드뉴스 노출의 동시 상승'],
-                    ['다음 판단', '산업별 제안 메시지로 전환 필요'],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)]/82 p-3">
-                      <p className="text-[11px] font-semibold text-[var(--axis-muted)]">{label}</p>
-                      <p className="mt-1 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{value}</p>
-                    </div>
-                  ))}
-                </div>
+                      {item.value}
+                    </strong>
+                  </span>
+                ))}
               </div>
 
-              {/* Placeholder — 주요 신호 클릭 시 근거·달라진 점·관련 카드가 펼쳐질 영역.
-                  실 데이터 연결 후 활성화 예정. */}
-              <div className="flex flex-1 items-center justify-center rounded-[var(--axis-radius-lg)] border-2 border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)]/40 p-6 text-center">
-                <div>
-                  <Sparkles size={24} className="mx-auto text-[var(--axis-muted)]" />
-                  <p className="mt-3 max-w-md text-sm font-semibold leading-6 text-[var(--axis-muted)]">
-                    위 주요 신호 카드를 클릭하면<br />
-                    근거 · 달라진 점 · 관련 카드가 여기에 펼쳐집니다
-                  </p>
-                  <p className="mt-1.5 text-[11px] text-[var(--axis-muted)]">
-                    실 데이터 연결 후 활성화 예정
-                  </p>
-                </div>
+              {/* 주요 신호 카드 — 각각 button. click 시 selectedSignalId 갱신 (동일 클릭 = 닫기 toggle). */}
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                {homeTodayInsightSignals.map((signal) => {
+                  const isActive = signal.id === selectedSignalId;
+                  return (
+                    <button
+                      key={signal.id}
+                      type="button"
+                      onClick={() => setSelectedSignalId(isActive ? null : signal.id)}
+                      aria-pressed={isActive}
+                      className={`rounded-[var(--axis-radius-md)] p-3 text-left transition ${
+                        isActive
+                          ? 'bg-[var(--axis-canvas)] ring-2 ring-[var(--axis-accent)] shadow-[0_10px_28px_-22px_rgba(220,90,36,0.45)]'
+                          : 'bg-[var(--axis-canvas)]/82 hover:bg-[var(--axis-canvas)] hover:ring-1 hover:ring-[var(--axis-hairline)]'
+                      }`}
+                    >
+                      <p className={`text-[11px] font-semibold ${isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}`}>
+                        {signal.label}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{signal.value}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </button>
+
+            {/* 동적 evidence 패널 — 신호 선택 시에만 등장, 콘텐츠 길이만큼 자연 확장 */}
+            {selectedSignal ? (
+              <article className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-5 shadow-[0_14px_36px_-30px_rgba(0,0,0,0.35)]">
+                <header className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">
+                      {selectedSignal.label}
+                    </p>
+                    <h3 className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{selectedSignal.value}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSignalId(null)}
+                    className="rounded-full px-2 py-1 text-[11px] font-semibold text-[var(--axis-muted)] transition hover:bg-[var(--axis-surface-soft)] hover:text-[var(--axis-ink)]"
+                    aria-label="신호 닫기"
+                  >
+                    닫기 ✕
+                  </button>
+                </header>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {/* 근거 */}
+                  <section>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">근거</p>
+                    <ul className="mt-2 space-y-1.5">
+                      {selectedSignal.evidence.grounds.map((g) => (
+                        <li key={g} className="grid grid-cols-[12px_minmax(0,1fr)] gap-2 text-[13px] leading-5 text-[var(--axis-body)]">
+                          <span className="font-bold text-[var(--axis-accent-strong)]">·</span>
+                          <span>{g}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  {/* 달라진 점 */}
+                  <section>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">달라진 점</p>
+                    <ul className="mt-2 space-y-1.5">
+                      {selectedSignal.evidence.changes.map((c) => (
+                        <li key={c} className="grid grid-cols-[12px_minmax(0,1fr)] gap-2 text-[13px] leading-5 text-[var(--axis-body)]">
+                          <span className="font-bold text-[var(--axis-success)]">↗</span>
+                          <span>{c}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </div>
+
+                {/* 관련 키워드 */}
+                {selectedSignal.evidence.relatedKeywords.length > 0 ? (
+                  <section className="mt-4 border-t border-[var(--axis-hairline)] pt-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">관련 키워드</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {selectedSignal.evidence.relatedKeywords.map((k) => (
+                        <span
+                          key={k}
+                          className="inline-flex items-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-body)]"
+                        >
+                          {k}
+                        </span>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </article>
+            ) : null}
+          </div>
 
           {/* 우측 — 카드뉴스 사이드바 + RoC 차트 적층. flex-col 로 두 패널이 위아래로. */}
           <div className="flex flex-col gap-4">
