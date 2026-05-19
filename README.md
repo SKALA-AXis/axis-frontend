@@ -66,6 +66,9 @@ src/
 
 ## 로컬 개발 세팅
 
+> 💡 **빠른 시작 (전체 스택)**: backend + ai + frontend 를 한 번에 cluster DB 와 함께 띄우려면 [`axis-infra` 의 `make up-cluster`](../axis-infra/README.md#mode-a--cluster-db--docker-compose--권장) — port-forward + docker compose 자동.
+> 아래 절차는 frontend 만 host 에서 빠르게 iterate (Vite HMR) 하는 경우. backend 는 별도 (`make up-cluster` 또는 `./gradlew bootRun`) 로 띄워둬야 함.
+
 ```bash
 # 1. 레포 클론
 git clone https://github.com/skala-ai-13/axis-frontend.git
