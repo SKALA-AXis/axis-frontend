@@ -167,101 +167,96 @@ export const homePositioningMapData = [
 ] as const;
 
 /**
- * 포지셔닝 변화 알림 — 임계 돌파/주요 변화가 발생했을 때만 Home 에 1줄 strip 으로.
- * 변화 없으면 빈 배열 → Home 에서 hide. 실제 운영에서는 quarterly DART 재무 갱신 시 자동 생성.
+ * Today's Insight 의 주요 신호 카드들. 클릭 시 해당 신호의 AI 추론 과정 + 근거 +
+ * 달라진 점 + 관련 키워드가 하단 evidence 패널에서 펼쳐짐. 실 데이터 연결 시에는
+ * axis-ai pipeline 이 카드 풀·검색 트렌드·peer 활동을 분석해 N개 (>=1) 의 signal
+ * 을 생성하고 각 signal 의 추론 chain 도 함께 기록.
  */
-export type PositioningAlert = {
+export type TodayInsightSignal = {
   readonly id: string;
-  readonly severity: 'high' | 'mid' | 'low';
-  readonly message: string;
-  readonly peer: string;
-};
-
-/**
- * 일간 델타 mock seed — Home 의 'DELTA · 어제 이후 변화' 위젯이 읽는 구조.
- *
- * 실제 운영에서는 axis-ai pipeline 이 매일 KST 자정 기준으로 이 구조를 생성:
- *  - card 풀 일자 분해 → today / prev card_count + event_type 카운트
- *  - 키워드 검색 트렌드 일별 snapshot 비교 → newKeywords + surgingKeywords
- *  - peer 별 카드 활동 주간 집계 → peerRankShift
- *
- * 현재는 정적 mock seed — 컴포넌트가 *진짜 데이터처럼* 읽을 수 있는 구조만 제공.
- */
-export type HomeDailyDeltas = {
-  readonly asOf: string;
-  readonly comparedTo: string;
-  readonly generatedAt: string;
-  readonly cardCount: { readonly today: number; readonly prev: number };
-  readonly eventTypeDelta: ReadonlyArray<{
-    readonly type: string;
-    readonly label: string;
-    readonly today: number;
-    readonly prev: number;
-  }>;
-  readonly newKeywords: ReadonlyArray<{
-    readonly keyword: string;
-    readonly firstDetectedAt: string;
-    readonly context: string;
-  }>;
-  readonly peerRankShiftWeekly: {
-    readonly current: ReadonlyArray<{ readonly peer: string; readonly label: string; readonly count: number }>;
-    readonly prev: ReadonlyArray<{ readonly peer: string; readonly label: string; readonly count: number }>;
+  readonly label: string;
+  readonly value: string;
+  readonly reasoning: ReadonlyArray<{ readonly stage: string; readonly detail: string }>;
+  readonly evidence: {
+    readonly grounds: ReadonlyArray<string>;
+    readonly changes: ReadonlyArray<string>;
+    readonly relatedKeywords: ReadonlyArray<string>;
   };
 };
 
-export const homeDailyDeltas: HomeDailyDeltas = {
-  asOf: '2026-05-18',
-  comparedTo: '2026-05-17',
-  generatedAt: '2026-05-18T08:30:00+09:00',
-
-  cardCount: {
-    today: 3,
-    prev: 1,
-  },
-
-  eventTypeDelta: [
-    { type: 'partnership', label: '파트너십', today: 1, prev: 0 },
-    { type: 'new_biz', label: '신사업', today: 1, prev: 0 },
-    { type: 'contract', label: '수주', today: 1, prev: 1 },
-  ],
-
-  /** RoC 차트가 추적하지 않는 *완전 신규 등장* 키워드만. (추세 surge 는 차트 영역) */
-  newKeywords: [
-    {
-      keyword: 'Agentic AI Native',
-      firstDetectedAt: '08:14',
-      context: '삼성SDS 컨퍼런스 발표에서 처음 등장',
+export const homeTodayInsightSignals: ReadonlyArray<TodayInsightSignal> = [
+  {
+    id: 'signal-public-aiagent',
+    label: '주요 신호',
+    value: '공공 수주와 AI agent 언급이 함께 증가',
+    reasoning: [
+      { stage: '관찰', detail: '오늘 카드뉴스 풀에서 "AI agent" 언급 빈도 모니터링 → 검색지수 전주 대비 +18% 감지' },
+      { stage: '교차', detail: '같은 시점 공공 부문 신규 카드 카운트 비교 → 1건 → 3건 (+200%)' },
+      { stage: '패턴', detail: '두 변수의 동시 상승 — 단순 우연이 아닌 공동 driver (공공 발주가 agent 아키텍처를 요구) 존재 가능성' },
+      { stage: '판단', detail: '"공공 수주 사업이 AI agent 아키텍처를 중심으로 재편 중" 신호로 분류' },
+    ],
+    evidence: {
+      grounds: [
+        '포스코DX 디지털플랫폼정부 우선협상 (1,200억) — AI agent 아키텍처 명시',
+        'LG CNS 공공 AX 사업 5건 수주 발표 — agent 기반 service mesh',
+        '현대오토에버 K-IFRS 1108 IT서비스 부문 매출 3.42조 진입 (성장률 +17.7%)',
+      ],
+      changes: [
+        '오늘 공공 수주 카드 3건 (전일 1건 대비 +2)',
+        '"AI agent" 키워드 검색지수 전주 대비 +18%',
+        '공공 + AI agent 동시 언급 카드 비중 12% → 28%',
+      ],
+      relatedKeywords: ['Agentic AI', 'AI 에이전트', '공공 클라우드', '디지털플랫폼정부'],
     },
-  ],
-
-  /** 주간 peer 카드 활동량 — 순위 변동 감지용. */
-  peerRankShiftWeekly: {
-    current: [
-      { peer: 'posco_dx', label: 'POSCO DX', count: 4 },
-      { peer: 'samsung_sds', label: '삼성SDS', count: 3 },
-      { peer: 'lg_cns', label: 'LG CNS', count: 2 },
-      { peer: 'hyundai_autoever', label: '현대오토에버', count: 2 },
-    ],
-    prev: [
-      { peer: 'samsung_sds', label: '삼성SDS', count: 5 },
-      { peer: 'lg_cns', label: 'LG CNS', count: 3 },
-      { peer: 'hyundai_autoever', label: '현대오토에버', count: 2 },
-      { peer: 'posco_dx', label: 'POSCO DX', count: 1 },
-    ],
-  },
-};
-
-export const homePositioningAlerts: readonly PositioningAlert[] = [
-  {
-    id: 'hae-3jo-breach',
-    severity: 'high',
-    message: '현대오토에버 IT서비스 부문 매출 3.42조 — 메이저 SI 임계 (3조) 돌파, 성장률 +17.7% 유지',
-    peer: '현대오토에버',
   },
   {
-    id: 'sk-growth-negative',
-    severity: 'mid',
-    message: 'SK AX (별도) 2025 매출 −2.5% — 동종 4사 평균 (+5.9%) 대비 후행',
-    peer: 'SK AX',
+    id: 'signal-ir-cardnews',
+    label: '관찰 포인트',
+    value: 'IR 수치와 카드뉴스 노출의 동시 상승',
+    reasoning: [
+      { stage: '관찰', detail: '최근 30일 IR 발표 12건 추출 → 각 발표 후 24h 내 카드뉴스 매칭 카운트' },
+      { stage: '비교', detail: '전월 매칭율 60% → 이번 달 85% 변화 감지 (+25pp)' },
+      { stage: '회귀', detail: '매출 증감률 ↔ 노출량 회귀: 매출 +9% 시 노출 +24% — 상관 0.62' },
+      { stage: '판단', detail: 'IR 수치와 미디어 노출이 동조 시작 — strategic 관찰 포인트로 분류 (의사결정 직접 신호 X)' },
+    ],
+    evidence: {
+      grounds: [
+        '삼성SDS 1Q 매출 +12% (IR) — 같은 시점 카드뉴스 노출 5건',
+        'LG CNS 4Q AX 매출 비중 24% (IR) — 카드뉴스 노출 3건',
+        '현대오토에버 ITO+SI 매출 3.42조 발표 — 외부 미디어 픽업 145건',
+      ],
+      changes: [
+        'IR 발표 후 24h 이내 카드뉴스 매칭율 85% (전월 60% 대비)',
+        '평균 매출 +9% 시 노출량 +24% — 상관 0.62',
+        'SK AX 후행 (−2.5%) 구간에서 노출 비중 12% (4사 평균 22%)',
+      ],
+      relatedKeywords: ['IR 컨센서스', '실적 발표', 'AX 매출 비중', 'self-press leverage'],
+    },
+  },
+  {
+    id: 'signal-industry-message',
+    label: '다음 판단',
+    value: '산업별 제안 메시지로 전환 필요',
+    reasoning: [
+      { stage: '관찰', detail: 'Peer 4사 산업 특화 보도자료 비중 추적 → 평균 42% (전년 28%, +14pp)' },
+      { stage: '효율 비교', detail: '범용 메시지 외부 픽업 효율 8.2× → 6.4× (둔화) vs 산업 특화 평균 10.75×' },
+      { stage: '케이스 검증', detail: 'SDS 금융 특화 보도자료 12.5× 효율 / POSCO DX 제조·에너지 특화 → 수주 전환율 31% (범용 18%)' },
+      { stage: '추론', detail: '산업별 메시지가 *효율*(외부 픽업) + *전환*(수주율) 둘 다 우위인 시점 도래' },
+      { stage: '판단', detail: 'SK AX 도 산업별 제안 메시지로 전환 필요 — 범용 AI 메시지 효율 둔화 추세가 confirm signal' },
+    ],
+    evidence: {
+      grounds: [
+        'Peer 4사 산업 특화 메시지 비중 평균 42% (전년 28%)',
+        'SDS 의 금융 특화 보도자료 외부 픽업률 12.5× (전체 평균 10.75×)',
+        'POSCO DX 의 제조·에너지 특화 메시지 → 수주 전환율 31% (범용 18%)',
+      ],
+      changes: [
+        '"산업 솔루션" 키워드 카드뉴스 비중 18% → 31%',
+        '범용 AI 메시지 효율 (외부 픽업률) 8.2× → 6.4× (둔화)',
+        '제조 · 금융 · 공공 산업별 keyword cluster 분리도 +14%',
+      ],
+      relatedKeywords: ['산업 솔루션', '금융 AX', '제조 AX', '공공 AX', '산업 특화 메시지'],
+    },
   },
 ];
+
