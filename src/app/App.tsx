@@ -257,14 +257,11 @@ function AuthScreen({
           <rect width="800" height="800" fill="url(#auth-pattern)" />
         </svg>
 
-        {/* eyebrow */}
-        <p className="relative text-micro-eyebrow text-[var(--auth-hero-muted)] drop-shadow-sm">SK AX · 사업전략팀</p>
-
         {/* 핵심 타이포 */}
         <div className="relative">
-          <p className="mb-6 text-micro-eyebrow text-[var(--auth-hero-muted)]">PEER INTELLIGENCE</p>
+          <p className="mb-40 text-micro-eyebrow text-[var(--auth-hero-muted)]">PEER INTELLIGENCE</p>
           <h2 className="mb-6 font-display text-display-lg leading-tight text-[var(--auth-hero-ink)] drop-shadow-[0_12px_32px_rgba(0,0,0,0.22)]">
-            전략기획의 다음 30분.
+            오늘의 동향을<br />내일의 결정으로
           </h2>
           <p className="max-w-[480px] text-subtitle text-[var(--auth-hero-ink)] opacity-90 drop-shadow-sm">
             삼성SDS · LG CNS · 현대오토에버 · 포스코DX 의 변화를 24/7 자동 감지하고,
