@@ -257,7 +257,7 @@ export function MediaExposurePanel() {
   const maxTotal = Math.max(...exposureData.map((d) => d.total));
 
   return (
-    <section className="axis-panel-flat p-4">
+    <section className="axis-panel-flat flex h-full flex-col p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="axis-kicker">Auxiliary · 외부 인식 모니터링 (30일)</p>
@@ -270,20 +270,21 @@ export function MediaExposurePanel() {
         <ExecutiveBadge>preview</ExecutiveBadge>
       </div>
 
-      {/* Stacked bar — 좌측 self-press (어두운 색), 우측 외부 (밝은 색) */}
-      <div className="mt-4 space-y-3">
+      {/* Stacked bar — 좌측 self-press (어두운 색), 우측 외부 (밝은 색). flex-1 + justify-around 로
+          패널 높이만큼 5 막대가 vertical 분배 (좌측 PositioningPanel 의 chart 와 시각 weight 정합). */}
+      <div className="mt-4 flex flex-1 flex-col justify-around">
         {exposureData.map((d) => {
           const totalPct = (d.total / maxTotal) * 100;
           const selfPct = (d.selfPress / d.total) * 100;
           const extPct = (d.external / d.total) * 100;
           return (
             <div key={d.peer} className="grid grid-cols-[80px_minmax(0,1fr)_88px] items-center gap-3 text-xs">
-              <span className={`flex h-7 items-center gap-2 ${d.isSelf ? 'font-semibold text-[var(--axis-accent-strong)]' : 'text-[var(--axis-body)]'}`}>
+              <span className={`flex h-9 items-center gap-2 ${d.isSelf ? 'font-semibold text-[var(--axis-accent-strong)]' : 'text-[var(--axis-body)]'}`}>
                 <span className="inline-block h-3 w-3 rounded-sm" style={{ background: d.color }} />
                 {d.label}
               </span>
               <div
-                className="relative h-7 rounded-md"
+                className="relative h-9 rounded-md"
                 style={{
                   width: `${totalPct}%`,
                   // SK 는 점선 테두리
@@ -293,15 +294,15 @@ export function MediaExposurePanel() {
               >
                 {/* 자사 보도자료 (어두운 색) */}
                 <div
-                  className="absolute left-0 top-0 h-full rounded-l-md text-[10px] font-semibold text-white"
+                  className="absolute left-0 top-0 flex h-full items-center rounded-l-md px-2 text-[11px] font-semibold text-white"
                   style={{ width: `${selfPct}%`, background: `${d.color}` }}
                   title={`자사 ${d.selfPress}건`}
                 >
-                  <span className="ml-1 leading-7">자사 {d.selfPress}</span>
+                  자사 {d.selfPress}
                 </div>
                 {/* 외부 (밝은 색 — 같은 색의 35% opacity) */}
                 <div
-                  className="absolute top-0 h-full rounded-r-md text-[10px] font-semibold"
+                  className="absolute top-0 flex h-full items-center rounded-r-md px-2 text-[11px] font-semibold"
                   style={{
                     left: `${selfPct}%`, width: `${extPct}%`,
                     background: `${d.color}55`,
@@ -309,7 +310,7 @@ export function MediaExposurePanel() {
                   }}
                   title={`외부 ${d.external}건`}
                 >
-                  <span className="ml-1 leading-7">외부 {d.external}</span>
+                  외부 {d.external}
                 </div>
               </div>
               <span className="text-right text-[var(--axis-muted)] tabular-nums">
