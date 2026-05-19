@@ -83,7 +83,7 @@ export function CardNewsWorkspaceView({
   if (error) return <LoadingBlock label={error} />;
 
   return (
-    <ExecutivePage>
+    <ExecutivePage className="overflow-visible">
       <ExecutiveContainer className="pb-12">
         <ExecutiveHeader
           eyebrow="Card news workspace"
@@ -91,7 +91,7 @@ export function CardNewsWorkspaceView({
           subtitle="카드 커버 단위로 전체 흐름을 빠르게 훑고, 필요한 카드만 열어 AI 요약, 시사점, 원문 링크까지 이어서 확인할 수 있는 화면입니다."
         />
 
-        <section data-guide="cardnews-filter" className="mb-5 flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
+        <section data-guide="cardnews-filter" className="sticky top-3 z-20 mb-5 flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
           <span className="inline-flex h-9 items-center gap-2 rounded-full bg-[var(--axis-canvas)] px-3 text-xs font-semibold text-[var(--axis-muted)]">
             <Filter size={14} />
             필터

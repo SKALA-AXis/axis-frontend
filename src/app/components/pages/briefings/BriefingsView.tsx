@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { CalendarDays, Share2, Sparkles, TrendingUp, X } from 'lucide-react';
 
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
-import { getDisplayDate, getExecutiveRank, getPeerLabel } from '../../../../features/card-news/mappers/cardNewsExecutive';
+import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
+import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { mockInsightResult } from '../../../../shared/mocks/insight';
 import {
   ExecutiveBadge,
@@ -24,6 +25,21 @@ import {
   toMonthInputValue,
 } from './utils';
 
+type BriefingReasoningModal = {
+  id: string;
+  title: string;
+  summary: string;
+  groups: Array<{
+    title: string;
+    items: Array<{
+      label: string;
+      body: string;
+    }>;
+  }>;
+  evidenceTags: string[];
+  evidenceCards: CardNewsItem[];
+};
+
 export function BriefingsView() {
   const { cards, isLoading, error } = useCardNews();
   const contentViewMode = useContentViewMode();
@@ -38,6 +54,7 @@ export function BriefingsView() {
   const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
   const [activeInsightStep, setActiveInsightStep] = useState(0);
+  const [activeBriefingReasoningId, setActiveBriefingReasoningId] = useState<'focus' | 'market' | 'skax' | null>(null);
   const activeFlowStep = mockInsightResult.flowSteps[activeInsightStep] ?? mockInsightResult.flowSteps[0];
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
@@ -53,6 +70,91 @@ export function BriefingsView() {
   const evidenceCards = briefing.selectedCards
     .filter((card) => briefing.signalCards.some((signal) => signal.relatedCardIds.includes(card.id)))
     .slice(0, 6);
+  const getSupportingCards = (startIndex: number, count = 3) => {
+    if (briefing.selectedCards.length === 0) return [] as CardNewsItem[];
+    return Array.from({ length: Math.min(count, briefing.selectedCards.length) }, (_, offset) => briefing.selectedCards[(startIndex + offset) % briefing.selectedCards.length])
+      .filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index);
+  };
+  const buildEvidenceTags = (cardsForTags: CardNewsItem[], extraTags: string[]) => (
+    Array.from(
+      new Set([
+        ...extraTags,
+        ...cardsForTags.map((card) => getPeerLabel(card)),
+        ...cardsForTags.map((card) => card.category_label ?? card.category).filter(Boolean),
+      ].filter(Boolean)),
+    ).slice(0, 6)
+  );
+  const briefingReasoningSections = useMemo<Record<'focus' | 'market' | 'skax', BriefingReasoningModal>>(() => {
+    const focusEvidenceCards = briefing.signalCards.flatMap((item, index) => {
+      const relatedCards = briefing.selectedCards
+        .filter((card) => item.relatedCardIds.includes(card.id))
+        .slice(0, 3);
+      return relatedCards.length ? relatedCards : getSupportingCards(index, 2);
+    }).filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index).slice(0, 6);
+    const analysisEvidenceCards = [0, 1, 2, 3]
+      .flatMap((index) => getSupportingCards(index, 2))
+      .filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index)
+      .slice(0, 6);
+
+    return {
+      focus: {
+        id: 'focus',
+        title: `${briefingFocusTitle} 추론 과정`,
+        summary: `${briefing.label} 브리핑에서 수집 에이전트가 어떤 카드들을 우선 근거로 고르고, 해석 에이전트가 어떤 흐름으로 핵심 변화를 압축했는지 보여줍니다.`,
+        groups: [
+          {
+            title: '수집 에이전트가 먼저 올린 핵심 카드',
+            items: briefing.signalCards.map((item) => ({
+              label: item.label,
+              body: `에이전트는 "${item.title}" 신호를 핵심 변화 후보로 올렸고, 그 이유를 "${item.reason}"로 정리했습니다.`,
+            })),
+          },
+          {
+            title: '해석 에이전트의 판단 흐름',
+            items: mockInsightResult.flowSteps.map((step, index) => ({
+              label: `${String(index + 1).padStart(2, '0')} · ${step.label}`,
+              body: `${step.headline} 이 단계에서 에이전트는 ${step.description}`,
+            })),
+          },
+        ],
+        evidenceTags: buildEvidenceTags(focusEvidenceCards, [briefing.label, briefingFocusTitle]),
+        evidenceCards: focusEvidenceCards,
+      },
+      market: {
+        id: 'market',
+        title: '시장 해석 포인트 추론 과정',
+        summary: '시장 해석 에이전트가 반복 신호를 어떤 순서로 교차 검토하고, 어떤 문장을 시장 판단으로 압축했는지 보여줍니다.',
+        groups: [
+          {
+            title: '시장 해석 에이전트의 판단 메모',
+            items: mockInsightResult.problemChain.map((item) => ({
+              label: item.title,
+              body: `에이전트 판단: ${item.body} 근거 연결: ${item.reason}`,
+            })),
+          },
+        ],
+        evidenceTags: buildEvidenceTags(analysisEvidenceCards, [briefing.label, '시장 해석']),
+        evidenceCards: analysisEvidenceCards,
+      },
+      skax: {
+        id: 'skax',
+        title: 'SK AX 시사점 추론 과정',
+        summary: '대응 전략 에이전트가 시장 신호를 SK AX 실행 문장으로 어떻게 번역했는지 보여줍니다.',
+        groups: [
+          {
+            title: '전략 에이전트의 대응 포인트 정리',
+            items: mockInsightResult.solutionChain.map((item) => ({
+              label: item.title,
+              body: `에이전트 제안: ${item.body} 판단 근거: ${item.reason}`,
+            })),
+          },
+        ],
+        evidenceTags: buildEvidenceTags(analysisEvidenceCards, [briefing.label, 'SK AX 시사점']),
+        evidenceCards: analysisEvidenceCards,
+      },
+    };
+  }, [briefing.label, briefing.selectedCards, briefing.signalCards]);
+  const activeBriefingReasoning = activeBriefingReasoningId ? briefingReasoningSections[activeBriefingReasoningId] : null;
 
   const handleShareBriefing = async () => {
     setSharePreviewOpen(true);
@@ -236,9 +338,19 @@ export function BriefingsView() {
               <>
                 <section className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
                   <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp size={20} className="text-[var(--axis-accent)]" />
-                      <h2 className="text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">{briefingFocusTitle}</h2>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp size={20} className="text-[var(--axis-accent)]" />
+                        <h2 className="text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">{briefingFocusTitle}</h2>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveBriefingReasoningId('focus')}
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
+                        aria-label={`${briefingFocusTitle} 추론 과정 보기`}
+                      >
+                        !
+                      </button>
                     </div>
                   </div>
                   <div className="space-y-4 p-6">
@@ -325,15 +437,28 @@ export function BriefingsView() {
                   </div>
                 </section>
 
-                <section data-guide="insight-analysis" className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <section data-guide="insight-analysis">
+                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                   {[
                     { title: '시장 해석 포인트', label: 'Market reading', items: mockInsightResult.problemChain, tone: 'success' as const },
                     { title: 'SK AX 시사점', label: 'SK AX view', items: mockInsightResult.solutionChain, tone: 'accent' as const },
                   ].map((group) => (
                     <section key={group.title} className="axis-panel-flat overflow-hidden">
                       <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
-                        <p className="axis-kicker">{group.label}</p>
-                        <h2 className="axis-section-heading mt-1">{group.title}</h2>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="axis-kicker">{group.label}</p>
+                            <h2 className="axis-section-heading mt-1">{group.title}</h2>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveBriefingReasoningId(group.tone === 'success' ? 'market' : 'skax')}
+                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
+                            aria-label={`${group.title} 추론 과정 보기`}
+                          >
+                            !
+                          </button>
+                        </div>
                       </div>
                       <div className="space-y-5 p-5">
                         {group.items.map((item, index) => (
@@ -362,6 +487,7 @@ export function BriefingsView() {
                       </div>
                     </section>
                   ))}
+                  </div>
                 </section>
               </>
             ) : (
@@ -373,6 +499,14 @@ export function BriefingsView() {
                         <TrendingUp size={20} className="text-[var(--axis-accent)]" />
                         <h2 className="text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">{briefingFocusTitle}</h2>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveBriefingReasoningId('focus')}
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
+                        aria-label={`${briefingFocusTitle} 추론 과정 보기`}
+                      >
+                        !
+                      </button>
                     </div>
                   </div>
                   <div className="p-6">
@@ -438,11 +572,24 @@ export function BriefingsView() {
                   </div>
                 </section>
 
-                <section data-guide="insight-analysis" className="grid gap-5 lg:grid-cols-2">
+                <section data-guide="insight-analysis">
+                  <div className="grid gap-5 lg:grid-cols-2">
                   <div className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
                     <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
-                      <p className="axis-kicker">Market reading</p>
-                      <h2 className="axis-section-heading mt-1">시장 해석 포인트</h2>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="axis-kicker">Market reading</p>
+                          <h2 className="axis-section-heading mt-1">시장 해석 포인트</h2>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveBriefingReasoningId('market')}
+                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
+                          aria-label="시장 해석 포인트 추론 과정 보기"
+                        >
+                          !
+                        </button>
+                      </div>
                     </div>
                     <ul className="space-y-4 p-5">
                       {mockInsightResult.problemChain.map((item, index) => (
@@ -461,8 +608,20 @@ export function BriefingsView() {
                   </div>
                   <div className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.28)]">
                     <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.07)] px-5 py-4">
-                      <p className="axis-kicker">SK AX view</p>
-                      <h2 className="axis-section-heading mt-1">SK AX 시사점</h2>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="axis-kicker">SK AX view</p>
+                          <h2 className="axis-section-heading mt-1">SK AX 시사점</h2>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveBriefingReasoningId('skax')}
+                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
+                          aria-label="SK AX 시사점 추론 과정 보기"
+                        >
+                          !
+                        </button>
+                      </div>
                     </div>
                     <ul className="space-y-4 p-5">
                       {mockInsightResult.solutionChain.map((item, index) => (
@@ -478,6 +637,7 @@ export function BriefingsView() {
                         </li>
                       ))}
                     </ul>
+                  </div>
                   </div>
                 </section>
               </>
@@ -606,6 +766,88 @@ export function BriefingsView() {
                 공유하기
               </button>
             </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {activeBriefingReasoning ? (
+        <div className="fixed inset-0 z-50 bg-[rgba(8,10,14,0.62)] p-5 backdrop-blur-sm">
+          <section className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-[var(--axis-radius-lg)] border border-[rgba(255,255,255,0.16)] bg-[var(--axis-surface)] text-[var(--axis-ink)] shadow-[0_28px_90px_-42px_rgba(0,0,0,0.72)]">
+            <header className="flex items-center justify-between gap-3 border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">AI Agent reasoning</p>
+                <h2 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{activeBriefingReasoning.title}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveBriefingReasoningId(null)}
+                className="flex h-10 w-10 items-center justify-center rounded-[8px] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]"
+                aria-label="브리핑 추론 과정 닫기"
+              >
+                <X size={17} />
+              </button>
+            </header>
+            <article className="min-h-0 flex-1 overflow-y-auto p-5">
+              <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
+                <p className="text-sm font-semibold leading-7 text-[var(--axis-ink)]">{activeBriefingReasoning.summary}</p>
+                <div className="mt-4 space-y-4">
+                  {activeBriefingReasoning.groups.map((group) => (
+                    <section key={`${activeBriefingReasoning.id}-${group.title}`} className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-success)]">{group.title}</p>
+                      <div className="mt-3 space-y-3">
+                        {group.items.map((item, index) => (
+                          <div key={`${activeBriefingReasoning.id}-${group.title}-${item.label}`} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(90,107,87,0.12)] text-xs font-bold text-[var(--axis-success)]">
+                              {index + 1}
+                            </span>
+                            <div>
+                              <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.label}</p>
+                              <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {activeBriefingReasoning.evidenceTags.map((item) => (
+                    <ExecutiveBadge key={`${activeBriefingReasoning.id}-${item}`} tone="accent">{item}</ExecutiveBadge>
+                  ))}
+                </div>
+              </div>
+              {activeBriefingReasoning.evidenceCards.length ? (
+                <div className="mt-4 grid gap-3">
+                  {activeBriefingReasoning.evidenceCards.map((card) => {
+                    const sourceName = card.sources?.[0]?.source_name ?? card.source;
+                    return (
+                      <button
+                        key={`${activeBriefingReasoning.id}-${card.id}`}
+                        type="button"
+                        onClick={() => {
+                          setActiveBriefingReasoningId(null);
+                          setDetailCardId(card.id);
+                          setDetailSlideIndex(0);
+                        }}
+                        className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 text-left transition hover:border-[var(--axis-accent)] hover:bg-[var(--axis-surface-soft)]"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">{getPeerLabel(card)}</p>
+                          <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
+                        </div>
+                        <p className="mt-1 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</p>
+                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{getSummaryLines(card)[0] ?? card.detailDescription ?? card.title}</p>
+                        {sourceName ? (
+                          <p className="mt-2 text-[11px] leading-5 text-[var(--axis-muted)]">
+                            <span className="font-semibold text-[var(--axis-ink)]">출처:</span> {sourceName}
+                          </p>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </article>
           </section>
         </div>
       ) : null}

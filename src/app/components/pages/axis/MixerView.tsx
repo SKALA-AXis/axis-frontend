@@ -430,9 +430,9 @@ export function MixerView({
           title: '경쟁 흐름',
           summary: `${peers.join(', ')} 카드를 함께 놓고 보면 ${dominantKeyword} 경쟁은 기능 우위보다 ${competitionFrame}을 먼저 증명하는 방향으로 이동하고 있습니다.`,
           reasoning: [
-            `이번 인사이트는 ${selectedCards.length}건의 선택 카드 중 ${evidenceTitles.join(' / ')}를 우선 근거로 삼아 묶었습니다.`,
-            `선택 키워드를 카드 본문과 요약에 다시 대조하면 ${keywordHitSummary} 순으로 반복되어, 단순 단어 매칭이 아니라 여러 카드에 걸친 공통 신호가 확인됩니다.`,
-            `특히 "${selectedEvidenceCards[0]?.snippet ?? '관련 실행 신호가 반복됩니다.'}" 같은 문장이 먼저 잡혀, 기능 설명보다 실행 장면과 성과 맥락이 함께 부각되는 구조가 보입니다.`,
+            `수집 에이전트는 ${selectedCards.length}건의 선택 카드 중 ${evidenceTitles.join(' / ')}를 1차 근거 묶음으로 올렸습니다.`,
+            `비교 에이전트는 카드 본문과 요약을 다시 대조해 ${keywordHitSummary} 순으로 반복 신호를 확인했고, 단일 키워드가 아니라 여러 카드에 걸친 공통 패턴으로 판단했습니다.`,
+            `요약 에이전트는 "${selectedEvidenceCards[0]?.snippet ?? '관련 실행 신호가 반복됩니다.'}" 같은 문장을 핵심 증거로 삼아, 기능 설명보다 실행 장면과 성과 맥락이 더 강한 경쟁 신호라고 압축했습니다.`,
           ],
           evidenceTags: evidenceTitles.slice(0, 2),
           evidenceCards: selectedEvidenceCards.slice(0, 2),
@@ -442,9 +442,9 @@ export function MixerView({
           title: '판단 기준',
           summary: `${primaryIndustries} · ${primaryCustomers} 맥락에서는 새 기술 자체보다 ${buyerFrame}을 먼저 확인하는 쪽으로 판단 기준이 이동하고 있습니다.`,
           reasoning: [
-            `입력 조건상 고객·산업 조합은 ${primaryIndustries} · ${primaryCustomers}로 모였고, 근거 카드에서도 이 조합과 맞닿은 운영형 표현이 반복됩니다.`,
-            `예를 들어 "${selectedEvidenceCards[1]?.snippet ?? selectedEvidenceCards[0]?.snippet ?? '운영 안정성과 KPI 개선 표현이 반복됩니다.'}"처럼 실제 도입 이후 효과를 먼저 설명하는 문장이 우세합니다.`,
-            '따라서 고객 설득 포인트는 기술 스펙 소개보다 업무 KPI 개선, 운영 안정성, 적용 이후 전환 효과를 먼저 보여주는 쪽으로 정리하는 것이 더 타당합니다.',
+            `분류 에이전트는 입력 조건을 ${primaryIndustries} · ${primaryCustomers} 조합으로 정리했고, 근거 카드에서도 이 조합과 맞닿은 운영형 표현이 반복된다고 표시했습니다.`,
+            `검토 에이전트는 "${selectedEvidenceCards[1]?.snippet ?? selectedEvidenceCards[0]?.snippet ?? '운영 안정성과 KPI 개선 표현이 반복됩니다.'}" 같은 문장을 핵심 판단 근거로 선택해, 도입 이후 효과를 먼저 설명하는 흐름이 우세하다고 봤습니다.`,
+            '전략 에이전트는 그 결과를 바탕으로 고객 설득 포인트를 기술 스펙 소개보다 업무 KPI 개선, 운영 안정성, 적용 이후 전환 효과 중심으로 재정렬하는 것이 타당하다고 정리했습니다.',
           ],
           evidenceTags: [primaryIndustries, primaryCustomers, `${selectedCustomers.length}개 고객군`],
           evidenceCards: selectedEvidenceCards.slice(0, 2),
@@ -454,9 +454,9 @@ export function MixerView({
           title: '제안 포인트',
           summary: `SK AX는 ${dominantKeyword}를 단독 기능 메시지로 설명하기보다 ${skAxFrame}로 제시할 때 더 분명한 차별화 기회를 만들 수 있습니다.`,
           reasoning: [
-            `현재 선택 조합에는 북마크 ${bookmarkedEvidenceCount}건이 포함되어 있어 중요하게 남겨둔 카드와 반복 신호가 동시에 반영되었습니다.`,
-            `즉 이 인사이트는 임의 추론이 아니라 ${selectedCards.length}건 카드 중 실제 선택 카드와 북마크 카드가 겹치는 지점을 우선 반영한 결과입니다.`,
-            `결론적으로 믹서는 "${selectedEvidenceCards[0]?.title ?? '선택 카드'}" 같은 근거를 SK AX 제안 문장으로 다시 압축하는 역할에 더 가깝다고 볼 수 있습니다.`,
+            `우선순위 에이전트는 현재 선택 조합에 포함된 북마크 ${bookmarkedEvidenceCount}건을 별도 가중치로 반영해, 사용자가 중요하게 남긴 근거와 반복 신호가 겹치는 지점을 먼저 살폈습니다.`,
+            `그래서 이 인사이트는 임의 요약이 아니라 ${selectedCards.length}건 카드 중 실제 선택 카드와 북마크 카드가 동시에 지지하는 패턴을 우선 반영한 결과입니다.`,
+            `마지막으로 제안 에이전트는 "${selectedEvidenceCards[0]?.title ?? '선택 카드'}" 같은 근거를 SK AX 제안 문장으로 다시 번역해, 내부 해석을 바로 실행 문장으로 연결하는 역할을 수행했습니다.`,
           ],
           evidenceTags: [`북마크 ${bookmarkedEvidenceCount}건`, ...connections.slice(0, 2)],
           evidenceCards: selectedEvidenceCards,
@@ -518,7 +518,7 @@ export function MixerView({
 
   if (mode === 'history') {
     return (
-      <ExecutivePage>
+      <ExecutivePage className="overflow-visible">
         <ExecutiveContainer className="pb-12">
           <ExecutiveHeader
             eyebrow="Mixer history"
@@ -612,7 +612,7 @@ export function MixerView({
   if (mode === 'result' && result) {
     const activeResultInsight = result.insightBrief[activeResultInsightIndex] ?? result.insightBrief[0];
     return (
-      <ExecutivePage>
+      <ExecutivePage className="overflow-visible">
         <ExecutiveContainer className="pb-12">
           <ExecutiveHeader
             eyebrow="Mixer output"
@@ -643,7 +643,7 @@ export function MixerView({
                   <button
                     type="button"
                     onClick={() => setIsMixerReasoningOpen(true)}
-                    className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-sm font-black text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
+                    className="mt-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
                     aria-label="선택한 인사이트의 에이전트 추론 과정 보기"
                   >
                     !
@@ -808,7 +808,7 @@ export function MixerView({
             <section className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-[var(--axis-radius-lg)] border border-[rgba(255,255,255,0.16)] bg-[var(--axis-surface)] text-[var(--axis-ink)] shadow-[0_28px_90px_-42px_rgba(0,0,0,0.72)]">
               <header className="flex items-center justify-between gap-3 border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">Agent reasoning</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">AI Agent reasoning</p>
                   <h2 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{activeResultInsight?.title}</h2>
                 </div>
                 <button
@@ -875,7 +875,7 @@ export function MixerView({
   }
 
   return (
-    <ExecutivePage className="relative">
+    <ExecutivePage className="relative overflow-visible">
       <ExecutiveContainer className="pb-12">
           <ExecutiveHeader
             eyebrow="Mixer workbench"
@@ -898,7 +898,7 @@ export function MixerView({
           }
         />
 
-        <section data-guide="mixer-input" className="mb-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+        <section data-guide="mixer-input" className="sticky top-3 z-20 mb-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
           {mockMixerConfig.options.map((optionGroup) => {
             const group =
               optionGroup.title === 'Peer사'

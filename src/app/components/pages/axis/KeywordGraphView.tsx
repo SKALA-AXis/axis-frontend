@@ -705,9 +705,6 @@ export function KeywordGraphView({
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
-                  <ExecutiveButton variant="secondary" onClick={() => onNavigate('briefings')}>
-                    관련 브리핑 보기
-                  </ExecutiveButton>
                 </div>
               ) : null}
             </aside>

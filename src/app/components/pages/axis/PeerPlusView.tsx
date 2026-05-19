@@ -1,24 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RadarShape, ResponsiveContainer, Tooltip } from 'recharts';
 import { X } from 'lucide-react';
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RadarShape, ResponsiveContainer, Tooltip } from 'recharts';
+
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
-import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
 import { mockPeerPlusIrProfiles, mockPeerPlusKeywordCloud, mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
-import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
+import { ExecutiveBadge, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { LoadingBlock } from './AxisPlanningShared';
-import { MediaExposurePanel, PositioningPanel } from './PositioningPanels';
+import { PositioningPanel } from './PositioningPanels';
 
 type NavigateHandler = (view: string) => void;
 
-function normalizeGraphTerm(value: string) {
-  return value.replace(/\s/g, '').toLowerCase();
-}
+type PeerReasoningModal = {
+  id: string;
+  title: string;
+  summary: string;
+  groups: Array<{
+    title: string;
+    items: Array<{
+      label: string;
+      body: string;
+    }>;
+  }>;
+  evidenceTags: string[];
+  evidenceCards: CardNewsItem[];
+};
 
 export function PeerPlusView({
-  onNavigate,
+  onNavigate: _onNavigate,
   bookmarkedIds = [],
   onToggleBookmark,
   selectedPeerId: externalSelectedPeerId,
@@ -28,13 +39,12 @@ export function PeerPlusView({
   onToggleBookmark?: (cardId: string) => void;
   selectedPeerId?: PeerPlusPeerId;
 }) {
-  const { dashboard } = useDashboard();
   const { cards, isLoading, error } = useCardNews();
   const peerOptions = mockPeerPlusOptions;
   const [selectedPeerId, setSelectedPeerId] = useState<'all' | PeerPlusPeerId>(externalSelectedPeerId ?? 'all');
   const [peerDetailCardId, setPeerDetailCardId] = useState<string | null>(null);
   const [peerDetailSlideIndex, setPeerDetailSlideIndex] = useState(0);
-  const [peerKeywordMatches, setPeerKeywordMatches] = useState<{ keyword: string; cards: CardNewsItem[] } | null>(null);
+  const [activePeerReasoningId, setActivePeerReasoningId] = useState<'comparison' | 'swot' | null>(null);
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
 
   useEffect(() => {
@@ -46,12 +56,15 @@ export function PeerPlusView({
     window.localStorage.setItem(peerPlusSelectionStorageKey, 'all');
     setSelectedPeerId('all');
   }, [externalSelectedPeerId]);
+
   const isAllFilter = selectedPeerId === 'all';
   const selectedPeer = !isAllFilter ? peerOptions.find((peer) => peer.id === selectedPeerId) ?? peerOptions[0] : null;
   const relevantPeerIds = isAllFilter ? peerOptions.map((peer) => peer.id) : [selectedPeer!.id];
-  const peerCards = rankedCards.filter((card) => isAllFilter ? relevantPeerIds.includes(card.peer_id as PeerPlusPeerId) : card.peer_id === selectedPeer!.id);
-  const companyNews = (peerCards.length > 0 ? peerCards : rankedCards).slice(0, 4);
+  const peerCards = rankedCards.filter((card) => (isAllFilter ? relevantPeerIds.includes(card.peer_id as PeerPlusPeerId) : card.peer_id === selectedPeer!.id));
+  const peerEvidenceCards = (peerCards.length > 0 ? peerCards : rankedCards).slice(0, 6);
   const peerDetailCard = peerDetailCardId ? cards.find((card) => card.id === peerDetailCardId) ?? null : null;
+  const comparisonLabel = isAllFilter ? 'SK AX vs Peer 전체' : `SK AX vs ${selectedPeer!.label}`;
+
   const peerOrderCountMap: Record<'sk_ax' | PeerPlusPeerId, { label: string; orderCount: string }> = {
     sk_ax: { label: 'SK AX', orderCount: '내부 기준' },
     samsung_sds: { label: '삼성 SDS', orderCount: '공시 미기재' },
@@ -148,25 +161,11 @@ export function PeerPlusView({
     hyundai_autoever: { label: '현대 오토에버', color: 'var(--axis-graph-security)' },
     posco_dx: { label: '포스코 DX', color: 'var(--axis-graph-deal)' },
   };
-  const radarKeys = (isAllFilter
+  const radarKeys = isAllFilter
     ? (['sk_ax', ...peerOptions.map((peer) => peer.id)] as Array<'sk_ax' | PeerPlusPeerId>)
-    : (['sk_ax', selectedPeer!.id] as Array<'sk_ax' | PeerPlusPeerId>));
+    : (['sk_ax', selectedPeer!.id] as Array<'sk_ax' | PeerPlusPeerId>);
   const peerInsightItems = peerInsightCatalog[isAllFilter ? 'all' : selectedPeer!.id];
   const swotItems = swotCatalog[isAllFilter ? 'all' : selectedPeer!.id];
-  const allKeywordCloud = Object.values(mockPeerPlusKeywordCloud)
-    .flat()
-    .reduce<Array<{ label: string; weight: number; tone: 'accent' | 'success' | 'neutral' }>>((acc, item) => {
-      const existing = acc.find((entry) => entry.label === item.label);
-      if (!existing) {
-        acc.push({ ...item });
-      } else {
-        existing.weight = Math.max(existing.weight, item.weight);
-      }
-      return acc;
-    }, [])
-    .sort((a, b) => b.weight - a.weight)
-    .slice(0, 10);
-  const selectedKeywordCloud = isAllFilter ? allKeywordCloud : mockPeerPlusKeywordCloud[selectedPeer!.id];
   const peerOverviewRows = peerOptions.map((peer) => {
     const profile = mockPeerPlusIrProfiles[peer.id];
     const topKeyword = mockPeerPlusKeywordCloud[peer.id][0]?.label ?? '-';
@@ -181,76 +180,98 @@ export function PeerPlusView({
       topKeyword,
     };
   });
-  const wordCloudLayout = [
-    { left: '50%', top: '50%', rotate: 0 },
-    { left: '23%', top: '35%', rotate: -6 },
-    { left: '75%', top: '35%', rotate: 5 },
-    { left: '26%', top: '72%', rotate: 0 },
-    { left: '74%', top: '72%', rotate: -4 },
-    { left: '50%', top: '20%', rotate: 0 },
-    { left: '18%', top: '55%', rotate: -8 },
-    { left: '82%', top: '56%', rotate: 7 },
-    { left: '38%', top: '16%', rotate: 0 },
-    { left: '62%', top: '84%', rotate: -3 },
-  ];
-  const openKeywordCard = (keyword: string) => {
-    const normalizedKeyword = normalizeGraphTerm(keyword);
-    const keywordTerms = Array.from(new Set([normalizedKeyword, ...normalizedKeyword.split(/[\s/·-]+/)])).filter(Boolean);
-    const matchedCards = rankedCards.filter((card) => {
-      const haystack = normalizeGraphTerm([
-        card.title,
-        getPeerLabel(card),
-        card.category,
-        card.category_label,
-        card.subtitle,
-        card.sector,
-        ...(card.summary_lines ?? card.summary),
-        ...(card.insights ?? []),
-        ...(card.actionItems ?? []),
-      ].filter(Boolean).join(' '));
-      return keywordTerms.some((term) => term.length > 1 && haystack.includes(term));
-    }).slice(0, 6);
-    setPeerKeywordMatches({ keyword, cards: matchedCards.length > 0 ? matchedCards : companyNews });
-  };
+
+  const peerReasoningSections = useMemo<Record<'comparison' | 'swot', PeerReasoningModal>>(() => {
+    const getEvidenceSlice = (startIndex: number, count = 3) => {
+      if (peerEvidenceCards.length === 0) return [] as CardNewsItem[];
+      return Array.from({ length: Math.min(count, peerEvidenceCards.length) }, (_, offset) => peerEvidenceCards[(startIndex + offset) % peerEvidenceCards.length])
+        .filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index);
+    };
+    const buildEvidenceTags = (cardsForEvidence: CardNewsItem[], extraTags: string[]) => (
+      Array.from(
+        new Set([
+          ...extraTags,
+          ...cardsForEvidence.map((card) => getPeerLabel(card)),
+          ...cardsForEvidence.map((card) => card.category_label ?? card.category).filter(Boolean),
+        ].filter(Boolean)),
+      ).slice(0, 6)
+    );
+
+    const evidenceCards = [0, 1, 2, 3]
+      .flatMap((index) => getEvidenceSlice(index, 2))
+      .filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index)
+      .slice(0, 6);
+
+    return {
+      comparison: {
+        id: 'comparison',
+        title: '핵심 비교 포인트 추론 과정',
+        summary: `${comparisonLabel} 비교에서 비교 에이전트가 어떤 공개 신호를 교차 검토해 핵심 차이 축으로 압축했는지 보여줍니다.`,
+        groups: [
+          {
+            title: '비교 에이전트의 차이 축 정리',
+            items: peerInsightItems
+              .filter((item) => item.label !== '포지셔닝')
+              .map((item) => ({
+                label: item.label,
+                body: `에이전트 판단: ${item.body}`,
+              })),
+          },
+        ],
+        evidenceTags: buildEvidenceTags(evidenceCards, [comparisonLabel, '핵심 비교 포인트']),
+        evidenceCards,
+      },
+      swot: {
+        id: 'swot',
+        title: 'SWOT 분석 추론 과정',
+        summary: `${comparisonLabel} 비교에서 전략 에이전트가 강점·약점·기회·위협을 어떤 문장 기준으로 정리했는지 보여줍니다.`,
+        groups: [
+          {
+            title: '전략 에이전트의 SWOT 정리',
+            items: swotItems.map((item) => ({
+              label: item.label,
+              body: `에이전트 해석: ${item.body}`,
+            })),
+          },
+        ],
+        evidenceTags: buildEvidenceTags(evidenceCards, [comparisonLabel, 'SWOT']),
+        evidenceCards,
+      },
+    };
+  }, [comparisonLabel, peerEvidenceCards, peerInsightItems, swotItems]);
+  const activePeerReasoning = activePeerReasoningId ? peerReasoningSections[activePeerReasoningId] : null;
 
   if (isLoading) return <LoadingBlock label="Peer+ 분석 데이터를 불러오는 중입니다." />;
   if (error) return <LoadingBlock label={error} />;
 
   return (
-    <ExecutivePage>
+    <ExecutivePage className="overflow-visible">
       <ExecutiveContainer className="pb-12">
         <ExecutiveHeader
           eyebrow="Peer+ analysis"
           title="Peer+"
-          subtitle="전체 모드에서는 시장 전반 비교를, 기업별 모드에서는 SK AX와 선택 기업의 신호·재무·키워드 차이를 바로 읽을 수 있도록 정리한 화면입니다."
-          actions={
-            <div data-guide="peer-selector" className="flex flex-wrap justify-end gap-1.5">
-              {[{ id: 'all' as const, label: '전체' }, ...peerOptions].map((peer) => (
-                <button
-                  key={peer.id}
-                  type="button"
-                  onClick={() => {
-                    window.localStorage.setItem(peerPlusSelectionStorageKey, peer.id);
-                    setSelectedPeerId(peer.id);
-                  }}
-                  className={`h-8 rounded-full border px-3 text-xs font-semibold transition ${
-                    selectedPeerId === peer.id
-                      ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
-                      : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]'
-                  }`}
-                >
-                  {peer.label}
-                </button>
-              ))}
-            </div>
-          }
+          subtitle="전체 모드에서는 시장 전반 비교를, 기업별 모드에서는 SK AX와 선택 기업의 재무·메시지 차이만 빠르게 읽을 수 있도록 정리한 화면입니다."
         />
-
-        {/* 산업 포지셔닝 (메인) + 미디어 노출도 (보조 AUXILIARY) — Peer 비교의 두 축.
-            메인은 매출×성장률 사업 위상, 보조는 PR/IR 도달량 (self-peer bias 격리). */}
-        <section className="mb-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <PositioningPanel />
-          <MediaExposurePanel />
+        <section className="sticky top-3 z-30 mb-5 flex justify-end">
+          <div data-guide="peer-selector" className="flex flex-wrap justify-end gap-1.5">
+            {[{ id: 'all' as const, label: '전체' }, ...peerOptions].map((peer) => (
+              <button
+                key={peer.id}
+                type="button"
+                onClick={() => {
+                  window.localStorage.setItem(peerPlusSelectionStorageKey, peer.id);
+                  setSelectedPeerId(peer.id);
+                }}
+                className={`h-8 rounded-full border px-3 text-xs font-semibold transition ${
+                  selectedPeerId === peer.id
+                    ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
+                    : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]'
+                }`}
+              >
+                {peer.label}
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="mb-5">
@@ -267,23 +288,27 @@ export function PeerPlusView({
                 {['기업', '매출', '영업이익', '영업이익률', 'AX 비중', '수주 수', '핵심 키워드'].map((label) => (
                   <div key={label} className="bg-[var(--axis-surface-soft)] px-3 py-3">{label}</div>
                 ))}
-                {[skAxProfile, ...peerOverviewRows].filter((row) => isAllFilter || row.id === 'sk_ax' || row.id === selectedPeer!.id).map((row) => (
-                  <div key={row.id} className="contents">
-                    <div
-                      className={`px-3 py-3 text-left text-sm font-semibold ${
-                        row.id === 'sk_ax' || row.id === selectedPeerId ? 'bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]' : 'bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
-                      }`}
-                    >
-                      {row.label}
+                {[skAxProfile, ...peerOverviewRows]
+                  .filter((row) => isAllFilter || row.id === 'sk_ax' || row.id === selectedPeer!.id)
+                  .map((row) => (
+                    <div key={row.id} className="contents">
+                      <div
+                        className={`px-3 py-3 text-left text-sm font-semibold ${
+                          row.id === 'sk_ax' || row.id === selectedPeerId
+                            ? 'bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
+                            : 'bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
+                        }`}
+                      >
+                        {row.label}
+                      </div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.revenue}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.operatingProfit}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.margin}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.axRatio}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.orderCount}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.topKeyword}</div>
                     </div>
-                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.revenue}</div>
-                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.operatingProfit}</div>
-                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.margin}</div>
-                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.axRatio}</div>
-                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.orderCount}</div>
-                    <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.topKeyword}</div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
             <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3 text-sm text-[var(--axis-muted)]">
@@ -294,18 +319,32 @@ export function PeerPlusView({
 
         <section>
           <article data-guide="peer-insight" className="axis-panel-flat min-h-[360px] p-5">
-            <p className="axis-kicker">Comparison summary</p>
-            <h2 className="mt-2 text-lg font-display font-semibold leading-tight text-ink">
-              경쟁 메시지 차이와 SK AX 대응 포인트
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-              왼쪽은 실무 비교에 바로 쓰는 핵심 신호만, 오른쪽은 포지셔닝 관점까지 포함한 SWOT 해석만 따로 분리해 읽도록 구성했습니다.
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="axis-kicker">Comparison summary</p>
+                <h2 className="mt-2 text-lg font-display font-semibold leading-tight text-[var(--axis-ink)]">
+                  경쟁 메시지 차이와 SK AX 대응 포인트
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+                  왼쪽은 실무 비교에 바로 쓰는 핵심 신호만, 오른쪽은 포지셔닝 관점까지 포함한 SWOT 해석만 따로 분리해 읽도록 구성했습니다.
+                </p>
+              </div>
+            </div>
             <div className="mt-5 grid gap-5 xl:grid-cols-2">
               <section className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">핵심 비교 포인트</h3>
-                  <span className="text-xs font-semibold text-[var(--axis-muted)]">SK AX vs {isAllFilter ? 'Peer 전체' : selectedPeer!.label}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-[var(--axis-muted)]">{comparisonLabel}</span>
+                    <button
+                      type="button"
+                      onClick={() => setActivePeerReasoningId('comparison')}
+                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
+                      aria-label="핵심 비교 포인트 추론 과정 보기"
+                    >
+                      !
+                    </button>
+                  </div>
                 </div>
                 <p className="mb-4 text-xs leading-5 text-[var(--axis-muted)]">
                   사업 신호, 기술 신호, 리스크만 남겨 실제 제안이나 내부 브리핑에서 바로 비교 가능한 축으로 압축했습니다.
@@ -316,11 +355,10 @@ export function PeerPlusView({
                       key={`${item.label}-${item.body}`}
                       className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4"
                     >
-                      <div className="mb-2 flex items-center justify-between gap-3">
+                      <div className="mb-2">
                         <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</span>
-                        <span className="text-xs font-semibold text-[var(--axis-muted)]">{String(index + 1).padStart(2, '0')}</span>
+                        <p className={`${index === 0 ? 'mt-2 text-base leading-7' : 'mt-2 text-sm leading-6'} font-semibold text-[var(--axis-ink)]`}>{item.body}</p>
                       </div>
-                      <p className={`${index === 0 ? 'text-base leading-7' : 'text-sm leading-6'} font-semibold text-[var(--axis-ink)]`}>{item.body}</p>
                     </article>
                   ))}
                 </div>
@@ -328,13 +366,23 @@ export function PeerPlusView({
               <section className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">SWOT 분석</h3>
-                  <span className="text-xs font-semibold text-[var(--axis-muted)]">전략 해석</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-[var(--axis-muted)]">전략 해석</span>
+                    <button
+                      type="button"
+                      onClick={() => setActivePeerReasoningId('swot')}
+                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
+                      aria-label="SWOT 분석 추론 과정 보기"
+                    >
+                      !
+                    </button>
+                  </div>
                 </div>
                 <p className="mb-4 text-xs leading-5 text-[var(--axis-muted)]">
                   포지셔닝은 SWOT 안에서 해석하고, 각 항목이 SK AX의 대응 방향에 어떤 의미를 갖는지 한 번에 보이도록 정리했습니다.
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
-                  {swotItems.map((item) => (
+                  {swotItems.map((item, index) => (
                     <article
                       key={`${item.label}-${item.body}`}
                       className={`overflow-hidden rounded-[var(--axis-radius-lg)] border p-4 shadow-[0_16px_32px_-28px_rgba(26,26,31,0.24)] ${
@@ -347,35 +395,37 @@ export function PeerPlusView({
                               : 'border-[rgba(30,41,59,0.18)] bg-[linear-gradient(180deg,rgba(30,41,59,0.10),rgba(255,255,255,0.94))]'
                       }`}
                     >
-                      <div className="flex items-start gap-3">
-                        <span
-                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-sm font-black ${
-                            item.label === 'Strength'
-                              ? 'border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.14)] text-[var(--axis-accent-strong)]'
-                              : item.label === 'Weakness'
-                                ? 'border-[rgba(107,107,115,0.22)] bg-[rgba(107,107,115,0.10)] text-[var(--axis-muted)]'
-                                : item.label === 'Opportunity'
-                                  ? 'border-[rgba(90,107,87,0.28)] bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
-                                  : 'border-[rgba(30,41,59,0.18)] bg-[rgba(30,41,59,0.08)] text-[var(--axis-ink)]'
-                          }`}
-                        >
-                          {item.label.charAt(0)}
-                        </span>
-                        <div className="min-w-0">
-                          <p
-                            className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <span
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-sm font-black ${
                               item.label === 'Strength'
-                                ? 'text-[var(--axis-accent-strong)]'
+                                ? 'border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.14)] text-[var(--axis-accent-strong)]'
                                 : item.label === 'Weakness'
-                                  ? 'text-[var(--axis-muted)]'
+                                  ? 'border-[rgba(107,107,115,0.22)] bg-[rgba(107,107,115,0.10)] text-[var(--axis-muted)]'
                                   : item.label === 'Opportunity'
-                                    ? 'text-[var(--axis-success)]'
-                                    : 'text-[var(--axis-ink)]'
+                                    ? 'border-[rgba(90,107,87,0.28)] bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
+                                    : 'border-[rgba(30,41,59,0.18)] bg-[rgba(30,41,59,0.08)] text-[var(--axis-ink)]'
                             }`}
                           >
-                            {item.label}
-                          </p>
-                          <p className="mt-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
+                            {item.label.charAt(0)}
+                          </span>
+                          <div className="min-w-0">
+                            <p
+                              className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                                item.label === 'Strength'
+                                  ? 'text-[var(--axis-accent-strong)]'
+                                  : item.label === 'Weakness'
+                                    ? 'text-[var(--axis-muted)]'
+                                    : item.label === 'Opportunity'
+                                      ? 'text-[var(--axis-success)]'
+                                      : 'text-[var(--axis-ink)]'
+                              }`}
+                            >
+                              {item.label}
+                            </p>
+                            <p className="mt-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
+                          </div>
                         </div>
                       </div>
                     </article>
@@ -386,202 +436,196 @@ export function PeerPlusView({
           </article>
         </section>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.98fr)]">
-          <article data-guide="peer-wordcloud" className="axis-panel-flat p-5">
-            <p className="axis-kicker">Issue theme cloud</p>
-            <h3 className="axis-section-heading mt-1">최근 도입·협력 핵심 키워드</h3>
-            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-              {isAllFilter
-                ? '전체 모드에서는 모든 Peer사에서 반복되는 키워드를 한 화면에 합쳐 시장 전체의 신호를 먼저 읽게 했습니다.'
-                : `${selectedPeer!.label} 기준 키워드만 남겨 해당 기업의 최근 사업·기술 문맥을 더 직접적으로 볼 수 있게 했습니다.`}
-            </p>
-            <div className="relative mt-4 h-[250px] overflow-hidden rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]">
-              <div className="absolute inset-5 rounded-full border border-dashed border-[var(--axis-hairline)] opacity-55" />
-              {selectedKeywordCloud.map((item, index) => {
-                const position = wordCloudLayout[index % wordCloudLayout.length];
-                return (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => openKeywordCard(item.label)}
-                    className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-1.5 font-display font-semibold leading-none transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--axis-accent)] ${
-                      item.weight === 3 ? 'text-3xl' : item.weight === 2 ? 'text-xl' : 'text-sm'
-                    } ${
-                      item.tone === 'accent'
-                        ? 'text-[var(--axis-accent-strong)]'
-                        : item.tone === 'success'
-                          ? 'text-[var(--axis-success)]'
-                          : 'text-[var(--axis-body)]'
-                    }`}
-                    style={{
-                      left: position.left,
-                      top: position.top,
-                      transform: `translate(-50%, -50%) rotate(${position.rotate}deg)`,
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-3 text-xs leading-5 text-[var(--axis-muted)]">
-              {isAllFilter
-                ? '키워드를 클릭하면 전체 모드에서도 관련 카드뉴스를 통해 어떤 문맥에서 반복됐는지 바로 확인할 수 있습니다.'
-                : '키워드를 클릭하면 해당 기업 관련 카드뉴스와 연결해 실제 이슈 맥락을 같이 볼 수 있습니다.'}
-            </p>
-          </article>
-
-          <article data-guide="peer-radar" className="axis-panel-flat p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="axis-kicker">DART balance</p>
-                <h2 className="axis-section-heading mt-1">
-                  {isAllFilter ? 'Peer 재무 체질 레이더 비교' : `${selectedPeer!.label} vs SK AX 재무 체질 레이더`}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-                  {isAllFilter
-                    ? '전체 모드에서는 SK AX와 주요 Peer를 한 번에 겹쳐 시장 평균 대비 어디가 두드러지는지 보는 용도입니다.'
-                    : '기업별 모드에서는 SK AX와 선택 기업만 겹쳐 재무 체질 차이를 빠르게 읽는 비교 레이어로 사용합니다.'}
-                </p>
-              </div>
-              <ExecutiveBadge tone="accent">Radar</ExecutiveBadge>
-            </div>
-            <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[rgba(255,255,255,0.88)] p-3">
-              <div className="mb-3 flex flex-wrap gap-2">
-                {radarKeys.map((key) => (
-                  <span
-                    key={key}
-                    className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)]"
-                  >
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: radarLegendConfig[key].color }} />
-                    {radarLegendConfig[key].label}
-                  </span>
-                ))}
-              </div>
-            <div className="h-[380px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={[...peerRadarData]} outerRadius={122} margin={{ top: 10, right: 34, bottom: 10, left: 34 }}>
-                  <PolarGrid stroke="rgba(117,117,128,0.22)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: 'var(--axis-body)', fontWeight: 700 }} />
-                  <PolarRadiusAxis tick={false} axisLine={false} />
-                  {radarKeys.map((key) => (
-                    <RadarShape
-                      key={key}
-                      name={radarLegendConfig[key].label}
-                      dataKey={key}
-                      stroke={radarLegendConfig[key].color}
-                      fill={radarLegendConfig[key].color}
-                      fillOpacity={key === 'sk_ax' ? 0.2 : 0.1}
-                      strokeWidth={key === 'sk_ax' ? 2.6 : 2}
-                    />
-                  ))}
-                  <Tooltip formatter={(value: number, name: string) => [`${value}`, name]} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            </div>
-            <p className="mt-3 text-xs leading-5 text-[var(--axis-muted)]">축 기준은 수익성, 성장성, AX 집중도, 수주 모멘텀, 운영 효율, 시장 노출이며, 수치 자체보다 상대적 모양과 벌어진 구간을 읽는 비교용 목업입니다.</p>
-          </article>
-        </section>
-
-        {!isAllFilter ? (
-        <section data-guide="peer-related-cardnews" className="mt-5">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <p className="axis-kicker">Related card news</p>
-              <h2 className="axis-section-heading mt-1">{selectedPeer!.label} 관련 카드뉴스</h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">선택 기업의 최근 카드뉴스를 함께 보며 위 비교 결과가 어떤 공개 신호에서 나왔는지 바로 연결해 확인할 수 있습니다.</p>
-            </div>
-            <ExecutiveBadge tone="accent">{companyNews.length}건</ExecutiveBadge>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {companyNews.map((card) => (
-              <button
-                key={card.id}
-                type="button"
-                onClick={() => setPeerDetailCardId(card.id)}
-                className="relative aspect-[4/5] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[#081324] text-left transition hover:border-[var(--axis-accent)]"
-              >
-                {card.coverImageUrl ? (
-                  <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
-                ) : null}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/34 via-[#081324]/48 to-black/92" />
-                <div className="relative flex h-full flex-col justify-between p-4 text-white">
-                  <div className="flex items-start justify-between gap-2 text-xs font-semibold">
-                    <span className="rounded-sm border border-white/25 bg-white/10 px-2 py-1">{getDisplayDate(card)}</span>
-                    <span className="rounded-sm border border-white/25 bg-white/10 px-2 py-1">{card.category_label ?? card.category}</span>
-                  </div>
-                  <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/75">{getPeerLabel(card)}</p>
-                    <h3 className="line-clamp-4 text-lg font-semibold leading-tight text-white">{card.title}</h3>
-                  </div>
+        {isAllFilter ? (
+          <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.98fr)]">
+            <PositioningPanel />
+            <article data-guide="peer-radar" className="axis-panel-flat p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="axis-kicker">DART balance</p>
+                  <h2 className="axis-section-heading mt-1">Peer 재무 체질 레이더 비교</h2>
+                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+                    전체 모드에서는 SK AX와 주요 Peer를 한 번에 겹쳐 시장 평균 대비 어디가 두드러지는지 보는 용도입니다.
+                  </p>
                 </div>
-              </button>
-            ))}
-          </div>
-        </section>
-        ) : null}
+                <ExecutiveBadge tone="accent">Radar</ExecutiveBadge>
+              </div>
+              <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[rgba(255,255,255,0.88)] p-3">
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {radarKeys.map((key) => (
+                    <span
+                      key={key}
+                      className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)]"
+                    >
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: radarLegendConfig[key].color }} />
+                      {radarLegendConfig[key].label}
+                    </span>
+                  ))}
+                </div>
+                <div className="h-[380px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={[...peerRadarData]} outerRadius={122} margin={{ top: 10, right: 34, bottom: 10, left: 34 }}>
+                      <PolarGrid stroke="rgba(117,117,128,0.22)" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: 'var(--axis-body)', fontWeight: 700 }} />
+                      <PolarRadiusAxis tick={false} axisLine={false} />
+                      {radarKeys.map((key) => (
+                        <RadarShape
+                          key={key}
+                          name={radarLegendConfig[key].label}
+                          dataKey={key}
+                          stroke={radarLegendConfig[key].color}
+                          fill={radarLegendConfig[key].color}
+                          fillOpacity={key === 'sk_ax' ? 0.2 : 0.1}
+                          strokeWidth={key === 'sk_ax' ? 2.6 : 2}
+                        />
+                      ))}
+                      <Tooltip formatter={(value: number, name: string) => [`${value}`, name]} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-[var(--axis-muted)]">축 기준은 수익성, 성장성, AX 집중도, 수주 모멘텀, 운영 효율, 시장 노출이며, 수치 자체보다 상대적 모양과 벌어진 구간을 읽는 비교용 목업입니다.</p>
+            </article>
+          </section>
+        ) : (
+          <section className="mt-5">
+            <article data-guide="peer-radar" className="axis-panel-flat p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="axis-kicker">DART balance</p>
+                  <h2 className="axis-section-heading mt-1">{selectedPeer!.label} vs SK AX 재무 체질 레이더</h2>
+                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+                    기업별 모드에서는 SK AX와 선택 기업만 겹쳐 재무 체질 차이를 빠르게 읽는 비교 레이어로 사용합니다.
+                  </p>
+                </div>
+                <ExecutiveBadge tone="accent">Radar</ExecutiveBadge>
+              </div>
+              <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[rgba(255,255,255,0.88)] p-3">
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {radarKeys.map((key) => (
+                    <span
+                      key={key}
+                      className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)]"
+                    >
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: radarLegendConfig[key].color }} />
+                      {radarLegendConfig[key].label}
+                    </span>
+                  ))}
+                </div>
+                <div className="h-[380px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={[...peerRadarData]} outerRadius={122} margin={{ top: 10, right: 34, bottom: 10, left: 34 }}>
+                      <PolarGrid stroke="rgba(117,117,128,0.22)" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: 'var(--axis-body)', fontWeight: 700 }} />
+                      <PolarRadiusAxis tick={false} axisLine={false} />
+                      {radarKeys.map((key) => (
+                        <RadarShape
+                          key={key}
+                          name={radarLegendConfig[key].label}
+                          dataKey={key}
+                          stroke={radarLegendConfig[key].color}
+                          fill={radarLegendConfig[key].color}
+                          fillOpacity={key === 'sk_ax' ? 0.2 : 0.1}
+                          strokeWidth={key === 'sk_ax' ? 2.6 : 2}
+                        />
+                      ))}
+                      <Tooltip formatter={(value: number, name: string) => [`${value}`, name]} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-[var(--axis-muted)]">축 기준은 수익성, 성장성, AX 집중도, 수주 모멘텀, 운영 효율, 시장 노출이며, 수치 자체보다 상대적 모양과 벌어진 구간을 읽는 비교용 목업입니다.</p>
+            </article>
+          </section>
+        )}
       </ExecutiveContainer>
-      {peerKeywordMatches ? (
-        <div
-          className="fixed inset-0 z-40 bg-[rgba(250,248,244,0.62)] p-5 backdrop-blur-sm dark:bg-[rgba(17,18,22,0.70)]"
-          onClick={() => setPeerKeywordMatches(null)}
-        >
-          <section
-            className="ml-auto h-full w-full max-w-[520px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] shadow-[0_28px_90px_-42px_rgba(0,0,0,0.55)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <header className="flex items-start justify-between gap-3 border-b border-[var(--axis-hairline)] p-5">
+
+      {activePeerReasoning ? (
+        <div className="fixed inset-0 z-50 bg-[rgba(8,10,14,0.62)] p-5 backdrop-blur-sm">
+          <section className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-[var(--axis-radius-lg)] border border-[rgba(255,255,255,0.16)] bg-[var(--axis-surface)] text-[var(--axis-ink)] shadow-[0_28px_90px_-42px_rgba(0,0,0,0.72)]">
+            <header className="flex items-center justify-between gap-3 border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
               <div>
-                <p className="axis-kicker">Keyword card news</p>
-                <h2 className="axis-section-heading mt-1">‘{peerKeywordMatches.keyword}’ 관련 카드뉴스</h2>
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">AI Agent reasoning</p>
+                <h2 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{activePeerReasoning.title}</h2>
               </div>
               <button
                 type="button"
-                aria-label="관련 카드뉴스 목록 닫기"
-                onClick={() => setPeerKeywordMatches(null)}
-                className="flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]"
+                onClick={() => setActivePeerReasoningId(null)}
+                className="flex h-10 w-10 items-center justify-center rounded-[8px] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]"
+                aria-label="Peer+ 추론 과정 닫기"
               >
-                <X size={16} />
+                <X size={17} />
               </button>
             </header>
-            <div className="h-[calc(100%-82px)] overflow-y-auto p-5">
-              <div className="space-y-3">
-                {peerKeywordMatches.cards.map((card) => (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => {
-                      setPeerDetailCardId(card.id);
-                      setPeerDetailSlideIndex(0);
-                    }}
-                    className="grid w-full grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)] hover:bg-[var(--axis-canvas)]"
-                  >
-                    <div className="relative aspect-[4/5] overflow-hidden rounded-[var(--axis-radius-sm)] bg-[#081324]">
-                      {card.coverImageUrl ? (
-                        <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-70" />
-                      ) : null}
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/60" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-semibold text-[var(--axis-accent-strong)]">{getPeerLabel(card)}</span>
-                        <span className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</span>
+            <article className="min-h-0 flex-1 overflow-y-auto p-5">
+              <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
+                <p className="text-sm font-semibold leading-7 text-[var(--axis-ink)]">{activePeerReasoning.summary}</p>
+                <div className="mt-4 space-y-4">
+                  {activePeerReasoning.groups.map((group) => (
+                    <section key={`${activePeerReasoning.id}-${group.title}`} className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-success)]">{group.title}</p>
+                      <div className="mt-3 space-y-3">
+                        {group.items.map((item, index) => (
+                          <div key={`${activePeerReasoning.id}-${group.title}-${item.label}`} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(90,107,87,0.12)] text-xs font-bold text-[var(--axis-success)]">
+                              {index + 1}
+                            </span>
+                            <div>
+                              <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.label}</p>
+                              <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <h3 className="mt-2 line-clamp-3 text-base font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</h3>
-                      <p className="mt-2 line-clamp-2 text-sm leading-5 text-[var(--axis-muted)]">{getSummaryLines(card)[0]}</p>
-                    </div>
-                  </button>
-                ))}
+                    </section>
+                  ))}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {activePeerReasoning.evidenceTags.map((item) => (
+                    <ExecutiveBadge key={`${activePeerReasoning.id}-${item}`} tone="accent">{item}</ExecutiveBadge>
+                  ))}
+                </div>
               </div>
-            </div>
+              {activePeerReasoning.evidenceCards.length ? (
+                <div className="mt-4 grid gap-3">
+                  {activePeerReasoning.evidenceCards.map((card) => {
+                    const sourceName = card.sources?.[0]?.source_name ?? card.source;
+                    return (
+                      <button
+                        key={`${activePeerReasoning.id}-${card.id}`}
+                        type="button"
+                        onClick={() => {
+                          setActivePeerReasoningId(null);
+                          setPeerDetailCardId(card.id);
+                          setPeerDetailSlideIndex(0);
+                        }}
+                        className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 text-left transition hover:border-[var(--axis-accent)] hover:bg-[var(--axis-surface-soft)]"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">{getPeerLabel(card)}</p>
+                          <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
+                        </div>
+                        <p className="mt-1 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</p>
+                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{getSummaryLines(card)[0] ?? card.detailDescription ?? card.title}</p>
+                        {sourceName ? (
+                          <p className="mt-2 text-[11px] leading-5 text-[var(--axis-muted)]">
+                            <span className="font-semibold text-[var(--axis-ink)]">출처:</span> {sourceName}
+                          </p>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </article>
           </section>
         </div>
       ) : null}
+
       {peerDetailCard ? (
         <FloatingCardNewsOverlay
           card={peerDetailCard}
-          cards={companyNews}
+          cards={peerEvidenceCards}
           bookmarked={bookmarkedIds.includes(peerDetailCard.id)}
           slideIndex={peerDetailSlideIndex}
           onSlideChange={setPeerDetailSlideIndex}
@@ -599,4 +643,3 @@ export function PeerPlusView({
     </ExecutivePage>
   );
 }
-
