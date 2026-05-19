@@ -41,24 +41,73 @@ const positioningData = [
     rev_full_krwbn: 10752, segment_note: 'IT사업실만 (EIC사업실 5,329억 제외)' },
 ];
 
+// Piecewise X-scale — POS(~5천억대) 와 cluster(3~7조) 사이 빈 구간을 단일 break line 으로 단축.
+// 3,500~8,000억 (POS 영역) → 축의 0~22% (POS 인입, 좌측 패딩 확보) /
+// 8,000~30,000억 (단일 break 영역) → 22~26% (4%만 차지 — 사실상 line) /
+// 30,000~70,000억 (cluster) → 26~100% (cluster 가 horizontal 74% 차지).
+const X_REV_MIN = 3500;
+const X_REV_MAX = 70000;
+const SEG_POS_END = 8000;          // POS 영역 끝 = break 시작
+const SEG_CLUSTER_START = 30000;   // break 끝 = cluster 시작 (= 메이저 SI 기준)
+const AXIS_SEG_POS_END = 0.22;
+const AXIS_SEG_CLUSTER_START = 0.26;
+const AXIS_BREAK_MARK = (AXIS_SEG_POS_END + AXIS_SEG_CLUSTER_START) / 2; // = 0.24
+
+function revToX(rev: number): number {
+  if (rev <= SEG_POS_END) {
+    return ((rev - X_REV_MIN) / (SEG_POS_END - X_REV_MIN)) * AXIS_SEG_POS_END;
+  }
+  if (rev <= SEG_CLUSTER_START) {
+    return (
+      AXIS_SEG_POS_END +
+      ((rev - SEG_POS_END) / (SEG_CLUSTER_START - SEG_POS_END)) *
+        (AXIS_SEG_CLUSTER_START - AXIS_SEG_POS_END)
+    );
+  }
+  return (
+    AXIS_SEG_CLUSTER_START +
+    ((rev - SEG_CLUSTER_START) / (X_REV_MAX - SEG_CLUSTER_START)) *
+      (1 - AXIS_SEG_CLUSTER_START)
+  );
+}
+
+function xToRev(x: number): number {
+  if (x <= AXIS_SEG_POS_END) {
+    return X_REV_MIN + (x / AXIS_SEG_POS_END) * (SEG_POS_END - X_REV_MIN);
+  }
+  if (x <= AXIS_SEG_CLUSTER_START) {
+    return (
+      SEG_POS_END +
+      ((x - AXIS_SEG_POS_END) / (AXIS_SEG_CLUSTER_START - AXIS_SEG_POS_END)) *
+        (SEG_CLUSTER_START - SEG_POS_END)
+    );
+  }
+  return (
+    SEG_CLUSTER_START +
+    ((x - AXIS_SEG_CLUSTER_START) / (1 - AXIS_SEG_CLUSTER_START)) *
+      (X_REV_MAX - SEG_CLUSTER_START)
+  );
+}
+
 const positioningPoints = positioningData.map((p) => ({
   ...p,
-  x: Math.log10(p.rev_2025_krwbn),
+  x: revToX(p.rev_2025_krwbn),
   y: p.yoy_pct,
 }));
 
 // 고정 기준선 — 표본 평균이 아니라 산업 임계값
-const REF_X_REVENUE = 30000;       // 3조 — "메이저 SI" 기준
+const REF_X_REVENUE = 30000;       // 3조 — "메이저 SI" 기준 = 압축 끝 = cluster 시작
 const REF_Y_GROWTH = 5;            // 5% — SI 업계 평균 성장률
-const REF_X = Math.log10(REF_X_REVENUE);
+const REF_X = revToX(REF_X_REVENUE);  // = AXIS_SEG_CLUSTER_START = 0.25
 const REF_Y = REF_Y_GROWTH;
 
-// X: 매출 5,000~70,000억 (log10: 3.70~4.85)
-// Y: -10%~+25%
-const X_MIN = 3.65;
-const X_MAX = 4.90;
+const X_MIN = 0;
+const X_MAX = 1;
 const Y_MIN = -10;
 const Y_MAX = 25;
+
+// X 축 tick 위치 — 축 좌표. tickFormatter 가 역변환해서 매출 라벨 표시.
+const X_TICKS = [revToX(5500), revToX(SEG_CLUSTER_START), revToX(40000), revToX(50000), revToX(60000), revToX(70000)];
 
 export function PositioningPanel() {
   return (
@@ -68,7 +117,7 @@ export function PositioningPanel() {
           <p className="axis-kicker">IT services positioning · 2025 fundamentals</p>
           <h2 className="axis-section-heading mt-1">사업 규모 × 매출 성장률</h2>
           <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">
-            X = 2025 IT서비스 부문 매출 (log<sub>10</sub> 억원). Y = <strong>2024 → 2025 단년</strong> YoY 성장률.
+            X = 2025 IT서비스 부문 매출. Y = <strong>2024 → 2025 단년</strong> YoY 성장률.
             DART K-IFRS 1108 영업부문 공시. 자사 편향 없는 펀더멘털 두 축.
             <span className="ml-1 italic">단년 성장률은 일시 요인 영향 가능 — 추세는 별도 확인 권장.</span>
           </p>
@@ -86,6 +135,14 @@ export function PositioningPanel() {
           <ReferenceArea x1={X_MIN} x2={REF_X} y1={Y_MIN} y2={REF_Y} fill="#888" fillOpacity={0.03} />
           <ReferenceArea x1={REF_X} x2={X_MAX} y1={Y_MIN} y2={REF_Y} fill="#888" fillOpacity={0.03} />
 
+          {/* Axis break marker — POS 영역과 cluster 사이 단일 선 (8천억~3조 사이는 데이터 없음) */}
+          <ReferenceLine
+            x={AXIS_BREAK_MARK}
+            stroke="#999"
+            strokeDasharray="2 3"
+            strokeOpacity={0.55}
+          />
+
           <ReferenceLine x={REF_X} stroke="#DC5A24" strokeDasharray="4 4" strokeOpacity={0.5}
             label={{ value: `메이저 SI 기준 ${(REF_X_REVENUE / 10000).toFixed(0)}조`,
                      position: 'top', fontSize: 10, fill: '#A85F00' }}
@@ -101,14 +158,14 @@ export function PositioningPanel() {
             dataKey="x"
             name="사업 규모"
             domain={[X_MIN, X_MAX]}
-            ticks={[3.7, 3.9, 4.1, 4.3, 4.5, 4.7, 4.9]}
+            ticks={X_TICKS}
             tickFormatter={(v: number) => {
-              const n = Math.round(Math.pow(10, v));
-              if (n >= 10000) return `${(n / 10000).toFixed(1)}조`;
-              return `${n.toLocaleString()}억`;
+              const rev = Math.round(xToRev(v));
+              if (rev >= 10000) return `${(rev / 10000).toFixed(0)}조`;
+              return `${rev.toLocaleString()}억`;
             }}
             tick={{ fontSize: 10, fill: '#6B6B73' }}
-            label={{ value: '사업 규모 — 2025 IT서비스 부문 매출 (log scale)',
+            label={{ value: '사업 규모 — 2025 IT서비스 부문 매출',
                      position: 'insideBottom', offset: -18, fontSize: 12, fill: '#333', fontWeight: 600 }}
           />
           <YAxis
