@@ -270,57 +270,69 @@ export function MediaExposurePanel() {
         <ExecutiveBadge>preview</ExecutiveBadge>
       </div>
 
-      {/* Stacked bar — 좌측 self-press (어두운 색), 우측 외부 (밝은 색). flex-1 + justify-around 로
-          패널 높이만큼 5 막대가 vertical 분배 (좌측 PositioningPanel 의 chart 와 시각 weight 정합). */}
-      <div className="mt-4 flex flex-1 flex-col justify-around">
-        {exposureData.map((d) => {
-          const totalPct = (d.total / maxTotal) * 100;
-          const selfPct = (d.selfPress / d.total) * 100;
-          const extPct = (d.external / d.total) * 100;
-          return (
-            <div key={d.peer} className="grid grid-cols-[80px_minmax(0,1fr)_88px] items-center gap-3 text-xs">
-              <span className={`flex h-9 items-center gap-2 ${d.isSelf ? 'font-semibold text-[var(--axis-accent-strong)]' : 'text-[var(--axis-body)]'}`}>
-                <span className="inline-block h-3 w-3 rounded-sm" style={{ background: d.color }} />
-                {d.label}
-              </span>
-              <div
-                className="relative h-9 rounded-md"
-                style={{
-                  width: `${totalPct}%`,
-                  // SK 는 점선 테두리
-                  outline: d.isSelf ? '2px dashed #DC5A24' : 'none',
-                  outlineOffset: '2px',
-                }}
-              >
-                {/* 자사 보도자료 (어두운 색) */}
+      {/* Vertical column chart — 5 peer 가 column 으로 서서 height 가 total exposure.
+          column 내부: 외부 (top, 밝은 색) + 자사 (bottom, 어두운 색) stacked. */}
+      <div className="mt-4 flex flex-1 flex-col">
+        {/* Columns row — flex-1 로 가용 vertical 공간 채움, items-end 로 막대 바닥 정렬 */}
+        <div className="flex flex-1 items-end gap-4 px-2 pb-1">
+          {exposureData.map((d) => {
+            const totalPct = (d.total / maxTotal) * 100;
+            const selfPct = d.selfRatio;
+            const extPct = 100 - d.selfRatio;
+            return (
+              <div key={d.peer} className="flex h-full flex-1 flex-col items-center justify-end">
                 <div
-                  className="absolute left-0 top-0 flex h-full items-center rounded-l-md px-2 text-[11px] font-semibold text-white"
-                  style={{ width: `${selfPct}%`, background: `${d.color}` }}
-                  title={`자사 ${d.selfPress}건`}
-                >
-                  자사 {d.selfPress}
-                </div>
-                {/* 외부 (밝은 색 — 같은 색의 35% opacity) */}
-                <div
-                  className="absolute top-0 flex h-full items-center rounded-r-md px-2 text-[11px] font-semibold"
+                  className="flex w-full max-w-[72px] flex-col overflow-hidden rounded-md"
                   style={{
-                    left: `${selfPct}%`, width: `${extPct}%`,
-                    background: `${d.color}55`,
-                    color: '#222',
+                    height: `${totalPct}%`,
+                    outline: d.isSelf ? '2px dashed #DC5A24' : 'none',
+                    outlineOffset: '2px',
                   }}
-                  title={`외부 ${d.external}건`}
                 >
-                  외부 {d.external}
+                  {/* 외부 (top, 밝은 색) */}
+                  <div
+                    className="flex items-center justify-center text-[11px] font-semibold"
+                    style={{
+                      height: `${extPct}%`,
+                      background: `${d.color}55`,
+                      color: '#222',
+                    }}
+                    title={`외부 ${d.external}건`}
+                  >
+                    {extPct >= 18 ? d.external : null}
+                  </div>
+                  {/* 자사 (bottom, 어두운 색) */}
+                  <div
+                    className="flex items-center justify-center text-[11px] font-semibold text-white"
+                    style={{
+                      height: `${selfPct}%`,
+                      background: d.color,
+                    }}
+                    title={`자사 ${d.selfPress}건`}
+                  >
+                    {selfPct >= 18 ? d.selfPress : null}
+                  </div>
                 </div>
               </div>
-              <span className="text-right text-[var(--axis-muted)] tabular-nums">
+            );
+          })}
+        </div>
+
+        {/* Labels row — column 아래 peer 라벨 + 총 건수 + 자사 비율 */}
+        <div className="mt-2 flex gap-4 border-t border-[var(--axis-hairline)] px-2 pt-2">
+          {exposureData.map((d) => (
+            <div key={d.peer} className="flex-1 text-center">
+              <p className="flex items-center justify-center gap-1.5 text-[11px]">
+                <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: d.color }} />
+                <span className={d.isSelf ? 'font-semibold text-[var(--axis-accent-strong)]' : 'text-[var(--axis-body)]'}>{d.label}</span>
+              </p>
+              <p className="mt-1 text-[11px] text-[var(--axis-muted)] tabular-nums">
                 총 <strong className="text-[var(--axis-ink)]">{d.total}</strong>건
-                <br />
-                <span className="text-[10px]">자사 {d.selfRatio.toFixed(0)}%</span>
-              </span>
+              </p>
+              <p className="text-[10px] text-[var(--axis-muted)]">자사 {d.selfRatio.toFixed(0)}%</p>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
       {/* 외부 출처만 기준으로 다시 본 순위 */}
