@@ -191,7 +191,7 @@ export function FloatingAiChat() {
                 {[
                   ['핵심 변화', 'AX 시장은 PoC 검증보다 실제 운영 확산과 수주 기반 KPI 증명으로 이동하고 있습니다.'],
                   ['시사점', 'Peer사의 메시지는 기술 발표보다 산업별 고객 성과와 운영 안정성을 강조하는 방향으로 수렴합니다.'],
-                  ['SK AX 대응', '고객 산업별 제안서에 IR 근거, 카드뉴스 요약, Graphify 관계도를 함께 묶어 사전 브리핑 자료로 제공합니다.'],
+                  ['SK AX 대응', '고객 산업별 제안서에 IR 근거, 카드뉴스 요약, 핵심 근거 맵을 함께 묶어 사전 브리핑 자료로 제공합니다.'],
                 ].map(([title, body], index) => (
                   <section key={title} className="mt-5 border-t border-[#EDE4D8] pt-4">
                     <h2 className="text-base font-bold">{index + 1}. {title}</h2>

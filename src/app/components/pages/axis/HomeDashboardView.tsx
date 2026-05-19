@@ -6,7 +6,7 @@
  *   하단: 2 차트 (RoC/Stock 토글 + 미디어 노출도)
  *
  * 변경 (designing 통합):
- *   - GraphifyPreview 폐기 (좌측 Today insight 박스 안 정적 SVG 제거 — 박스가 전체 가로 차지)
+ *   - 좌측 Today insight 박스 안 정적 SVG 제거
  *   - 첫번째 ChartButton 을 designing 의 풍부한 RoC/Stock 차트로 (keywordSeries 동적 + spike insight 인터랙션)
  */
 import { useEffect, useMemo, useState } from 'react';
