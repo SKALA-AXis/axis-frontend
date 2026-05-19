@@ -354,6 +354,7 @@ export function HomeDashboardView({
           </aside>
 
           {/* 우측 하단 — RoC/Stock 토글 차트. 카드뉴스 사이드바 (min-h-[430px]) 와 같은 크기로 적층. */}
+          <div data-guide="home-charts">
           <ChartButton
             title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
             helper={showStockChart ? 'Stock compare' : 'Rate of change'}
@@ -465,6 +466,7 @@ export function HomeDashboardView({
               </div>
             ) : null}
           </ChartButton>
+          </div>
           </div>
         </section>
       </ExecutiveContainer>

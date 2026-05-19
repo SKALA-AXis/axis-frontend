@@ -659,7 +659,7 @@ export function KeywordGraphView({
               ) : null}
             </main>
 
-            <aside className={`min-h-0 overflow-y-auto border-t border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 xl:border-l xl:border-t-0 ${detailOpen ? '' : 'xl:w-20'}`}>
+            <aside data-guide="keyword-detail" className={`min-h-0 overflow-y-auto border-t border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 xl:border-l xl:border-t-0 ${detailOpen ? '' : 'xl:w-20'}`}>
               <button
                 type="button"
                 onClick={() => setDetailOpen((open) => !open)}

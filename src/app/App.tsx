@@ -599,11 +599,7 @@ function InAppGuideOverlay({
         <p className="mt-4 text-base font-medium leading-7 text-[var(--axis-body)]">{step.body}</p>
         <div className="mt-5 space-y-3">
           <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">사용자 관점</p>
-            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{step.userFeeling}</p>
-          </div>
-          <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">주요 인사이트</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">사용자 인사이트</p>
             <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--axis-body)]">
               {step.insights.map((insight) => (
                 <li key={insight} className="flex gap-2">

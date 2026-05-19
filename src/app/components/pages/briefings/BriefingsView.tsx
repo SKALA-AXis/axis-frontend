@@ -336,7 +336,7 @@ export function BriefingsView() {
 
             {isVisualMode ? (
               <>
-                <section className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
+                <section data-guide="briefing-focus" className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
                   <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
@@ -492,7 +492,7 @@ export function BriefingsView() {
               </>
             ) : (
               <>
-                <section className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
+                <section data-guide="briefing-focus" className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
                   <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
                     <div className="flex flex-wrap items-end justify-between gap-3">
                       <div className="flex items-center gap-2">

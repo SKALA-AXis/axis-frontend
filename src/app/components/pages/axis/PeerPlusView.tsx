@@ -438,7 +438,9 @@ export function PeerPlusView({
 
         {isAllFilter ? (
           <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.98fr)]">
-            <PositioningPanel />
+            <div data-guide="peer-positioning">
+              <PositioningPanel />
+            </div>
             <article data-guide="peer-radar" className="axis-panel-flat p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
