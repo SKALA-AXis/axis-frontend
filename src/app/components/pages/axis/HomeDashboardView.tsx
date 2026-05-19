@@ -61,7 +61,10 @@ export function HomeDashboardView({
   const [homeDetailCardId, setHomeDetailCardId] = useState<string | null>(null);
   const [homeDetailSlideIndex, setHomeDetailSlideIndex] = useState(0);
   const [selectedKeywordInsight, setSelectedKeywordInsight] = useState<KeywordSpikeInsight | null>(null);
-  const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
+  // 첫 신호 pre-selected — empty state 회피, 진입 즉시 evidence 패널 노출
+  const [selectedSignalId, setSelectedSignalId] = useState<string | null>(
+    homeTodayInsightSignals[0]?.id ?? null,
+  );
   const selectedSignal = useMemo(
     () => homeTodayInsightSignals.find((s) => s.id === selectedSignalId) ?? null,
     [selectedSignalId],
@@ -162,7 +165,7 @@ export function HomeDashboardView({
                 ))}
               </div>
 
-              {/* 주요 신호 카드 — 각각 button. click 시 selectedSignalId 갱신 (동일 클릭 = 닫기 toggle). */}
+              {/* 주요 신호 카드 — 각각 button. click 시 selectedSignalId 갱신 (active 카드 재클릭 = no-op, 다른 카드 클릭 = 즉시 교체). */}
               <div className="mt-4 grid gap-2 sm:grid-cols-3">
                 {homeTodayInsightSignals.map((signal) => {
                   const isActive = signal.id === selectedSignalId;
@@ -170,7 +173,7 @@ export function HomeDashboardView({
                     <button
                       key={signal.id}
                       type="button"
-                      onClick={() => setSelectedSignalId(isActive ? null : signal.id)}
+                      onClick={() => setSelectedSignalId(signal.id)}
                       aria-pressed={isActive}
                       className={`rounded-[var(--axis-radius-md)] p-3 text-left transition ${
                         isActive
@@ -191,21 +194,11 @@ export function HomeDashboardView({
             {/* 동적 evidence 패널 — 신호 선택 시에만 등장, 콘텐츠 길이만큼 자연 확장 */}
             {selectedSignal ? (
               <article className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-5 shadow-[0_14px_36px_-30px_rgba(0,0,0,0.35)]">
-                <header className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">
-                      {selectedSignal.label}
-                    </p>
-                    <h3 className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{selectedSignal.value}</h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSignalId(null)}
-                    className="rounded-full px-2 py-1 text-[11px] font-semibold text-[var(--axis-muted)] transition hover:bg-[var(--axis-surface-soft)] hover:text-[var(--axis-ink)]"
-                    aria-label="신호 닫기"
-                  >
-                    닫기 ✕
-                  </button>
+                <header>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">
+                    {selectedSignal.label}
+                  </p>
+                  <h3 className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{selectedSignal.value}</h3>
                 </header>
 
                 {/* AI 추론 과정 — 근거 위쪽. agent 가 어떤 데이터 → 어떤 추론 → 결론에 도달했는지 chain 으로 노출. */}
