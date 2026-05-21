@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { getAccessToken } from './authSession';
 
 export interface HttpClient {
   get<T>(path: string): Promise<T>;
@@ -27,17 +28,27 @@ class FetchHttpClient implements HttpClient {
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    const accessToken = getAccessToken();
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+    if (body !== undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
 
-    if (!response.ok) {
-      throw new Error(`Request failed: ${response.status}`);
-    }
-
     const payload = await response.json();
+    if (!response.ok) {
+      const message = isApiErrorResponse(payload) ? payload.error.message : `Request failed: ${response.status}`;
+      throw new Error(message);
+    }
     if (isApiResponse(payload)) {
       return payload.data as T;
     }
@@ -57,4 +68,14 @@ function isApiResponse(value: unknown): value is { success: boolean; data: unkno
 
   const maybeResponse = value as Record<string, unknown>;
   return typeof maybeResponse.success === 'boolean' && 'data' in maybeResponse && typeof maybeResponse.timestamp === 'string';
+}
+
+function isApiErrorResponse(value: unknown): value is { success: boolean; error: { message: string }; timestamp: string } {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const maybeResponse = value as Record<string, unknown>;
+  const maybeError = maybeResponse.error as Record<string, unknown> | undefined;
+  return typeof maybeResponse.success === 'boolean' && typeof maybeError?.message === 'string';
 }

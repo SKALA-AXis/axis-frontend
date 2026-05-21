@@ -1,5 +1,5 @@
 import { type CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Moon, Sun, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, MailCheck, Moon, RefreshCw, Sun, X } from 'lucide-react';
 import {
   AdminView,
   BriefingsView,
@@ -15,26 +15,67 @@ import { Sidebar } from './components/layout/Sidebar';
 import { TopNav } from './components/layout/TopNav';
 import { FloatingAiChat } from './components/shared/FloatingAiChat';
 import { Input } from './components/ui/input';
+import { authRepository } from '../features/auth/api/authRepository';
+import type { AuthUser, SignupPayload } from '../features/auth/model/auth';
+import { clearAccessToken, setAccessToken } from '../shared/api/authSession';
 import { viewLabels } from '../shared/content/navigation';
 import { useViewRouting } from '../shared/hooks/useViewRouting';
 import { commonGuideSteps, guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../shared/content/productGuide';
 import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../shared/mocks/peerPlus';
 
-type AuthMode = 'signIn' | 'signUp';
+type AuthMode = 'signIn' | 'signUp' | 'verifyEmail' | 'confirmEmail';
 export type UserRole = 'admin' | 'strategist' | 'analyst' | 'viewer';
 
 const logoSrc = '/png.png';
 const bookmarksStorageKey = 'axis:bookmarked-cards';
 const authStorageKey = 'axis:authenticated';
 const legacyAuthStorageKey = 'axis:authenticated';
+const refreshMarkerStorageKey = 'axis:refresh-cookie-present';
 const themeStorageKey = 'axis:theme-mode';
 const guideStorageKey = 'axis:guide-complete';
 
-type SignInForm = { email: string; password: string };
+type SignInForm = { email: string; password: string; rememberMe: boolean };
 type SignUpForm = { name: string; email: string; password: string };
+type SignupVerificationState = {
+  email: string;
+  name?: string;
+  verificationExpiresAt?: string;
+  message?: string;
+};
+type SignupResult = { loggedIn: true } | ({ loggedIn: false } & SignupVerificationState);
+type LoginStatus = 'idle' | 'success' | 'error';
 type ThemeMode = 'light' | 'dark';
-const initialSignInForm: SignInForm = { email: '', password: '' };
+const initialSignInForm: SignInForm = { email: '', password: '', rememberMe: true };
 const initialSignUpForm: SignUpForm = { name: '', email: '', password: '' };
+
+function resolveInitialAuthMode(): AuthMode {
+  return window.location.pathname === '/auth/email-verifications/confirm' ? 'confirmEmail' : 'signIn';
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function formatVerificationExpiresAt(value?: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Seoul',
+  }).format(date);
+}
+
+function requireAuthApi() {
+  if (!authRepository.enabled()) {
+    throw new Error('인증 API 주소가 설정되지 않아 실제 이메일 인증을 진행할 수 없습니다. VITE_API_BASE_URL을 설정하세요.');
+  }
+}
 
 function resolveAdaptiveFontSize() {
   if (window.innerWidth >= 1800 && window.innerHeight >= 900) return '14.4px';
@@ -58,19 +99,43 @@ function AuthScreen({
   mode,
   onModeChange,
   onLogin,
+  onLoginSuccess,
+  onSignup,
+  onResendVerification,
+  onVerifyEmail,
+  verificationToken,
 }: {
   mode: AuthMode;
   onModeChange: (mode: AuthMode) => void;
-  onLogin: (showGuideAfterLogin?: boolean) => void;
+  onLogin: (form: SignInForm) => Promise<void>;
+  onLoginSuccess: () => void;
+  onSignup: (form: SignupPayload) => Promise<SignupResult>;
+  onResendVerification: (email: string) => Promise<void>;
+  onVerifyEmail: (token: string) => Promise<void>;
+  verificationToken?: string | null;
 }) {
   const [signInForm, setSignInForm] = useState<SignInForm>(initialSignInForm);
   const [signUpForm, setSignUpForm] = useState<SignUpForm>(initialSignUpForm);
+  const [signupVerification, setSignupVerification] = useState<SignupVerificationState | null>(null);
   const [logoVisible, setLogoVisible] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
+  const [loginStatus, setLoginStatus] = useState<LoginStatus>('idle');
+  const [resendError, setResendError] = useState('');
+  const [resendMessage, setResendMessage] = useState('');
+  const [emailConfirmStatus, setEmailConfirmStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [authThemeMode, setAuthThemeMode] = useState<ThemeMode>(() => {
     const stored = window.localStorage.getItem(themeStorageKey);
     return stored === 'dark' ? 'dark' : 'light';
   });
   const isSignIn = mode === 'signIn';
+  const isVerifyEmail = mode === 'verifyEmail';
+  const isConfirmEmail = mode === 'confirmEmail';
+  const verificationEmail = signupVerification?.email || signUpForm.email || signInForm.email;
+  const verificationExpiresAt = formatVerificationExpiresAt(signupVerification?.verificationExpiresAt);
+  const loginButtonLabel = loginStatus === 'success' ? '이동 중' : isSubmitting ? '처리 중' : '로그인';
   const isAuthDark = authThemeMode === 'dark';
   const primaryButtonStyle = {
     backgroundColor: 'var(--primary)',
@@ -93,13 +158,109 @@ function AuthScreen({
     window.localStorage.setItem(themeStorageKey, authThemeMode);
   }, [authThemeMode]);
 
-  const handleSignInSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    onLogin(false);
+  useEffect(() => {
+    if (mode !== 'confirmEmail') return;
+    setAuthError('');
+    setAuthMessage('');
+    setResendError('');
+    setResendMessage('');
+    if (!verificationToken) {
+      setEmailConfirmStatus('error');
+      setAuthError('유효하지 않은 인증 링크입니다.');
+      return;
+    }
+
+    let cancelled = false;
+    setEmailConfirmStatus('checking');
+    onVerifyEmail(verificationToken)
+      .then(() => {
+        if (cancelled) return;
+        setEmailConfirmStatus('success');
+        setAuthMessage('이메일 인증이 완료되었습니다. 로그인할 수 있습니다.');
+        window.history.replaceState(null, '', '/');
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setEmailConfirmStatus('error');
+        setAuthError(error instanceof Error ? error.message : '이메일 인증에 실패했습니다.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, verificationToken]);
+
+  const changeAuthMode = (nextMode: AuthMode) => {
+    setAuthError('');
+    setAuthMessage('');
+    setLoginStatus('idle');
+    setResendError('');
+    setResendMessage('');
+    if (nextMode !== 'confirmEmail' && window.location.pathname === '/auth/email-verifications/confirm') {
+      window.history.replaceState(null, '', '/');
+    }
+    onModeChange(nextMode);
   };
-  const handleSignUpSubmit = (event: FormEvent<HTMLFormElement>) => {
+
+  const handleSignInSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onLogin(true);
+    setAuthError('');
+    setAuthMessage('');
+    setLoginStatus('idle');
+    setIsSubmitting(true);
+    try {
+      await onLogin(signInForm);
+      setLoginStatus('success');
+      setAuthMessage('로그인 성공. 대시보드로 이동합니다.');
+      await wait(650);
+      onLoginSuccess();
+    } catch (error) {
+      setLoginStatus('error');
+      setAuthError(error instanceof Error ? error.message : '로그인에 실패했습니다.');
+      setIsSubmitting(false);
+    }
+  };
+  const handleSignUpSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAuthError('');
+    setAuthMessage('');
+    setIsSubmitting(true);
+    try {
+      const result = await onSignup(signUpForm);
+      if (!result.loggedIn) {
+        const nextVerification = {
+          email: result.email || signUpForm.email,
+          name: result.name || signUpForm.name,
+          verificationExpiresAt: result.verificationExpiresAt,
+          message: result.message ?? '가입 이메일로 인증 링크를 발송했습니다.',
+        };
+        setSignupVerification(nextVerification);
+        setSignInForm((current) => ({ ...current, email: nextVerification.email, password: '' }));
+        setSignUpForm(initialSignUpForm);
+        setResendError('');
+        setResendMessage('');
+        onModeChange('verifyEmail');
+      }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : '회원가입에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!verificationEmail) return;
+    setResendError('');
+    setResendMessage('');
+    setIsResending(true);
+    try {
+      await onResendVerification(verificationEmail);
+      setResendMessage('인증 메일을 다시 발송했습니다.');
+    } catch (error) {
+      setResendError(error instanceof Error ? error.message : '인증 메일 재발송에 실패했습니다.');
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -142,21 +303,77 @@ function AuthScreen({
             </div>
           </div>
 
-          {isSignIn ? (
+          {isConfirmEmail ? (
+            <div className="space-y-6">
+              <div>
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.10)] text-[var(--axis-success)]">
+                  {emailConfirmStatus === 'checking' ? <RefreshCw size={24} className="animate-spin" /> : <MailCheck size={26} />}
+                </div>
+                <p className="mb-3 text-micro-eyebrow text-action">EMAIL CONFIRMATION</p>
+                <h1 className="font-display text-heading-1 text-ink mb-3">
+                  {emailConfirmStatus === 'checking' ? '이메일 인증 확인 중' : '이메일 인증'}
+                </h1>
+                <p className="text-body-md leading-6 text-steel">
+                  인증 링크의 유효성을 확인하고 있습니다.
+                </p>
+              </div>
+
+              {authMessage ? (
+                <div className="flex items-start gap-2 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] px-3 py-2 text-sm font-semibold text-[var(--axis-success)]">
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                  <span>{authMessage}</span>
+                </div>
+              ) : null}
+              {authError ? (
+                <div className="flex items-start gap-2 rounded-[var(--axis-radius-md)] border border-[rgba(190,61,42,0.24)] bg-[rgba(190,61,42,0.08)] px-3 py-2 text-sm font-semibold text-[var(--axis-danger)]">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <span>{authError}</span>
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                disabled={emailConfirmStatus === 'checking'}
+                onClick={() => changeAuthMode('signIn')}
+                className="h-12 w-full rounded-md border border-transparent bg-action text-btn-md font-medium text-white shadow-sm transition-[background-color,box-shadow,transform] hover:bg-primary-deep focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 active:translate-y-px disabled:opacity-50"
+                style={primaryButtonStyle}
+              >
+                로그인으로 이동
+              </button>
+            </div>
+          ) : isSignIn ? (
             <form className="space-y-6" onSubmit={handleSignInSubmit} noValidate>
               <div>
                 <h1 className="font-display text-heading-1 text-ink mb-3">로그인</h1>
                 <p className="text-body-md text-steel">전략 인텔리전스 콘솔에 접속하세요</p>
               </div>
 
+              {authMessage ? (
+                <div className="flex items-start gap-2 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] px-3 py-2 text-sm font-semibold text-[var(--axis-success)]">
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                  <span>{authMessage}</span>
+                </div>
+              ) : null}
+              {authError ? (
+                <div className="flex items-start gap-2 rounded-[var(--axis-radius-md)] border border-[rgba(190,61,42,0.24)] bg-[rgba(190,61,42,0.08)] px-3 py-2 text-sm font-semibold text-[var(--axis-danger)]">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <span>로그인 실패. {authError}</span>
+                </div>
+              ) : null}
+
               <div className="space-y-2">
                 <label htmlFor="sign-in-email" className="block text-caption-bold text-ink">이메일</label>
                 <Input
                   id="sign-in-email"
                   type="email"
-                  placeholder="example@skax.com"
+                  placeholder="name@example.com"
                   value={signInForm.email}
-                  onChange={(e) => setSignInForm((c) => ({ ...c, email: e.target.value }))}
+                  onChange={(e) => {
+                    setLoginStatus('idle');
+                    setAuthError('');
+                    setAuthMessage('');
+                    setSignInForm((c) => ({ ...c, email: e.target.value }));
+                  }}
                 />
               </div>
 
@@ -167,16 +384,32 @@ function AuthScreen({
                   type="password"
                   placeholder="비밀번호 입력"
                   value={signInForm.password}
-                  onChange={(e) => setSignInForm((c) => ({ ...c, password: e.target.value }))}
+                  onChange={(e) => {
+                    setLoginStatus('idle');
+                    setAuthError('');
+                    setAuthMessage('');
+                    setSignInForm((c) => ({ ...c, password: e.target.value }));
+                  }}
                 />
               </div>
 
+              <label className="flex items-center gap-2 text-sm font-semibold text-[var(--axis-body)]">
+                <input
+                  type="checkbox"
+                  checked={signInForm.rememberMe}
+                  onChange={(event) => setSignInForm((current) => ({ ...current, rememberMe: event.target.checked }))}
+                  className="h-4 w-4 rounded border-[var(--axis-hairline)] accent-[var(--axis-accent)]"
+                />
+                이 기기에서 로그인 유지
+              </label>
+
               <button
                 type="submit"
+                disabled={isSubmitting || loginStatus === 'success'}
                 className="h-12 w-full rounded-md border border-transparent bg-action text-btn-md font-medium text-white shadow-sm transition-[background-color,box-shadow,transform] hover:bg-primary-deep focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 active:translate-y-px"
                 style={primaryButtonStyle}
               >
-                로그인
+                {loginButtonLabel}
               </button>
 
               <p className="text-center text-caption text-steel pt-2">
@@ -184,12 +417,73 @@ function AuthScreen({
                 <button
                   type="button"
                   className="text-action underline underline-offset-4"
-                  onClick={() => onModeChange('signUp')}
+                  onClick={() => changeAuthMode('signUp')}
                 >
                   회원가입
                 </button>
               </p>
             </form>
+          ) : isVerifyEmail ? (
+            <div className="space-y-6">
+              <div>
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.10)] text-[var(--axis-success)]">
+                  <MailCheck size={26} />
+                </div>
+                <p className="mb-3 text-micro-eyebrow text-action">EMAIL VERIFICATION</p>
+                <h1 className="font-display text-heading-1 text-ink mb-3">이메일 인증이 필요합니다</h1>
+                <p className="text-body-md leading-6 text-steel">
+                  회원가입이 접수되었습니다. 인증 링크를 확인한 뒤 로그인할 수 있습니다.
+                </p>
+              </div>
+
+              <div className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
+                <p className="text-xs font-semibold uppercase text-[var(--axis-muted)]">인증 메일</p>
+                <p className="mt-1 break-all text-sm font-semibold text-[var(--axis-ink)]">{verificationEmail}</p>
+                {verificationExpiresAt ? (
+                  <p className="mt-3 text-xs font-semibold text-[var(--axis-muted)]">만료 예정 {verificationExpiresAt}</p>
+                ) : null}
+              </div>
+
+              {signupVerification?.message ? (
+                <div className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] px-3 py-2 text-sm font-semibold text-[var(--axis-success)]">
+                  {signupVerification.message}
+                </div>
+              ) : null}
+              {resendMessage ? (
+                <div className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] px-3 py-2 text-sm font-semibold text-[var(--axis-success)]">
+                  {resendMessage}
+                </div>
+              ) : null}
+              {resendError ? (
+                <div className="rounded-[var(--axis-radius-md)] border border-[rgba(190,61,42,0.24)] bg-[rgba(190,61,42,0.08)] px-3 py-2 text-sm font-semibold text-[var(--axis-danger)]">
+                  {resendError}
+                </div>
+              ) : null}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  disabled={isResending || !verificationEmail}
+                  onClick={handleResendVerification}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-4 text-btn-md font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] disabled:opacity-50"
+                >
+                  <RefreshCw size={16} className={isResending ? 'animate-spin' : ''} />
+                  {isResending ? '재발송 중' : '메일 재발송'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeAuthMode('signIn')}
+                  className="h-12 rounded-md border border-transparent bg-action text-btn-md font-medium text-white shadow-sm transition-[background-color,box-shadow,transform] hover:bg-primary-deep focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 active:translate-y-px"
+                  style={primaryButtonStyle}
+                >
+                  로그인으로 이동
+                </button>
+              </div>
+
+              <p className="text-center text-caption leading-5 text-steel">
+                메일함에서 AXIS 인증 메일을 찾을 수 없다면 스팸함을 확인해 주세요.
+              </p>
+            </div>
           ) : (
             <form className="space-y-6" onSubmit={handleSignUpSubmit} noValidate>
               <div>
@@ -197,9 +491,15 @@ function AuthScreen({
                 <p className="text-body-md text-steel">새 계정을 만들어 시작하세요</p>
               </div>
 
+              {authError ? (
+                <div className="rounded-[var(--axis-radius-md)] border border-[rgba(190,61,42,0.24)] bg-[rgba(190,61,42,0.08)] px-3 py-2 text-sm font-semibold text-[var(--axis-danger)]">
+                  {authError}
+                </div>
+              ) : null}
+
               {[
                 { id: 'sign-up-name', label: '이름', type: 'text', placeholder: '이름을 입력하세요', key: 'name' as const },
-                { id: 'sign-up-email', label: '이메일', type: 'email', placeholder: 'example@skax.com', key: 'email' as const },
+                { id: 'sign-up-email', label: '이메일', type: 'email', placeholder: 'name@example.com', key: 'email' as const },
                 { id: 'sign-up-password', label: '비밀번호', type: 'password', placeholder: '비밀번호 생성', key: 'password' as const },
               ].map((field) => (
                 <div key={field.id} className="space-y-2">
@@ -216,10 +516,11 @@ function AuthScreen({
 
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="h-12 w-full rounded-md border border-transparent bg-action text-btn-md font-medium text-white shadow-sm transition-[background-color,box-shadow,transform] hover:bg-primary-deep focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 active:translate-y-px"
                 style={primaryButtonStyle}
               >
-                계정 생성
+                {isSubmitting ? '처리 중' : '계정 생성'}
               </button>
 
               <p className="text-center text-caption text-steel pt-2">
@@ -227,7 +528,7 @@ function AuthScreen({
                 <button
                   type="button"
                   className="text-action underline underline-offset-4"
-                  onClick={() => onModeChange('signIn')}
+                  onClick={() => changeAuthMode('signIn')}
                 >
                   로그인
                 </button>
@@ -650,13 +951,23 @@ function InAppGuideOverlay({
   );
 }
 
-function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => void; showGuide: boolean; onGuideDone: () => void }) {
+function DashboardShell({
+  onLogout,
+  showGuide,
+  onGuideDone,
+  currentUser,
+}: {
+  onLogout: () => void | Promise<void>;
+  showGuide: boolean;
+  onGuideDone: () => void;
+  currentUser: AuthUser | null;
+}) {
   // URL ↔ view state 양방향 동기화 — 브라우저 back/forward / direct URL / share link 지원
   const [activeView, setActiveView] = useViewRouting('home');
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
   const [peerPlusSelectedPeer, setPeerPlusSelectedPeer] = useState<PeerPlusPeerId | undefined>(undefined);
   const [cardNewsSearchQuery, setCardNewsSearchQuery] = useState('');
-  const [currentUserRole] = useState<UserRole>('strategist');
+  const currentUserRole: UserRole = currentUser?.role === 'ADMIN' || currentUser?.role === 'admin' ? 'admin' : 'strategist';
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const stored = window.localStorage.getItem(themeStorageKey);
     return stored === 'dark' ? 'dark' : 'light';
@@ -793,7 +1104,7 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
       case 'rawArticles':
         return <RawArticlesView bookmarkedIds={bookmarkedIds} />;
       case 'settings':
-        return <SettingsView onLogout={onLogout} />;
+        return <SettingsView onLogout={onLogout} currentUser={currentUser} />;
       case 'admin':
         return isAdmin ? (
           <AdminView />
@@ -820,6 +1131,7 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
       {/* TopNav 풀폭 (사이드바 위) */}
       <TopNav
         activeView={activeView}
+        currentUser={currentUser}
         onLogoClick={() => handleViewChange('home')}
         onNotificationSelect={handleViewChange}
         onUserClick={() => handleViewChange('settings')}
@@ -857,8 +1169,14 @@ function DashboardShell({ onLogout, showGuide, onGuideDone }: { onLogout: () => 
 }
 
 export default function App() {
-  const [mode, setMode] = useState<AuthMode>('signIn');
-  const [isAuthenticated, setIsAuthenticated] = useState(() => window.sessionStorage.getItem(authStorageKey) === 'true');
+  const [mode, setMode] = useState<AuthMode>(resolveInitialAuthMode);
+  const [verificationToken] = useState(() => new URLSearchParams(window.location.search).get('token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !authRepository.enabled() && window.sessionStorage.getItem(authStorageKey) === 'true');
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const hasRefreshMarker = () =>
+    window.localStorage.getItem(refreshMarkerStorageKey) === 'true' ||
+    window.sessionStorage.getItem(refreshMarkerStorageKey) === 'true';
+  const [authInitializing, setAuthInitializing] = useState(authRepository.enabled() && hasRefreshMarker());
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
@@ -866,10 +1184,101 @@ export default function App() {
     window.localStorage.removeItem(legacyAuthStorageKey);
   }, []);
 
-  const handleLogin = (showGuideAfterLogin = false) => {
+  useEffect(() => {
+    if (!authRepository.enabled() || !hasRefreshMarker()) {
+      setAuthInitializing(false);
+      if (window.sessionStorage.getItem(authStorageKey) === 'true') {
+        setCurrentUser({ email: 'axis.user@sk.com', name: 'AXIS 사용자', role: 'USER', status: 'ACTIVE', email_verified: true });
+      }
+      return;
+    }
+
+    let cancelled = false;
+    authRepository.refresh()
+      .then(async (response) => {
+        setAccessToken(response.access_token ?? null);
+        return response.user ?? authRepository.me();
+      })
+      .then((user) => {
+        if (cancelled || !user) return;
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      })
+      .catch(() => {
+        clearAccessToken();
+        window.sessionStorage.removeItem(refreshMarkerStorageKey);
+        window.localStorage.removeItem(refreshMarkerStorageKey);
+        if (!cancelled) {
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAuthInitializing(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const prepareLocalLogin = (showGuideAfterLogin = false) => {
     window.sessionStorage.setItem(authStorageKey, 'true');
+    setCurrentUser({ email: 'axis.user@sk.com', name: 'AXIS 사용자', role: 'USER', status: 'ACTIVE', email_verified: true });
     setShowGuide(showGuideAfterLogin && window.localStorage.getItem(guideStorageKey) !== 'true');
+  };
+
+  const handleLogin = async (form: SignInForm) => {
+    if (!authRepository.enabled()) {
+      prepareLocalLogin(false);
+      return;
+    }
+    const response = await authRepository.login({
+      email: form.email,
+      password: form.password,
+      remember_me: form.rememberMe,
+    });
+    setAccessToken(response.access_token ?? null);
+    setCurrentUser(response.user ?? await authRepository.me());
+    if (form.rememberMe) {
+      window.localStorage.setItem(refreshMarkerStorageKey, 'true');
+      window.sessionStorage.removeItem(refreshMarkerStorageKey);
+    } else {
+      window.sessionStorage.setItem(refreshMarkerStorageKey, 'true');
+      window.localStorage.removeItem(refreshMarkerStorageKey);
+    }
+    setShowGuide(false);
+  };
+
+  const handleLoginSuccess = () => {
     setIsAuthenticated(true);
+  };
+
+  const handleSignup = async (form: SignupPayload) => {
+    requireAuthApi();
+    const response = await authRepository.signup(form);
+    const email = response.user?.email ?? form.email;
+    return {
+      loggedIn: false,
+      email,
+      name: response.user?.name ?? form.name,
+      verificationExpiresAt: response.verification_expires_at,
+      message: response.email_verification_required === false
+        ? '회원가입이 완료되었습니다.'
+        : '인증 메일을 발송했습니다.',
+    };
+  };
+
+  const handleResendVerification = async (email: string) => {
+    requireAuthApi();
+    await authRepository.resendEmailVerification(email);
+  };
+
+  const handleVerifyEmail = async (token: string) => {
+    requireAuthApi();
+    await authRepository.verifyEmail(token);
   };
 
   const handleGuideDone = () => {
@@ -877,12 +1286,44 @@ export default function App() {
     setShowGuide(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (authRepository.enabled()) {
+      try {
+        await authRepository.logout();
+      } catch {
+        // 로그아웃은 클라이언트 세션 정리를 우선한다.
+      }
+    }
+    clearAccessToken();
     window.sessionStorage.removeItem(authStorageKey);
+    window.sessionStorage.removeItem(refreshMarkerStorageKey);
+    window.localStorage.removeItem(refreshMarkerStorageKey);
+    setCurrentUser(null);
     setMode('signIn');
     setIsAuthenticated(false);
   };
 
-  if (isAuthenticated) return <DashboardShell onLogout={handleLogout} showGuide={showGuide} onGuideDone={handleGuideDone} />;
-  return <AuthScreen mode={mode} onModeChange={setMode} onLogin={handleLogin} />;
+  if (authInitializing) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--axis-canvas)] text-sm font-semibold text-[var(--axis-muted)]">
+        세션 확인 중
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <DashboardShell onLogout={handleLogout} showGuide={showGuide} onGuideDone={handleGuideDone} currentUser={currentUser} />;
+  }
+  return (
+    <AuthScreen
+      mode={mode}
+      onModeChange={setMode}
+      onLogin={handleLogin}
+      onLoginSuccess={handleLoginSuccess}
+      onSignup={handleSignup}
+      onResendVerification={handleResendVerification}
+      onVerifyEmail={handleVerifyEmail}
+      verificationToken={verificationToken}
+    />
+  );
 }
