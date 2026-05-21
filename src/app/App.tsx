@@ -71,12 +71,6 @@ function formatVerificationExpiresAt(value?: string) {
   }).format(date);
 }
 
-function requireAuthApi() {
-  if (!authRepository.enabled()) {
-    throw new Error('인증 API 주소가 설정되지 않아 실제 이메일 인증을 진행할 수 없습니다. VITE_API_BASE_URL을 설정하세요.');
-  }
-}
-
 function resolveAdaptiveFontSize() {
   if (window.innerWidth >= 1800 && window.innerHeight >= 900) return '14.4px';
   if (window.innerWidth >= 1440) return '14px';
@@ -500,7 +494,7 @@ function AuthScreen({
               {[
                 { id: 'sign-up-name', label: '이름', type: 'text', placeholder: '이름을 입력하세요', key: 'name' as const },
                 { id: 'sign-up-email', label: '이메일', type: 'email', placeholder: 'name@example.com', key: 'email' as const },
-                { id: 'sign-up-password', label: '비밀번호', type: 'password', placeholder: '비밀번호 생성', key: 'password' as const },
+                { id: 'sign-up-password', label: '비밀번호', type: 'password', placeholder: '비밀번호는 8자 이상 64자 이하', key: 'password' as const },
               ].map((field) => (
                 <div key={field.id} className="space-y-2">
                   <label htmlFor={field.id} className="block text-caption-bold text-ink">{field.label}</label>
@@ -1171,12 +1165,12 @@ function DashboardShell({
 export default function App() {
   const [mode, setMode] = useState<AuthMode>(resolveInitialAuthMode);
   const [verificationToken] = useState(() => new URLSearchParams(window.location.search).get('token'));
-  const [isAuthenticated, setIsAuthenticated] = useState(() => !authRepository.enabled() && window.sessionStorage.getItem(authStorageKey) === 'true');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const hasRefreshMarker = () =>
     window.localStorage.getItem(refreshMarkerStorageKey) === 'true' ||
     window.sessionStorage.getItem(refreshMarkerStorageKey) === 'true';
-  const [authInitializing, setAuthInitializing] = useState(authRepository.enabled() && hasRefreshMarker());
+  const [authInitializing, setAuthInitializing] = useState(hasRefreshMarker());
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
@@ -1185,11 +1179,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!authRepository.enabled() || !hasRefreshMarker()) {
+    if (!hasRefreshMarker()) {
       setAuthInitializing(false);
-      if (window.sessionStorage.getItem(authStorageKey) === 'true') {
-        setCurrentUser({ email: 'axis.user@sk.com', name: 'AXIS 사용자', role: 'USER', status: 'ACTIVE', email_verified: true });
-      }
       return;
     }
 
@@ -1224,17 +1215,10 @@ export default function App() {
     };
   }, []);
 
-  const prepareLocalLogin = (showGuideAfterLogin = false) => {
-    window.sessionStorage.setItem(authStorageKey, 'true');
-    setCurrentUser({ email: 'axis.user@sk.com', name: 'AXIS 사용자', role: 'USER', status: 'ACTIVE', email_verified: true });
-    setShowGuide(showGuideAfterLogin && window.localStorage.getItem(guideStorageKey) !== 'true');
-  };
-
   const handleLogin = async (form: SignInForm) => {
-    if (!authRepository.enabled()) {
-      prepareLocalLogin(false);
-      return;
-    }
+    clearAccessToken();
+    setCurrentUser(null);
+    setIsAuthenticated(false);
     const response = await authRepository.login({
       email: form.email,
       password: form.password,
@@ -1257,7 +1241,11 @@ export default function App() {
   };
 
   const handleSignup = async (form: SignupPayload) => {
-    requireAuthApi();
+    clearAccessToken();
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    window.sessionStorage.removeItem(refreshMarkerStorageKey);
+    window.localStorage.removeItem(refreshMarkerStorageKey);
     const response = await authRepository.signup(form);
     const email = response.user?.email ?? form.email;
     return {
@@ -1272,12 +1260,10 @@ export default function App() {
   };
 
   const handleResendVerification = async (email: string) => {
-    requireAuthApi();
     await authRepository.resendEmailVerification(email);
   };
 
   const handleVerifyEmail = async (token: string) => {
-    requireAuthApi();
     await authRepository.verifyEmail(token);
   };
 
@@ -1287,12 +1273,10 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    if (authRepository.enabled()) {
-      try {
-        await authRepository.logout();
-      } catch {
-        // 로그아웃은 클라이언트 세션 정리를 우선한다.
-      }
+    try {
+      await authRepository.logout();
+    } catch {
+      // 로그아웃은 클라이언트 세션 정리를 우선한다.
     }
     clearAccessToken();
     window.sessionStorage.removeItem(authStorageKey);
