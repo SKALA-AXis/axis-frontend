@@ -1,5 +1,33 @@
 import type { DashboardData } from '../../features/dashboard/model/dashboard';
 
+const mockStockPoints = [
+  { date: '04.22', samsungSds: 156000, lgCns: 132000, hyundaiAutoever: 169000, poscoDx: 52400 },
+  { date: '04.23', samsungSds: 158500, lgCns: 133500, hyundaiAutoever: 170500, poscoDx: 53100 },
+  { date: '04.24', samsungSds: 157200, lgCns: 135200, hyundaiAutoever: 171300, poscoDx: 52800 },
+  { date: '04.25', samsungSds: 161000, lgCns: 136800, hyundaiAutoever: 172100, poscoDx: 53700 },
+  { date: '04.28', samsungSds: 163400, lgCns: 138200, hyundaiAutoever: 174600, poscoDx: 54400 },
+  { date: '04.29', samsungSds: 165800, lgCns: 139100, hyundaiAutoever: 176000, poscoDx: 54900 },
+  { date: '04.30', samsungSds: 167300, lgCns: 140500, hyundaiAutoever: 177200, poscoDx: 55300 },
+] as const;
+
+const mockKeywordRatioPoints = [
+  { date: '04.24', agenticAi: 120, sovereignAi: 82, digitalTwin: 65, aiGovernance: 48 },
+  { date: '04.25', agenticAi: 168, sovereignAi: 96, digitalTwin: 78, aiGovernance: 60 },
+  { date: '04.26', agenticAi: 214, sovereignAi: 124, digitalTwin: 92, aiGovernance: 85 },
+  { date: '04.27', agenticAi: 196, sovereignAi: 141, digitalTwin: 101, aiGovernance: 88 },
+  { date: '04.28', agenticAi: 238, sovereignAi: 163, digitalTwin: 120, aiGovernance: 97 },
+  { date: '04.29', agenticAi: 261, sovereignAi: 172, digitalTwin: 134, aiGovernance: 112 },
+  { date: '04.30', agenticAi: 249, sovereignAi: 168, digitalTwin: 129, aiGovernance: 118 },
+] as const;
+
+function toDayOverDayRate(current: number, previous: number): number {
+  return Number((((current - previous) / previous) * 100).toFixed(2));
+}
+
+function toDayOverDayDelta(current: number, previous: number): number {
+  return Number((current - previous).toFixed(2));
+}
+
 export const mockDashboardData: DashboardData = {
   trends: [
     {
@@ -77,30 +105,70 @@ export const mockDashboardData: DashboardData = {
     { text: '서울', type: 'place', size: 'text-sm', x: '38%', y: '88%' },
     { text: 'AI 거버넌스', type: 'tech', size: 'text-sm', x: '78%', y: '45%' },
   ],
-  keywordSearchPoints: [
-    { time: '09:00', agenticAi: 120, sovereignAi: 82, digitalTwin: 65, aiGovernance: 48 },
-    { time: '10:00', agenticAi: 168, sovereignAi: 96, digitalTwin: 78, aiGovernance: 60 },
-    { time: '11:00', agenticAi: 214, sovereignAi: 124, digitalTwin: 92, aiGovernance: 85 },
-    { time: '12:00', agenticAi: 196, sovereignAi: 141, digitalTwin: 101, aiGovernance: 88 },
-    { time: '13:00', agenticAi: 238, sovereignAi: 163, digitalTwin: 120, aiGovernance: 97 },
-    { time: '14:00', agenticAi: 261, sovereignAi: 172, digitalTwin: 134, aiGovernance: 112 },
-    { time: '15:00', agenticAi: 249, sovereignAi: 168, digitalTwin: 129, aiGovernance: 118 },
-  ],
+  keywordSearchPoints: mockKeywordRatioPoints.map((point, index) => {
+    if (index === 0) {
+      return {
+        date: point.date,
+        agenticAi: 0,
+        agenticAiRatio: point.agenticAi,
+        sovereignAi: 0,
+        sovereignAiRatio: point.sovereignAi,
+        digitalTwin: 0,
+        digitalTwinRatio: point.digitalTwin,
+        aiGovernance: 0,
+        aiGovernanceRatio: point.aiGovernance,
+      };
+    }
+
+    const previous = mockKeywordRatioPoints[index - 1];
+    return {
+      date: point.date,
+      agenticAi: toDayOverDayDelta(point.agenticAi, previous.agenticAi),
+      agenticAiRatio: point.agenticAi,
+      sovereignAi: toDayOverDayDelta(point.sovereignAi, previous.sovereignAi),
+      sovereignAiRatio: point.sovereignAi,
+      digitalTwin: toDayOverDayDelta(point.digitalTwin, previous.digitalTwin),
+      digitalTwinRatio: point.digitalTwin,
+      aiGovernance: toDayOverDayDelta(point.aiGovernance, previous.aiGovernance),
+      aiGovernanceRatio: point.aiGovernance,
+    };
+  }),
   keywordSeries: [
-    { key: 'agenticAi', name: 'Agentic AI', color: '#EE7501', total: '249' },
-    { key: 'sovereignAi', name: 'Sovereign AI', color: '#1A3A91', total: '168' },
-    { key: 'digitalTwin', name: '디지털 트윈', color: '#E1002A', total: '129' },
-    { key: 'aiGovernance', name: 'AI 거버넌스', color: '#111111', total: '118' },
+    { key: 'agenticAi', name: 'Agentic AI', color: '#EE7501', total: String(mockKeywordRatioPoints[mockKeywordRatioPoints.length - 1].agenticAi) },
+    { key: 'sovereignAi', name: 'Sovereign AI', color: '#1A3A91', total: String(mockKeywordRatioPoints[mockKeywordRatioPoints.length - 1].sovereignAi) },
+    { key: 'digitalTwin', name: '디지털 트윈', color: '#E1002A', total: String(mockKeywordRatioPoints[mockKeywordRatioPoints.length - 1].digitalTwin) },
+    { key: 'aiGovernance', name: 'AI 거버넌스', color: '#111111', total: String(mockKeywordRatioPoints[mockKeywordRatioPoints.length - 1].aiGovernance) },
   ],
-  stockPoints: [
-    { date: '04.22', samsungSds: 156000, lgCns: 132000, hyundaiAutoever: 169000, poscoDx: 52400 },
-    { date: '04.23', samsungSds: 158500, lgCns: 133500, hyundaiAutoever: 170500, poscoDx: 53100 },
-    { date: '04.24', samsungSds: 157200, lgCns: 135200, hyundaiAutoever: 171300, poscoDx: 52800 },
-    { date: '04.25', samsungSds: 161000, lgCns: 136800, hyundaiAutoever: 172100, poscoDx: 53700 },
-    { date: '04.28', samsungSds: 163400, lgCns: 138200, hyundaiAutoever: 174600, poscoDx: 54400 },
-    { date: '04.29', samsungSds: 165800, lgCns: 139100, hyundaiAutoever: 176000, poscoDx: 54900 },
-    { date: '04.30', samsungSds: 167300, lgCns: 140500, hyundaiAutoever: 177200, poscoDx: 55300 },
-  ],
+  stockPoints: [...mockStockPoints],
+  stockRatePoints: mockStockPoints.map((point, index) => {
+    if (index === 0) {
+      return {
+        date: point.date,
+        samsungSds: 0,
+        lgCns: 0,
+        hyundaiAutoever: 0,
+        poscoDx: 0,
+      };
+    }
+
+    const previous = mockStockPoints[index - 1];
+    return {
+      date: point.date,
+      samsungSds: toDayOverDayRate(point.samsungSds, previous.samsungSds),
+      lgCns: toDayOverDayRate(point.lgCns, previous.lgCns),
+      hyundaiAutoever: toDayOverDayRate(point.hyundaiAutoever, previous.hyundaiAutoever),
+      poscoDx: toDayOverDayRate(point.poscoDx, previous.poscoDx),
+    };
+  }),
+  stockSource: {
+    basis: 'day_over_day_pct',
+    windowDays: 7,
+    sourceName: 'Mock fixture stockPoints',
+    exchange: null,
+    currency: null,
+    isMock: true,
+    label: '전일 대비 증감률 · Mock fixture stockPoints · fallback',
+  },
   notifications: [
     { title: '전략 검토', detail: '삼성 SDS 제조 AX 레퍼런스 시사점 작성 필요', time: '12분 전', tone: 'urgent' },
     { title: '브리핑', detail: '전략기획팀 일간 브리핑 08:30 발송 완료', time: '38분 전', tone: 'info' },

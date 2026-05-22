@@ -91,7 +91,7 @@ export function ChartButton({
 export function ChartLegend({
   items,
 }: {
-  items: ReadonlyArray<{ label: string; color: string }>;
+  items: ReadonlyArray<{ label: string; color: string; value?: string }>;
 }) {
   return (
     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5">
@@ -99,6 +99,7 @@ export function ChartLegend({
         <div key={item.label} className="flex items-center gap-2 text-xs font-semibold text-[var(--axis-body)]">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
           <span>{item.label}</span>
+          {item.value ? <span className="text-[var(--axis-muted)]">{item.value}</span> : null}
         </div>
       ))}
     </div>
