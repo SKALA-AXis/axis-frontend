@@ -27,6 +27,16 @@ export type EmailVerificationResponse = {
   verified: boolean;
 };
 
+export type PasswordResetRequestResponse = {
+  accepted?: boolean;
+  message?: string;
+  expires_in_minutes?: number;
+};
+
+export type PasswordResetConfirmResponse = {
+  password_reset?: boolean;
+};
+
 export type LoginPayload = {
   email: string;
   password: string;

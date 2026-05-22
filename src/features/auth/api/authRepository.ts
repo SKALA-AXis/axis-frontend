@@ -5,6 +5,8 @@ import type {
   AuthUser,
   EmailVerificationResponse,
   LoginPayload,
+  PasswordResetConfirmResponse,
+  PasswordResetRequestResponse,
   SignupPayload,
   SignupResponse,
 } from '../model/auth';
@@ -47,6 +49,20 @@ class AuthRepository {
   verifyEmail(token: string) {
     return this.request<EmailVerificationResponse>(`/api/auth/email-verifications/confirm?token=${encodeURIComponent(token)}`, {
       method: 'GET',
+    }, { auth: false });
+  }
+
+  requestPasswordReset(email: string) {
+    return this.request<PasswordResetRequestResponse>('/api/auth/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }, { auth: false });
+  }
+
+  confirmPasswordReset(token: string, newPassword: string) {
+    return this.request<PasswordResetConfirmResponse>('/api/auth/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ token, new_password: newPassword }),
     }, { auth: false });
   }
 
