@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Send, Sparkles, X } from 'lucide-react';
 import { uiText } from '../../../shared/content/uiText';
 
@@ -7,7 +7,7 @@ type ChatMessage = {
   content: string;
 };
 
-export function FloatingAiChat() {
+export function FloatingAiChat({ scrollToTopControl }: { scrollToTopControl?: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isBubbleVisible, setIsBubbleVisible] = useState(false);
   const [query, setQuery] = useState('');
@@ -122,6 +122,8 @@ export function FloatingAiChat() {
           <p className="text-sm leading-relaxed text-[var(--axis-body)]">안녕하세요. 오늘의 전략 신호를 함께 정리해드릴게요.</p>
         </div>
       )}
+
+      {scrollToTopControl}
 
       <button
         data-guide="ai-chat"

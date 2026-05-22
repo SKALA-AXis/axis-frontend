@@ -492,7 +492,7 @@ export function PeerPlusView({
               : '전체 모드에서는 시장 전반 비교를, 기업별 모드에서는 SK AX와 선택 기업의 재무·메시지 차이만 빠르게 읽을 수 있도록 정리한 화면입니다.'
           }
         />
-        <section className="sticky top-3 z-30 mb-5 flex justify-end">
+        <section className="relative z-0 mb-5 flex justify-end">
           <div data-guide="peer-selector" className="flex flex-wrap justify-end gap-1.5">
             {filterOptions.map((peer) => (
               <button
