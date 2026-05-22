@@ -215,6 +215,9 @@ export function AuthScreen({
     setLoginStatus('idle');
     setResendError('');
     setResendMessage('');
+    if (nextMode !== 'verifyEmail' && nextMode !== 'confirmEmail') {
+      setSignupVerification(null);
+    }
     if (nextMode !== 'confirmEmail' && nextMode !== 'confirmPasswordReset' && isCallbackPath()) {
       window.history.replaceState(null, '', '/');
     }
@@ -279,6 +282,7 @@ export function AuthScreen({
     setAuthMessage('');
     setIsSubmitting(true);
     try {
+      setSignupVerification(null);
       await onRequestPasswordReset(forgotPasswordEmail);
       setAuthMessage(passwordResetSentMessage);
     } catch (error) {

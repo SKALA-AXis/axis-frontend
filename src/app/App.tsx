@@ -36,6 +36,11 @@ const refreshMarkerStorageKey = 'axis:refresh-cookie-present';
 const themeStorageKey = 'axis:theme-mode';
 const guideStorageKey = 'axis:guide-complete';
 
+function isAuthCallbackPathname() {
+  return window.location.pathname === '/auth/email-verifications/confirm' ||
+    window.location.pathname === '/auth/password-reset/confirm';
+}
+
 function resolveAdaptiveFontSize() {
   if (window.innerWidth >= 1800 && window.innerHeight >= 900) return '14.4px';
   if (window.innerWidth >= 1440) return '14px';
@@ -652,7 +657,7 @@ export default function App() {
   const hasRefreshMarker = () =>
     window.localStorage.getItem(refreshMarkerStorageKey) === 'true' ||
     window.sessionStorage.getItem(refreshMarkerStorageKey) === 'true';
-  const [authInitializing, setAuthInitializing] = useState(hasRefreshMarker());
+  const [authInitializing, setAuthInitializing] = useState(() => !isAuthCallbackPathname() && hasRefreshMarker());
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
@@ -661,6 +666,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (isAuthCallbackPathname()) {
+      clearAccessToken();
+      window.sessionStorage.removeItem(refreshMarkerStorageKey);
+      window.localStorage.removeItem(refreshMarkerStorageKey);
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setAuthInitializing(false);
+      return;
+    }
+
     if (!hasRefreshMarker()) {
       setAuthInitializing(false);
       return;
@@ -750,10 +765,20 @@ export default function App() {
   };
 
   const handleRequestPasswordReset = async (email: string) => {
+    clearAccessToken();
+    window.sessionStorage.removeItem(refreshMarkerStorageKey);
+    window.localStorage.removeItem(refreshMarkerStorageKey);
+    setCurrentUser(null);
+    setIsAuthenticated(false);
     await authRepository.requestPasswordReset(email);
   };
 
   const handleConfirmPasswordReset = async (token: string, newPassword: string) => {
+    clearAccessToken();
+    window.sessionStorage.removeItem(refreshMarkerStorageKey);
+    window.localStorage.removeItem(refreshMarkerStorageKey);
+    setCurrentUser(null);
+    setIsAuthenticated(false);
     await authRepository.confirmPasswordReset(token, newPassword);
   };
 
