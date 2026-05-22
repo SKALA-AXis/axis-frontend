@@ -1,5 +1,5 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { type CSSProperties, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, ArrowUp, X } from 'lucide-react';
 import {
   AdminView,
   BriefingsView,
@@ -18,6 +18,7 @@ import { TopNav } from './components/layout/TopNav';
 import { FloatingAiChat } from './components/shared/FloatingAiChat';
 import { AuthScreen, resolveInitialAuthMode, type AuthMode, type SignInForm, type SignupResult } from './components/auth/AuthScreen';
 import { authRepository } from '../features/auth/api/authRepository';
+import { bookmarksRepository } from '../features/bookmarks/api/bookmarksRepository';
 import type { AuthUser, SignupPayload } from '../features/auth/model/auth';
 import { clearAccessToken, setAccessToken } from '../shared/api/authSession';
 import { viewLabels } from '../shared/content/navigation';
@@ -149,6 +150,85 @@ function broadcastGuideStep(activeView: string, anchor: string | null, step?: Pr
   window.dispatchEvent(new CustomEvent('axis:guide-step-change', {
     detail: { activeView, anchor, step },
   }));
+}
+
+function ScrollToTopButton({
+  scrollTargetRef,
+  watchKey,
+}: {
+  scrollTargetRef: RefObject<HTMLElement | null>;
+  watchKey: string;
+}) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  const getScrollTargets = () => {
+    const root = scrollTargetRef.current;
+    if (!root) return [];
+
+    const targets = [
+      root,
+      ...Array.from(root.querySelectorAll<HTMLElement>('.axis-executive-page')),
+      ...Array.from(root.querySelectorAll<HTMLElement>('*')).filter((target) => target.scrollHeight - target.clientHeight > 24),
+      document.scrollingElement instanceof HTMLElement ? document.scrollingElement : null,
+    ].filter((target): target is HTMLElement => Boolean(target));
+
+    return Array.from(new Set(targets));
+  };
+
+  useEffect(() => {
+    const root = scrollTargetRef.current;
+    if (!root) return;
+
+    let frameId = 0;
+    const updateVisibility = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        const shouldShow = getScrollTargets().some((target) => {
+          const isScrollable = target.scrollHeight - target.clientHeight > 24;
+          return isScrollable && target.scrollTop > 240;
+        });
+        setIsVisible(shouldShow);
+      });
+    };
+
+    updateVisibility();
+    const timeoutId = window.setTimeout(updateVisibility, 0);
+    const scrollTargets = getScrollTargets();
+    scrollTargets.forEach((target) => target.addEventListener('scroll', updateVisibility, { passive: true }));
+    window.addEventListener('resize', updateVisibility);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+      scrollTargets.forEach((target) => target.removeEventListener('scroll', updateVisibility));
+      window.removeEventListener('resize', updateVisibility);
+    };
+  }, [scrollTargetRef, watchKey]);
+
+  if (!isVisible) return null;
+
+  const scrollToTop = () => {
+    getScrollTargets().forEach((target) => {
+      target.scrollTo({ top: 0, behavior: 'smooth' });
+      window.setTimeout(() => {
+        if (target.scrollTop > 8) {
+          target.scrollTop = 0;
+        }
+      }, 280);
+    });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={scrollToTop}
+      className="flex size-12 items-center justify-center rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-ink)] shadow-[0_16px_44px_-28px_rgba(0,0,0,0.48)] transition hover:-translate-y-0.5 hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+      aria-label="맨 위로 이동"
+      title="맨 위로 이동"
+    >
+      <ArrowUp size={20} strokeWidth={2.4} />
+    </button>
+  );
 }
 
 function InAppGuideOverlay({
@@ -420,6 +500,7 @@ function DashboardShell({
 }) {
   // URL ↔ view state 양방향 동기화 — 브라우저 back/forward / direct URL / share link 지원
   const [activeView, setActiveView] = useViewRouting('home');
+  const mainScrollRef = useRef<HTMLElement | null>(null);
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
   const [peerPlusSelectedPeer, setPeerPlusSelectedPeer] = useState<PeerPlusPeerId | undefined>(undefined);
   const [cardNewsSearchQuery, setCardNewsSearchQuery] = useState('');
@@ -460,6 +541,24 @@ function DashboardShell({
   }, [bookmarkedIds]);
 
   useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    bookmarksRepository.listIds()
+      .then((ids) => {
+        if (!cancelled) {
+          setBookmarkedIds(ids);
+        }
+      })
+      .catch(() => {
+        // 북마크 동기화 실패 시에는 기존 로컬 상태로 화면 사용을 유지한다.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, currentUser?.email]);
+
+  useEffect(() => {
     document.documentElement.classList.toggle('dark', themeMode === 'dark');
     window.localStorage.setItem(themeStorageKey, themeMode);
   }, [themeMode]);
@@ -492,9 +591,18 @@ function DashboardShell({
   }, [activeView]);
 
   const toggleBookmark = (cardId: string) => {
+    const wasBookmarked = bookmarkedIds.includes(cardId);
     setBookmarkedIds((current) =>
       current.includes(cardId) ? current.filter((id) => id !== cardId) : [...current, cardId],
     );
+    const request = wasBookmarked ? bookmarksRepository.remove(cardId) : bookmarksRepository.add(cardId);
+    request.catch(() => {
+      setBookmarkedIds((current) =>
+        wasBookmarked
+          ? current.includes(cardId) ? current : [...current, cardId]
+          : current.filter((id) => id !== cardId),
+      );
+    });
   };
 
   const handleViewChange = (view: string) => {
@@ -629,11 +737,13 @@ function DashboardShell({
           themeMode={themeMode}
           onThemeToggle={() => setThemeMode((mode) => (mode === 'dark' ? 'light' : 'dark'))}
         />
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 text-body-md md:pb-0">
+        <main ref={mainScrollRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 text-body-md md:pb-0">
           {renderView()}
         </main>
       </div>
-      <FloatingAiChat />
+      <FloatingAiChat
+        scrollToTopControl={<ScrollToTopButton scrollTargetRef={mainScrollRef} watchKey={activeView} />}
+      />
       {showGuide || helpGuideOpen ? (
         <InAppGuideOverlay
           activeView={activeView}
@@ -734,6 +844,7 @@ export default function App() {
   };
 
   const handleLoginSuccess = () => {
+    window.history.replaceState({}, '', '/');
     setIsAuthenticated(true);
   };
 
