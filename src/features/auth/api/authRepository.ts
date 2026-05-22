@@ -56,14 +56,14 @@ class AuthRepository {
     return this.request<PasswordResetRequestResponse>('/api/auth/password-reset/request', {
       method: 'POST',
       body: JSON.stringify({ email }),
-    }, { auth: false });
+    }, { auth: false, credentials: false });
   }
 
   confirmPasswordReset(token: string, newPassword: string) {
     return this.request<PasswordResetConfirmResponse>('/api/auth/password-reset/confirm', {
       method: 'POST',
       body: JSON.stringify({ token, new_password: newPassword }),
-    }, { auth: false });
+    }, { auth: false, credentials: false });
   }
 
   refresh() {
@@ -78,14 +78,15 @@ class AuthRepository {
     return this.request<AuthUser>('/api/auth/me', { method: 'GET' });
   }
 
-  private async request<T>(path: string, init: RequestInit, options: { auth?: boolean } = {}): Promise<T> {
+  private async request<T>(path: string, init: RequestInit, options: { auth?: boolean; credentials?: boolean } = {}): Promise<T> {
     const shouldAttachAccessToken = options.auth !== false;
+    const shouldIncludeCredentials = options.credentials !== false;
     const accessToken = shouldAttachAccessToken ? getAccessToken() : null;
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
         ...init,
-        credentials: 'include',
+        credentials: shouldIncludeCredentials ? 'include' : 'omit',
         headers: {
           Accept: 'application/json',
           ...(init.body ? { 'Content-Type': 'application/json' } : {}),
