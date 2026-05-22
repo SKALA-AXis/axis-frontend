@@ -5,5 +5,7 @@ export { BriefingsView } from './briefings/BriefingsView';
 export { HomeCardNewsView } from './home-card-news/HomeCardNewsView';
 export { IssuesView } from './issues/IssuesView';
 export { MonitoringView } from './monitoring/MonitoringView';
+export { NotificationsView } from './notifications/NotificationsView';
 export { RawArticlesView } from './raw-articles/RawArticlesView';
+export { SearchResultsView } from './search/SearchResultsView';
 export { SettingsView } from './settings/SettingsView';

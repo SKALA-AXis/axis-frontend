@@ -9,6 +9,8 @@ export const viewLabels: Record<string, string> = {
   mixer: '믹서',
   briefings: '브리핑',
   rawArticles: '믹서기',
+  notifications: '알림',
+  search: '검색',
   settings: '설정',
   admin: '관리자',
 };

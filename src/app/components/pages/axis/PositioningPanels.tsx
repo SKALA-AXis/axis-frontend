@@ -16,7 +16,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ExecutiveBadge } from '../../executive/ExecutiveSystem';
 
 const positioningData = [
   // SDS IT서비스: 2024 64,014 → 2025 65,435 / +2.2% / 마진 12.6%
@@ -122,7 +121,6 @@ export function PositioningPanel() {
             <span className="ml-1 italic">단년 성장률은 일시 요인 영향 가능 — 추세는 별도 확인 권장.</span>
           </p>
         </div>
-        <ExecutiveBadge>preview</ExecutiveBadge>
       </div>
 
       <ResponsiveContainer width="100%" height={420}>
@@ -324,7 +322,6 @@ export function MediaExposurePanel() {
             이 위젯은 <strong>"사업 위상" 이 아니라 "PR·IR 활동의 외부 도달"</strong> 을 추적하는 운영 도구.
           </p>
         </div>
-        <ExecutiveBadge>preview</ExecutiveBadge>
       </div>
 
       {/* Vertical column chart — 5 peer 가 column 으로 서서 height 가 total exposure.

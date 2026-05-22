@@ -22,6 +22,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   issues: '/issues',
   mixer: '/mixer',
   keywordGraph: '/graph',
+  search: '/search',
   settings: '/settings',
   admin: '/admin',
 };

@@ -7,8 +7,10 @@ import {
   HomeDashboardView,
   KeywordGraphView,
   MixerView,
+  NotificationsView,
   PeerPlusView,
   RawArticlesView,
+  SearchResultsView,
   SettingsView,
 } from './components/pages';
 import { Sidebar } from './components/layout/Sidebar';
@@ -22,6 +24,7 @@ import { viewLabels } from '../shared/content/navigation';
 import { useViewRouting } from '../shared/hooks/useViewRouting';
 import { commonGuideSteps, guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../shared/content/productGuide';
 import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../shared/mocks/peerPlus';
+import type { SearchScope } from '../features/search/model/search';
 
 type AuthMode = 'signIn' | 'signUp' | 'verifyEmail' | 'confirmEmail';
 export type UserRole = 'admin' | 'strategist' | 'analyst' | 'viewer';
@@ -961,6 +964,11 @@ function DashboardShell({
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
   const [peerPlusSelectedPeer, setPeerPlusSelectedPeer] = useState<PeerPlusPeerId | undefined>(undefined);
   const [cardNewsSearchQuery, setCardNewsSearchQuery] = useState('');
+  const [globalSearchRequest, setGlobalSearchRequest] = useState<{ query: string; scope: SearchScope; requestKey: number }>({
+    query: '',
+    scope: 'ALL',
+    requestKey: 0,
+  });
   const currentUserRole: UserRole = currentUser?.role === 'ADMIN' || currentUser?.role === 'admin' ? 'admin' : 'strategist';
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const stored = window.localStorage.getItem(themeStorageKey);
@@ -1051,7 +1059,16 @@ function DashboardShell({
     setActiveView(view);
   };
 
-  const handleSearchNavigate = (target: string, options?: { peerId?: PeerPlusPeerId; query?: string }) => {
+  const handleSearchNavigate = (target: string, options?: { peerId?: PeerPlusPeerId; query?: string; scope?: SearchScope }) => {
+    if (target === 'search') {
+      setGlobalSearchRequest((current) => ({
+        query: options?.query ?? '',
+        scope: options?.scope ?? 'ALL',
+        requestKey: current.requestKey + 1,
+      }));
+      handleViewChange('search');
+      return;
+    }
     if (options?.peerId) {
       window.localStorage.setItem(peerPlusSelectionStorageKey, options.peerId);
       setPeerPlusSelectedPeer(options.peerId);
@@ -1094,7 +1111,18 @@ function DashboardShell({
           />
         );
       case 'briefings':
-        return <BriefingsView />;
+        return <BriefingsView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
+      case 'notifications':
+        return <NotificationsView onNavigate={handleViewChange} />;
+      case 'search':
+        return (
+          <SearchResultsView
+            initialQuery={globalSearchRequest.query}
+            initialScope={globalSearchRequest.scope}
+            requestKey={globalSearchRequest.requestKey}
+            onNavigate={handleSearchNavigate}
+          />
+        );
       case 'rawArticles':
         return <RawArticlesView bookmarkedIds={bookmarkedIds} />;
       case 'settings':
