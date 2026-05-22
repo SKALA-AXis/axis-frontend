@@ -3,6 +3,9 @@ dist/
 .env
 .env.local
 .env.production
+# macOS Finder duplicates ('.env 2', '.env.production 3' …) — 실값 누출 방지.
+.env\ [0-9]*
+.env.*\ [0-9]*
 *.log
 .DS_Store
 backup/
