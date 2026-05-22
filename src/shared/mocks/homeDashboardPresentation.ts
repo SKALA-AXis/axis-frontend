@@ -26,7 +26,7 @@ export const homePeerStockPoints = [
 export const homeKeywordSpikeInsights = [
   {
     key: 'agenticAi',
-    time: '14:00',
+    time: '04.29',
     title: 'Agentic AI 검색량 급등',
     valueLabel: '261',
     reason: '대형 제조 고객 대상 AI 에이전트 운영 사례가 공개되며 실무형 도입 키워드로 빠르게 확산됐습니다.',
@@ -34,7 +34,7 @@ export const homeKeywordSpikeInsights = [
   },
   {
     key: 'sovereignAi',
-    time: '14:00',
+    time: '04.29',
     title: 'Sovereign AI 관심도 재상승',
     valueLabel: '172',
     reason: '공공·금융권 중심의 온프레미스 LLM 수요가 다시 묶여 언급되며 보안·주권형 AI 이슈가 재점화됐습니다.',
@@ -42,7 +42,7 @@ export const homeKeywordSpikeInsights = [
   },
   {
     key: 'digitalTwin',
-    time: '14:00',
+    time: '04.29',
     title: '디지털 트윈 키워드 점프',
     valueLabel: '134',
     reason: '제조 현장 최적화와 예지 운영 사례가 동시 노출되며 디지털 트윈이 실행형 AX 신호로 읽히고 있습니다.',
@@ -50,7 +50,7 @@ export const homeKeywordSpikeInsights = [
   },
   {
     key: 'aiGovernance',
-    time: '15:00',
+    time: '04.30',
     title: 'AI 거버넌스 후반 급증',
     valueLabel: '118',
     reason: '기업 내부 통제, 책임 추적, 보안 체계가 함께 언급되며 도입 이후 운영 리스크 관리 이슈가 확대됐습니다.',
@@ -259,4 +259,3 @@ export const homeTodayInsightSignals: ReadonlyArray<TodayInsightSignal> = [
     },
   },
 ];
-

@@ -7,14 +7,16 @@
  *
  * 변경 (designing 통합):
  *   - 좌측 Today insight 박스 안 정적 SVG 제거
- *   - 첫번째 ChartButton 을 designing 의 풍부한 RoC/Stock 차트로 (keywordSeries 동적 + spike insight 인터랙션)
+ *   - 첫번째 ChartButton 을 designing 의 풍부한 keyword/Stock 차트로 (keywordSeries 동적 + spike insight 인터랙션)
  */
 import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, LineChart as LineChartIcon, Sparkles } from 'lucide-react';
 import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -93,15 +95,204 @@ export function HomeDashboardView({
   const changeSummary = [
     { label: '오늘 감지된 변화', value: `${dashboard.trends.length + filteredCards.length}건` },
     { label: '전주 대비', value: '+18%' },
-    { label: '핵심 키워드', value: dashboard.keywordSeries[0]?.name ?? 'Agentic AI' },
+    { label: '핵심 키워드', value: dashboard.keywordSeries[0]?.name ?? '-' },
   ];
-  const stockChartPoints = dashboard.stockPoints.map((point) => ({
-    date: point.date,
-    samsung: point.samsungSds,
-    lg: point.lgCns,
-    hyundai: point.hyundaiAutoever,
-    posco: point.poscoDx,
-  }));
+  const stockPointByDate = new Map(dashboard.stockPoints.map((point) => [point.date, point]));
+  const rawStockRateChartPoints =
+    dashboard.stockRatePoints && dashboard.stockRatePoints.length > 0
+      ? dashboard.stockRatePoints
+      : dashboard.stockPoints.map((point, index) => {
+          const toRateOfChange = (current?: number | null, base?: number | null) => {
+            if (current == null || base == null || base === 0) {
+              return null;
+            }
+
+            return Number((((current - base) / base) * 100).toFixed(2));
+          };
+
+          if (index === 0) {
+            return {
+              date: point.date,
+              samsungSds: 0,
+              lgCns: 0,
+              hyundaiAutoever: 0,
+              poscoDx: 0,
+            };
+          }
+
+          const previous = dashboard.stockPoints[index - 1];
+          return {
+            date: point.date,
+            samsungSds: toRateOfChange(point.samsungSds, previous?.samsungSds),
+            lgCns: toRateOfChange(point.lgCns, previous?.lgCns),
+            hyundaiAutoever: toRateOfChange(point.hyundaiAutoever, previous?.hyundaiAutoever),
+            poscoDx: toRateOfChange(point.poscoDx, previous?.poscoDx),
+          };
+        });
+  const stockRateChartPoints = rawStockRateChartPoints.map((point) => {
+    const closePoint = stockPointByDate.get(point.date);
+    return {
+      ...point,
+      samsungSdsClose: closePoint?.samsungSds ?? null,
+      lgCnsClose: closePoint?.lgCns ?? null,
+      hyundaiAutoeverClose: closePoint?.hyundaiAutoever ?? null,
+      poscoDxClose: closePoint?.poscoDx ?? null,
+    };
+  });
+  const keywordSeriesKeys = dashboard.keywordSeries.map((series) => series.key);
+  const keywordAxisAbsMax = dashboard.keywordSearchPoints.reduce((max, point) => {
+    const pointMax = keywordSeriesKeys.reduce((innerMax, key) => {
+      const value = point[key];
+      if (typeof value !== 'number' || Number.isNaN(value)) {
+        return innerMax;
+      }
+      return Math.max(innerMax, Math.abs(value));
+    }, 0);
+    return Math.max(max, pointMax);
+  }, 0);
+  const keywordAxisRange = Math.max(5, Math.ceil(((keywordAxisAbsMax * 1.15) + 1) / 5) * 5);
+  const formatStockPrice = (value?: number | string | null) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return '-';
+    }
+    return `${value.toLocaleString('ko-KR')}원`;
+  };
+  const formatStockRate = (value?: number | string | null) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return '-';
+    }
+    return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+  };
+  const formatKeywordRatio = (value?: number | string | null) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return '-';
+    }
+    return value.toFixed(2);
+  };
+  const formatKeywordDelta = (value?: number | string | null, fractionDigits = 2) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return '-';
+    }
+    return `${value > 0 ? '+' : ''}${value.toFixed(fractionDigits)}pt`;
+  };
+  const formatKeywordAxisTick = (value: number) => {
+    if (Number.isInteger(value)) {
+      return `${value}pt`;
+    }
+    return `${value.toFixed(1)}pt`;
+  };
+  const stockAxisAbsMax = stockRateChartPoints.reduce((max, point) => {
+    const values = [point.samsungSds, point.lgCns, point.hyundaiAutoever, point.poscoDx];
+    const pointMax = values.reduce<number>((innerMax, value) => {
+      if (typeof value !== 'number' || Number.isNaN(value)) {
+        return innerMax;
+      }
+      return Math.max(innerMax, Math.abs(value));
+    }, 0);
+    return Math.max(max, pointMax);
+  }, 0);
+  const stockAxisRange = Math.max(20, Math.ceil((stockAxisAbsMax + 2) / 5) * 5);
+  const stockLegendItems = [
+    {
+      label: '삼성SDS',
+      color: 'var(--axis-graph-company)',
+    },
+    {
+      label: 'LG CNS',
+      color: 'var(--axis-graph-infra)',
+    },
+    {
+      label: '현대오토에버',
+      color: 'var(--axis-graph-security)',
+    },
+    {
+      label: '포스코DX',
+      color: 'var(--axis-graph-deal)',
+    },
+  ];
+  const renderStockTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: Array<{ color?: string; dataKey?: string | number; name?: string; value?: number | string | null }>;
+    label?: string;
+  }): ReactNode => {
+    if (!active || !payload?.length || !label) {
+      return null;
+    }
+
+    const chartPoint = (payload[0] as { payload?: Record<string, number | string | null | undefined> })?.payload;
+    const closeByKey = {
+      samsungSds: chartPoint?.samsungSdsClose,
+      lgCns: chartPoint?.lgCnsClose,
+      hyundaiAutoever: chartPoint?.hyundaiAutoeverClose,
+      poscoDx: chartPoint?.poscoDxClose,
+    } as const;
+
+    return (
+      <div className="min-w-[220px] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur">
+        <p className="text-[11px] font-semibold text-[var(--axis-muted)]">{label}</p>
+        <div className="mt-2 space-y-1.5">
+          {payload.map((item) => {
+            const dataKey = typeof item.dataKey === 'string' ? item.dataKey : '';
+            const closeValue = closeByKey[dataKey as keyof typeof closeByKey] ?? null;
+            return (
+              <div key={dataKey || item.name} className="flex items-start justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-[var(--axis-body)]">
+                  <span className="mt-0.5 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color ?? 'currentColor' }} />
+                  <span className="font-semibold">{item.name}</span>
+                </div>
+                <div className="text-right text-[var(--axis-ink)]">
+                  <p className="font-semibold">{formatStockRate(item.value)}</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--axis-muted)]">{formatStockPrice(closeValue)}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  const renderKeywordTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: Array<{ color?: string; dataKey?: string | number; name?: string; value?: number | string | null }>;
+    label?: string;
+  }): ReactNode => {
+    if (!active || !payload?.length || !label) {
+      return null;
+    }
+
+    const chartPoint = (payload[0] as { payload?: Record<string, number | string | null | undefined> })?.payload;
+    return (
+      <div className="min-w-[220px] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur">
+        <p className="text-[11px] font-semibold text-[var(--axis-muted)]">{label}</p>
+        <div className="mt-2 space-y-1.5">
+          {payload.map((item) => {
+            const dataKey = typeof item.dataKey === 'string' ? item.dataKey : '';
+            const ratioValue = chartPoint?.[`${dataKey}Ratio`];
+            return (
+              <div key={dataKey || item.name} className="flex items-start justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-[var(--axis-body)]">
+                  <span className="mt-0.5 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color ?? 'currentColor' }} />
+                  <span className="font-semibold">{item.name}</span>
+                </div>
+                <div className="text-right text-[var(--axis-ink)]">
+                  <p className="font-semibold">{formatKeywordDelta(item.value)}</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--axis-muted)]">상대지수 {formatKeywordRatio(ratioValue)}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
   const homeDartSummary = dashboard.dartSummary;
   const homeDartRadarData = homeDartSummary?.radarMetrics?.map((item) => ({
     subject: item.axis,
@@ -356,38 +547,61 @@ export function HomeDashboardView({
           {/* 우측 하단 — RoC/Stock 토글 차트. 카드뉴스 사이드바 (min-h-[430px]) 와 같은 크기로 적층. */}
           <div data-guide="home-charts">
           <ChartButton
-            title={showStockChart ? 'Peer사 주가 변동' : '키워드 검색지수 증감률'}
-            helper={showStockChart ? 'Stock compare' : 'Rate of change'}
+            title={showStockChart ? 'Peer사 주가 증감률' : '키워드 검색지수 변화'}
+            helper={showStockChart ? 'Rate of change' : 'Index delta'}
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
           >
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 {showStockChart ? (
-                  <LineChart data={stockChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
+                  <LineChart data={stockRateChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
                     <CartesianGrid stroke="var(--axis-graph-edge)" />
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
                     <YAxis
+                      domain={[-stockAxisRange, stockAxisRange]}
                       tick={{ fontSize: 11, fill: 'var(--axis-muted)' }}
-                      width={72}
-                      tickFormatter={(value: number) => value.toLocaleString('ko-KR')}
+                      width={56}
+                      tickFormatter={(value: number) => `${value}%`}
                     />
-                    <Tooltip formatter={(value: number) => [`${value.toLocaleString('ko-KR')}원`, '종가']} />
-                    <Line type="monotone" dataKey="samsung" name="삼성SDS" stroke="var(--axis-graph-company)" strokeWidth={2.3} dot={false} />
-                    <Line type="monotone" dataKey="lg" name="LG CNS" stroke="var(--axis-graph-infra)" strokeWidth={2.3} dot={false} />
-                    <Line type="monotone" dataKey="hyundai" name="현대오토에버" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
-                    <Line type="monotone" dataKey="posco" name="포스코DX" stroke="var(--axis-graph-deal)" strokeWidth={2.2} dot={false} />
+                    <ReferenceLine y={0} stroke="rgba(26,26,31,0.22)" strokeDasharray="3 3" />
+                    <Tooltip
+                      content={(props) =>
+                        renderStockTooltip(props as {
+                          active?: boolean;
+                          payload?: Array<{ color?: string; dataKey?: string | number; name?: string; value?: number | string | null }>;
+                          label?: string;
+                        })
+                      }
+                    />
+                    <Line type="linear" dataKey="samsungSds" name="삼성SDS" stroke="var(--axis-graph-company)" strokeWidth={2.3} dot={false} />
+                    <Line type="linear" dataKey="lgCns" name="LG CNS" stroke="var(--axis-graph-infra)" strokeWidth={2.3} dot={false} />
+                    <Line type="linear" dataKey="hyundaiAutoever" name="현대오토에버" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
+                    <Line type="linear" dataKey="poscoDx" name="포스코DX" stroke="var(--axis-graph-deal)" strokeWidth={2.2} dot={false} />
                   </LineChart>
                 ) : (
                   <LineChart data={dashboard.keywordSearchPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
                     <CartesianGrid stroke="var(--axis-graph-edge)" />
-                    <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
-                    <Tooltip formatter={(value: number) => [`${Number(value).toLocaleString('ko-KR')}`, '검색 지수']} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
+                    <YAxis
+                      domain={[-keywordAxisRange, keywordAxisRange]}
+                      tick={{ fontSize: 11, fill: 'var(--axis-muted)' }}
+                      tickFormatter={formatKeywordAxisTick}
+                    />
+                    <ReferenceLine y={0} stroke="rgba(26,26,31,0.22)" strokeDasharray="3 3" />
+                    <Tooltip
+                      content={(props) =>
+                        renderKeywordTooltip(props as {
+                          active?: boolean;
+                          payload?: Array<{ color?: string; dataKey?: string | number; name?: string; value?: number | string | null }>;
+                          label?: string;
+                        })
+                      }
+                    />
                     {dashboard.keywordSeries.map((series, index) => (
                       <Line
                         key={series.key}
-                        type="monotone"
+                        type="linear"
                         dataKey={series.key}
                         name={series.name}
                         stroke={series.color}
@@ -395,7 +609,7 @@ export function HomeDashboardView({
                         dot={({ cx, cy, payload }) => {
                           if (typeof cx !== 'number' || typeof cy !== 'number' || !payload) return <></>;
                           const matchedInsight = homeKeywordSpikeInsights.find(
-                            (item) => item.key === series.key && item.time === String(payload.time),
+                            (item) => item.key === series.key && item.time === String(payload.date ?? payload.time),
                           );
                           const isSelected =
                             matchedInsight?.key === selectedKeywordInsight?.key &&
@@ -428,12 +642,7 @@ export function HomeDashboardView({
             <ChartLegend
               items={
                 showStockChart
-                  ? [
-                      { label: '삼성SDS', color: 'var(--axis-graph-company)' },
-                      { label: 'LG CNS', color: 'var(--axis-graph-infra)' },
-                      { label: '현대오토에버', color: 'var(--axis-graph-security)' },
-                      { label: '포스코DX', color: 'var(--axis-graph-deal)' },
-                    ]
+                  ? stockLegendItems
                   : dashboard.keywordSeries.map((series) => ({
                       label: series.name,
                       color: series.color,
@@ -443,8 +652,8 @@ export function HomeDashboardView({
             {/* 차트 안내 — heavy 박스가 아니라 1-line footer 캡션 (홈은 입구. 깊은 설명은 차트별 detail 페이지로) */}
             <p className="mt-2 text-[10px] leading-4 text-[var(--axis-muted)]">
               {showStockChart
-                ? 'Peer 4사 종가 일별 추이 · KRX / Yahoo Finance'
-                : '키워드 검색 트렌드 (네이버 데이터랩) · ⭕ 포인트 클릭 = 급등 원인 + 해석'}
+                ? `Peer 4사 전일 대비 주가 증감률 · ${dashboard.stockSource?.label ?? 'mock stockPoints fallback'}`
+                : '키워드 검색지수 일별 전일 대비 지수 차이 (네이버 데이터랩 상대지수)'}
             </p>
             {!showStockChart && selectedKeywordInsight ? (
               <div
