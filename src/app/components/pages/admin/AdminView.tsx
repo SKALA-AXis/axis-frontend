@@ -60,7 +60,9 @@ export function AdminView() {
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex shrink-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-4 py-3 text-left transition xl:w-full ${
-                      isActive ? 'bg-[var(--axis-navy)] text-white' : 'text-[var(--axis-body)] hover:bg-white'
+                      isActive
+                        ? 'bg-[var(--axis-accent)] text-white shadow-[0_14px_34px_-26px_rgba(220,90,36,0.65)]'
+                        : 'text-[var(--axis-body)] hover:bg-[var(--axis-surface-muted)]'
                     }`}
                   >
                     <Icon size={17} />
@@ -95,7 +97,6 @@ function AdminTable({ title, rows }: { title: string; rows: Array<Record<string,
           <p className="axis-kicker">Operations</p>
           <h2 className="axis-section-heading mt-1">{title}</h2>
         </div>
-        <ExecutiveBadge>OpenAPI admin</ExecutiveBadge>
       </div>
       <div className="overflow-x-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-white">
         <table className="axis-data-table">
@@ -135,7 +136,6 @@ function UsagePanel() {
           <p className="axis-kicker">Usage</p>
           <h2 className="axis-section-heading mt-1">API 비용·토큰 사용량</h2>
         </div>
-        <ExecutiveBadge tone="warning">FR Admin Usage</ExecutiveBadge>
       </div>
       <div className="grid gap-3 md:grid-cols-4">
         <ExecutiveMetric label="Tokens" value="12,500" helper="today" />

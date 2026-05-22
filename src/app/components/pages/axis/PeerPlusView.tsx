@@ -526,7 +526,6 @@ export function PeerPlusView({
                 <p className="axis-kicker">Overview</p>
                 <h2 className="axis-section-heading mt-1">Peer 한눈 비교</h2>
               </div>
-              <ExecutiveBadge tone="accent">목업</ExecutiveBadge>
             </div>
             <div className="mt-4 overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)]">
               <div className="grid grid-cols-[1.08fr_0.98fr_0.98fr_0.88fr_0.82fr_0.88fr_1fr] gap-px bg-[var(--axis-hairline)] text-xs font-semibold text-[var(--axis-muted)]">
@@ -632,12 +631,12 @@ export function PeerPlusView({
                       key={`${item.label}-${item.body}`}
                       className={`overflow-hidden rounded-[var(--axis-radius-lg)] border p-4 shadow-[0_16px_32px_-28px_rgba(26,26,31,0.24)] ${
                         item.label === 'Strength'
-                          ? 'border-[rgba(220,90,36,0.28)] bg-[linear-gradient(180deg,rgba(220,90,36,0.14),rgba(255,255,255,0.92))]'
+                          ? 'border-[rgba(220,90,36,0.32)] bg-[linear-gradient(180deg,rgba(220,90,36,0.16),var(--axis-canvas))]'
                           : item.label === 'Weakness'
-                            ? 'border-[rgba(107,107,115,0.22)] bg-[linear-gradient(180deg,rgba(107,107,115,0.10),rgba(255,255,255,0.94))]'
+                            ? 'border-[rgba(107,107,115,0.26)] bg-[linear-gradient(180deg,rgba(107,107,115,0.14),var(--axis-canvas))]'
                             : item.label === 'Opportunity'
-                              ? 'border-[rgba(90,107,87,0.28)] bg-[linear-gradient(180deg,rgba(90,107,87,0.14),rgba(255,255,255,0.92))]'
-                              : 'border-[rgba(30,41,59,0.18)] bg-[linear-gradient(180deg,rgba(30,41,59,0.10),rgba(255,255,255,0.94))]'
+                              ? 'border-[rgba(90,107,87,0.32)] bg-[linear-gradient(180deg,rgba(90,107,87,0.16),var(--axis-canvas))]'
+                              : 'border-[rgba(30,41,59,0.24)] bg-[linear-gradient(180deg,rgba(30,41,59,0.12),var(--axis-canvas))] dark:border-[rgba(246,241,232,0.18)] dark:bg-[linear-gradient(180deg,rgba(246,241,232,0.10),var(--axis-canvas))]'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -695,9 +694,8 @@ export function PeerPlusView({
                     전체 모드에서는 SK AX와 주요 Peer를 한 번에 겹쳐 시장 평균 대비 어디가 두드러지는지 보는 용도입니다.
                   </p>
                 </div>
-                <ExecutiveBadge tone="accent">Radar</ExecutiveBadge>
               </div>
-              <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[rgba(255,255,255,0.88)] p-3">
+              <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3">
                 <div className="mb-3 flex flex-wrap gap-2">
                   {radarKeys.map((key) => (
                     <span
@@ -745,9 +743,8 @@ export function PeerPlusView({
                     기업별 모드에서는 SK AX와 선택 기업만 겹쳐 재무 체질 차이를 빠르게 읽는 비교 레이어로 사용합니다.
                   </p>
                 </div>
-                <ExecutiveBadge tone="accent">Radar</ExecutiveBadge>
               </div>
-              <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[rgba(255,255,255,0.88)] p-3">
+              <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3">
                 <div className="mb-3 flex flex-wrap gap-2">
                   {radarKeys.map((key) => (
                     <span

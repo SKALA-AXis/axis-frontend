@@ -1,5 +1,5 @@
-import { Bell, Clock3, KeyRound, LogOut, ShieldCheck, User } from 'lucide-react';
-import { useState } from 'react';
+import { Bell, Clock3, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, X, User } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -8,13 +8,29 @@ import {
   ExecutivePage,
 } from '../../executive/ExecutiveSystem';
 import type { AuthUser } from '../../../../features/auth/model/auth';
-import { mockLoginHistory } from '../../../../shared/mocks/userSettings';
+import { notificationsRepository } from '../../../../features/notifications/api/notificationsRepository';
+import type { NotificationPreferences } from '../../../../features/notifications/model/notification';
+import { settingsRepository } from '../../../../features/settings/api/settingsRepository';
+import type { AccessLogItem } from '../../../../features/settings/model/accessLog';
 
 type SettingsTab = 'account' | 'history' | 'notifications';
+type AccessLogStatus = 'idle' | 'loading' | 'success' | 'error';
+type NotificationPreferenceStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export function SettingsView({ onLogout, currentUser }: { onLogout: () => void | Promise<void>; currentUser?: AuthUser | null }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [profileSaved, setProfileSaved] = useState(false);
+  const [accessLogs, setAccessLogs] = useState<AccessLogItem[]>([]);
+  const [accessLogStatus, setAccessLogStatus] = useState<AccessLogStatus>('idle');
+  const [accessLogError, setAccessLogError] = useState('');
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
+    enabled: true,
+    importantEnabled: true,
+    keywords: [],
+  });
+  const [notificationPreferenceStatus, setNotificationPreferenceStatus] = useState<NotificationPreferenceStatus>('idle');
+  const [notificationPreferenceError, setNotificationPreferenceError] = useState('');
+  const [keywordDraft, setKeywordDraft] = useState('');
   const displayName = currentUser?.name || currentUser?.email?.split('@')[0] || 'AXIS 사용자';
   const email = currentUser?.email || 'axis.user@sk.com';
   const [notificationSettings, setNotificationSettings] = useState({
@@ -30,6 +46,66 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
     { id: 'history', label: '접속 로그', icon: ShieldCheck },
     { id: 'notifications', label: '알림 설정', icon: Bell },
   ];
+
+  const loadAccessLogs = useCallback(async () => {
+    setAccessLogStatus('loading');
+    setAccessLogError('');
+    try {
+      const items = await settingsRepository.accessLogs();
+      setAccessLogs(items);
+      setAccessLogStatus('success');
+    } catch (error) {
+      setAccessLogs([]);
+      setAccessLogStatus('error');
+      setAccessLogError(error instanceof Error ? error.message : '접속 로그를 불러오지 못했습니다.');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'history' && accessLogStatus === 'idle') {
+      void loadAccessLogs();
+    }
+  }, [accessLogStatus, activeTab, loadAccessLogs]);
+
+  const loadNotificationPreferences = useCallback(async () => {
+    setNotificationPreferenceStatus('loading');
+    setNotificationPreferenceError('');
+    try {
+      setNotificationPreferences(await notificationsRepository.preferences());
+      setNotificationPreferenceStatus('success');
+    } catch (error) {
+      setNotificationPreferenceStatus('error');
+      setNotificationPreferenceError(error instanceof Error ? error.message : '알림 설정을 불러오지 못했습니다.');
+    }
+  }, []);
+
+  const saveNotificationPreferences = async () => {
+    setNotificationPreferenceStatus('loading');
+    setNotificationPreferenceError('');
+    try {
+      setNotificationPreferences(await notificationsRepository.updatePreferences(notificationPreferences));
+      setNotificationPreferenceStatus('success');
+    } catch (error) {
+      setNotificationPreferenceStatus('error');
+      setNotificationPreferenceError(error instanceof Error ? error.message : '알림 설정을 저장하지 못했습니다.');
+    }
+  };
+
+  const addKeyword = () => {
+    const keyword = keywordDraft.trim().replace(/\s+/g, ' ');
+    if (!keyword || notificationPreferences.keywords.some((item) => item.toLowerCase() === keyword.toLowerCase())) {
+      setKeywordDraft('');
+      return;
+    }
+    setNotificationPreferences((current) => ({ ...current, keywords: [...current.keywords, keyword] }));
+    setKeywordDraft('');
+  };
+
+  useEffect(() => {
+    if (activeTab === 'notifications' && notificationPreferenceStatus === 'idle') {
+      void loadNotificationPreferences();
+    }
+  }, [activeTab, loadNotificationPreferences, notificationPreferenceStatus]);
 
   return (
     <ExecutivePage>
@@ -93,7 +169,16 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                     <ShieldCheck size={17} className="text-[var(--axis-accent)]" />
                     <h2 className="axis-section-heading">접속 로그</h2>
                   </div>
-                  <ExecutiveBadge>FR-043</ExecutiveBadge>
+                  <div className="flex items-center gap-2">
+                    <ExecutiveButton
+                      variant="secondary"
+                      icon={<RefreshCw size={14} />}
+                      disabled={accessLogStatus === 'loading'}
+                      onClick={() => void loadAccessLogs()}
+                    >
+                      새로고침
+                    </ExecutiveButton>
+                  </div>
                 </div>
                 <div className="mt-5 overflow-x-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)]">
                   <table className="axis-data-table">
@@ -106,12 +191,27 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                       </tr>
                     </thead>
                     <tbody>
-                      {mockLoginHistory.map((item) => (
+                      {accessLogStatus === 'loading' ? (
+                        <tr>
+                          <td colSpan={4} className="text-center text-[var(--axis-muted)]">접속 로그를 불러오는 중입니다.</td>
+                        </tr>
+                      ) : null}
+                      {accessLogStatus === 'error' ? (
+                        <tr>
+                          <td colSpan={4} className="text-center text-[var(--axis-danger)]">{accessLogError}</td>
+                        </tr>
+                      ) : null}
+                      {accessLogStatus === 'success' && accessLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center text-[var(--axis-muted)]">표시할 접속 로그가 없습니다.</td>
+                        </tr>
+                      ) : null}
+                      {accessLogStatus === 'success' && accessLogs.map((item) => (
                         <tr key={item.id}>
-                          <td>{item.date} {item.time}</td>
-                          <td>{item.action}</td>
-                          <td>{item.country}</td>
-                          <td>{item.ipAddress}</td>
+                          <td>{formatAccessLogTime(item.occurredAt)}</td>
+                          <td>{formatAccessLogAction(item)}</td>
+                          <td>{item.country || '알 수 없음'}</td>
+                          <td>{item.ipAddress || '기록 없음'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -127,10 +227,21 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                     <Bell size={17} className="text-[var(--axis-accent)]" />
                     <h2 className="axis-section-heading">알림 채널·시간</h2>
                   </div>
-                  <ExecutiveBadge>FR-041</ExecutiveBadge>
                 </div>
 
                 <div className="mt-5 grid gap-3">
+                  <ToggleRow
+                    title="알림 전체"
+                    description="상단 알림창과 배지 알림을 사용합니다."
+                    checked={notificationPreferences.enabled}
+                    onChange={(checked) => setNotificationPreferences((current) => ({ ...current, enabled: checked }))}
+                  />
+                  <ToggleRow
+                    title="중요 시그널"
+                    description="수주, 계약, 실적, 투자 등 중요 키워드 감지를 포함합니다."
+                    checked={notificationPreferences.importantEnabled}
+                    onChange={(checked) => setNotificationPreferences((current) => ({ ...current, importantEnabled: checked }))}
+                  />
                   <ToggleRow
                     title="Email"
                     description="브리핑과 중요 이벤트를 이메일로 수신합니다."
@@ -152,6 +263,51 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                 </div>
 
                 <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-[var(--axis-ink)]">관심 키워드</h3>
+                      <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">등록한 키워드가 카드뉴스 본문에 포함되면 알림을 생성합니다.</p>
+                    </div>
+                    <ExecutiveBadge>{notificationPreferences.keywords.length}/20</ExecutiveBadge>
+                  </div>
+                  <form
+                    className="flex gap-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      addKeyword();
+                    }}
+                  >
+                    <input
+                      value={keywordDraft}
+                      onChange={(event) => setKeywordDraft(event.target.value)}
+                      maxLength={30}
+                      className="h-10 min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+                      placeholder="예: 수주, AI agent, 클라우드"
+                    />
+                    <ExecutiveButton type="submit" variant="secondary" icon={<Plus size={15} />}>추가</ExecutiveButton>
+                  </form>
+                  <div className="mt-3 flex min-h-9 flex-wrap gap-2">
+                    {notificationPreferences.keywords.length === 0 ? (
+                      <span className="text-xs font-semibold text-[var(--axis-muted)]">등록된 관심 키워드가 없습니다.</span>
+                    ) : null}
+                    {notificationPreferences.keywords.map((keyword) => (
+                      <button
+                        key={keyword}
+                        type="button"
+                        onClick={() => setNotificationPreferences((current) => ({
+                          ...current,
+                          keywords: current.keywords.filter((item) => item !== keyword),
+                        }))}
+                        className="inline-flex items-center gap-1 rounded-sm border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-1 text-xs font-semibold text-[var(--axis-ink)] hover:border-[var(--axis-danger)] hover:text-[var(--axis-danger)]"
+                      >
+                        {keyword}
+                        <X size={12} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <Clock3 size={16} className="text-[var(--axis-accent)]" />
                     <h3 className="text-sm font-semibold text-[var(--axis-ink)]">브리핑 발송 시간</h3>
@@ -163,6 +319,16 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                     className="h-10 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
                   />
                 </div>
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <ExecutiveButton
+                    onClick={() => void saveNotificationPreferences()}
+                    disabled={notificationPreferenceStatus === 'loading'}
+                  >
+                    알림 설정 저장
+                  </ExecutiveButton>
+                  {notificationPreferenceStatus === 'success' ? <ExecutiveBadge tone="success">저장되었습니다</ExecutiveBadge> : null}
+                  {notificationPreferenceStatus === 'error' ? <ExecutiveBadge tone="danger">{notificationPreferenceError}</ExecutiveBadge> : null}
+                </div>
               </section>
             ) : null}
           </main>
@@ -170,6 +336,48 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
       </ExecutiveContainer>
     </ExecutivePage>
   );
+}
+
+function formatAccessLogTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '기록 없음';
+  }
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'Asia/Seoul',
+  }).format(date);
+}
+
+function formatAccessLogAction(item: AccessLogItem) {
+  const labels: Record<string, string> = {
+    SIGNUP: '회원가입',
+    EMAIL_VERIFIED: '이메일 인증',
+    EMAIL_VERIFICATION_RESENT: '인증 메일 재발송',
+    LOGIN_SUCCESS: '로그인 성공',
+    LOGIN_FAILURE: '로그인 실패',
+    LOGOUT: '로그아웃',
+    REFRESH_ROTATED: '자동 로그인 갱신',
+    REFRESH_REUSE_DETECTED: '토큰 재사용 탐지',
+    PASSWORD_CHANGED: '비밀번호 변경',
+    PROFILE_UPDATED: '프로필 수정',
+    SETTINGS_UPDATED: '설정 변경',
+    login: '로그인',
+    logout: '로그아웃',
+    view: '조회',
+    download: '다운로드',
+    share: '공유',
+  };
+  const label = labels[item.action] ?? item.action;
+  if (item.success || item.action.endsWith('_FAILURE') || item.action === 'REFRESH_REUSE_DETECTED') {
+    return label;
+  }
+  return `${label} 실패`;
 }
 
 function Field({

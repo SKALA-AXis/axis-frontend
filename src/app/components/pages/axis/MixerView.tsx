@@ -898,7 +898,7 @@ export function MixerView({
           }
         />
 
-        <section data-guide="mixer-input" className="sticky top-3 z-20 mb-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+        <section data-guide="mixer-input" className="relative z-0 mb-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
           {mockMixerConfig.options.map((optionGroup) => {
             const group =
               optionGroup.title === 'Peer사'
@@ -944,7 +944,7 @@ export function MixerView({
               </div>
               <ExecutiveBadge tone={canGenerate ? 'success' : 'warning'}>{selectedCards.length}개 선택</ExecutiveBadge>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4 xl:gap-6">
               {visibleCards.map((item) => {
                 const selected = selectedIds.includes(item.id);
                 const bookmarked = bookmarkedIds.includes(item.card.id);
@@ -958,15 +958,15 @@ export function MixerView({
                     <button
                       type="button"
                       onClick={() => toggleSelection(item.id)}
-                      className="relative block aspect-[4/5] w-full overflow-hidden text-left"
+                      className="relative block aspect-[3/4] w-full overflow-hidden text-left sm:aspect-[4/5]"
                     >
                       {item.card.coverImageUrl ? (
                         <img src={item.card.coverImageUrl} alt={item.card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
                       ) : null}
                       <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#081324]/48 to-black/92" />
-                      <div className="relative flex h-full flex-col justify-between p-4 text-white">
-                        <div className="flex items-start justify-between gap-2 text-xs font-semibold">
-                          <span className="rounded-sm border border-white/25 bg-white/10 px-2 py-1">{item.peer}</span>
+                      <div className="relative flex h-full flex-col justify-between p-3 text-white sm:p-4">
+                        <div className="flex items-start justify-between gap-2 text-[10px] font-semibold sm:text-xs">
+                          <span className="rounded-sm border border-white/25 bg-white/10 px-2 py-0.5 sm:px-2.5 sm:py-1">{item.peer}</span>
                           <span className={`flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-md)] border ${
                             selected ? 'border-white bg-white/20 text-white' : 'border-white/25 bg-white/10 text-white/70'
                           }`}>
@@ -974,8 +974,8 @@ export function MixerView({
                           </span>
                         </div>
                         <div>
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/72">{item.sourceType}</p>
-                          <h3 className="line-clamp-4 text-lg font-semibold leading-tight text-white">{item.card.title}</h3>
+                          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/75 sm:text-xs">{item.sourceType}</p>
+                          <h3 className="line-clamp-3 text-[13px] font-semibold leading-tight text-white sm:line-clamp-4 sm:text-[18px]">{item.card.title}</h3>
                         </div>
                       </div>
                     </button>
@@ -983,7 +983,7 @@ export function MixerView({
                       type="button"
                       aria-label={bookmarked ? '북마크 해제' : '북마크'}
                       onClick={() => onToggleBookmark(item.card.id)}
-                      className={`absolute right-4 top-14 flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] border backdrop-blur transition ${
+                      className={`absolute right-2 top-14 flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur transition sm:right-4 sm:top-20 ${
                         bookmarked
                           ? 'border-white/70 bg-white text-[#081324] dark:border-white dark:bg-white dark:text-[#081324]'
                           : 'border-white/25 bg-black/20 text-white hover:bg-white/15'

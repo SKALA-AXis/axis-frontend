@@ -163,7 +163,6 @@ function PositioningPanel() {
           <p className="axis-kicker">Comparison</p>
           <h2 className="axis-section-heading mt-1">R&D 투자 대비 수익성 포지션</h2>
         </div>
-        <ExecutiveBadge>FR-032</ExecutiveBadge>
       </div>
 
       <ResponsiveContainer width="100%" height={300}>

@@ -221,6 +221,7 @@
   --axis-graph-deal: #9B98A3;
   --axis-graph-edge: rgba(246, 241, 232, 0.16);
   --axis-graph-active-edge: #E2A079;
+  --axis-navy: var(--surface-code);
 }
 
 /* ─── Tailwind v4 inline theme ─────────────────────────── */

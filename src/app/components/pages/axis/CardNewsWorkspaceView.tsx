@@ -66,7 +66,7 @@ export function CardNewsWorkspaceView({
       ...(row.card.actionItems ?? []),
     ].filter(Boolean).join(' ').toLowerCase();
     const keywordMatched = !normalizedKeyword || haystack.includes(normalizedKeyword);
-    const bookmarkMatched = !bookmarkedOnly || bookmarkedIds.includes(row.id);
+    const bookmarkMatched = !bookmarkedOnly || bookmarkedIds.includes(row.sourceId);
     return peerMatched && sectorMatched && dateMatched && keywordMatched && bookmarkMatched;
   });
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
@@ -91,7 +91,7 @@ export function CardNewsWorkspaceView({
           subtitle="카드 커버 단위로 전체 흐름을 빠르게 훑고, 필요한 카드만 열어 AI 요약, 시사점, 원문 링크까지 이어서 확인할 수 있는 화면입니다."
         />
 
-        <section data-guide="cardnews-filter" className="sticky top-3 z-20 mb-5 flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
+        <section data-guide="cardnews-filter" className="relative z-0 mb-5 flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
           <span className="inline-flex h-9 items-center gap-2 rounded-full bg-[var(--axis-canvas)] px-3 text-xs font-semibold text-[var(--axis-muted)]">
             <Filter size={14} />
             필터
@@ -158,9 +158,9 @@ export function CardNewsWorkspaceView({
           {visibleRows.length === 0 ? (
             <EmptyBlock label="선택한 필터에 해당하는 카드뉴스가 없습니다." />
           ) : (
-            <main data-guide="cardnews-grid" className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4 xl:gap-6">
+            <main data-guide="cardnews-grid" className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-5 xl:gap-5">
               {visibleRows.map((row) => {
-                const bookmarked = bookmarkedIds.includes(row.id);
+                const bookmarked = bookmarkedIds.includes(row.sourceId);
                 return (
                   <article
                     key={row.id}
@@ -202,7 +202,7 @@ export function CardNewsWorkspaceView({
                       <button
                         type="button"
                         aria-label={bookmarked ? '북마크 해제' : '북마크'}
-                        onClick={() => onToggleBookmark(row.id)}
+                        onClick={() => onToggleBookmark(row.sourceId)}
                         className={`flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur transition ${
                           bookmarked
                             ? 'border-white/40 bg-white text-[#081324]'

@@ -1,22 +1,11 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, HelpCircle, Search, Settings } from 'lucide-react';
 import type { AuthUser } from '../../../features/auth/model/auth';
-import { useCardNews } from '../../../features/card-news/hooks/useCardNews';
-import {
-  getDisplayDate,
-  getExecutiveRank,
-  getPeerLabel,
-  getSummaryLines,
-} from '../../../features/card-news/mappers/cardNewsExecutive';
+import { notificationsRepository } from '../../../features/notifications/api/notificationsRepository';
+import type { NotificationItem } from '../../../features/notifications/model/notification';
+import type { SearchScope } from '../../../features/search/model/search';
 import { viewLabels } from '../../../shared/content/navigation';
-import { searchSuggestionKeywords } from '../../../shared/content/searchSuggestions';
-import {
-  mockNotificationItems,
-  notificationClearedStorageKey,
-  notificationStorageKey,
-  type NotificationItem,
-} from '../../../shared/mocks/notifications';
-import { mockPeerPlusOptions, type PeerPlusPeerId } from '../../../shared/mocks/peerPlus';
+import type { PeerPlusPeerId } from '../../../shared/mocks/peerPlus';
 
 interface TopNavProps {
   activeView: string;
@@ -27,8 +16,16 @@ interface TopNavProps {
   onLogoClick?: () => void;
   onUserClick?: () => void;
   onHelpClick?: () => void;
-  onSearchNavigate?: (target: string, options?: { peerId?: PeerPlusPeerId; query?: string }) => void;
+  onSearchNavigate?: (target: string, options?: { peerId?: PeerPlusPeerId; query?: string; scope?: SearchScope }) => void;
 }
+
+const searchScopeOptions: Array<{ value: SearchScope; label: string }> = [
+  { value: 'ALL', label: '전체' },
+  { value: 'BRIEFING', label: '브리핑' },
+  { value: 'PEER_PLUS', label: 'Peer+' },
+  { value: 'CARD_NEWS', label: '카드뉴스' },
+  { value: 'KEYWORD_GRAPH', label: '키워드 그래프' },
+];
 
 function formatLastCrawlUpdate() {
   const date = new Date();
@@ -40,21 +37,25 @@ function formatLastCrawlUpdate() {
   return `${dateLabel} 08:30`;
 }
 
-function loadNotifications() {
-  try {
-    const stored = window.localStorage.getItem(notificationStorageKey);
-    const parsed = stored ? JSON.parse(stored) : [];
-    const storedItems = Array.isArray(parsed) ? parsed.filter((item): item is NotificationItem => item && typeof item.id === 'string') : [];
-    if (stored && window.localStorage.getItem(notificationClearedStorageKey) === 'true') {
-      return storedItems;
-    }
-    const byId = new Map(storedItems.map((item) => [item.id, item]));
-    const seeded = mockNotificationItems.map((item) => byId.get(item.id) ?? item);
-    const extraStored = storedItems.filter((item) => !mockNotificationItems.some((seed) => seed.id === item.id));
-    return [...seeded, ...extraStored];
-  } catch {
-    return mockNotificationItems;
-  }
+function formatNotificationTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const now = Date.now();
+  const diffMinutes = Math.floor((now - date.getTime()) / 60000);
+  if (diffMinutes < 1) return '방금';
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+  if (diffMinutes < 60 * 24) return `${Math.floor(diffMinutes / 60)}시간 전`;
+  return date.toLocaleDateString('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Seoul',
+  }).replace(/\.$/, '');
+}
+
+function notificationTone(item: NotificationItem) {
+  if (item.severity === 'IMPORTANT') return '중요';
+  if (item.matchedKeywords.length > 0) return item.matchedKeywords[0];
+  return '알림';
 }
 
 export function TopNav({
@@ -79,70 +80,93 @@ export function TopNav({
     .toUpperCase()
     .slice(0, 2) || 'SK';
   const lastCrawlUpdate = formatLastCrawlUpdate();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [showAllNotifications, setShowAllNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(loadNotifications);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const { cards } = useCardNews();
-  const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
-  const normalizedQuery = query.trim().toLowerCase();
-  const hasQuery = normalizedQuery.length > 0;
-  const peerResults = useMemo(() => {
-    if (!normalizedQuery) return [];
-    return mockPeerPlusOptions.filter((peer) => peer.label.toLowerCase().replace(/\s+/g, '').includes(normalizedQuery.replace(/\s+/g, '')));
-  }, [normalizedQuery]);
-  const cardResults = useMemo(() => {
-    if (!normalizedQuery) return [];
-    return rankedCards
-      .filter((card) => {
-        const haystack = [
-          card.title,
-          getPeerLabel(card),
-          card.category,
-          card.category_label,
-          card.subtitle,
-          card.sector,
-          ...getSummaryLines(card),
-          ...(card.insights ?? []),
-        ].filter(Boolean).join(' ').toLowerCase();
-        return haystack.includes(normalizedQuery);
-      })
-      .slice(0, 4);
-  }, [normalizedQuery, rankedCards]);
-  const keywordFallback = hasQuery && peerResults.length === 0 && cardResults.length === 0;
-  const showSearchPanel = searchOpen && (hasQuery || searchSuggestionKeywords.length > 0);
-  const unreadCount = notifications.filter((item) => !item.read).length;
-  const visibleNotifications = showAllNotifications ? notifications : notifications.slice(0, 3);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationError, setNotificationError] = useState('');
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [searchScope, setSearchScope] = useState<SearchScope>('ALL');
+  const visibleNotifications = notifications.slice(0, 5);
+  const hideGlobalSearch = activeView === 'search';
+
+  const loadNotifications = useCallback(async (limit = 10) => {
+    if (!currentUser) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+    setNotificationsLoading(true);
+    setNotificationError('');
+    try {
+      const result = await notificationsRepository.list(limit);
+      setNotifications(result.items);
+      setUnreadCount(result.unreadCount);
+    } catch (error) {
+      setNotificationError(error instanceof Error ? error.message : '알림을 불러오지 못했습니다.');
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [currentUser]);
+
+  const refreshUnreadCount = useCallback(async () => {
+    if (!currentUser) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      setUnreadCount(await notificationsRepository.unreadCount());
+    } catch {
+      // 배지 갱신 실패는 팝오버 조회 시 다시 표출한다.
+    }
+  }, [currentUser]);
 
   useEffect(() => {
-    window.localStorage.setItem(notificationStorageKey, JSON.stringify(notifications));
-  }, [notifications]);
+    void loadNotifications(10);
+  }, [loadNotifications]);
 
-  const navigateFromSearch = (target: string, options?: { peerId?: PeerPlusPeerId; query?: string }) => {
-    setSearchOpen(false);
-    setQuery('');
-    onSearchNavigate?.(target, options);
-  };
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (notificationsOpen) {
+        void loadNotifications(10);
+      } else {
+        void refreshUnreadCount();
+      }
+    }, 60_000);
+    return () => window.clearInterval(interval);
+  }, [loadNotifications, notificationsOpen, refreshUnreadCount]);
+
+  useEffect(() => {
+    const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName;
+      const isTypingTarget = target?.isContentEditable || tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
+      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey || isTypingTarget) {
+        return;
+      }
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    };
+
+    window.addEventListener('keydown', handleGlobalSearchShortcut);
+    return () => window.removeEventListener('keydown', handleGlobalSearchShortcut);
+  }, []);
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const normalizedQuery = query.trim();
     if (!normalizedQuery) {
-      onSearchClick?.();
-      setSearchOpen(true);
+      searchInputRef.current?.focus();
       return;
     }
-    const peer = peerResults[0];
-    if (peer) {
-      navigateFromSearch('peerPlus', { peerId: peer.id, query });
-      return;
-    }
-    navigateFromSearch('issues', { query });
+    onSearchClick?.();
+    onSearchNavigate?.('search', { query: normalizedQuery, scope: searchScope });
   };
 
   return (
     <header
-      className="relative z-10 flex h-20 shrink-0 items-center gap-4 bg-canvas px-4 lg:px-6"
+      className="relative z-40 flex h-20 shrink-0 items-center gap-4 bg-canvas px-4 lg:px-6"
     >
       {/* ─── 좌측: AXIS 로고 + 현재 페이지 ────────────────── */}
       <div className="relative flex min-w-[150px] shrink-0 items-center gap-4 lg:min-w-[240px]">
@@ -176,118 +200,42 @@ export function TopNav({
       </div>
 
       {/* ─── 가운데: 글로벌 검색 input ──────────────────────── */}
-      <form
-        data-guide="global-search"
-        className="relative min-w-0 flex-1"
-        onSubmit={handleSearchSubmit}
-        onMouseEnter={() => setSearchOpen(true)}
-        onMouseLeave={() => {
-          if (document.activeElement?.id !== 'axis-global-search' && !query.trim()) {
-            setSearchOpen(false);
-          }
-        }}
-      >
-        <label htmlFor="axis-global-search" className="sr-only">검색</label>
-        <Search
-          size={15}
-          strokeWidth={2.2}
-          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-stone"
-        />
-        <input
-          id="axis-global-search"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setSearchOpen(true);
-          }}
-          onFocus={() => {
-            setSearchOpen(true);
-            onSearchClick?.();
-          }}
-          onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
-          className="h-10 w-full min-w-0 rounded-md border border-hairline bg-surface px-10 pr-14 text-body-sm text-charcoal outline-none transition-colors placeholder:text-stone hover:border-hairline-strong focus:border-action"
-          placeholder="Peer 동향 · 키워드 · 카드뉴스 검색..."
-        />
-        <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-sm border border-hairline bg-cream-soft px-1.5 py-0.5 font-mono text-[10px] text-stone md:inline">
-            ⌘K
-        </kbd>
-        {showSearchPanel ? (
-          <section className="absolute left-0 right-0 top-12 z-40 overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] shadow-[0_22px_70px_-36px_rgba(0,0,0,0.45)]">
-            <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-4 py-3">
-              <p className="axis-kicker">{hasQuery ? 'Search results' : 'Recommended keywords'}</p>
-            </div>
-            <div className="max-h-[360px] overflow-y-auto p-2">
-              {!hasQuery ? (
-                <div className="p-2">
-                  <div className="flex flex-wrap gap-2">
-                    {searchSuggestionKeywords.map((keyword) => (
-                      <button
-                        key={keyword}
-                        type="button"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => navigateFromSearch('issues', { query: keyword })}
-                        className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-2 text-sm font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
-                      >
-                        {keyword}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {mockPeerPlusOptions.slice(0, 4).map((peer) => (
-                      <button
-                        key={peer.id}
-                        type="button"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => navigateFromSearch('peerPlus', { peerId: peer.id, query: peer.label })}
-                        className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3 text-left transition hover:border-[var(--axis-accent)]"
-                      >
-                        <span className="text-[11px] font-semibold text-[var(--axis-muted)]">Peer 바로가기</span>
-                        <span className="mt-1 block text-sm font-bold text-[var(--axis-ink)]">{peer.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {peerResults.map((peer) => (
-                <button
-                  key={peer.id}
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => navigateFromSearch('peerPlus', { peerId: peer.id, query })}
-                  className="block w-full rounded-[var(--axis-radius-md)] p-3 text-left transition hover:bg-[var(--axis-surface-soft)]"
-                >
-                  <span className="text-[11px] font-semibold text-[var(--axis-accent-strong)]">Peer+ 이동</span>
-                  <span className="mt-1 block text-sm font-bold text-[var(--axis-ink)]">{peer.label}</span>
-                </button>
+      {hideGlobalSearch ? (
+        <div className="min-w-0 flex-1" aria-hidden="true" />
+      ) : (
+        <form
+          data-guide="global-search"
+          className="relative min-w-0 flex-1"
+          onSubmit={handleSearchSubmit}
+        >
+          <label htmlFor="axis-global-search" className="sr-only">검색</label>
+          <div className="flex h-10 min-w-0 items-center overflow-hidden rounded-md border border-hairline bg-surface transition-colors hover:border-hairline-strong focus-within:border-action">
+            <select
+              value={searchScope}
+              onChange={(event) => setSearchScope(event.target.value as SearchScope)}
+              className="h-full w-[118px] shrink-0 border-r border-hairline bg-transparent px-3 text-xs font-bold text-[var(--axis-ink)] outline-none sm:w-[132px]"
+              aria-label="검색 범위"
+            >
+              {searchScopeOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
-              {cardResults.map((card) => (
-                <button
-                  key={card.id}
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => navigateFromSearch('issues', { query })}
-                  className="block w-full rounded-[var(--axis-radius-md)] p-3 text-left transition hover:bg-[var(--axis-surface-soft)]"
-                >
-                  <span className="text-[11px] font-semibold text-[var(--axis-accent-strong)]">{getPeerLabel(card)} · {getDisplayDate(card)}</span>
-                  <span className="mt-1 line-clamp-2 block text-sm font-bold leading-5 text-[var(--axis-ink)]">{card.title}</span>
-                  <span className="mt-1 line-clamp-1 block text-xs text-[var(--axis-muted)]">{getSummaryLines(card)[0]}</span>
-                </button>
-              ))}
-              {keywordFallback ? (
-                <button
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => navigateFromSearch('issues', { query })}
-                  className="block w-full rounded-[var(--axis-radius-md)] p-3 text-left transition hover:bg-[var(--axis-surface-soft)]"
-                >
-                  <span className="text-[11px] font-semibold text-[var(--axis-accent-strong)]">키워드로 카드뉴스 검색</span>
-                  <span className="mt-1 block text-sm font-bold text-[var(--axis-ink)]">‘{query.trim()}’ 관련 카드뉴스 보기</span>
-                </button>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-      </form>
+            </select>
+            <Search size={15} strokeWidth={2.2} className="ml-3 shrink-0 text-stone" />
+            <input
+              id="axis-global-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onFocus={onSearchClick}
+              ref={searchInputRef}
+              className="h-full min-w-0 flex-1 bg-transparent px-3 pr-2 text-body-sm text-charcoal outline-none placeholder:text-stone"
+              placeholder="Peer 동향 · 키워드 · 카드뉴스 검색..."
+            />
+            <kbd className="pointer-events-none mr-3 hidden shrink-0 rounded-sm border border-hairline bg-cream-soft px-1.5 py-0.5 font-mono text-[10px] text-stone md:inline">
+              /
+            </kbd>
+          </div>
+        </form>
+      )}
 
       {/* ─── 우측: 크롤링 업데이트 + 액션 ───────────────────────────── */}
       <div className="relative flex min-w-fit shrink-0 items-center justify-end gap-1">
@@ -307,7 +255,11 @@ export function TopNav({
           type="button"
           onClick={() => {
             onNotificationsClick?.();
-            setNotificationsOpen((open) => !open);
+            const nextOpen = !notificationsOpen;
+            setNotificationsOpen(nextOpen);
+            if (nextOpen) {
+              void loadNotifications(10);
+            }
           }}
           className="relative flex h-9 w-9 items-center justify-center rounded-md text-stone hover:bg-cream-soft hover:text-ink transition-colors"
           aria-label="알림"
@@ -331,17 +283,23 @@ export function TopNav({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAllNotifications((current) => !current)}
+                  onClick={() => {
+                    setNotificationsOpen(false);
+                    onNotificationSelect?.('notifications');
+                  }}
                   className="text-xs font-semibold text-[var(--axis-accent-strong)] hover:text-[var(--axis-ink)]"
                 >
-                  {showAllNotifications ? '최근만' : '전체보기'}
+                  전체보기
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    window.localStorage.setItem(notificationClearedStorageKey, 'true');
-                    setNotifications([]);
-                    setShowAllNotifications(false);
+                  onClick={async () => {
+                    try {
+                      await notificationsRepository.deleteRead();
+                      setNotifications((current) => current.filter((item) => !item.read));
+                    } catch (error) {
+                      setNotificationError(error instanceof Error ? error.message : '알림을 지우지 못했습니다.');
+                    }
                   }}
                   className="text-xs font-semibold text-[var(--axis-muted)] hover:text-[var(--axis-danger)]"
                 >
@@ -357,17 +315,36 @@ export function TopNav({
               </div>
             </div>
             <div className="max-h-[420px] space-y-2 overflow-y-auto">
-              {visibleNotifications.length === 0 ? (
+              {notificationsLoading ? (
+                <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4 text-center text-sm font-semibold text-[var(--axis-muted)]">
+                  알림을 불러오는 중입니다.
+                </div>
+              ) : null}
+              {notificationError ? (
+                <div className="rounded-[var(--axis-radius-md)] border border-[rgba(220,38,38,0.24)] bg-[rgba(220,38,38,0.08)] p-4 text-center text-sm font-semibold text-[var(--axis-danger)]">
+                  {notificationError}
+                </div>
+              ) : null}
+              {!notificationsLoading && !notificationError && visibleNotifications.length === 0 ? (
                 <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4 text-center text-sm font-semibold text-[var(--axis-muted)]">
                   표시할 알림이 없습니다.
                 </div>
               ) : null}
-              {visibleNotifications.map((item) => (
+              {!notificationError && visibleNotifications.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => {
-                    setNotifications((current) => current.map((notice) => notice.id === item.id ? { ...notice, read: true } : notice));
+                  onClick={async () => {
+                    try {
+                      if (!item.read) {
+                        const updated = await notificationsRepository.markRead(item.id);
+                        setNotifications((current) => current.map((notice) => notice.id === item.id ? updated : notice));
+                        setUnreadCount((current) => Math.max(0, current - 1));
+                      }
+                    } catch (error) {
+                      setNotificationError(error instanceof Error ? error.message : '알림 읽음 처리에 실패했습니다.');
+                      return;
+                    }
                     setNotificationsOpen(false);
                     onNotificationSelect?.(item.target);
                   }}
@@ -378,10 +355,20 @@ export function TopNav({
                   }`}
                 >
                   <span className="flex items-center justify-between gap-3 text-[11px] font-semibold text-[var(--axis-accent-strong)]">
-                    <span>{item.peer} · {item.tone}</span>
-                    <span className={item.read ? 'text-[var(--axis-muted)]' : 'text-sk-red'}>{item.read ? '읽음' : '안읽음'} · {item.time}</span>
+                    <span>{item.companyName || 'AXIS'} · {notificationTone(item)}</span>
+                    <span className={item.read ? 'text-[var(--axis-muted)]' : 'text-sk-red'}>{item.read ? '읽음' : '안읽음'} · {formatNotificationTime(item.createdAt)}</span>
                   </span>
                   <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--axis-ink)]">{item.title}</span>
+                  <span className="mt-1 line-clamp-2 block text-xs leading-5 text-[var(--axis-muted)]">{item.message}</span>
+                  {item.matchedKeywords.length > 0 ? (
+                    <span className="mt-2 flex flex-wrap gap-1">
+                      {item.matchedKeywords.slice(0, 3).map((keyword) => (
+                        <span key={keyword} className="rounded-sm border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--axis-muted)]">
+                          {keyword}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>

@@ -40,7 +40,12 @@ type BriefingReasoningModal = {
   evidenceCards: CardNewsItem[];
 };
 
-export function BriefingsView() {
+type BriefingsViewProps = {
+  bookmarkedIds?: string[];
+  onToggleBookmark?: (cardId: string) => void;
+};
+
+export function BriefingsView({ bookmarkedIds = [], onToggleBookmark }: BriefingsViewProps) {
   const { cards, isLoading, error } = useCardNews();
   const contentViewMode = useContentViewMode();
   const [period, setPeriod] = useState<BriefingPeriod>('daily');
@@ -855,10 +860,15 @@ export function BriefingsView() {
       {detailCard ? (
         <FloatingCardNewsOverlay
           card={detailCard}
-          bookmarked={false}
+          cards={evidenceCards.length > 0 ? evidenceCards : briefing.selectedCards}
+          bookmarked={bookmarkedIds.includes(detailCard.id)}
           slideIndex={detailSlideIndex}
           onSlideChange={setDetailSlideIndex}
-          onBookmark={() => undefined}
+          onBookmark={() => onToggleBookmark?.(detailCard.id)}
+          onCardChange={(cardId) => {
+            setDetailCardId(cardId);
+            setDetailSlideIndex(0);
+          }}
           onClose={() => {
             setDetailCardId(null);
             setDetailSlideIndex(0);

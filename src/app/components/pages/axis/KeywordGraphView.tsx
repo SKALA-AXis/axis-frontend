@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import * as THREE from 'three';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
+import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
 import type { DashboardKeywordSearchPoint } from '../../../../features/dashboard/model/dashboard';
 import { graphCategoryColor, graphCompanyAliases, graphEdges, graphNodes, type KeywordEdge, type KeywordNode } from '../../../../shared/mocks/keywordGraph';
@@ -12,6 +13,26 @@ import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { FilterChip, MiniStat } from './AxisPlanningShared';
 
 type NavigateHandler = (view: string) => void;
+
+function KeywordRelatedCardButton({ card, onOpen }: { card: CardNewsItem; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex h-full min-w-0 flex-col rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)]"
+    >
+      <div className="relative mb-3 aspect-[4/3] w-full shrink-0 overflow-hidden rounded-[var(--axis-radius-md)] bg-[#081324]">
+        {card.coverImageUrl ? (
+          <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
+        <span className="absolute bottom-2 left-2 max-w-[calc(100%_-_16px)] truncate text-xs font-semibold text-white">{getPeerLabel(card)}</span>
+      </div>
+      <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
+      <h3 className="mt-1 min-h-[3.75rem] line-clamp-3 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</h3>
+    </button>
+  );
+}
 
 function normalizeGraphTerm(value: string) {
   return value.replace(/\s/g, '').toLowerCase();
@@ -82,6 +103,7 @@ function KeywordSphereGraph({
   selectedId,
   zoom = 1,
   fullscreen = false,
+  themeRevision = 0,
   onSelectNode,
   onCloseFullscreen,
 }: {
@@ -90,6 +112,7 @@ function KeywordSphereGraph({
   selectedId: string;
   zoom?: number;
   fullscreen?: boolean;
+  themeRevision?: number;
   onSelectNode: (nodeId: string) => void;
   onCloseFullscreen?: () => void;
 }) {
@@ -340,7 +363,7 @@ function KeywordSphereGraph({
       renderer.dispose();
       groupRef.current = null;
     };
-  }, [edges, fullscreen, nodes, selectedId]);
+  }, [edges, fullscreen, nodes, selectedId, themeRevision]);
 
   return (
     <div
@@ -399,6 +422,7 @@ export function KeywordGraphView({
   const [graphFullscreenMode, setGraphFullscreenMode] = useState<'2d' | '3d' | null>(null);
   const [keywordDetailCardId, setKeywordDetailCardId] = useState<string | null>(null);
   const [keywordDetailSlideIndex, setKeywordDetailSlideIndex] = useState(0);
+  const [themeRevision, setThemeRevision] = useState(0);
 
   const visibleNodes = useMemo(() => graphNodes.filter((node) => category === '전체' || node.category === category), [category]);
   const visibleEdges = useMemo(() => {
@@ -431,13 +455,26 @@ export function KeywordGraphView({
   }, [rankedCardsForKeyword, selected.category, selected.id, selected.label, selected.sourceType]);
   const overlayPageSize = 3;
   const overlayPageCount = Math.max(1, Math.ceil(overlayCardsAll.length / overlayPageSize));
-  const safeOverlayPage = overlayPage % overlayPageCount;
+  const safeOverlayPage = ((overlayPage % overlayPageCount) + overlayPageCount) % overlayPageCount;
   const overlayCards = overlayCardsAll.slice(safeOverlayPage * overlayPageSize, safeOverlayPage * overlayPageSize + overlayPageSize);
   const keywordDetailCard = keywordDetailCardId ? cards.find((card) => card.id === keywordDetailCardId) ?? null : null;
 
   useEffect(() => {
     setOverlayPage(0);
   }, [selectedId]);
+
+  useEffect(() => {
+    if (typeof MutationObserver === 'undefined') return undefined;
+
+    const observer = new MutationObserver((mutations) => {
+      if (mutations.some((mutation) => mutation.attributeName === 'class')) {
+        setThemeRevision((current) => current + 1);
+      }
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   const getNode = (id: string) => graphNodes.find((node) => node.id === id) ?? graphNodes[0];
   const selectGraphNode = (nodeId: string) => {
@@ -583,6 +620,7 @@ export function KeywordGraphView({
                   edges={visibleEdges}
                   selectedId={selectedId}
                   zoom={scale}
+                  themeRevision={themeRevision}
                   onSelectNode={selectGraphNode}
                 />
               ) : (
@@ -612,13 +650,22 @@ export function KeywordGraphView({
                       </div>
                       <div className="flex flex-wrap justify-end gap-2">
                         {overlayCardsAll.length > overlayPageSize ? (
-                          <button
-                            type="button"
-                            onClick={() => setOverlayPage((page) => (page + 1) % overlayPageCount)}
-                            className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
-                          >
-                            다음 카드뉴스
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setOverlayPage((page) => page - 1)}
+                              className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
+                            >
+                              이전
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOverlayPage((page) => page + 1)}
+                              className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
+                            >
+                              다음
+                            </button>
+                          </>
                         ) : null}
                         <button
                           type="button"
@@ -629,24 +676,13 @@ export function KeywordGraphView({
                         </button>
                       </div>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid auto-rows-fr gap-3 md:grid-cols-3">
                       {overlayCards.map((card) => (
-                        <button
+                        <KeywordRelatedCardButton
                           key={card.id}
-                          type="button"
-                          onClick={() => setKeywordDetailCardId(card.id)}
-                          className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)]"
-                        >
-                          <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-[var(--axis-radius-md)] bg-[#081324]">
-                            {card.coverImageUrl ? (
-                              <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
-                            ) : null}
-                            <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
-                            <span className="absolute bottom-2 left-2 text-xs font-semibold text-white">{getPeerLabel(card)}</span>
-                          </div>
-                          <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
-                          <h3 className="mt-1 line-clamp-3 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</h3>
-                        </button>
+                          card={card}
+                          onOpen={() => setKeywordDetailCardId(card.id)}
+                        />
                       ))}
                     </div>
                     {overlayCardsAll.length === 0 ? (
@@ -719,6 +755,7 @@ export function KeywordGraphView({
               edges={visibleEdges}
               selectedId={selectedId}
               zoom={scale}
+              themeRevision={themeRevision}
               fullscreen
               onSelectNode={selectGraphNode}
             />
@@ -810,13 +847,22 @@ export function KeywordGraphView({
                   </div>
                   <div className="flex shrink-0 flex-wrap justify-end gap-2">
                     {overlayCardsAll.length > overlayPageSize ? (
-                      <button
-                        type="button"
-                        onClick={() => setOverlayPage((page) => (page + 1) % overlayPageCount)}
-                        className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
-                      >
-                        다음
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setOverlayPage((page) => page - 1)}
+                          className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
+                        >
+                          이전
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOverlayPage((page) => page + 1)}
+                          className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] px-3 py-2 text-sm font-semibold text-[var(--axis-body)] hover:border-[var(--axis-accent)]"
+                        >
+                          다음
+                        </button>
+                      </>
                     ) : null}
                     <button
                       type="button"
@@ -827,24 +873,13 @@ export function KeywordGraphView({
                     </button>
                   </div>
                 </div>
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid auto-rows-fr gap-3 md:grid-cols-3">
                   {overlayCards.map((card) => (
-                    <button
+                    <KeywordRelatedCardButton
                       key={card.id}
-                      type="button"
-                      onClick={() => setKeywordDetailCardId(card.id)}
-                      className="min-w-0 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)]"
-                    >
-                      <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-[var(--axis-radius-md)] bg-[#081324]">
-                        {card.coverImageUrl ? (
-                          <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
-                        ) : null}
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
-                        <span className="absolute bottom-2 left-2 text-xs font-semibold text-white">{getPeerLabel(card)}</span>
-                      </div>
-                      <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
-                      <h3 className="mt-1 line-clamp-3 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</h3>
-                    </button>
+                      card={card}
+                      onOpen={() => setKeywordDetailCardId(card.id)}
+                    />
                   ))}
                 </div>
               </section>
