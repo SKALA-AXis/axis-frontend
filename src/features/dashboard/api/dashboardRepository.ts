@@ -11,12 +11,7 @@ class HttpDashboardRepository implements DashboardRepository {
     if (!httpClient) {
       return mockDashboardData;
     }
-
-    try {
-      return await httpClient.get<DashboardData>('/api/dashboard/summary');
-    } catch {
-      return mockDashboardData;
-    }
+    return await httpClient.get<DashboardData>('/api/dashboard/summary');
   }
 }
 

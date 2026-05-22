@@ -140,11 +140,11 @@ export const uiText = {
     current: '현재',
     articleArchive: '기사 아카이브',
     chatTitle: 'AXIS AI',
-    chatSubtitle: '대화형 전략 검색 · 보고서 작성',
-    chatGreeting: '안녕하세요. AXIS입니다. Peer사 동향 질문이나 보고서 작성 요청을 남겨 주세요.',
+    chatSubtitle: '대화형 전략 검색 · 질의응답',
+    chatGreeting: '안녕하세요. AXIS입니다. Peer사 동향, 핵심 키워드, 최근 카드뉴스에 대해 편하게 질문해 주세요.',
     chatResponse:
-      '요청하신 내용을 기준으로 최근 Peer사 동향, SK AX 영향도, 후속 검토 포인트와 보고서 초안까지 함께 정리해드릴게요.',
-    chatPlaceholder: '예: 이번 주 금융권 경쟁 동향 보고서 써줘',
+      '요청하신 내용을 기준으로 최근 Peer사 동향, SK AX 영향도, 후속 검토 포인트를 함께 정리해드릴게요.',
+    chatPlaceholder: '예: 이번 주 금융권 경쟁 동향 요약해줘',
   },
   briefings: {
     pageTitle: '브리핑',

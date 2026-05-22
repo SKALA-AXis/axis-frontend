@@ -23,7 +23,7 @@ export interface DashboardKeyword {
 }
 
 export interface DashboardKeywordSearchPoint {
-  time: string;
+  date: string;
   [key: string]: number | string;
 }
 
@@ -47,6 +47,24 @@ export interface DashboardStockPoint {
   lgCns: number;
   hyundaiAutoever: number;
   poscoDx: number;
+}
+
+export interface DashboardStockRatePoint {
+  date: string;
+  samsungSds: number | null;
+  lgCns: number | null;
+  hyundaiAutoever: number | null;
+  poscoDx: number | null;
+}
+
+export interface DashboardStockSource {
+  basis: 'day_over_day_pct';
+  windowDays: number;
+  sourceName: string | null;
+  exchange: string | null;
+  currency: string | null;
+  isMock: boolean;
+  label: string;
 }
 
 export interface DashboardDartChartPoint {
@@ -92,6 +110,8 @@ export interface DashboardData {
   keywordSearchPoints: DashboardKeywordSearchPoint[];
   keywordSeries: DashboardKeywordSeries[];
   stockPoints: DashboardStockPoint[];
+  stockRatePoints?: DashboardStockRatePoint[];
+  stockSource?: DashboardStockSource | null;
   notifications: DashboardNotification[];
   keywordNewsCount: string;
   dartSummary?: DashboardDartSummary | null;

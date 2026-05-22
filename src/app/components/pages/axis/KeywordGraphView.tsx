@@ -734,7 +734,7 @@ export function KeywordGraphView({
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={trendData} margin={{ top: 8, right: 10, left: -24, bottom: 0 }}>
                         <CartesianGrid stroke="var(--axis-graph-edge)" />
-                        <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'var(--axis-muted)' }} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--axis-muted)' }} />
                         <YAxis tick={{ fontSize: 10, fill: 'var(--axis-muted)' }} />
                         <Tooltip />
                         <Line type="monotone" dataKey="agenticAi" name="언급량" stroke="var(--axis-graph-ax)" strokeWidth={2.2} dot={false} />
