@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Bell, HelpCircle, Search, Settings } from 'lucide-react';
+import type { AuthUser } from '../../../features/auth/model/auth';
 import { useCardNews } from '../../../features/card-news/hooks/useCardNews';
 import {
   getDisplayDate,
@@ -19,6 +20,7 @@ import { mockPeerPlusOptions, type PeerPlusPeerId } from '../../../shared/mocks/
 
 interface TopNavProps {
   activeView: string;
+  currentUser?: AuthUser | null;
   onSearchClick?: () => void;
   onNotificationsClick?: () => void;
   onNotificationSelect?: (view: string) => void;
@@ -57,6 +59,7 @@ function loadNotifications() {
 
 export function TopNav({
   activeView,
+  currentUser,
   onSearchClick,
   onNotificationsClick,
   onNotificationSelect,
@@ -66,6 +69,15 @@ export function TopNav({
   onSearchNavigate,
 }: TopNavProps) {
   const currentLabel = viewLabels[activeView] ?? activeView;
+  const userLabel = currentUser?.name || currentUser?.email?.split('@')[0] || 'AXIS 사용자';
+  const userInitials = userLabel
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'SK';
   const lastCrawlUpdate = formatLastCrawlUpdate();
   const [query, setQuery] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -397,9 +409,9 @@ export function TopNav({
           title="회원정보 및 설정"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sk-red text-fine-print font-display-strong text-white">
-            SK
+            {userInitials}
           </span>
-          <span className="hidden text-body-sm-strong text-ink sm:inline">박지원</span>
+          <span className="hidden max-w-[8rem] truncate text-body-sm-strong text-ink sm:inline">{userLabel}</span>
           <Settings size={14} className="hidden text-stone lg:block" />
         </button>
       </div>

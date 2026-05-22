@@ -7,13 +7,16 @@ import {
   ExecutiveHeader,
   ExecutivePage,
 } from '../../executive/ExecutiveSystem';
+import type { AuthUser } from '../../../../features/auth/model/auth';
 import { mockLoginHistory } from '../../../../shared/mocks/userSettings';
 
 type SettingsTab = 'account' | 'history' | 'notifications';
 
-export function SettingsView({ onLogout }: { onLogout: () => void }) {
+export function SettingsView({ onLogout, currentUser }: { onLogout: () => void | Promise<void>; currentUser?: AuthUser | null }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [profileSaved, setProfileSaved] = useState(false);
+  const displayName = currentUser?.name || currentUser?.email?.split('@')[0] || 'AXIS 사용자';
+  const email = currentUser?.email || 'axis.user@sk.com';
   const [notificationSettings, setNotificationSettings] = useState({
     email: true,
     inApp: true,
@@ -72,10 +75,8 @@ export function SettingsView({ onLogout }: { onLogout: () => void }) {
                   <h2 className="axis-section-heading">프로필</h2>
                 </div>
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  <Field label="이름" defaultValue="Andrew Smith" />
-                  <Field label="이메일" type="email" defaultValue="andrew.smith@skax.com" />
-                  <Field label="부서" defaultValue="Corporate Strategy" />
-                  <Field label="역할" defaultValue="strategist" />
+                  <Field label="이름" defaultValue={displayName} />
+                  <Field label="이메일" type="email" defaultValue={email} />
                 </div>
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   <ExecutiveButton onClick={() => setProfileSaved(true)}>회원 정보 저장</ExecutiveButton>
