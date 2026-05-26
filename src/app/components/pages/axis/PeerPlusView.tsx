@@ -4,6 +4,7 @@ import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RadarS
 
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
+import { usePeerPositioning } from '../../../../features/peers/hooks/usePeerPositioning';
 import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOverview';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
@@ -314,6 +315,7 @@ export function PeerPlusView({
 }) {
   const { cards, isLoading, error } = useCardNews();
   const { peerOverview, isLoading: isPeerOverviewLoading, error: peerOverviewError } = usePeerOverview();
+  const { peerPositioning, isLoading: isPeerPositioningLoading, error: peerPositioningError } = usePeerPositioning();
   const peerOptions = mockPeerPlusOptions;
   const filterOptions: Array<{ id: PeerPlusFilterId; label: string }> = [{ id: 'all', label: '전체' }, ...peerOptions, globalIndustryFilterOption];
   const [selectedPeerId, setSelectedPeerId] = useState<PeerPlusFilterId>(externalSelectedPeerId ?? 'all');
@@ -739,7 +741,11 @@ export function PeerPlusView({
         {isAllFilter ? (
           <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.98fr)]">
             <div data-guide="peer-positioning">
-              <PositioningPanel />
+              <PositioningPanel
+                positioning={peerPositioning}
+                isLoading={isPeerPositioningLoading}
+                error={peerPositioningError}
+              />
             </div>
             <article data-guide="peer-radar" className="axis-panel-flat p-5">
               <div className="flex items-start justify-between gap-3">
