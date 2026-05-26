@@ -18,6 +18,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   home: '/',
   briefings: '/briefings',
   insight: '/insight',
+  globalTrends: '/global-trends',
   peerPlus: '/peer',
   issues: '/issues',
   mixer: '/mixer',

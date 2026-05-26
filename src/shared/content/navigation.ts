@@ -8,6 +8,7 @@ export const viewLabels: Record<string, string> = {
   monitoring: 'Peer+',
   mixer: '믹서',
   briefings: '브리핑',
+  globalTrends: '글로벌 트렌드',
   rawArticles: '믹서기',
   notifications: '알림',
   search: '검색',
@@ -18,6 +19,7 @@ export const viewLabels: Record<string, string> = {
 export const primaryNavigationItems = [
   { id: 'home', label: '홈' },
   { id: 'briefings', label: '브리핑' },
+  { id: 'globalTrends', label: '글로벌 트렌드' },
   { id: 'peerPlus', label: 'Peer+' },
   { id: 'issues', label: '카드뉴스' },
   { id: 'mixer', label: '믹서' },

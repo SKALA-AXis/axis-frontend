@@ -13,6 +13,7 @@ import {
   SearchResultsView,
   SettingsView,
 } from './components/pages';
+import { GlobalTrendsView } from './components/GlobalTrendsView';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopNav } from './components/layout/TopNav';
 import { FloatingAiChat } from './components/shared/FloatingAiChat';
@@ -679,6 +680,8 @@ function DashboardShell({
         );
       case 'briefings':
         return <BriefingsView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
+      case 'globalTrends':
+        return <GlobalTrendsView />;
       case 'notifications':
         return <NotificationsView onNavigate={handleViewChange} />;
       case 'search':
