@@ -4,8 +4,9 @@ import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RadarS
 
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
+import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOverview';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
-import { mockPeerPlusIrProfiles, mockPeerPlusKeywordCloud, mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
+import { mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
 import { ExecutiveBadge, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { LoadingBlock } from './AxisPlanningShared';
@@ -259,6 +260,47 @@ function GlobalIndustryTrendView() {
   );
 }
 
+function formatKrwBn(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return '-';
+  const absolute = Math.abs(value);
+  if (absolute >= 10000) {
+    const jo = value / 10000;
+    return `${trimDecimal(jo, 2)}조`;
+  }
+  return `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(value)}억`;
+}
+
+function formatPercent(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return '-';
+  return `${trimDecimal(value, 2)}%`;
+}
+
+function formatCount(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return '-';
+  return `${new Intl.NumberFormat('ko-KR').format(value)}건`;
+}
+
+function formatQoqPercent(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return null;
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${trimDecimal(value, 2)}%`;
+}
+
+function formatQoqPctPoint(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return null;
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${trimDecimal(value, 2)}%p`;
+}
+
+function trendToneClass(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value) || value === 0) return 'text-[var(--axis-muted)]';
+  return value > 0 ? 'text-[#d3432b]' : 'text-[#2563eb]';
+}
+
+function trimDecimal(value: number, digits: number) {
+  return value.toFixed(digits).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+}
+
 export function PeerPlusView({
   onNavigate: _onNavigate,
   bookmarkedIds = [],
@@ -271,6 +313,7 @@ export function PeerPlusView({
   selectedPeerId?: PeerPlusPeerId;
 }) {
   const { cards, isLoading, error } = useCardNews();
+  const { peerOverview, isLoading: isPeerOverviewLoading, error: peerOverviewError } = usePeerOverview();
   const peerOptions = mockPeerPlusOptions;
   const filterOptions: Array<{ id: PeerPlusFilterId; label: string }> = [{ id: 'all', label: '전체' }, ...peerOptions, globalIndustryFilterOption];
   const [selectedPeerId, setSelectedPeerId] = useState<PeerPlusFilterId>(externalSelectedPeerId ?? 'all');
@@ -298,24 +341,42 @@ export function PeerPlusView({
   const peerEvidenceCards = (peerCards.length > 0 ? peerCards : rankedCards).slice(0, 6);
   const peerDetailCard = peerDetailCardId ? cards.find((card) => card.id === peerDetailCardId) ?? null : null;
   const comparisonLabel = isGlobalIndustry ? 'SK AX 글로벌 산업 동향' : isAllFilter ? 'SK AX vs Peer 전체' : `SK AX vs ${selectedPeer?.label ?? '선택 Peer'}`;
+  const peerOverviewApiRows = Array.isArray(peerOverview?.rows) ? peerOverview.rows : [];
+  const peerOverviewRows = [
+    {
+      id: 'sk_ax',
+      label: 'SK AX',
+      revenueKrwBn: null,
+      revenueQoqPct: null,
+      operatingProfitKrwBn: null,
+      operatingProfitQoqPct: null,
+      operatingMarginPct: null,
+      operatingMarginQoqDeltaPctp: null,
+      axRevenueSharePct: null,
+      contractCount: null,
+      topKeyword: null,
+      dartRceptNo: null,
+    },
+    ...peerOptions.map((peer) => ({
+      id: peer.id,
+      label: peer.label,
+      revenueKrwBn: null,
+      revenueQoqPct: null,
+      operatingProfitKrwBn: null,
+      operatingProfitQoqPct: null,
+      operatingMarginPct: null,
+      operatingMarginQoqDeltaPctp: null,
+      axRevenueSharePct: null,
+      contractCount: null,
+      topKeyword: null,
+      dartRceptNo: null,
+    })),
+  ].map((baseRow) => {
+    const hydratedRow = peerOverviewApiRows.find((row) => row.id === baseRow.id);
+    return hydratedRow ? { ...baseRow, ...hydratedRow } : baseRow;
+  });
+  const peerOverviewVisibleRows = peerOverviewRows.filter((row) => isAllFilter || row.id === 'sk_ax' || row.id === selectedPeer?.id);
 
-  const peerOrderCountMap: Record<'sk_ax' | PeerPlusPeerId, { label: string; orderCount: string }> = {
-    sk_ax: { label: 'SK AX', orderCount: '내부 기준' },
-    samsung_sds: { label: '삼성 SDS', orderCount: '공시 미기재' },
-    lg_cns: { label: 'LG CNS', orderCount: '공시 미기재' },
-    hyundai_autoever: { label: '현대 오토에버', orderCount: '공시 미기재' },
-    posco_dx: { label: '포스코 DX', orderCount: '공시 미기재' },
-  };
-  const skAxProfile = {
-    id: 'sk_ax',
-    label: 'SK AX',
-    revenue: '1.22조',
-    operatingProfit: '910억',
-    margin: '7.4%',
-    axRatio: '34%',
-    topKeyword: '운영형 AX',
-    orderCount: peerOrderCountMap.sk_ax.orderCount,
-  };
   const peerInsightCatalog: Record<'all' | PeerPlusPeerId, Array<{ label: '포지셔닝' | '사업 신호' | '기술 신호' | '리스크'; body: string }>> = {
     all: [
       { label: '포지셔닝', body: '전체 비교에서는 SK AX를 기준축으로 두고, 삼성 SDS는 ITS·클라우드·AI, LG CNS는 금융·공공·클라우드, 현대 오토에버는 모빌리티·운영, 포스코 DX는 산업DX·이차전지 문맥으로 나뉘어 보입니다.' },
@@ -402,21 +463,6 @@ export function PeerPlusView({
       : (['sk_ax', selectedPeer.id] as Array<'sk_ax' | PeerPlusPeerId>);
   const peerInsightItems = peerInsightCatalog[selectedPeerAnalysisId];
   const swotItems = swotCatalog[selectedPeerAnalysisId];
-  const peerOverviewRows = peerOptions.map((peer) => {
-    const profile = mockPeerPlusIrProfiles[peer.id];
-    const topKeyword = mockPeerPlusKeywordCloud[peer.id][0]?.label ?? '-';
-    return {
-      id: peer.id,
-      label: peer.label,
-      revenue: profile.revenue,
-      operatingProfit: profile.operatingProfit,
-      margin: profile.margin,
-      axRatio: profile.axRatio,
-      orderCount: peerOrderCountMap[peer.id].orderCount,
-      topKeyword,
-    };
-  });
-
   const peerReasoningSections = useMemo<Record<'comparison' | 'swot', PeerReasoningModal>>(() => {
     const getEvidenceSlice = (startIndex: number, count = 3) => {
       if (peerEvidenceCards.length === 0) return [] as CardNewsItem[];
@@ -477,8 +523,9 @@ export function PeerPlusView({
   }, [comparisonLabel, peerEvidenceCards, peerInsightItems, swotItems]);
   const activePeerReasoning = activePeerReasoningId ? peerReasoningSections[activePeerReasoningId] : null;
 
-  if (isLoading) return <LoadingBlock label="Peer+ 분석 데이터를 불러오는 중입니다." />;
+  if (isLoading || isPeerOverviewLoading) return <LoadingBlock label="Peer+ 분석 데이터를 불러오는 중입니다." />;
   if (error) return <LoadingBlock label={error} />;
+  if (peerOverviewError && !peerOverview) return <LoadingBlock label={peerOverviewError} />;
 
   return (
     <ExecutivePage className="overflow-visible">
@@ -532,31 +579,40 @@ export function PeerPlusView({
                 {['기업', '매출', '영업이익', '영업이익률', 'AX 비중', '수주 수', '핵심 키워드'].map((label) => (
                   <div key={label} className="bg-[var(--axis-surface-soft)] px-3 py-3">{label}</div>
                 ))}
-                {[skAxProfile, ...peerOverviewRows]
-                  .filter((row) => isAllFilter || row.id === 'sk_ax' || row.id === selectedPeer?.id)
-                  .map((row) => (
+                {peerOverviewVisibleRows.map((row) => (
                     <div key={row.id} className="contents">
                       <div
                         className={`px-3 py-3 text-left text-sm font-semibold ${
-                          row.id === 'sk_ax' || row.id === selectedPeerId
+                          row.id === 'sk_ax' || row.id === selectedPeer?.id
                             ? 'bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
                             : 'bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
                         }`}
                       >
                         {row.label}
                       </div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.revenue}</div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.operatingProfit}</div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.margin}</div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.axRatio}</div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.orderCount}</div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.topKeyword}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                        <div>{formatKrwBn(row.revenueKrwBn)}</div>
+                        {formatQoqPercent(row.revenueQoqPct) ? <div className={`mt-1 text-[10px] ${trendToneClass(row.revenueQoqPct)}`}>{formatQoqPercent(row.revenueQoqPct)}</div> : null}
+                      </div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                        <div>{formatKrwBn(row.operatingProfitKrwBn)}</div>
+                        {formatQoqPercent(row.operatingProfitQoqPct) ? <div className={`mt-1 text-[10px] ${trendToneClass(row.operatingProfitQoqPct)}`}>{formatQoqPercent(row.operatingProfitQoqPct)}</div> : null}
+                      </div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                        <div>{formatPercent(row.operatingMarginPct)}</div>
+                        {formatQoqPctPoint(row.operatingMarginQoqDeltaPctp) ? <div className={`mt-1 text-[10px] ${trendToneClass(row.operatingMarginQoqDeltaPctp)}`}>{formatQoqPctPoint(row.operatingMarginQoqDeltaPctp)}</div> : null}
+                      </div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{formatPercent(row.axRevenueSharePct)}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{formatCount(row.contractCount)}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.topKeyword?.trim() ? row.topKeyword : '-'}</div>
                     </div>
                   ))}
               </div>
             </div>
-            <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3 text-sm text-[var(--axis-muted)]">
-              비교 기준: IR 자료 및 DART 기반 목업 값. 전체 모드에서는 SK AX를 포함한 시장 비교, 기업별 모드에서는 SK AX와 선택 기업만 남겨 바로 읽을 수 있게 구성했습니다.
+            <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3 text-[11px] leading-5 text-[var(--axis-muted)]">
+              <p>기준 분기: {peerOverview?.periodLabel ?? '-'} · {peerOverview?.coverageLabel ?? '공통 분기 미확보'}</p>
+              <p className="mt-1">표 안의 작은 `+ / -` 수치는 전분기 대비 증감률이며, 영업이익률은 `%p` 기준으로 표기합니다.</p>
+              <p className="mt-1">재무값 출처: {peerOverview?.financialSourceLabel ?? '미확인'} · 보조값 출처: {peerOverview?.supplementalSourceLabel ?? '미확인'} · 미확보 값은 `-` 로 표기합니다.</p>
             </div>
           </article>
         </section>
