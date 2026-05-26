@@ -1,4 +1,5 @@
 import { Bell, Clock3, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, X, User } from 'lucide-react';
+import type { FormEvent } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ExecutiveBadge,
@@ -16,6 +17,7 @@ import type { AccessLogItem } from '../../../../features/settings/model/accessLo
 type SettingsTab = 'account' | 'history' | 'notifications';
 type AccessLogStatus = 'idle' | 'loading' | 'success' | 'error';
 type NotificationPreferenceStatus = 'idle' | 'loading' | 'success' | 'error';
+type PasswordChangeStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export function SettingsView({ onLogout, currentUser }: { onLogout: () => void | Promise<void>; currentUser?: AuthUser | null }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
@@ -23,6 +25,10 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
   const [accessLogs, setAccessLogs] = useState<AccessLogItem[]>([]);
   const [accessLogStatus, setAccessLogStatus] = useState<AccessLogStatus>('idle');
   const [accessLogError, setAccessLogError] = useState('');
+  const [passwordFormOpen, setPasswordFormOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordChangeStatus, setPasswordChangeStatus] = useState<PasswordChangeStatus>('idle');
+  const [passwordChangeMessage, setPasswordChangeMessage] = useState('');
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
     enabled: true,
     importantEnabled: true,
@@ -107,6 +113,49 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
     }
   }, [activeTab, loadNotificationPreferences, notificationPreferenceStatus]);
 
+  const resetPasswordForm = () => {
+    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setPasswordChangeStatus('idle');
+    setPasswordChangeMessage('');
+  };
+
+  const handlePasswordChange = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const currentPassword = passwordForm.currentPassword;
+    const newPassword = passwordForm.newPassword;
+
+    if (currentPassword.length === 0) {
+      setPasswordChangeStatus('error');
+      setPasswordChangeMessage('현재 비밀번호를 입력하세요.');
+      return;
+    }
+    if (newPassword.length < 8 || newPassword.length > 64) {
+      setPasswordChangeStatus('error');
+      setPasswordChangeMessage('새 비밀번호는 8자 이상 64자 이하로 입력하세요.');
+      return;
+    }
+    if (newPassword !== passwordForm.confirmPassword) {
+      setPasswordChangeStatus('error');
+      setPasswordChangeMessage('새 비밀번호와 확인 값이 일치하지 않습니다.');
+      return;
+    }
+
+    setPasswordChangeStatus('loading');
+    setPasswordChangeMessage('');
+    try {
+      await settingsRepository.changePassword(currentPassword, newPassword);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordChangeStatus('success');
+      setPasswordChangeMessage('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.');
+      window.setTimeout(() => {
+        void onLogout();
+      }, 900);
+    } catch (error) {
+      setPasswordChangeStatus('error');
+      setPasswordChangeMessage(error instanceof Error ? error.message : '비밀번호 변경에 실패했습니다.');
+    }
+  };
+
   return (
     <ExecutivePage>
       <ExecutiveContainer className="pb-24">
@@ -156,9 +205,68 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                 </div>
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   <ExecutiveButton onClick={() => setProfileSaved(true)}>회원 정보 저장</ExecutiveButton>
-                  <ExecutiveButton variant="secondary" icon={<KeyRound size={16} />}>비밀번호 변경</ExecutiveButton>
+                  <ExecutiveButton
+                    variant="secondary"
+                    icon={<KeyRound size={16} />}
+                    onClick={() => {
+                      if (passwordFormOpen) {
+                        resetPasswordForm();
+                      }
+                      setPasswordFormOpen((current) => !current);
+                    }}
+                  >
+                    비밀번호 변경
+                  </ExecutiveButton>
                   {profileSaved ? <ExecutiveBadge tone="success">저장되었습니다</ExecutiveBadge> : null}
                 </div>
+                {passwordFormOpen ? (
+                  <form
+                    className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4"
+                    onSubmit={handlePasswordChange}
+                    noValidate
+                  >
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <PasswordField
+                        id="settings-current-password"
+                        label="현재 비밀번호"
+                        value={passwordForm.currentPassword}
+                        onChange={(value) => setPasswordForm((current) => ({ ...current, currentPassword: value }))}
+                      />
+                      <PasswordField
+                        id="settings-new-password"
+                        label="새 비밀번호"
+                        value={passwordForm.newPassword}
+                        onChange={(value) => setPasswordForm((current) => ({ ...current, newPassword: value }))}
+                      />
+                      <PasswordField
+                        id="settings-confirm-password"
+                        label="새 비밀번호 확인"
+                        value={passwordForm.confirmPassword}
+                        onChange={(value) => setPasswordForm((current) => ({ ...current, confirmPassword: value }))}
+                      />
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2" aria-live="polite">
+                      <ExecutiveButton type="submit" disabled={passwordChangeStatus === 'loading'}>
+                        {passwordChangeStatus === 'loading' ? '변경 중' : '변경 저장'}
+                      </ExecutiveButton>
+                      <ExecutiveButton
+                        variant="ghost"
+                        disabled={passwordChangeStatus === 'loading'}
+                        onClick={() => {
+                          resetPasswordForm();
+                          setPasswordFormOpen(false);
+                        }}
+                      >
+                        취소
+                      </ExecutiveButton>
+                      {passwordChangeMessage ? (
+                        <p className={`min-w-0 text-sm font-semibold leading-5 ${passwordChangeStatus === 'success' ? 'text-[var(--axis-success)]' : 'text-[var(--axis-danger)]'}`}>
+                          {passwordChangeMessage}
+                        </p>
+                      ) : null}
+                    </div>
+                  </form>
+                ) : null}
               </section>
             ) : null}
 
@@ -396,6 +504,32 @@ function Field({
         type={type}
         defaultValue={defaultValue}
         className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+      />
+    </label>
+  );
+}
+
+function PasswordField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label htmlFor={id} className="block">
+      <span className="mb-2 block text-sm font-semibold text-[var(--axis-ink)]">{label}</span>
+      <input
+        id={id}
+        type="password"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete={id === 'settings-current-password' ? 'current-password' : 'new-password'}
+        className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
       />
     </label>
   );
