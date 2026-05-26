@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BrainCircuit, Globe2, LineChart, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { BrainCircuit, Globe2, LineChart, RefreshCw, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RadarShape, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { usePeerPositioning } from '../../../../features/peers/hooks/usePeerPositioning';
 import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOverview';
+import { useGlobalTrends } from '../../../../features/global-trends/hooks/useGlobalTrends';
+import type {
+  GlobalForecast,
+  GlobalIndustryTrendRow,
+  GlobalTrendsResponse,
+  SKAXImpactCell,
+  TrendDetection,
+} from '../../../../features/global-trends/model/globalTrends';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
 import { ExecutiveBadge, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
@@ -113,151 +121,563 @@ const globalIndustryTrendSnapshot = {
   ],
 };
 
+const INTENSITY_TONE: Record<TrendDetection['intensity'], string> = {
+  weak: 'bg-[rgba(120,120,128,0.10)] text-[var(--axis-muted)]',
+  moderate: 'bg-[rgba(220,158,36,0.14)] text-[#a16207]',
+  strong: 'bg-[rgba(220,90,36,0.14)] text-[var(--axis-accent-strong)]',
+};
+
+const DIRECTION_TONE: Record<SKAXImpactCell['direction'], string> = {
+  positive: 'bg-[rgba(34,139,84,0.14)] text-[var(--axis-success)]',
+  neutral: 'bg-[rgba(120,120,128,0.10)] text-[var(--axis-muted)]',
+  negative: 'bg-[rgba(220,40,40,0.14)] text-[#b91c1c]',
+};
+
+const MAGNITUDE_TONE: Record<SKAXImpactCell['magnitude'], string> = {
+  low: 'border-[var(--axis-hairline)]',
+  medium: 'border-[rgba(220,90,36,0.35)]',
+  high: 'border-[rgba(220,90,36,0.55)] bg-[rgba(220,90,36,0.04)]',
+};
+
+const RISK_TONE: Record<GlobalForecast['risk_level'], string> = {
+  low: 'bg-[rgba(34,139,84,0.14)] text-[var(--axis-success)]',
+  medium: 'bg-[rgba(220,158,36,0.14)] text-[#a16207]',
+  high: 'bg-[rgba(220,40,40,0.14)] text-[#b91c1c]',
+};
+
+const SK_AX_LINE_LABEL: Record<string, string> = {
+  ai_managed: 'AI 매니지드',
+  cloud_msp: 'Cloud MSP',
+  security: 'Security',
+  smart_factory: '스마트 팩토리',
+  data_platform: '데이터 플랫폼',
+};
+
+function formatDeltaPct(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${value.toFixed(1)}%`;
+}
+
+function intensityLabel(intensity: TrendDetection['intensity']): string {
+  return intensity === 'strong' ? '강' : intensity === 'moderate' ? '중' : '약';
+}
+
+function deriveTopRowsForRadar(rows: GlobalIndustryTrendRow[]): GlobalIndustryTrendRow[] {
+  return [...rows]
+    .sort((a, b) => {
+      const ai = a.impactScore ?? 0;
+      const bi = b.impactScore ?? 0;
+      if (ai !== bi) return bi - ai;
+      return (b.mentionCount ?? 0) - (a.mentionCount ?? 0);
+    })
+    .slice(0, 3);
+}
+
+/**
+ * Peer+ "글로벌 산업" 탭. axis-ai GlobalTrendsAgent (5-phase) 의 결과를 표시.
+ *
+ * <p>데이터 흐름:
+ * <ol>
+ *   <li>탭 진입 → GET /api/global/trends/latest (cron 결과, 비용 ₩0)</li>
+ *   <li>비어있으면 (예: dev) POST /api/global/trends/run fallback (LLM 3 회)</li>
+ *   <li>"재분석" 버튼 → 명시적 POST run</li>
+ * </ol></p>
+ *
+ * <p>둘 다 실패하거나 비어있으면 mock {@link globalIndustryTrendSnapshot} 로
+ * 우아하게 fallback.</p>
+ */
 function GlobalIndustryTrendView() {
-  const snapshot = globalIndustryTrendSnapshot;
+  const { data, rows, isLoading, isReanalyzing, error, run, refresh } = useGlobalTrends({
+    initialLimit: 50,
+    fallbackOnEmpty: true,
+    fallbackWindowDays: 30,
+  });
+
+  const hasLiveResponse = data != null;
+  const hasRows = rows.length > 0;
+  const isFresh = hasLiveResponse || hasRows;
+
+  const radarRows = useMemo(() => deriveTopRowsForRadar(rows), [rows]);
+  const trendDetections: TrendDetection[] = data?.trend_detections ?? [];
+  const impactMatrix: SKAXImpactCell[] = data?.impact_matrix ?? [];
+  const forecasts: GlobalForecast[] = data?.forecasts ?? [];
+  const finalOneLiner = data?.final_one_liner?.trim() ?? '';
+  const skAxImplication =
+    data?.sk_ax_implication?.trim() ||
+    rows.find((r) => r.skAxImplication?.trim())?.skAxImplication?.trim() ||
+    '';
 
   return (
     <div className="space-y-5">
-      <section data-guide="global-industry-overview" className="axis-panel-flat overflow-hidden p-0">
-        <div className="grid gap-0 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
-          <div className="p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="axis-kicker">Global decision lens</p>
-                <h2 className="axis-section-heading mt-1">글로벌 산업 신호와 SK AX 의사결정 기준</h2>
-              </div>
-              <ExecutiveBadge tone="accent">2026 Signals</ExecutiveBadge>
-            </div>
-            <p className="mt-4 text-sm font-semibold leading-7 text-[var(--axis-ink)]">{snapshot.whyBody}</p>
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              {snapshot.decisionPrinciples.map((item) => (
-                <article key={item.label} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</p>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-body)]">{item.body}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-          <aside className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-5 xl:border-l xl:border-t-0">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-[10px] border border-[rgba(220,90,36,0.24)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]">
-                <Globe2 size={20} />
-              </span>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">What matters</p>
-                <h3 className="text-base font-display font-semibold text-[var(--axis-ink)]">보여줘야 하는 이유</h3>
-              </div>
-            </div>
-            <div className="mt-5 space-y-4">
-              {[
-                ['시장 기준선', '국내 Peer가 아직 말하지 않는 기술·운영 기준을 먼저 잡아 제안 메시지의 선후를 정합니다.'],
-                ['투자 판단', '자체 구축, 제휴, 운영 대행 중 어디에 돈과 인력을 배치할지 빠르게 좁힙니다.'],
-                ['리스크 통제', 'AI 보안, 데이터 주권, 감사 가능성처럼 고객 채택을 막는 조건을 먼저 확인합니다.'],
-              ].map(([label, body]) => (
-                <div key={label} className="border-l-2 border-[var(--axis-accent)] pl-3">
-                  <p className="text-sm font-semibold text-[var(--axis-ink)]">{label}</p>
-                  <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{body}</p>
-                </div>
-              ))}
-            </div>
-          </aside>
-        </div>
-      </section>
+      <GlobalIndustryHeader
+        data={data}
+        rowCount={rows.length}
+        isLoading={isLoading}
+        isReanalyzing={isReanalyzing}
+        error={error}
+        onRefresh={() => refresh()}
+        onReanalyze={() => run({ windowDays: 30 })}
+      />
 
-      <section data-guide="global-interesting-tech" className="axis-panel-flat p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="axis-kicker">Executive tech radar</p>
-            <h2 className="axis-section-heading mt-1">제일 관심가는 기술: 의사결정 우선순위</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-              기술 자체의 화제성보다 SK AX가 고객에게 운영 책임과 성과 지표를 제시할 수 있는지를 기준으로 골랐습니다.
-            </p>
-          </div>
-          <Sparkles className="shrink-0 text-[var(--axis-accent-strong)]" size={22} />
-        </div>
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          {snapshot.focusTechnologies.map((item) => (
-            <article key={item.title} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_16px_36px_-30px_rgba(26,26,31,0.30)]">
-              <ExecutiveBadge tone="accent">{item.label}</ExecutiveBadge>
-              <h3 className="mt-3 text-base font-display font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-              <div className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.22)] bg-[rgba(90,107,87,0.08)] p-3">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-success)]">중요한 이유</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.importance}</p>
-                <p className="mt-2 text-xs leading-5 text-[var(--axis-muted)]">볼 지표: {item.metric}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      {!isFresh && (isLoading || isReanalyzing) ? <LoadingBlock label="글로벌 트렌드 분석 중" /> : null}
+
+      {isFresh ? (
+        <GlobalIndustryLiveOverview
+          finalOneLiner={finalOneLiner}
+          skAxImplication={skAxImplication}
+          radarRows={radarRows}
+          rowsTotal={rows.length}
+        />
+      ) : (
+        <GlobalIndustryFallbackOverview />
+      )}
+
+      {radarRows.length > 0 ? (
+        <GlobalTechRadarPanel radarRows={radarRows} />
+      ) : (
+        <GlobalTechRadarFallbackPanel />
+      )}
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <article data-guide="global-trend-shift" className="axis-panel-flat p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="axis-kicker">Trend shift</p>
-              <h2 className="axis-section-heading mt-1">트렌드 변화: 시장이 바꾸는 구매 기준</h2>
-            </div>
-            <LineChart className="text-[var(--axis-success)]" size={22} />
-          </div>
-          <div className="mt-5 space-y-3">
-            {snapshot.trendShifts.map((item, index) => (
-              <section key={item.title} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(90,107,87,0.12)] text-sm font-black text-[var(--axis-success)]">{index + 1}</span>
-                <div>
-                  <ExecutiveBadge tone="accent">{item.label}</ExecutiveBadge>
-                  <h3 className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-                  <p className="mt-2 text-xs font-semibold leading-5 text-[var(--axis-accent-strong)]">SK AX 판단: {item.decision}</p>
-                </div>
-              </section>
-            ))}
-          </div>
-        </article>
+        {trendDetections.length > 0 ? (
+          <GlobalTrendShiftPanel detections={trendDetections} />
+        ) : (
+          <GlobalTrendShiftFallbackPanel />
+        )}
 
-        <article data-guide="global-ai-tech" className="axis-panel-flat p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="axis-kicker">AI technology playbook</p>
-              <h2 className="axis-section-heading mt-1">AI 기술: 실행 가능한 역량으로 번역</h2>
-            </div>
-            <BrainCircuit className="text-[var(--axis-accent-strong)]" size={23} />
-          </div>
-          <div className="mt-5 space-y-3">
-            {snapshot.aiCapabilities.map((item) => (
-              <section key={item.title} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-                <ExecutiveBadge tone="accent">{item.label}</ExecutiveBadge>
-                <h3 className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-                <p className="mt-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--axis-ink)]">의사결정 연결: {item.decision}</p>
-              </section>
-            ))}
-          </div>
-        </article>
+        {impactMatrix.length > 0 ? (
+          <GlobalImpactMatrixPanel cells={impactMatrix} />
+        ) : (
+          <GlobalAiCapabilityFallbackPanel />
+        )}
       </section>
 
-      <section data-guide="global-action-map" className="axis-panel-flat p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="axis-kicker">SK AX action map</p>
-            <h2 className="axis-section-heading mt-1">글로벌 동향을 다음 의사결정으로 연결</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-              글로벌 신호는 관찰로 끝나면 가치가 낮습니다. 아래 세 가지 선택지가 실제 사업 포트폴리오 회의에서 바로 다뤄져야 할 안건입니다.
-            </p>
-          </div>
-          <ShieldCheck className="shrink-0 text-[var(--axis-success)]" size={22} />
-        </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
-          {snapshot.executiveMoves.map((item) => (
-            <article key={item.label} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--axis-accent-strong)]">{item.label}</p>
-              <h3 className="mt-2 text-base font-display font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      {forecasts.length > 0 ? (
+        <GlobalForecastsPanel forecasts={forecasts} />
+      ) : (
+        <GlobalActionMapFallbackPanel />
+      )}
     </div>
+  );
+}
+
+interface GlobalIndustryHeaderProps {
+  data: GlobalTrendsResponse | null;
+  rowCount: number;
+  isLoading: boolean;
+  isReanalyzing: boolean;
+  error: string | null;
+  onRefresh: () => void;
+  onReanalyze: () => void;
+}
+
+function GlobalIndustryHeader({
+  data,
+  rowCount,
+  isLoading,
+  isReanalyzing,
+  error,
+  onRefresh,
+  onReanalyze,
+}: GlobalIndustryHeaderProps) {
+  const confidence = data?.confidence;
+  const period = data?.analysis_period as { from?: string; to?: string } | undefined;
+  const periodLabel = period?.from && period?.to ? `${period.from} → ${period.to}` : null;
+  return (
+    <section className="axis-panel-flat flex flex-wrap items-center justify-between gap-3 p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]">
+          <Globe2 size={18} />
+        </span>
+        <div>
+          <p className="axis-kicker">Global industry intelligence</p>
+          <p className="text-sm font-semibold text-[var(--axis-ink)]">
+            axis-ai GlobalTrendsAgent · 5-phase
+            {confidence != null ? <span className="ml-2 text-[var(--axis-muted)]">confidence {(confidence * 100).toFixed(0)}%</span> : null}
+            {periodLabel ? <span className="ml-2 text-[var(--axis-muted)]">{periodLabel}</span> : null}
+            {rowCount > 0 ? <span className="ml-2 text-[var(--axis-muted)]">cron rows {rowCount}</span> : null}
+          </p>
+          {error ? <p className="mt-1 text-xs text-[#b91c1c]">{error}</p> : null}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={isLoading || isReanalyzing}
+          className="inline-flex items-center gap-1.5 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)] transition-colors hover:bg-[var(--axis-surface-soft)] disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} /> DB 새로고침
+        </button>
+        <button
+          type="button"
+          onClick={onReanalyze}
+          disabled={isLoading || isReanalyzing}
+          className="inline-flex items-center gap-1.5 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.32)] bg-[rgba(220,90,36,0.08)] px-3 py-1.5 text-xs font-bold text-[var(--axis-accent-strong)] transition-colors hover:bg-[rgba(220,90,36,0.16)] disabled:opacity-50"
+        >
+          <Sparkles size={13} /> {isReanalyzing ? '재분석 중…' : '재분석 (axis-ai)'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+interface GlobalIndustryLiveOverviewProps {
+  finalOneLiner: string;
+  skAxImplication: string;
+  radarRows: GlobalIndustryTrendRow[];
+  rowsTotal: number;
+}
+
+function GlobalIndustryLiveOverview({
+  finalOneLiner,
+  skAxImplication,
+  radarRows,
+  rowsTotal,
+}: GlobalIndustryLiveOverviewProps) {
+  const principles = radarRows.length > 0
+    ? radarRows.map((row, idx) => ({
+        label: ['포트폴리오', '투자 우선순위', '시장 진입'][idx] ?? row.keywordCategory ?? 'Signal',
+        body: row.summary || row.title || row.keyword,
+      }))
+    : globalIndustryTrendSnapshot.decisionPrinciples;
+
+  return (
+    <section data-guide="global-industry-overview" className="axis-panel-flat overflow-hidden p-0">
+      <div className="grid gap-0 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="axis-kicker">Global decision lens</p>
+              <h2 className="axis-section-heading mt-1">글로벌 산업 신호와 SK AX 의사결정 기준</h2>
+            </div>
+            <ExecutiveBadge tone="accent">Live · axis-ai</ExecutiveBadge>
+          </div>
+          <p className="mt-4 text-sm font-semibold leading-7 text-[var(--axis-ink)]">
+            {finalOneLiner || globalIndustryTrendSnapshot.whyBody}
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {principles.map((item) => (
+              <article key={item.label} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-body)]">{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <aside className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-5 xl:border-l xl:border-t-0">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-[10px] border border-[rgba(220,90,36,0.24)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]">
+              <Globe2 size={20} />
+            </span>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">SK AX implication</p>
+              <h3 className="text-base font-display font-semibold text-[var(--axis-ink)]">{rowsTotal > 0 ? `${rowsTotal}개 키워드 분석` : '신규 분석'}</h3>
+            </div>
+          </div>
+          <p className="mt-5 text-sm leading-6 text-[var(--axis-body)]">
+            {skAxImplication || '글로벌 IT 트렌드가 SK AX 사업 라인에 어떤 시그널을 보내는지 axis-ai 가 자동 요약합니다. 키워드별 영향도 / 산업별 의미 / 1Q·6M·1Y 시나리오로 구성됩니다.'}
+          </p>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function GlobalIndustryFallbackOverview() {
+  const snapshot = globalIndustryTrendSnapshot;
+  return (
+    <section data-guide="global-industry-overview" className="axis-panel-flat overflow-hidden p-0">
+      <div className="grid gap-0 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="axis-kicker">Global decision lens</p>
+              <h2 className="axis-section-heading mt-1">글로벌 산업 신호와 SK AX 의사결정 기준</h2>
+            </div>
+            <ExecutiveBadge tone="accent">2026 Signals · 정적</ExecutiveBadge>
+          </div>
+          <p className="mt-4 text-sm font-semibold leading-7 text-[var(--axis-ink)]">{snapshot.whyBody}</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {snapshot.decisionPrinciples.map((item) => (
+              <article key={item.label} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-body)]">{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <aside className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-5 xl:border-l xl:border-t-0">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-[10px] border border-[rgba(220,90,36,0.24)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]">
+              <Globe2 size={20} />
+            </span>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">What matters</p>
+              <h3 className="text-base font-display font-semibold text-[var(--axis-ink)]">보여줘야 하는 이유</h3>
+            </div>
+          </div>
+          <div className="mt-5 space-y-4">
+            {[
+              ['시장 기준선', '국내 Peer가 아직 말하지 않는 기술·운영 기준을 먼저 잡아 제안 메시지의 선후를 정합니다.'],
+              ['투자 판단', '자체 구축, 제휴, 운영 대행 중 어디에 돈과 인력을 배치할지 빠르게 좁힙니다.'],
+              ['리스크 통제', 'AI 보안, 데이터 주권, 감사 가능성처럼 고객 채택을 막는 조건을 먼저 확인합니다.'],
+            ].map(([label, body]) => (
+              <div key={label} className="border-l-2 border-[var(--axis-accent)] pl-3">
+                <p className="text-sm font-semibold text-[var(--axis-ink)]">{label}</p>
+                <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{body}</p>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function GlobalTechRadarPanel({ radarRows }: { radarRows: GlobalIndustryTrendRow[] }) {
+  return (
+    <section data-guide="global-interesting-tech" className="axis-panel-flat p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="axis-kicker">Executive tech radar · live</p>
+          <h2 className="axis-section-heading mt-1">제일 관심가는 기술: 의사결정 우선순위</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+            axis-ai 가 글로벌 뉴스룸 + 트렌드 리포트에서 추출한 상위 키워드의 영향도·언급량을 기준으로 표시합니다.
+          </p>
+        </div>
+        <Sparkles className="shrink-0 text-[var(--axis-accent-strong)]" size={22} />
+      </div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        {radarRows.map((row) => (
+          <article key={row.id} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_16px_36px_-30px_rgba(26,26,31,0.30)]">
+            <ExecutiveBadge tone="accent">{row.keywordCategory ?? row.industry}</ExecutiveBadge>
+            <h3 className="mt-3 text-base font-display font-semibold leading-6 text-[var(--axis-ink)]">{row.title || row.keyword}</h3>
+            {row.summary ? <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{row.summary}</p> : null}
+            <div className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.22)] bg-[rgba(90,107,87,0.08)] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-success)]">SK AX 의미</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">
+                {row.skAxImplication || `${row.keyword} 관련 글로벌 시그널이 SK AX 사업 라인 의사결정에 미치는 영향을 검토합니다.`}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-[var(--axis-muted)]">
+                언급 {row.mentionCount}건
+                {row.impactScore != null ? ` · 영향도 ${row.impactScore.toFixed(2)}` : ''}
+                {row.relatedCardIds.length > 0 ? ` · 연결 카드 ${row.relatedCardIds.length}건` : ''}
+              </p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GlobalTechRadarFallbackPanel() {
+  const snapshot = globalIndustryTrendSnapshot;
+  return (
+    <section data-guide="global-interesting-tech" className="axis-panel-flat p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="axis-kicker">Executive tech radar · 정적</p>
+          <h2 className="axis-section-heading mt-1">제일 관심가는 기술: 의사결정 우선순위</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+            기술 자체의 화제성보다 SK AX가 고객에게 운영 책임과 성과 지표를 제시할 수 있는지를 기준으로 골랐습니다.
+          </p>
+        </div>
+        <Sparkles className="shrink-0 text-[var(--axis-accent-strong)]" size={22} />
+      </div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        {snapshot.focusTechnologies.map((item) => (
+          <article key={item.title} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_16px_36px_-30px_rgba(26,26,31,0.30)]">
+            <ExecutiveBadge tone="accent">{item.label}</ExecutiveBadge>
+            <h3 className="mt-3 text-base font-display font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
+            <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
+            <div className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.22)] bg-[rgba(90,107,87,0.08)] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-success)]">중요한 이유</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.importance}</p>
+              <p className="mt-2 text-xs leading-5 text-[var(--axis-muted)]">볼 지표: {item.metric}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GlobalTrendShiftPanel({ detections }: { detections: TrendDetection[] }) {
+  return (
+    <article data-guide="global-trend-shift" className="axis-panel-flat p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="axis-kicker">Trend shift · live</p>
+          <h2 className="axis-section-heading mt-1">트렌드 변화: 시장이 바꾸는 구매 기준</h2>
+        </div>
+        <LineChart className="text-[var(--axis-success)]" size={22} />
+      </div>
+      <div className="mt-5 space-y-3">
+        {detections.slice(0, 5).map((item, index) => (
+          <section key={`${item.theme}-${index}`} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+            <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(90,107,87,0.12)] text-sm font-black text-[var(--axis-success)]">{index + 1}</span>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${INTENSITY_TONE[item.intensity]}`}>강도 {intensityLabel(item.intensity)}</span>
+                <span className="text-[11px] font-semibold text-[var(--axis-muted)]">언급 변화 {formatDeltaPct(item.frequency_delta_pct)}</span>
+                {item.leading_companies.length > 0 ? (
+                  <span className="text-[11px] text-[var(--axis-muted)]">리딩 {item.leading_companies.slice(0, 3).join(', ')}</span>
+                ) : null}
+              </div>
+              <h3 className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.theme}</h3>
+              {item.evidence_card_ids.length > 0 ? (
+                <p className="mt-2 text-xs leading-5 text-[var(--axis-muted)]">근거 카드 {item.evidence_card_ids.length}건</p>
+              ) : null}
+            </div>
+          </section>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function GlobalTrendShiftFallbackPanel() {
+  const snapshot = globalIndustryTrendSnapshot;
+  return (
+    <article data-guide="global-trend-shift" className="axis-panel-flat p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="axis-kicker">Trend shift · 정적</p>
+          <h2 className="axis-section-heading mt-1">트렌드 변화: 시장이 바꾸는 구매 기준</h2>
+        </div>
+        <LineChart className="text-[var(--axis-success)]" size={22} />
+      </div>
+      <div className="mt-5 space-y-3">
+        {snapshot.trendShifts.map((item, index) => (
+          <section key={item.title} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+            <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(90,107,87,0.12)] text-sm font-black text-[var(--axis-success)]">{index + 1}</span>
+            <div>
+              <ExecutiveBadge tone="accent">{item.label}</ExecutiveBadge>
+              <h3 className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
+              <p className="mt-2 text-xs font-semibold leading-5 text-[var(--axis-accent-strong)]">SK AX 판단: {item.decision}</p>
+            </div>
+          </section>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function GlobalImpactMatrixPanel({ cells }: { cells: SKAXImpactCell[] }) {
+  return (
+    <article data-guide="global-ai-tech" className="axis-panel-flat p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="axis-kicker">SK AX impact matrix · live</p>
+          <h2 className="axis-section-heading mt-1">사업 라인별 영향도</h2>
+        </div>
+        <BrainCircuit className="text-[var(--axis-accent-strong)]" size={23} />
+      </div>
+      <div className="mt-5 space-y-3">
+        {cells.slice(0, 6).map((cell, idx) => (
+          <section key={`${cell.trend_theme}-${cell.sk_ax_line}-${idx}`} className={`rounded-[var(--axis-radius-md)] border bg-[var(--axis-canvas)] p-4 ${MAGNITUDE_TONE[cell.magnitude]}`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${DIRECTION_TONE[cell.direction]}`}>
+                {cell.direction === 'positive' ? '+' : cell.direction === 'negative' ? '−' : '·'} {cell.magnitude.toUpperCase()}
+              </span>
+              <span className="text-[11px] font-semibold text-[var(--axis-muted)]">
+                {SK_AX_LINE_LABEL[cell.sk_ax_line] ?? cell.sk_ax_line}
+              </span>
+              {cell.channel ? <span className="text-[11px] text-[var(--axis-muted)]">· {cell.channel}</span> : null}
+            </div>
+            <h3 className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{cell.trend_theme}</h3>
+            {cell.quant_hint ? <p className="mt-2 text-xs leading-5 text-[var(--axis-muted)]">{cell.quant_hint}</p> : null}
+          </section>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function GlobalAiCapabilityFallbackPanel() {
+  const snapshot = globalIndustryTrendSnapshot;
+  return (
+    <article data-guide="global-ai-tech" className="axis-panel-flat p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="axis-kicker">AI technology playbook · 정적</p>
+          <h2 className="axis-section-heading mt-1">AI 기술: 실행 가능한 역량으로 번역</h2>
+        </div>
+        <BrainCircuit className="text-[var(--axis-accent-strong)]" size={23} />
+      </div>
+      <div className="mt-5 space-y-3">
+        {snapshot.aiCapabilities.map((item) => (
+          <section key={item.title} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+            <ExecutiveBadge tone="accent">{item.label}</ExecutiveBadge>
+            <h3 className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
+            <p className="mt-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--axis-ink)]">의사결정 연결: {item.decision}</p>
+          </section>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function GlobalForecastsPanel({ forecasts }: { forecasts: GlobalForecast[] }) {
+  return (
+    <section data-guide="global-action-map" className="axis-panel-flat p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="axis-kicker">SK AX action map · live</p>
+          <h2 className="axis-section-heading mt-1">시나리오별 SK AX 대응</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+            글로벌 신호를 1Q · 6M · 1Y 시계열로 보고, 시나리오별 (낙관/기준/비관) SK AX 가 가져갈 권장 액션을 axis-ai 가 생성합니다.
+          </p>
+        </div>
+        <ShieldCheck className="shrink-0 text-[var(--axis-success)]" size={22} />
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        {forecasts.slice(0, 6).map((f, idx) => (
+          <article key={`${f.horizon}-${f.scenario}-${idx}`} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--axis-accent-strong)]">{f.horizon}</p>
+              <span className="text-[11px] font-semibold text-[var(--axis-muted)]">· {f.scenario}</span>
+              <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold ${RISK_TONE[f.risk_level]}`}>risk {f.risk_level}</span>
+            </div>
+            <p className="mt-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{f.narrative}</p>
+            {f.sk_ax_impact ? <p className="mt-2 text-xs leading-5 text-[var(--axis-muted)]">SK AX 영향: {f.sk_ax_impact}</p> : null}
+            <p className="mt-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--axis-ink)]">권장: {f.recommended_response}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GlobalActionMapFallbackPanel() {
+  const snapshot = globalIndustryTrendSnapshot;
+  return (
+    <section data-guide="global-action-map" className="axis-panel-flat p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="axis-kicker">SK AX action map · 정적</p>
+          <h2 className="axis-section-heading mt-1">글로벌 동향을 다음 의사결정으로 연결</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+            글로벌 신호는 관찰로 끝나면 가치가 낮습니다. 아래 세 가지 선택지가 실제 사업 포트폴리오 회의에서 바로 다뤄져야 할 안건입니다.
+          </p>
+        </div>
+        <ShieldCheck className="shrink-0 text-[var(--axis-success)]" size={22} />
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        {snapshot.executiveMoves.map((item) => (
+          <article key={item.label} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--axis-accent-strong)]">{item.label}</p>
+            <h3 className="mt-2 text-base font-display font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
+            <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
