@@ -23,16 +23,29 @@ class SettingsRepository {
     return (response?.items ?? []).map(toAccessLogItem);
   }
 
-  private async request<T>(path: string): Promise<T> {
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await this.request<unknown>('/api/settings/password', {
+      method: 'PUT',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+  }
+
+  private async request<T>(path: string, init: RequestInit = { method: 'GET' }): Promise<T> {
     const accessToken = getAccessToken();
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
-        method: 'GET',
+        ...init,
+        method: init.method ?? 'GET',
         credentials: 'include',
         headers: {
           Accept: 'application/json',
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          ...(init.headers ?? {}),
         },
       });
     } catch {
@@ -120,10 +133,11 @@ function inferCountryFromIp(value: string) {
 }
 
 function koreanHttpError(status: number) {
+  if (status === 400) return '요청 값이 올바르지 않습니다.';
   if (status === 401) return '로그인이 필요하거나 인증 정보가 올바르지 않습니다.';
   if (status === 403) return '접근 권한이 없습니다. 로그인 상태를 초기화한 뒤 다시 시도하세요.';
-  if (status === 404) return '접속 로그 API를 찾을 수 없습니다. 백엔드 서버 주소를 확인하세요.';
+  if (status === 404) return '설정 API를 찾을 수 없습니다. 백엔드 서버 주소를 확인하세요.';
   if (status === 503) return '백엔드 서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.';
   if (status >= 500) return '서버 오류가 발생했습니다. 잠시 후 다시 시도하세요.';
-  return `접속 로그 조회에 실패했습니다. (${status})`;
+  return `설정 요청 처리에 실패했습니다. (${status})`;
 }
