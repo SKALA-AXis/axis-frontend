@@ -10,13 +10,12 @@ import { EmptyBlock, LoadingBlock } from './AxisPlanningShared';
 
 function buildCardNewsRows(cards: CardNewsItem[]) {
   const catalog = buildCardCatalog(getLatestFirst(cards));
-  const rows = [...catalog];
-  while (rows.length < 6 && catalog.length > 0) {
-    rows.push(catalog[rows.length % catalog.length]);
-  }
-  return rows.slice(0, Math.max(6, rows.length)).map((card, index) => ({
+  const uniqueRows = Array.from(
+    new Map(catalog.map((card) => [card.card.id, card])).values(),
+  );
+  return uniqueRows.map((card) => ({
     ...card,
-    id: `${card.id}-${index}`,
+    id: card.card.id,
     sourceId: card.card.id,
     originalTitle: card.card.title,
     cardNewsTitle: card.title,

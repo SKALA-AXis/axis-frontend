@@ -26,6 +26,7 @@ import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import {
   getDisplayDate,
   getExecutiveRank,
+  getLatestFirst,
   getPeerLabel,
   getSummaryLines,
 } from '../../../../features/card-news/mappers/cardNewsExecutive';
@@ -56,8 +57,8 @@ export function HomeDashboardView({
   const { cards, isLoading: cardsLoading } = useCardNews();
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
-  const filteredCards = rankedCards;
-  const summaryChoices = filteredCards.slice(0, 5);
+  const latestCards = useMemo(() => getLatestFirst(cards), [cards]);
+  const summaryChoices = latestCards.slice(0, 5);
   const [summaryIndex, setSummaryIndex] = useState(0);
   const [interestChartIndex, setInterestChartIndex] = useState(0);
   const [homeDetailCardId, setHomeDetailCardId] = useState<string | null>(null);
@@ -89,11 +90,11 @@ export function HomeDashboardView({
     return <LoadingBlock label={dashboardError ?? '대시보드를 표시할 수 없습니다.'} />;
   }
 
-  const heroCard = filteredCards[0] ?? rankedCards[0];
+  const heroCard = rankedCards[0] ?? latestCards[0];
   const summaryCard = summaryChoices[summaryIndex % Math.max(summaryChoices.length, 1)] ?? heroCard;
   const homeDetailCard = homeDetailCardId ? cards.find((card) => card.id === homeDetailCardId) ?? null : null;
   const changeSummary = [
-    { label: '오늘 감지된 변화', value: `${dashboard.trends.length + filteredCards.length}건` },
+    { label: '오늘 감지된 변화', value: `${dashboard.trends.length + cards.length}건` },
     { label: '전주 대비', value: '+18%' },
     { label: '핵심 키워드', value: dashboard.keywordSeries[0]?.name ?? '-' },
   ];
@@ -474,7 +475,7 @@ export function HomeDashboardView({
                 <h3 className="axis-section-heading mt-1 truncate">오늘의 요약 카드뉴스</h3>
               </div>
               <span className="shrink-0">
-                <ExecutiveBadge tone="accent">{filteredCards.length}건</ExecutiveBadge>
+                <ExecutiveBadge tone="accent">{summaryChoices.length}건</ExecutiveBadge>
               </span>
             </div>
             <button

@@ -62,6 +62,7 @@ export function CardNewsDetailView({
   const suggestedActions = getSuggestedActions(card);
   const followUps = getFollowUpQuestions(card);
   const sources = card.sources ?? [];
+  const noDataLabel = '데이터 없음';
 
   /* ESC 닫기 + 배경 스크롤 잠금 ───────────────────────── */
   useEffect(() => {
@@ -211,40 +212,42 @@ export function CardNewsDetailView({
         ))}
 
         {/* ─── SK AX 시사점 — pull-quote 톤 ─────────────────── */}
-        {whyImportant && (
-          <section
-            className="my-20 -mx-6 lg:mx-0 px-6 lg:px-10 py-12 border-l-[3px]"
-            style={{ borderColor: theme.accent, background: 'var(--cream-soft)' }}
+        <section
+          className="my-20 -mx-6 lg:mx-0 px-6 lg:px-10 py-12 border-l-[3px]"
+          style={{ borderColor: theme.accent, background: 'var(--cream-soft)' }}
+        >
+          <p
+            className="text-micro-eyebrow mb-4"
+            style={{ color: 'var(--primary-deep)' }}
           >
-            <p
-              className="text-micro-eyebrow mb-4"
-              style={{ color: 'var(--primary-deep)' }}
-            >
-              SK AX 시사점
-            </p>
-            <p
-              className="font-display text-heading-3 text-ink leading-snug mb-6"
-              style={{ fontWeight: 700 }}
-            >
-              {whyImportant}
-            </p>
-            {potentialImpact && (
-              <p className="text-body-md leading-[1.8] text-charcoal">
-                {potentialImpact}
+            SK AX 시사점
+          </p>
+          {whyImportant ? (
+            <>
+              <p
+                className="font-display text-heading-3 text-ink leading-snug mb-6"
+                style={{ fontWeight: 700 }}
+              >
+                {whyImportant}
               </p>
-            )}
-          </section>
-        )}
+              <p className="text-body-md leading-[1.8] text-charcoal">
+                {potentialImpact || noDataLabel}
+              </p>
+            </>
+          ) : (
+            <p className="text-body-md leading-[1.8] text-stone">{noDataLabel}</p>
+          )}
+        </section>
 
         {/* ─── 핵심 인사이트 ─────────────────────────────────── */}
-        {card.insights?.length > 0 && (
-          <section className="mb-16">
-            <h2
-              className="font-display text-heading-2 text-ink mb-8 tracking-tight"
-              style={{ fontWeight: 700 }}
-            >
-              핵심 인사이트
-            </h2>
+        <section className="mb-16">
+          <h2
+            className="font-display text-heading-2 text-ink mb-8 tracking-tight"
+            style={{ fontWeight: 700 }}
+          >
+            핵심 인사이트
+          </h2>
+          {card.insights?.length > 0 ? (
             <ul className="space-y-5">
               {card.insights.map((item, idx) => (
                 <li key={idx} className="flex gap-5">
@@ -260,18 +263,20 @@ export function CardNewsDetailView({
                 </li>
               ))}
             </ul>
-          </section>
-        )}
+          ) : (
+            <p className="text-body-md leading-[1.8] text-stone">{noDataLabel}</p>
+          )}
+        </section>
 
         {/* ─── 제안 액션 ────────────────────────────────────── */}
-        {suggestedActions.length > 0 && (
-          <section className="mb-16">
-            <h2
-              className="font-display text-heading-2 text-ink mb-8 tracking-tight"
-              style={{ fontWeight: 700 }}
-            >
-              제안 액션
-            </h2>
+        <section className="mb-16">
+          <h2
+            className="font-display text-heading-2 text-ink mb-8 tracking-tight"
+            style={{ fontWeight: 700 }}
+          >
+            제안 액션
+          </h2>
+          {suggestedActions.length > 0 ? (
             <ol className="space-y-4">
               {suggestedActions.map((action, idx) => (
                 <li
@@ -287,8 +292,10 @@ export function CardNewsDetailView({
                 </li>
               ))}
             </ol>
-          </section>
-        )}
+          ) : (
+            <p className="text-body-md leading-[1.8] text-stone">{noDataLabel}</p>
+          )}
+        </section>
 
         {/* ─── 후속 질문 ────────────────────────────────────── */}
         {followUps.length > 0 && (

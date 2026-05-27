@@ -1,21 +1,9 @@
 import { httpClient } from '../../../shared/api/httpClient';
-import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
-import { cardNewsItems } from '../../../shared/mocks/cardNews';
 import type { CardNewsItem } from '../model/cardNews';
 
 export interface CardNewsRepository {
   list(): Promise<CardNewsItem[]>;
   today(): Promise<CardNewsItem[]>;
-}
-
-class MockCardNewsRepository implements CardNewsRepository {
-  async list(): Promise<CardNewsItem[]> {
-    return Promise.resolve(cardNewsItems);
-  }
-
-  async today(): Promise<CardNewsItem[]> {
-    return Promise.resolve(cardNewsItems);
-  }
 }
 
 class HttpCardNewsRepository implements CardNewsRepository {
@@ -24,7 +12,7 @@ class HttpCardNewsRepository implements CardNewsRepository {
       throw new Error('API client is not configured.');
     }
 
-    const response = await httpClient.get<{ items: Partial<CardNewsItem>[] }>('/api/cards?sort=exposure_desc&limit=30');
+    const response = await httpClient.get<{ items: Partial<CardNewsItem>[] }>('/api/cards');
     return response.items.map(normalizeCardNewsItem);
   }
 
@@ -37,29 +25,6 @@ class HttpCardNewsRepository implements CardNewsRepository {
     return response.items.map(normalizeCardNewsItem);
   }
 }
-
-class HybridCardNewsRepository implements CardNewsRepository {
-  constructor(
-    private readonly remoteRepository: CardNewsRepository,
-    private readonly fallbackRepository: CardNewsRepository,
-  ) {}
-
-  async list(): Promise<CardNewsItem[]> {
-    return resolveWithFallback(
-      () => this.remoteRepository.list(),
-      () => this.fallbackRepository.list(),
-    );
-  }
-
-  async today(): Promise<CardNewsItem[]> {
-    return resolveWithFallback(
-      () => this.remoteRepository.today(),
-      () => this.fallbackRepository.today(),
-    );
-  }
-}
-
-const fallbackRepository = new MockCardNewsRepository();
 
 const sourceNameByHost: Record<string, string> = {
   'www.mk.co.kr': '매일경제',
@@ -163,12 +128,12 @@ function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
       `${card.title ?? '카드뉴스'} 대표 이미지`,
     summary: card.summary?.length ? card.summary : derivedSummary,
     articlePages: derivedArticlePages,
-    insights: card.insights?.length ? card.insights : derivedSummary,
+    insights: card.insights?.length ? card.insights : card.implication?.potential_impact ? [card.implication.potential_impact] : [],
     source: primarySourceName,
     sourceUrl: card.sourceUrl ?? normalizedSources?.[0]?.url ?? '#',
     detailTitle: card.detailTitle ?? card.title ?? '카드뉴스 상세',
-    detailDescription: card.detailDescription ?? card.implication?.why_important ?? derivedSummary[0] ?? '',
-    detailPoints: card.detailPoints?.length ? card.detailPoints : derivedSummary,
+    detailDescription: card.detailDescription ?? card.implication?.why_important ?? '',
+    detailPoints: card.detailPoints?.length ? card.detailPoints : [],
     actionItems: card.actionItems?.length ? card.actionItems : card.implication?.suggested_actions ?? [],
     mediaAssets: card.mediaAssets,
     textFields: card.textFields,
@@ -201,6 +166,4 @@ function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
   };
 }
 
-export const cardNewsRepository: CardNewsRepository = httpClient
-  ? new HybridCardNewsRepository(new HttpCardNewsRepository(), fallbackRepository)
-  : fallbackRepository;
+export const cardNewsRepository: CardNewsRepository = new HttpCardNewsRepository();
