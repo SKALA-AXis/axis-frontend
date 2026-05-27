@@ -59,7 +59,7 @@ export function getSummaryLines(card: CardNewsItem) {
 
 export function getSuggestedActions(card: CardNewsItem) {
   const apiActions = card.implication?.suggested_actions;
-  return apiActions && apiActions.length > 0 ? apiActions : card.actionItems;
+  return apiActions && apiActions.length > 0 ? apiActions : (card.actionItems ?? []);
 }
 
 export function getFollowUpQuestions(card: CardNewsItem) {
@@ -67,11 +67,11 @@ export function getFollowUpQuestions(card: CardNewsItem) {
 }
 
 export function getWhyImportant(card: CardNewsItem) {
-  return card.implication?.why_important ?? card.detailDescription;
+  return card.implication?.why_important ?? card.detailDescription ?? '';
 }
 
 export function getPotentialImpact(card: CardNewsItem) {
-  return card.implication?.potential_impact ?? card.insights[0] ?? card.detailTitle;
+  return card.implication?.potential_impact ?? card.insights[0] ?? '';
 }
 
 export function getSourceCount(card: CardNewsItem) {

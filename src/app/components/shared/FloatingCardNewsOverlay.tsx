@@ -78,6 +78,7 @@ export function FloatingCardNewsOverlay({
   cards?: CardNewsItem[];
   onCardChange?: (cardId: string) => void;
 }) {
+  const noDataLine = '데이터 없음';
   const slides = [
     {
       kicker: 'AI 요약',
@@ -87,14 +88,14 @@ export function FloatingCardNewsOverlay({
     {
       kicker: '시사점',
       title: '시장 변화가 주는 시사점',
-      lines: (card.insights.length > 0 ? card.insights : card.detailPoints).slice(0, 3),
+      lines: card.insights.slice(0, 3),
     },
     {
       kicker: '다음 행동',
       title: '우선 실행해야 할 대응',
-      lines: (card.actionItems.length > 0 ? card.actionItems : card.detailPoints).slice(0, 3),
+      lines: card.actionItems.slice(0, 3),
     },
-  ].filter((slide) => slide.lines.length > 0);
+  ];
   const slideCount = Math.max(slides.length, 1);
   const activeIndex = ((slideIndex % slideCount) + slideCount) % slideCount;
   const activeSlide = slides[activeIndex] ?? slides[0];
@@ -236,20 +237,26 @@ export function FloatingCardNewsOverlay({
             </nav>
 
             <article className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-6">
-              <div className="mx-auto max-w-3xl">
+                <div className="mx-auto max-w-3xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">
                   {getPeerLabel(card)} · {card.category_label ?? card.category}
                 </p>
-                <div className="mt-5 divide-y divide-[var(--axis-hairline)]">
-                  {activeSlide.lines.map((line, index) => (
-                    <div key={`${activeSlide.kicker}-${index}`} className="grid grid-cols-[34px_minmax(0,1fr)] gap-4 py-4 first:pt-0 last:pb-0">
-                      <span className="mt-1 font-mono text-xs font-bold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
-                      <p className="text-base font-medium leading-8 text-[var(--axis-body)]">
-                        {line}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                {activeSlide.lines.length > 0 ? (
+                  <div className="mt-5 divide-y divide-[var(--axis-hairline)]">
+                    {activeSlide.lines.map((line, index) => (
+                      <div key={`${activeSlide.kicker}-${index}`} className="grid grid-cols-[34px_minmax(0,1fr)] gap-4 py-4 first:pt-0 last:pb-0">
+                        <span className="mt-1 font-mono text-xs font-bold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
+                        <p className="text-base font-medium leading-8 text-[var(--axis-body)]">
+                          {line}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-6 text-sm font-medium text-[var(--axis-muted)]">
+                    {noDataLine}
+                  </div>
+                )}
               </div>
             </article>
 

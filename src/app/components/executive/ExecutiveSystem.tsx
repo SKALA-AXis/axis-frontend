@@ -234,7 +234,7 @@ export function ExecutiveCard({
       {!compact ? (
         <div className="mt-4 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-3">
           <p className="text-[11px] font-semibold  text-[var(--axis-muted)]">Next action</p>
-          <p className="mt-1 text-sm font-medium leading-6 text-[var(--axis-ink)]">{getSuggestedActions(card)[0] ?? '후속 분석을 지정하세요.'}</p>
+          <p className="mt-1 text-sm font-medium leading-6 text-[var(--axis-ink)]">{getSuggestedActions(card)[0] ?? '데이터 없음'}</p>
         </div>
       ) : null}
 
@@ -272,12 +272,18 @@ export function InsightActionStrip({ card }: { card: CardNewsItem }) {
         <h3 className="axis-section-heading">Actionable insights</h3>
       </div>
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        {actions.map((action, index) => (
-          <div key={action} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3">
-            <span className="text-[11px] font-semibold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
-            <p className="mt-1 text-sm font-medium leading-6 text-[var(--axis-ink)]">{action}</p>
+        {actions.length > 0 ? (
+          actions.map((action, index) => (
+            <div key={action} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3">
+              <span className="text-[11px] font-semibold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
+              <p className="mt-1 text-sm font-medium leading-6 text-[var(--axis-ink)]">{action}</p>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3 text-sm text-[var(--axis-muted)]">
+            데이터 없음
           </div>
-        ))}
+        )}
       </div>
       {questions.length > 0 ? (
         <div className="mt-4 border-t border-[var(--axis-hairline)] pt-4">
@@ -392,11 +398,13 @@ export function EvidenceChainPanel({ card }: { card: CardNewsItem }) {
 }
 
 export function CardDecisionPanel({ card }: { card: CardNewsItem }) {
+  const potentialImpact = getPotentialImpact(card);
+  const whyImportant = getWhyImportant(card);
   return (
     <section className="axis-panel-flat p-4">
       <p className="axis-kicker">Decision note</p>
-      <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--axis-ink)]">{getPotentialImpact(card)}</h3>
-      <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{getWhyImportant(card)}</p>
+      <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--axis-ink)]">{potentialImpact || '데이터 없음'}</h3>
+      <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{whyImportant || '데이터 없음'}</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <MiniMetric label="Source count" value={String(getSourceCount(card))} />
         <MiniMetric label="Trust score" value={String(getTrustScore(card))} />
