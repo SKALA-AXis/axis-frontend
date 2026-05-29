@@ -14,7 +14,11 @@ import type {
   BriefingSignalCard,
 } from './types';
 
-export const briefingFocusTitle = '오늘의 핵심 변화';
+export function getBriefingFocusTitle(period: BriefingPeriod) {
+  if (period === 'weekly') return '이번 주 핵심 변화';
+  if (period === 'monthly') return '이번 달 핵심 변화';
+  return '오늘의 핵심 변화';
+}
 
 export const periodMeta: Record<BriefingPeriod, { label: string; title: string; window: string; count: number }> = {
   daily: {

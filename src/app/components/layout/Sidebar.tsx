@@ -136,7 +136,7 @@ export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, 
               }`}
             >
               <Icon className="h-4 w-4" strokeWidth={isActive ? 2.2 : 1.8} />
-              <span className={`max-w-full truncate text-[10px] leading-tight ${isActive ? 'font-display-strong' : ''}`}>{item.label}</span>
+              <span className={`max-w-full truncate text-fine-print leading-tight ${isActive ? 'font-display-strong' : ''}`}>{item.label}</span>
             </button>
           );
         })}

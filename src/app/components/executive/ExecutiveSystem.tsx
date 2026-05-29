@@ -100,7 +100,7 @@ export function ExecutiveButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--axis-radius-md)] px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${variants[variant]}`}
+      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--axis-radius-md)] px-4 py-2 text-body-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${variants[variant]}`}
     >
       {icon}
       {children}
@@ -129,9 +129,9 @@ export function ExecutiveMetric({
 
   return (
     <div className="axis-panel-flat p-4">
-      <p className="text-[11px] font-semibold  text-[var(--axis-muted)]">{label}</p>
+      <p className="text-caption-bold text-[var(--axis-muted)]">{label}</p>
       <p className={`mt-2 text-2xl font-semibold tracking-[-0.03em] ${tones[tone]}`}>{value}</p>
-      {helper ? <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">{helper}</p> : null}
+      {helper ? <p className="mt-1 text-caption leading-5 text-[var(--axis-muted)]">{helper}</p> : null}
     </div>
   );
 }
@@ -153,7 +153,7 @@ export function ExecutiveBadge({
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-[var(--axis-radius-sm)] border px-2.5 py-1 text-[11px] font-semibold ${tones[tone]}`}>
+    <span className={`inline-flex items-center gap-1 rounded-[var(--axis-radius-sm)] border px-2.5 py-1 text-caption-bold ${tones[tone]}`}>
       {children}
     </span>
   );
@@ -196,7 +196,7 @@ export function ExecutiveCard({
             <ExecutiveBadge>{getPeerLabel(card)}</ExecutiveBadge>
             <ExecutiveBadge>{getSectorLabel(card)}</ExecutiveBadge>
           </div>
-          <h3 className="mt-3 line-clamp-3 text-[1rem] font-semibold leading-6 tracking-[-0.02em] text-[var(--axis-ink)]">
+          <h3 className="mt-3 line-clamp-3 text-heading-5 font-semibold tracking-[-0.02em] text-[var(--axis-ink)]">
             {card.title}
           </h3>
         </div>
@@ -219,7 +219,7 @@ export function ExecutiveCard({
 
       <div className="mt-4 space-y-2">
         {summaryLines.map((line) => (
-          <p key={line} className="text-sm leading-6 text-[var(--axis-body)]">
+          <p key={line} className="text-body-sm text-[var(--axis-body)]">
             {line}
           </p>
         ))}
@@ -233,12 +233,12 @@ export function ExecutiveCard({
 
       {!compact ? (
         <div className="mt-4 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-3">
-          <p className="text-[11px] font-semibold  text-[var(--axis-muted)]">Next action</p>
-          <p className="mt-1 text-sm font-medium leading-6 text-[var(--axis-ink)]">{getSuggestedActions(card)[0] ?? '데이터 없음'}</p>
+          <p className="text-caption-bold text-[var(--axis-muted)]">Next action</p>
+          <p className="mt-1 text-body-sm font-medium text-[var(--axis-ink)]">{getSuggestedActions(card)[0] ?? '데이터 없음'}</p>
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-center justify-between border-t border-[var(--axis-hairline)] pt-3 text-xs text-[var(--axis-muted)]">
+      <div className="mt-4 flex items-center justify-between border-t border-[var(--axis-hairline)] pt-3 text-caption text-[var(--axis-muted)]">
         <span className="inline-flex items-center gap-1.5">
           {evidence.passed ? <CheckCircle2 size={14} className="text-[var(--axis-success)]" /> : <CircleDashed size={14} className="text-[var(--axis-warning)]" />}
           {evidence.passed ? 'Evidence passed' : 'Review required'}
@@ -275,22 +275,22 @@ export function InsightActionStrip({ card }: { card: CardNewsItem }) {
         {actions.length > 0 ? (
           actions.map((action, index) => (
             <div key={action} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3">
-              <span className="text-[11px] font-semibold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
-              <p className="mt-1 text-sm font-medium leading-6 text-[var(--axis-ink)]">{action}</p>
+              <span className="text-caption-bold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
+              <p className="mt-1 text-body-sm font-medium text-[var(--axis-ink)]">{action}</p>
             </div>
           ))
         ) : (
-          <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3 text-sm text-[var(--axis-muted)]">
+          <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3 text-body-sm text-[var(--axis-muted)]">
             데이터 없음
           </div>
         )}
       </div>
       {questions.length > 0 ? (
         <div className="mt-4 border-t border-[var(--axis-hairline)] pt-4">
-          <p className="text-[11px] font-semibold  text-[var(--axis-muted)]">Follow-up questions</p>
+          <p className="text-caption-bold text-[var(--axis-muted)]">Follow-up questions</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {questions.map((question) => (
-              <span key={question} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] px-3 py-2 text-xs font-medium text-[var(--axis-body)]">
+              <span key={question} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] px-3 py-2 text-caption font-medium text-[var(--axis-body)]">
                 {question}
               </span>
             ))}
@@ -330,7 +330,7 @@ export function EvidenceChainPanel({ card }: { card: CardNewsItem }) {
 
       <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="border-b border-[var(--axis-hairline)] p-4 lg:border-b-0 lg:border-r">
-          <h4 className="text-sm font-semibold text-[var(--axis-ink)]">출처 링크</h4>
+          <h4 className="text-heading-5 font-semibold text-[var(--axis-ink)]">출처 링크</h4>
           <div className="mt-3 space-y-2">
             {sourceLinks.length > 0 ? (
               sourceLinks.map((source, index) => (
@@ -342,8 +342,8 @@ export function EvidenceChainPanel({ card }: { card: CardNewsItem }) {
                   className="flex items-start justify-between gap-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-3 transition hover:bg-white"
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-[var(--axis-ink)]">{source.title ?? '원문 기사'}</span>
-                    <span className="mt-1 block text-xs text-[var(--axis-muted)]">
+                    <span className="block truncate text-body-sm font-semibold text-[var(--axis-ink)]">{source.title ?? '원문 기사'}</span>
+                    <span className="mt-1 block text-caption text-[var(--axis-muted)]">
                       {source.source_name ?? 'Source'} · 신뢰도 {Math.round((source.credibility_score ?? 0.8) * 100)}
                     </span>
                   </span>
@@ -357,19 +357,19 @@ export function EvidenceChainPanel({ card }: { card: CardNewsItem }) {
         </div>
 
         <div className="p-4">
-          <h4 className="text-sm font-semibold text-[var(--axis-ink)]">재무·시장 근거</h4>
+          <h4 className="text-heading-5 font-semibold text-[var(--axis-ink)]">재무·시장 근거</h4>
           <div className="mt-3 space-y-2">
             {financialRefs.length > 0 ? (
               financialRefs.map((ref, index) => (
                 <div key={`${ref.period}-${index}`} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs font-semibold text-[var(--axis-accent-strong)]">{ref.period ?? '기간 미상'}</span>
-                    <span className="text-xs text-[var(--axis-muted)]">
+                    <span className="text-caption-bold text-[var(--axis-accent-strong)]">{ref.period ?? '기간 미상'}</span>
+                    <span className="text-caption text-[var(--axis-muted)]">
                       DART {ref.dart_rcept_no ?? '-'} {ref.ir_page ? `· p.${ref.ir_page}` : ''}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm font-medium leading-6 text-[var(--axis-ink)]">{ref.narrative ?? getFinancialNarrative(card)}</p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--axis-muted)]">
+                  <p className="mt-2 text-body-sm font-medium text-[var(--axis-ink)]">{ref.narrative ?? getFinancialNarrative(card)}</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-caption text-[var(--axis-muted)]">
                     {typeof ref.delta_pct_qoq === 'number' ? <span>QoQ {ref.delta_pct_qoq > 0 ? '+' : ''}{ref.delta_pct_qoq}%</span> : null}
                     {typeof ref.delta_pct_yoy === 'number' ? <span>YoY {ref.delta_pct_yoy > 0 ? '+' : ''}{ref.delta_pct_yoy}%</span> : null}
                     {typeof ref.value_krwbn === 'number' ? <span>{ref.metric_ko ?? ref.metric}: {ref.value_krwbn.toLocaleString()}억원</span> : null}
@@ -382,9 +382,9 @@ export function EvidenceChainPanel({ card }: { card: CardNewsItem }) {
 
             {mbbRefs.length > 0 ? (
               <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)] p-3 text-white">
-                <p className="text-[11px] font-semibold  text-ink">Market reference</p>
+                <p className="text-caption-bold text-ink">Market reference</p>
                 {mbbRefs.map((ref, index) => (
-                  <p key={`${ref.title}-${index}`} className="mt-1 text-sm leading-6 text-ink">
+                  <p key={`${ref.title}-${index}`} className="mt-1 text-body-sm text-ink">
                     {ref.firm} · {ref.title}
                   </p>
                 ))}
@@ -403,8 +403,8 @@ export function CardDecisionPanel({ card }: { card: CardNewsItem }) {
   return (
     <section className="axis-panel-flat p-4">
       <p className="axis-kicker">Decision note</p>
-      <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--axis-ink)]">{potentialImpact || '데이터 없음'}</h3>
-      <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{whyImportant || '데이터 없음'}</p>
+      <h3 className="mt-2 text-heading-3 font-semibold tracking-[-0.03em] text-[var(--axis-ink)]">{potentialImpact || '데이터 없음'}</h3>
+      <p className="mt-3 text-body-sm text-[var(--axis-body)]">{whyImportant || '데이터 없음'}</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <MiniMetric label="Source count" value={String(getSourceCount(card))} />
         <MiniMetric label="Trust score" value={String(getTrustScore(card))} />
@@ -417,15 +417,15 @@ export function CardDecisionPanel({ card }: { card: CardNewsItem }) {
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2">
-      <p className="text-[10px] font-semibold  text-[var(--axis-muted)]">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{value}</p>
+      <p className="text-fine-print font-semibold text-[var(--axis-muted)]">{label}</p>
+      <p className="mt-1 text-heading-4 font-semibold text-[var(--axis-ink)]">{value}</p>
     </div>
   );
 }
 
 function EvidencePill({ active, icon, label }: { active: boolean; icon: ReactNode; label: string }) {
   return (
-    <div className={`flex items-center gap-2 rounded-[var(--axis-radius-md)] border px-3 py-2 text-xs font-semibold ${
+    <div className={`flex items-center gap-2 rounded-[var(--axis-radius-md)] border px-3 py-2 text-caption-bold ${
       active
         ? 'border-[rgba(25,128,56,0.20)] bg-[rgba(25,128,56,0.08)] text-[var(--axis-success)]'
         : 'border-[var(--axis-hairline)] bg-[var(--axis-surface)] text-[var(--axis-muted)]'
@@ -439,7 +439,7 @@ function EvidencePill({ active, icon, label }: { active: boolean; icon: ReactNod
 
 function EmptyEvidence({ label }: { label: string }) {
   return (
-    <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] p-4 text-sm text-[var(--axis-muted)]">
+    <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] p-4 text-body-sm text-[var(--axis-muted)]">
       {label}
     </div>
   );
@@ -447,7 +447,7 @@ function EmptyEvidence({ label }: { label: string }) {
 
 export function TrustSeal() {
   return (
-    <div className="inline-flex items-center gap-2 rounded-[var(--axis-radius-md)] border border-[rgba(15,98,254,0.18)] bg-[rgba(15,98,254,0.08)] px-3 py-2 text-xs font-semibold text-[var(--axis-blue)]">
+    <div className="inline-flex items-center gap-2 rounded-[var(--axis-radius-md)] border border-[rgba(15,98,254,0.18)] bg-[rgba(15,98,254,0.08)] px-3 py-2 text-caption-bold text-[var(--axis-blue)]">
       <ShieldCheck size={15} />
       Evidence ready
     </div>

@@ -1,28 +1,32 @@
-import { briefingFocusTitle } from './utils';
 import type { BriefingReport } from './types';
 import { mockInsightResult } from '../../../../shared/mocks/insight';
 
-type RichItem = { readonly title: string; readonly body: string };
+type FlowItem = {
+  readonly label: string;
+  readonly headline: string;
+  readonly description: string;
+  readonly details: readonly string[];
+};
 
-function richLines(items: readonly RichItem[]): string[] {
-  return items.map((item, index) => `${index + 1}) ${item.title} — ${item.body}`);
+function flowLines(items: readonly FlowItem[]): string[] {
+  return items.map((item, index) => {
+    const detailText = item.details.map((detail, detailIndex) => `  - ${detailIndex + 1}. ${detail}`).join('\n');
+    return `${index + 1}) ${item.label} — ${item.headline}\n${item.description}\n${detailText}`;
+  });
 }
 
-export function buildBriefingReportText(briefing: BriefingReport) {
+export function buildBriefingReportText(briefing: BriefingReport, focusTitle: string) {
   return [
     `[AXIS ${briefing.label} 브리핑] ${briefing.title}`,
     '',
     '1. Executive Summary',
     briefing.briefingLead,
     '',
-    `2. ${briefingFocusTitle}`,
+    `2. ${focusTitle}`,
     ...briefing.whatHappenedDigest.map((item, index) => `${index + 1}) ${item}`),
     '',
-    '3. 시장 해석 포인트',
-    ...richLines(mockInsightResult.problemChain),
-    '',
-    '4. SK AX 시사점',
-    ...richLines(mockInsightResult.solutionChain),
+    '3. 해석 흐름',
+    ...flowLines(mockInsightResult.flowSteps),
   ].join('\n');
 }
 
@@ -46,23 +50,40 @@ function renderPrintSection(title: string, items: string[]) {
   `;
 }
 
-function renderRichPrintSection(title: string, items: readonly RichItem[]) {
+function renderFlowPrintSection(title: string, items: readonly FlowItem[]) {
   return `
     <section class="report-section">
       <h2>${escapeHtml(title)}</h2>
-      <ol>
+      <div class="flow-list">
         ${items
           .map(
             (item, index) =>
-              `<li><strong>${index + 1}</strong><span><b>${escapeHtml(item.title)}</b> — ${escapeHtml(item.body)}</span></li>`,
+              `<section class="flow-item">
+                <div class="flow-heading">
+                  <strong>${index + 1}</strong>
+                  <div>
+                    <p class="flow-label">${escapeHtml(item.label)}</p>
+                    <p><b>${escapeHtml(item.headline)}</b></p>
+                  </div>
+                </div>
+                <p class="flow-description">${escapeHtml(item.description)}</p>
+                <ol class="flow-detail-list">
+                  ${item.details
+                    .map(
+                      (detail, detailIndex) =>
+                        `<li><strong>${detailIndex + 1}</strong><span>${escapeHtml(detail)}</span></li>`,
+                    )
+                    .join('')}
+                </ol>
+              </section>`,
           )
           .join('')}
-      </ol>
+      </div>
     </section>
   `;
 }
 
-export function buildBriefingPrintHtml(briefing: BriefingReport) {
+export function buildBriefingPrintHtml(briefing: BriefingReport, focusTitle: string) {
   return `<!doctype html>
   <html lang="ko">
     <head>
@@ -136,6 +157,44 @@ export function buildBriefingPrintHtml(briefing: BriefingReport) {
           line-height: 1.65;
         }
         li strong { color: #b8451a; }
+        .flow-list {
+          display: grid;
+          gap: 12px;
+          margin-top: 14px;
+        }
+        .flow-item {
+          border: 1px solid #efe5d9;
+          border-radius: 9px;
+          background: #fffdf9;
+          padding: 12px;
+        }
+        .flow-heading {
+          display: grid;
+          grid-template-columns: 26px 1fr;
+          gap: 9px;
+          align-items: start;
+        }
+        .flow-label {
+          margin: 0 0 4px;
+          color: #b8451a;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+        .flow-heading p {
+          margin: 0;
+          font-size: 13px;
+          line-height: 1.65;
+        }
+        .flow-description {
+          margin: 10px 0 0;
+          font-size: 13px;
+          line-height: 1.7;
+        }
+        .flow-detail-list {
+          margin-top: 10px;
+        }
         .footer {
           margin-top: 28px;
           color: #77706a;
@@ -153,9 +212,8 @@ export function buildBriefingPrintHtml(briefing: BriefingReport) {
         <p class="kicker">AXIS ${escapeHtml(briefing.label)} briefing</p>
         <h1>${escapeHtml(briefing.title)}</h1>
         <p class="lead">${escapeHtml(briefing.briefingLead)}</p>
-        ${renderPrintSection(briefingFocusTitle, briefing.whatHappenedDigest)}
-        ${renderRichPrintSection('시장 해석 포인트', mockInsightResult.problemChain)}
-        ${renderRichPrintSection('SK AX 시사점', mockInsightResult.solutionChain)}
+        ${renderPrintSection(focusTitle, briefing.whatHappenedDigest)}
+        ${renderFlowPrintSection('해석 흐름', mockInsightResult.flowSteps)}
         <p class="footer">AXIS 브리핑 리포트 · ${escapeHtml(briefing.window)}</p>
       </main>
     </body>

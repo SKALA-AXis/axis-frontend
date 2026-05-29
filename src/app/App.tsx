@@ -26,6 +26,12 @@ import { useViewRouting } from '../shared/hooks/useViewRouting';
 import { commonGuideSteps, guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../shared/content/productGuide';
 import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../shared/mocks/peerPlus';
 import type { SearchScope } from '../features/search/model/search';
+import {
+  getAppliedTextScale,
+  getStoredTextPreference,
+  setStoredTextPreference,
+  type TextPreference,
+} from '../shared/config/textPreferences';
 
 export type UserRole = 'admin' | 'strategist' | 'analyst' | 'viewer';
 type ThemeMode = 'light' | 'dark';
@@ -494,11 +500,15 @@ function DashboardShell({
   showGuide,
   onGuideDone,
   currentUser,
+  textPreference,
+  onTextPreferenceChange,
 }: {
   onLogout: () => void | Promise<void>;
   showGuide: boolean;
   onGuideDone: () => void;
   currentUser: AuthUser | null;
+  textPreference: TextPreference;
+  onTextPreferenceChange: (preference: TextPreference) => void;
 }) {
   // URL ↔ view state 양방향 동기화 — 브라우저 back/forward / direct URL / share link 지원
   const [activeView, setActiveView] = useViewRouting('home');
@@ -565,22 +575,6 @@ function DashboardShell({
     document.documentElement.classList.toggle('dark', themeMode === 'dark');
     window.localStorage.setItem(themeStorageKey, themeMode);
   }, [themeMode]);
-
-  useEffect(() => {
-    const applyAdaptiveScale = () => {
-      document.documentElement.style.setProperty('--font-size', resolveAdaptiveFontSize());
-      document.documentElement.classList.toggle('axis-wide-viewport', window.innerWidth >= 1800 && window.innerHeight >= 900);
-    };
-
-    applyAdaptiveScale();
-    window.addEventListener('resize', applyAdaptiveScale);
-
-    return () => {
-      window.removeEventListener('resize', applyAdaptiveScale);
-      document.documentElement.style.removeProperty('--font-size');
-      document.documentElement.classList.remove('axis-wide-viewport');
-    };
-  }, []);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
@@ -728,7 +722,14 @@ function DashboardShell({
       case 'rawArticles':
         return <RawArticlesView bookmarkedIds={bookmarkedIds} />;
       case 'settings':
-        return <SettingsView onLogout={onLogout} currentUser={currentUser} />;
+        return (
+          <SettingsView
+            onLogout={onLogout}
+            currentUser={currentUser}
+            textPreference={textPreference}
+            onTextPreferenceChange={onTextPreferenceChange}
+          />
+        );
       case 'admin':
         return isAdmin ? (
           <AdminView />
@@ -800,11 +801,36 @@ export default function App() {
   const [authToken] = useState(() => new URLSearchParams(window.location.search).get('token'));
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [textPreference, setTextPreference] = useState<TextPreference>(getStoredTextPreference);
   const hasRefreshMarker = () =>
     window.localStorage.getItem(refreshMarkerStorageKey) === 'true' ||
     window.sessionStorage.getItem(refreshMarkerStorageKey) === 'true';
   const [authInitializing, setAuthInitializing] = useState(() => !isAuthCallbackPathname() && hasRefreshMarker());
   const [showGuide, setShowGuide] = useState(false);
+
+  useEffect(() => {
+    const applyAdaptiveScale = () => {
+      const adaptiveFontSize = resolveAdaptiveFontSize();
+      const scale = getAppliedTextScale(textPreference);
+      document.documentElement.style.setProperty('--font-size', `calc(${adaptiveFontSize} * ${scale})`);
+      document.documentElement.style.setProperty('--axis-user-font-scale', `${scale}`);
+      document.documentElement.classList.toggle('axis-wide-viewport', window.innerWidth >= 1800 && window.innerHeight >= 900);
+    };
+
+    applyAdaptiveScale();
+    window.addEventListener('resize', applyAdaptiveScale);
+
+    return () => {
+      window.removeEventListener('resize', applyAdaptiveScale);
+      document.documentElement.style.removeProperty('--font-size');
+      document.documentElement.style.removeProperty('--axis-user-font-scale');
+      document.documentElement.classList.remove('axis-wide-viewport');
+    };
+  }, [textPreference]);
+
+  useEffect(() => {
+    setStoredTextPreference(textPreference);
+  }, [textPreference]);
 
   useEffect(() => {
     // 이전 localStorage 인증 흔적 때문에 첫 진입에서 대시보드가 바로 뜨지 않도록 정리한다.
@@ -958,7 +984,16 @@ export default function App() {
   }
 
   if (isAuthenticated) {
-    return <DashboardShell onLogout={handleLogout} showGuide={showGuide} onGuideDone={handleGuideDone} currentUser={currentUser} />;
+    return (
+      <DashboardShell
+        onLogout={handleLogout}
+        showGuide={showGuide}
+        onGuideDone={handleGuideDone}
+        currentUser={currentUser}
+        textPreference={textPreference}
+        onTextPreferenceChange={setTextPreference}
+      />
+    );
   }
   return (
     <AuthScreen

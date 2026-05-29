@@ -1,4 +1,4 @@
-import { Bell, Clock3, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, X, User } from 'lucide-react';
+import { Bell, Clock3, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Type, X, User } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -8,18 +8,36 @@ import {
   ExecutiveHeader,
   ExecutivePage,
 } from '../../executive/ExecutiveSystem';
+import { Slider } from '../../ui/slider';
+import { Switch } from '../../ui/switch';
 import type { AuthUser } from '../../../../features/auth/model/auth';
 import { notificationsRepository } from '../../../../features/notifications/api/notificationsRepository';
 import type { NotificationPreferences } from '../../../../features/notifications/model/notification';
 import { settingsRepository } from '../../../../features/settings/api/settingsRepository';
 import type { AccessLogItem } from '../../../../features/settings/model/accessLog';
+import {
+  clampTextScaleStep,
+  getAppliedTextScale,
+  textScaleSteps,
+  type TextPreference,
+} from '../../../../shared/config/textPreferences';
 
-type SettingsTab = 'account' | 'history' | 'notifications';
+type SettingsTab = 'account' | 'history' | 'notifications' | 'largeText';
 type AccessLogStatus = 'idle' | 'loading' | 'success' | 'error';
 type NotificationPreferenceStatus = 'idle' | 'loading' | 'success' | 'error';
 type PasswordChangeStatus = 'idle' | 'loading' | 'success' | 'error';
 
-export function SettingsView({ onLogout, currentUser }: { onLogout: () => void | Promise<void>; currentUser?: AuthUser | null }) {
+export function SettingsView({
+  onLogout,
+  currentUser,
+  textPreference,
+  onTextPreferenceChange,
+}: {
+  onLogout: () => void | Promise<void>;
+  currentUser?: AuthUser | null;
+  textPreference: TextPreference;
+  onTextPreferenceChange: (preference: TextPreference) => void;
+}) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [profileSaved, setProfileSaved] = useState(false);
   const [accessLogs, setAccessLogs] = useState<AccessLogItem[]>([]);
@@ -39,6 +57,7 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
   const [keywordDraft, setKeywordDraft] = useState('');
   const displayName = currentUser?.name || currentUser?.email?.split('@')[0] || 'AXIS 사용자';
   const email = currentUser?.email || 'axis.user@sk.com';
+  const textScaleLabel = `${Math.round((getAppliedTextScale(textPreference) - 1) * 100)}%`;
   const [notificationSettings, setNotificationSettings] = useState({
     email: true,
     inApp: true,
@@ -51,6 +70,7 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
     { id: 'account', label: '회원 정보', icon: User },
     { id: 'history', label: '접속 로그', icon: ShieldCheck },
     { id: 'notifications', label: '알림 설정', icon: Bell },
+    { id: 'largeText', label: '더 큰 텍스트', icon: Type },
   ];
 
   const loadAccessLogs = useCallback(async () => {
@@ -185,7 +205,7 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                     }`}
                   >
                     <Icon size={17} />
-                    <span className="text-sm font-semibold">{tab.label}</span>
+                    <span className="text-body-sm font-semibold">{tab.label}</span>
                   </button>
                 );
               })}
@@ -260,13 +280,14 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                         취소
                       </ExecutiveButton>
                       {passwordChangeMessage ? (
-                        <p className={`min-w-0 text-sm font-semibold leading-5 ${passwordChangeStatus === 'success' ? 'text-[var(--axis-success)]' : 'text-[var(--axis-danger)]'}`}>
+                        <p className={`min-w-0 text-body-sm font-semibold leading-5 ${passwordChangeStatus === 'success' ? 'text-[var(--axis-success)]' : 'text-[var(--axis-danger)]'}`}>
                           {passwordChangeMessage}
                         </p>
                       ) : null}
                     </div>
                   </form>
                 ) : null}
+
               </section>
             ) : null}
 
@@ -373,8 +394,8 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                 <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-[var(--axis-ink)]">관심 키워드</h3>
-                      <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">등록한 키워드가 카드뉴스 본문에 포함되면 알림을 생성합니다.</p>
+                      <h3 className="text-heading-5 font-semibold text-[var(--axis-ink)]">관심 키워드</h3>
+                      <p className="mt-1 text-caption leading-5 text-[var(--axis-muted)]">등록한 키워드가 카드뉴스 본문에 포함되면 알림을 생성합니다.</p>
                     </div>
                     <ExecutiveBadge>{notificationPreferences.keywords.length}/20</ExecutiveBadge>
                   </div>
@@ -389,14 +410,14 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                       value={keywordDraft}
                       onChange={(event) => setKeywordDraft(event.target.value)}
                       maxLength={30}
-                      className="h-10 min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+                      className="h-10 min-w-0 flex-1 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-body-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
                       placeholder="예: 수주, AI agent, 클라우드"
                     />
                     <ExecutiveButton type="submit" variant="secondary" icon={<Plus size={15} />}>추가</ExecutiveButton>
                   </form>
                   <div className="mt-3 flex min-h-9 flex-wrap gap-2">
                     {notificationPreferences.keywords.length === 0 ? (
-                      <span className="text-xs font-semibold text-[var(--axis-muted)]">등록된 관심 키워드가 없습니다.</span>
+                      <span className="text-caption-bold text-[var(--axis-muted)]">등록된 관심 키워드가 없습니다.</span>
                     ) : null}
                     {notificationPreferences.keywords.map((keyword) => (
                       <button
@@ -406,7 +427,7 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                           ...current,
                           keywords: current.keywords.filter((item) => item !== keyword),
                         }))}
-                        className="inline-flex items-center gap-1 rounded-sm border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-1 text-xs font-semibold text-[var(--axis-ink)] hover:border-[var(--axis-danger)] hover:text-[var(--axis-danger)]"
+                        className="inline-flex items-center gap-1 rounded-sm border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-1 text-caption-bold text-[var(--axis-ink)] hover:border-[var(--axis-danger)] hover:text-[var(--axis-danger)]"
                       >
                         {keyword}
                         <X size={12} />
@@ -418,13 +439,13 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                 <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <Clock3 size={16} className="text-[var(--axis-accent)]" />
-                    <h3 className="text-sm font-semibold text-[var(--axis-ink)]">브리핑 발송 시간</h3>
+                    <h3 className="text-heading-5 font-semibold text-[var(--axis-ink)]">브리핑 발송 시간</h3>
                   </div>
                   <input
                     type="time"
                     value={notificationSettings.briefingTime}
                     onChange={(event) => setNotificationSettings((current) => ({ ...current, briefingTime: event.target.value }))}
-                    className="h-10 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+                    className="h-10 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-body-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
                   />
                 </div>
                 <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -436,6 +457,75 @@ export function SettingsView({ onLogout, currentUser }: { onLogout: () => void |
                   </ExecutiveButton>
                   {notificationPreferenceStatus === 'success' ? <ExecutiveBadge tone="success">저장되었습니다</ExecutiveBadge> : null}
                   {notificationPreferenceStatus === 'error' ? <ExecutiveBadge tone="danger">{notificationPreferenceError}</ExecutiveBadge> : null}
+                </div>
+              </section>
+            ) : null}
+
+            {activeTab === 'largeText' ? (
+              <section className="p-5">
+                <div className="flex items-center gap-2">
+                  <Type size={17} className="text-[var(--axis-accent)]" />
+                  <h2 className="axis-section-heading">더 큰 텍스트</h2>
+                </div>
+                <p className="mt-2 max-w-2xl text-body-sm text-[var(--axis-muted)]">
+                  페이지마다 제목과 본문이 제각각 보이지 않도록 같은 기준으로 맞추고, 필요하면 더 크게 조절할 수 있습니다.
+                </p>
+
+                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-heading-5 font-semibold text-[var(--axis-ink)]">글자 더 크게 조절</h3>
+                      <p className="mt-1 text-caption text-[var(--axis-muted)]">
+                        {textPreference.enabled ? `현재 확대 ${textScaleLabel}` : '기본 텍스트 크기를 사용 중입니다.'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={textPreference.enabled}
+                      onCheckedChange={(checked) => onTextPreferenceChange({ ...textPreference, enabled: checked })}
+                      aria-label="더 큰 텍스트 사용"
+                      className="h-8 w-14 [&_[data-slot=switch-thumb]]:size-6"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-5 py-8">
+                  <p className="mx-auto max-w-[28rem] text-center text-heading-4 leading-[1.55] text-[var(--axis-ink)]">
+                    유동적 글자 크기를 지원하는 화면은 아래와 같이 선호하는 크기로 바로 조절됩니다.
+                  </p>
+                  <p className="mx-auto mt-4 max-w-[32rem] text-center text-body-md text-[var(--axis-muted)]">
+                    슬라이더를 움직이면 현재 화면에서 즉시 크기를 미리 확인할 수 있습니다.
+                  </p>
+                </div>
+
+                <div className={`mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-5 transition ${textPreference.enabled ? '' : 'opacity-55'}`}>
+                  <div className="flex items-center gap-4">
+                    <span className="shrink-0 text-heading-4 leading-none text-[var(--axis-muted)]">가</span>
+                    <div className="relative flex-1">
+                      <div className="pointer-events-none absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--axis-hairline-strong)]" />
+                      <div className="pointer-events-none absolute inset-x-1 top-1/2 flex -translate-y-1/2 justify-between px-1">
+                        {textScaleSteps.map((step, index) => (
+                          <span
+                            key={`${step}-${index}`}
+                            className={`h-3 w-1 rounded-full ${index <= clampTextScaleStep(textPreference.step) && textPreference.enabled ? 'bg-[var(--axis-accent)]' : 'bg-[var(--axis-hairline-strong)]'}`}
+                          />
+                        ))}
+                      </div>
+                      <Slider
+                        min={0}
+                        max={textScaleSteps.length - 1}
+                        step={1}
+                        value={[textPreference.step]}
+                        disabled={!textPreference.enabled}
+                        onValueChange={([value]) => {
+                          const nextStep = clampTextScaleStep(value ?? textPreference.step);
+                          onTextPreferenceChange({ ...textPreference, enabled: true, step: nextStep });
+                        }}
+                        aria-label="텍스트 크기 조절"
+                        className="relative z-10"
+                      />
+                    </div>
+                    <span className="shrink-0 text-[1.9rem] leading-none text-[var(--axis-muted)]">가</span>
+                  </div>
                 </div>
               </section>
             ) : null}
@@ -499,11 +589,11 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-[var(--axis-ink)]">{label}</span>
+      <span className="mb-2 block text-body-sm font-semibold text-[var(--axis-ink)]">{label}</span>
       <input
         type={type}
         defaultValue={defaultValue}
-        className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+        className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-3 text-body-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
       />
     </label>
   );
@@ -522,14 +612,14 @@ function PasswordField({
 }) {
   return (
     <label htmlFor={id} className="block">
-      <span className="mb-2 block text-sm font-semibold text-[var(--axis-ink)]">{label}</span>
+      <span className="mb-2 block text-body-sm font-semibold text-[var(--axis-ink)]">{label}</span>
       <input
         id={id}
         type="password"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoComplete={id === 'settings-current-password' ? 'current-password' : 'new-password'}
-        className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+        className="h-11 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-body-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
       />
     </label>
   );
@@ -549,21 +639,15 @@ function ToggleRow({
   return (
     <div className="flex items-center justify-between gap-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
       <div>
-        <p className="text-sm font-semibold text-[var(--axis-ink)]">{title}</p>
-        <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">{description}</p>
+        <p className="text-body-sm font-semibold text-[var(--axis-ink)]">{title}</p>
+        <p className="mt-1 text-caption leading-5 text-[var(--axis-muted)]">{description}</p>
       </div>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 rounded-full border transition ${
-          checked
-            ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)]'
-            : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)]'
-        }`}
-        aria-pressed={checked}
-      >
-        <span className={`absolute top-1 h-4 w-4 rounded-full bg-[#FFFFFF] shadow-sm transition ${checked ? 'left-6' : 'left-1'}`} />
-      </button>
+      <Switch
+        checked={checked}
+        onCheckedChange={onChange}
+        aria-label={title}
+        className="h-7 w-12 [&_[data-slot=switch-thumb]]:size-5"
+      />
     </div>
   );
 }
