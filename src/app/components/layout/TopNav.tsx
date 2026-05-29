@@ -5,10 +5,12 @@ import { notificationsRepository } from '../../../features/notifications/api/not
 import type { NotificationItem } from '../../../features/notifications/model/notification';
 import type { SearchScope } from '../../../features/search/model/search';
 import { viewLabels } from '../../../shared/content/navigation';
+import { formatTopNavUpdateTime } from '../../../shared/lib/viewFreshness';
 import type { PeerPlusPeerId } from '../../../shared/mocks/peerPlus';
 
 interface TopNavProps {
   activeView: string;
+  currentViewUpdatedAt?: string | null;
   currentUser?: AuthUser | null;
   onSearchClick?: () => void;
   onNotificationsClick?: () => void;
@@ -26,16 +28,6 @@ const searchScopeOptions: Array<{ value: SearchScope; label: string }> = [
   { value: 'CARD_NEWS', label: '카드뉴스' },
   { value: 'KEYWORD_GRAPH', label: '키워드 그래프' },
 ];
-
-function formatLastCrawlUpdate() {
-  const date = new Date();
-  const dateLabel = date.toLocaleDateString('ko-KR', {
-    month: '2-digit',
-    day: '2-digit',
-    timeZone: 'Asia/Seoul',
-  }).replace(/\.$/, '');
-  return `${dateLabel} 08:30`;
-}
 
 function formatNotificationTime(value: string) {
   const date = new Date(value);
@@ -60,6 +52,7 @@ function notificationTone(item: NotificationItem) {
 
 export function TopNav({
   activeView,
+  currentViewUpdatedAt,
   currentUser,
   onSearchClick,
   onNotificationsClick,
@@ -79,7 +72,7 @@ export function TopNav({
     .join('')
     .toUpperCase()
     .slice(0, 2) || 'SK';
-  const lastCrawlUpdate = formatLastCrawlUpdate();
+  const lastCrawlUpdate = formatTopNavUpdateTime(currentViewUpdatedAt);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);

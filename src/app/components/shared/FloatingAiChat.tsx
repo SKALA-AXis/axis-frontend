@@ -42,7 +42,7 @@ export function FloatingAiChat({ scrollToTopControl }: { scrollToTopControl?: Re
   };
 
   return (
-    <div className="fixed bottom-20 right-4 z-[55] flex flex-col items-end gap-3 md:bottom-5 md:right-6">
+    <div className="fixed bottom-20 right-4 z-[90] flex flex-col items-end gap-3 md:bottom-5 md:right-6">
       {isOpen ? (
         <section className="mb-2 flex h-[420px] w-[330px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-[0_24px_80px_-42px_rgba(0,0,0,0.62)]">
           <div className="flex items-center justify-between border-b border-[var(--axis-hairline)] px-4 py-3">

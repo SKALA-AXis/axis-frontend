@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Share2, Sparkles, TrendingUp, X } from 'lucide-react';
 
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
+import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { mockInsightResult } from '../../../../shared/mocks/insight';
 import {
   ExecutiveBadge,
@@ -43,9 +44,10 @@ type BriefingReasoningModal = {
 type BriefingsViewProps = {
   bookmarkedIds?: string[];
   onToggleBookmark?: (cardId: string) => void;
+  onUpdateTimeChange?: (updatedAt: string | null) => void;
 };
 
-export function BriefingsView({ bookmarkedIds = [], onToggleBookmark }: BriefingsViewProps) {
+export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTimeChange }: BriefingsViewProps) {
   const { cards, isLoading, error } = useCardNews();
   const contentViewMode = useContentViewMode();
   const [period, setPeriod] = useState<BriefingPeriod>('daily');
@@ -68,6 +70,11 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark }: Briefing
     () => buildBriefingRange(period, dailyDate, weeklyMonth, weeklyIndex, monthlyMonth),
     [dailyDate, monthlyMonth, period, weeklyIndex, weeklyMonth],
   );
+
+  useEffect(() => {
+    if (isLoading) return;
+    onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
+  }, [cards, isLoading, onUpdateTimeChange]);
   const briefing = useMemo(() => buildBriefing(period, rankedCards, briefingRange), [period, rankedCards, briefingRange]);
   const reportText = useMemo(() => buildBriefingReportText(briefing), [briefing]);
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
