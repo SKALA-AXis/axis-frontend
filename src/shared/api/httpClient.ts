@@ -4,6 +4,7 @@ import { getAccessToken } from './authSession';
 export interface HttpClient {
   get<T>(path: string): Promise<T>;
   post<T>(path: string, body?: unknown): Promise<T>;
+  patch<T>(path: string, body?: unknown): Promise<T>;
   put<T>(path: string, body?: unknown): Promise<T>;
   delete<T>(path: string): Promise<T>;
 }
@@ -17,6 +18,10 @@ class FetchHttpClient implements HttpClient {
 
   async post<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>('POST', path, body);
+  }
+
+  async patch<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>('PATCH', path, body);
   }
 
   async put<T>(path: string, body?: unknown): Promise<T> {

@@ -7,6 +7,7 @@ import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from 
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
 import type { DashboardKeywordSearchPoint } from '../../../../features/dashboard/model/dashboard';
+import { pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
 import { graphCategoryColor, graphCompanyAliases, graphEdges, graphNodes, type KeywordEdge, type KeywordNode } from '../../../../shared/mocks/keywordGraph';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -402,13 +403,15 @@ export function KeywordGraphView({
   onNavigate,
   bookmarkedIds = [],
   onToggleBookmark,
+  onUpdateTimeChange,
 }: {
   onNavigate: NavigateHandler;
   bookmarkedIds?: string[];
   onToggleBookmark?: (cardId: string) => void;
+  onUpdateTimeChange?: (updatedAt: string | null) => void;
 }) {
-  const { dashboard } = useDashboard();
-  const { cards } = useCardNews();
+  const { dashboard, isLoading: dashboardLoading } = useDashboard();
+  const { cards, isLoading: cardsLoading } = useCardNews();
   const [selectedId, setSelectedId] = useState('sk-axis');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [category, setCategory] = useState<KeywordNode['category'] | '전체'>('전체');
@@ -462,6 +465,15 @@ export function KeywordGraphView({
   useEffect(() => {
     setOverlayPage(0);
   }, [selectedId]);
+
+  useEffect(() => {
+    if (dashboardLoading || cardsLoading) return;
+    onUpdateTimeChange?.(pickLatestTimestamp([
+      ...cards.flatMap((card) => [card.created_at, card.published_date, card.date]),
+      ...dashboard?.articles.map((article) => article.publishedAt) ?? [],
+      dashboard?.dartSummary?.publishedAt ?? null,
+    ]));
+  }, [cards, cardsLoading, dashboard?.articles, dashboard?.dartSummary?.publishedAt, dashboardLoading, onUpdateTimeChange]);
 
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return undefined;

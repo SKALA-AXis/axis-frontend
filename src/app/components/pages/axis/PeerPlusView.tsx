@@ -7,6 +7,7 @@ import type { CardNewsItem } from '../../../../features/card-news/model/cardNews
 import { usePeerPositioning } from '../../../../features/peers/hooks/usePeerPositioning';
 import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOverview';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
+import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
 import { ExecutiveBadge, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -307,11 +308,13 @@ export function PeerPlusView({
   bookmarkedIds = [],
   onToggleBookmark,
   selectedPeerId: externalSelectedPeerId,
+  onUpdateTimeChange,
 }: {
   onNavigate: NavigateHandler;
   bookmarkedIds?: string[];
   onToggleBookmark?: (cardId: string) => void;
   selectedPeerId?: PeerPlusPeerId;
+  onUpdateTimeChange?: (updatedAt: string | null) => void;
 }) {
   const { cards, isLoading, error } = useCardNews();
   const { peerOverview, isLoading: isPeerOverviewLoading, error: peerOverviewError } = usePeerOverview();
@@ -333,6 +336,11 @@ export function PeerPlusView({
     window.localStorage.setItem(peerPlusSelectionStorageKey, 'all');
     setSelectedPeerId('all');
   }, [externalSelectedPeerId]);
+
+  useEffect(() => {
+    if (isLoading || isPeerOverviewLoading || isPeerPositioningLoading) return;
+    onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
+  }, [cards, isLoading, isPeerOverviewLoading, isPeerPositioningLoading, onUpdateTimeChange]);
 
   const isAllFilter = selectedPeerId === 'all';
   const isGlobalIndustry = selectedPeerId === 'global_industry';

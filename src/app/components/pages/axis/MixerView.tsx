@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bookmark, Box, Check, Filter, Network, Sparkles, X } from 'lucide-react';
-import { Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar as RadarShape, RadarChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { buildMixerCards } from '../../../../features/card-news/mappers/cardNewsPresentation';
 import { getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
-import { cardNewsItems as fallbackCardNewsItems } from '../../../../shared/mocks/cardNews';
+import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { mockMixerConfig } from '../../../../shared/mocks/mixer';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -145,36 +144,56 @@ function MixerAnalysisOverlay() {
   );
 }
 
-type MixerResultInsight = {
+type MixerResultSectionKey = 'common_pattern' | 'comparison_point' | 'hidden_conclusion' | 'action_direction';
+
+type MixerResultEvidence = {
+  card_id: string;
+  text: string;
+  peer: string;
   title: string;
-  summary: string;
-  reasoning: string[];
-  evidenceTags: string[];
-  evidenceCards: {
-    peer: string;
-    title: string;
-    snippet: string;
-  }[];
-  skAxMeaning: string;
+};
+
+type MixerResultSection = {
+  finding: string;
+  rationale: string;
+  evidence: MixerResultEvidence[];
+  evidence_card_ids: string[];
+};
+
+type MixerResultActionDetail = {
+  action: string;
+  why: string;
+  use_case: string;
+  evidence: MixerResultEvidence[];
+  evidence_card_ids: string[];
 };
 
 type MixerResultView = {
-  summary: string;
-  insightBrief: MixerResultInsight[];
-  derivedOutcome: {
-    summary: string;
-    items: {
-      title: string;
-      body: string;
-    }[];
+  mix_id: string;
+  mix_insight: string;
+  common_pattern: MixerResultSection;
+  comparison_point: MixerResultSection;
+  hidden_conclusion: MixerResultSection;
+  recommended_action_basis: string[];
+  action_details: MixerResultActionDetail[];
+  recommended_actions: string[];
+  sources_used: string[];
+  confidence: number;
+  provenance: {
+    llm_model: string;
+    prompt_version: string;
+    source_card_ids: string[];
+    ratios: {
+      peer: number;
+      industry: number;
+      keyword: number;
+    };
+    analysis_basis: string;
   };
-  implications: string[];
-  proposalActions: string[];
-  evidenceLogic: string[];
-  actions: string[];
-  connections: string[];
-  skAxPerspective: string;
+  created_at: string;
 };
+
+const clampRatio = (value: number) => Math.round(value * 100) / 100;
 
 const mixerHistoryPreviewGroups = [
   {
@@ -202,9 +221,11 @@ const mixerHistoryPreviewGroups = [
 export function MixerView({
   bookmarkedIds,
   onToggleBookmark,
+  onUpdateTimeChange,
 }: {
   bookmarkedIds: string[];
   onToggleBookmark: (cardId: string) => void;
+  onUpdateTimeChange?: (updatedAt: string | null) => void;
 }) {
   const { cards, isLoading, error } = useCardNews();
   const [mode, setMode] = useState<'select' | 'result' | 'history'>('select');
@@ -214,9 +235,10 @@ export function MixerView({
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
+  const [candidatePage, setCandidatePage] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<MixerResultView | null>(null);
-  const [activeResultInsightIndex, setActiveResultInsightIndex] = useState(0);
+  const [activeResultSectionKey, setActiveResultSectionKey] = useState<MixerResultSectionKey>('common_pattern');
   const [isMixerReasoningOpen, setIsMixerReasoningOpen] = useState(false);
   const [mixerDetailCardId, setMixerDetailCardId] = useState<string | null>(null);
   const [mixerDetailSlideIndex, setMixerDetailSlideIndex] = useState(0);
@@ -224,17 +246,26 @@ export function MixerView({
   const [historyEndDate, setHistoryEndDate] = useState('2026-05-15');
   const generationTimeoutRef = useRef<number | null>(null);
 
-  const mixerSourceCards = useMemo(() => {
-    const existingIds = new Set(cards.map((card) => card.id));
-    const supplement = fallbackCardNewsItems.filter((card) => !existingIds.has(card.id));
-    return [...cards, ...supplement];
-  }, [cards]);
-  const mixerCards = useMemo(() => buildMixerCards(mixerSourceCards), [mixerSourceCards]);
+  useEffect(() => {
+    if (isLoading) return;
+    onUpdateTimeChange?.(result?.created_at ?? pickLatestCardTimestamp(cards));
+  }, [cards, isLoading, onUpdateTimeChange, result?.created_at]);
+
+  const mixerCards = useMemo(() => buildMixerCards(cards), [cards]);
   const visibleCards = mixerCards.filter((item) => {
     const peerMatched = selectedPeers.length === 0 || selectedPeers.includes(item.peer);
     const bookmarkMatched = !bookmarkedOnly || bookmarkedIds.includes(item.card.id);
     return peerMatched && bookmarkMatched;
   });
+  const candidatePageSize = 20;
+  const totalCandidatePages = Math.max(1, Math.ceil(visibleCards.length / candidatePageSize));
+  const pagedVisibleCards = visibleCards.slice((candidatePage - 1) * candidatePageSize, candidatePage * candidatePageSize);
+  const candidatePaginationWindowSize = 5;
+  const candidatePageWindowStart = Math.floor((candidatePage - 1) / candidatePaginationWindowSize) * candidatePaginationWindowSize + 1;
+  const candidatePageNumbers = useMemo(() => {
+    const windowEnd = Math.min(totalCandidatePages, candidatePageWindowStart + candidatePaginationWindowSize - 1);
+    return Array.from({ length: windowEnd - candidatePageWindowStart + 1 }, (_, index) => candidatePageWindowStart + index);
+  }, [candidatePageWindowStart, totalCandidatePages]);
   const selectedCards = mixerCards.filter((item) => selectedIds.includes(item.id));
   const filteredHistoryPreviewGroups = useMemo(() => {
     return mixerHistoryPreviewGroups.filter((group) => {
@@ -244,6 +275,18 @@ export function MixerView({
       return afterStart && beforeEnd;
     });
   }, [historyEndDate, historyStartDate]);
+  const historyPreviewEntries = useMemo(() => {
+    return filteredHistoryPreviewGroups
+      .flatMap((group) =>
+        group.entries.map((entry, index) => ({
+          key: `${group.date}-${index}`,
+          date: group.date,
+          title: entry.title,
+          meta: entry.meta,
+        })),
+      )
+      .slice(0, 3);
+  }, [filteredHistoryPreviewGroups]);
   const canGenerate = selectedCards.length >= 2;
   const selectedPeerRatioData = buildSelectionRatioData(
     selectedCards.map((item) => normalizeMixerPeerLabel(item.peer)),
@@ -263,20 +306,8 @@ export function MixerView({
       '블로그': '#06B6D4',
     },
   );
-  const resultRadarData = mockMixerConfig.radarMetrics.map((metric) => {
-    const keywordScore = metric.keyword && selectedKeywords.includes(metric.keyword) ? metric.keywordValue ?? metric.base : metric.base;
-    const weightedScore =
-      keywordScore +
-      (metric.cardWeight ?? 0) * selectedCards.length +
-      (metric.industryWeight ?? 0) * selectedIndustries.length +
-      (metric.bookmarkWeight ?? 0) * selectedCards.filter((item) => bookmarkedIds.includes(item.card.id)).length +
-      (metric.customerWeight ?? 0) * selectedCustomers.length;
-    return {
-      subject: metric.subject,
-      mixed: Math.min(metric.max, weightedScore),
-    };
-  });
-  const mixerDetailCard = mixerDetailCardId ? mixerSourceCards.find((card) => card.id === mixerDetailCardId) ?? null : null;
+  const mixerSourceCardById = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards]);
+  const mixerDetailCard = mixerDetailCardId ? cards.find((card) => card.id === mixerDetailCardId) ?? null : null;
 
   const toggleListValue = (value: string, setter: (updater: (current: string[]) => string[]) => void) => {
     setter((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]));
@@ -284,6 +315,11 @@ export function MixerView({
 
   const toggleSelection = (id: string) => {
     setSelectedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  };
+
+  const openMixerCard = (cardId: string) => {
+    setMixerDetailCardId(cardId);
+    setMixerDetailSlideIndex(0);
   };
 
   useEffect(() => {
@@ -294,11 +330,19 @@ export function MixerView({
     };
   }, []);
 
+  useEffect(() => {
+    setCandidatePage(1);
+  }, [selectedPeers, bookmarkedOnly]);
+
+  useEffect(() => {
+    if (candidatePage > totalCandidatePages) {
+      setCandidatePage(totalCandidatePages);
+    }
+  }, [candidatePage, totalCandidatePages]);
+
   const buildMixerResult = (): MixerResultView => {
     const peers = Array.from(new Set(selectedCards.map((item) => item.peer)));
-    const summaryLines = selectedCards.flatMap((item) => getSummaryLines(item.card));
     const primaryIndustries = selectedIndustries.slice(0, 2).join(' · ') || '고객 산업';
-    const primaryKeywords = selectedKeywords.slice(0, 3).join(' · ') || 'AX 신호';
     const primaryCustomers = selectedCustomers.slice(0, 2).join(' · ') || '주요 고객군';
     const contentLines = selectedCards.flatMap((item) => [
       item.card.title,
@@ -309,7 +353,7 @@ export function MixerView({
       item.card.detailDescription,
     ]);
     const contentCorpus = contentLines.join(' ');
-    const selectedEvidenceCards = selectedCards.slice(0, 3).map((item) => {
+    const buildEvidence = (item: typeof selectedCards[number]): MixerResultEvidence => {
       const lines = [
         ...getSummaryLines(item.card),
         ...(item.card.insights ?? []),
@@ -317,12 +361,13 @@ export function MixerView({
         ...(item.card.detailPoints ?? []),
       ].filter((line): line is string => typeof line === 'string' && line.trim().length > 0);
       return {
+        card_id: item.card.id,
         peer: item.peer,
         title: item.card.title,
-        snippet: lines[0] ?? item.card.detailDescription,
+        text: lines[0] ?? item.card.detailDescription,
       };
-    });
-    const evidenceTitles = selectedEvidenceCards.map((item) => item.title);
+    };
+    const selectedEvidenceCards = selectedCards.slice(0, 4).map((item) => buildEvidence(item));
     const bookmarkedEvidenceCount = selectedCards.filter((item) => bookmarkedIds.includes(item.card.id)).length;
     const keywordHitStats = selectedKeywords
       .map((keyword) => {
@@ -343,154 +388,133 @@ export function MixerView({
       })
       .filter((item) => item.count > 0)
       .sort((a, b) => b.count - a.count);
-    const keywordHitSummary = keywordHitStats.length > 0
-      ? keywordHitStats.slice(0, 3).map((item) => `${item.keyword}(${item.count}건)`).join(', ')
-      : primaryKeywords;
     const dominantKeyword = keywordHitStats[0]?.keyword ?? selectedKeywords[0] ?? 'AX';
+    const inferFocus = (text: string) => {
+      if (/(로봇|자동화|스마트팩토리|물류|현장)/.test(text)) return '현장 자동화와 운영 장면';
+      if (/(데이터|플랫폼|인프라|소프트웨어)/.test(text)) return '운영 데이터와 소프트웨어 인프라';
+      if (/(보안|거버넌스|통제|감사)/.test(text)) return '보안·거버넌스와 통제 구조';
+      if (/(클라우드|GPU|데이터센터|하이브리드)/.test(text)) return '도입 이후 확산 인프라';
+      if (/(수주|계약|우선협상|사업)/.test(text)) return '사업화와 본사업 전환';
+      return '적용 가능한 운영 시나리오';
+    };
+    const hasRobotSignal = /(로봇|자동화|스마트팩토리|물류|현장)/.test(contentCorpus);
     const hasExecutionSignal = /(운영|전환|확산|안정|KPI|레퍼런스|안착|구축)/.test(contentCorpus);
     const hasDealSignal = /(수주|우선협상|계약|메가딜|사업자 선정|컨소시엄)/.test(contentCorpus);
     const hasGovernanceSignal = /(보안|거버넌스|망분리|통제)/.test(contentCorpus);
     const hasInfraSignal = /(클라우드|데이터센터|GPU|인프라|쿠버네티스|하이브리드)/.test(contentCorpus);
-    const competitionFrame = hasGovernanceSignal
-      ? '운영 안정성과 통제 가능성'
+    const firstEvidence = selectedEvidenceCards[0];
+    const secondEvidence = selectedEvidenceCards[1] ?? firstEvidence;
+    const signalTheme = hasRobotSignal
+      ? '로봇과 AI 기술'
       : hasInfraSignal
-        ? '구축 이후 운영 기반과 확산 가능성'
-        : '운영 성과와 적용 이후 전환 효과';
-    const buyerFrame = hasDealSignal
-      ? `실제 사업화 가능성과 ${competitionFrame}`
-      : `새 기술 자체보다 ${competitionFrame}`;
-    const skAxFrame = hasGovernanceSignal
-      ? '보안·거버넌스가 포함된 운영 시나리오'
-      : hasInfraSignal
-        ? '인프라 운영 구조까지 포함한 확산 시나리오'
-        : '운영 KPI와 전환 효과가 드러나는 실행 시나리오';
-    const hiddenShift = hasDealSignal && hasExecutionSignal
-      ? '수주 신호와 운영 신호가 함께 잡히면서, 이번 경쟁의 승부처가 제안 채택보다 장기 운영권 선점으로 이동하고 있습니다.'
-      : hasInfraSignal && hasExecutionSignal
-        ? '인프라 신호와 실행 신호가 겹치면서, AI 기능 경쟁보다 구축 이후 확산 운영을 누가 책임질 수 있는지가 더 중요해졌습니다.'
-        : hasGovernanceSignal && hasExecutionSignal
-          ? '보안 신호와 운영 신호가 동시에 잡히면서, 성능 경쟁보다 통제 가능한 운영 구조를 먼저 증명하는 쪽이 유리해졌습니다.'
-          : '여러 카드를 겹쳐 보면 기술 소개 경쟁처럼 보이던 흐름이 실제로는 운영 책임 경쟁으로 이동하고 있습니다.';
-    const opportunityLine = hasDealSignal && hasGovernanceSignal
-      ? '공공·규제 산업 제안에서는 AI 기능보다 사업 수행 안정성과 통제 체계를 함께 묶는 쪽이 더 큰 차이를 만듭니다.'
-      : hasInfraSignal && hasDealSignal
-        ? '수주 카드와 인프라 카드가 함께 뜬 조합은 단발 구축보다 후속 운영 확장 계약으로 이어질 가능성이 더 큽니다.'
+        ? '클라우드·데이터 인프라'
+        : hasGovernanceSignal
+          ? '보안과 운영 통제'
+          : dominantKeyword === 'AX'
+            ? 'AX 실행 역량'
+            : `${dominantKeyword} 중심 접근`;
+    const sharedScene = hasRobotSignal
+      ? '제조업의 자동화와 디지털 전환'
+      : hasGovernanceSignal
+        ? '엔터프라이즈 운영 안정성과 통제'
         : hasInfraSignal
-          ? 'GPU·클라우드·데이터센터 신호가 같이 보이면 기능 자체보다 운영 기반을 보유한 쪽이 더 신뢰를 얻습니다.'
-          : '반복 카드 조합에서는 새 기능 소개보다 운영 KPI와 안착 책임을 먼저 제시하는 쪽이 더 강하게 읽힙니다.';
-    const proposalOneLiner = `${primaryIndustries} · ${primaryCustomers} 제안에서는 ${dominantKeyword} 자체보다 ${competitionFrame}을 먼저 증명하는 문장이 첫 설득 포인트가 됩니다.`;
-    const implicationLines = Array.from(
-      new Set(
-        [
-          hiddenShift,
-          opportunityLine,
-          hasGovernanceSignal
-            ? '보안·거버넌스는 부가 항목이 아니라 초기 비교 단계에서 통과 여부를 가르는 핵심 축으로 올라왔습니다.'
-            : null,
-          hasInfraSignal
-            ? '인프라 운영 범위가 함께 잡힌 조합에서는 구축 이후 확산 속도까지 제안 범위에 포함해야 우위가 생깁니다.'
-            : null,
-          hasDealSignal
-            ? '수주 신호가 붙은 조합은 PoC 메시지보다 본사업 전환과 운영 체계까지 함께 말할 때 설득력이 더 커집니다.'
-            : null,
-        ].filter((line): line is string => Boolean(line)),
-      ),
-    ).slice(0, 3);
-    const proposalActionLines = Array.from(
-      new Set(
-        [
-          hasDealSignal
-            ? '제안 첫 장을 기능 목록 대신 본사업 전환 시나리오와 운영 책임 구조 중심으로 다시 씁니다.'
-            : '제안 첫 장을 기능 소개 대신 운영 KPI와 적용 이후 안정성 문장 중심으로 바꿉니다.',
-          hasGovernanceSignal
-            ? '보안·거버넌스 항목을 부록으로 두지 말고 핵심 제안 본문 안으로 끌어올립니다.'
-            : null,
-          hasInfraSignal
-            ? '클라우드·GPU·데이터센터 운영 범위를 한 장으로 묶어 확산 가능성을 먼저 보여줍니다.'
-            : null,
-          hasExecutionSignal
-            ? '레퍼런스 소개는 구축 사실보다 안착 속도, 운영 KPI, 확산 단계 순서로 다시 정리합니다.'
-            : null,
-        ].filter((line): line is string => Boolean(line)),
-      ),
-    ).slice(0, 3);
-    const connections = Array.from(
-      new Set(
-        summaryLines
-          .join(' ')
-          .split(/\s+/)
-          .filter((token) => mockMixerConfig.connectionKeywords.includes(token)),
-      ),
-    ).slice(0, 5);
+          ? '도입 이후 확산 운영'
+          : '고객 업무 적용과 운영 성과';
+    const comparisonFrame = hasRobotSignal
+      ? '적용 장면과 운영 장면'
+      : hasInfraSignal
+        ? '구축 이후 운영 기반'
+        : hasGovernanceSignal
+          ? '통제 가능성과 운영 안정성'
+          : '업무 적용 시나리오';
+    const skAxFrame = hasGovernanceSignal
+      ? '보안·거버넌스를 포함한 운영 시나리오'
+      : hasInfraSignal
+        ? '도입 이후 확산 구조까지 포함한 운영 시나리오'
+        : hasRobotSignal
+          ? '고객 현장 전환 장면이 보이는 실행 시나리오'
+          : '운영 KPI와 적용 효과가 드러나는 실행 시나리오';
+    const firstFocus = inferFocus(firstEvidence?.text ?? '');
+    const secondFocus = inferFocus(secondEvidence?.text ?? '');
+    const mixInsight = `${peers.join('와 ')} 모두 ${signalTheme}을 활용해 ${sharedScene} 중심의 메시지를 강화하고 있습니다.`;
+    const hiddenConclusion = hasDealSignal && hasExecutionSignal
+      ? '이번 묶음의 핵심 신호는 기능 소개보다 본사업 전환과 장기 운영권을 누가 더 설득력 있게 설명하느냐로 경쟁 축이 이동하고 있다는 점입니다.'
+      : hasInfraSignal && hasExecutionSignal
+        ? '여러 카드를 함께 읽으면 AI 기능 경쟁보다 구축 이후 확산 운영을 누가 책임질 수 있는지가 더 중요한 판단 기준으로 올라오고 있습니다.'
+        : hasGovernanceSignal && hasExecutionSignal
+          ? '여러 이슈를 묶어 보면 성능 경쟁보다 통제 가능한 운영 구조를 먼저 증명하는 쪽이 더 강한 신뢰를 얻고 있습니다.'
+          : hasRobotSignal
+            ? '이번 묶음에서 더 선명해지는 결론은 자동화 경쟁이 개별 기능보다 운영 데이터와 현장 적용 장면을 얼마나 설명할 수 있는지로 확장되고 있다는 점입니다.'
+            : '여러 카드를 겹쳐 보면 기술 소개 경쟁처럼 보이던 흐름이 실제로는 적용 이후 운영 책임 경쟁으로 이동하고 있습니다.';
+    const actionBasis = [
+      `${peers.join('와 ')}의 ${signalTheme} 활용 흐름`,
+      `${primaryIndustries} · ${primaryCustomers} 맥락에서 ${comparisonFrame}이 핵심 설득 근거로 사용된 점`,
+    ];
+    const actionDetails: MixerResultActionDetail[] = [
+      {
+        action: `제안 메시지는 ${skAxFrame}이 먼저 드러나도록 구성합니다.`,
+        why: `${sharedScene} 경쟁에서는 기능 목록보다 적용 이후 운영 장면과 효과를 먼저 보여줄수록 설득력이 커지기 때문입니다.`,
+        use_case: '제안 전략',
+        evidence: selectedEvidenceCards.slice(0, 2),
+        evidence_card_ids: selectedEvidenceCards.slice(0, 2).map((item) => item.card_id),
+      },
+      {
+        action: `${firstFocus}와 ${secondFocus} 사례를 분리해 레퍼런스를 구성합니다.`,
+        why: '같은 흐름 안에서도 각 이슈가 택한 적용 장면과 강조점이 다르기 때문에, 레퍼런스를 한 묶음으로 제시하면 차별 포인트가 흐려질 수 있습니다.',
+        use_case: '레퍼런스 구성',
+        evidence: selectedEvidenceCards.slice(0, 2),
+        evidence_card_ids: selectedEvidenceCards.slice(0, 2).map((item) => item.card_id),
+      },
+      {
+        action: `${signalTheme}이 ${sharedScene} 메시지로 반복되는지 후속 카드에서 계속 모니터링합니다.`,
+        why: '이번 조합에서 반복된 패턴이 일시적 언급인지 시장 전반의 설명 방식 변화인지 구분해야 다음 제안 메시지의 우선순위를 더 정확히 정할 수 있습니다.',
+        use_case: '후속 모니터링',
+        evidence: selectedEvidenceCards.slice(0, 3),
+        evidence_card_ids: selectedEvidenceCards.slice(0, 3).map((item) => item.card_id),
+      },
+    ];
+    const totalWeight = peers.length + Math.max(selectedIndustries.length, 1) + Math.max(keywordHitStats.length, selectedKeywords.length, 1);
+    const confidenceBase = 0.66 + Math.min(0.18, selectedCards.length * 0.03) + Math.min(0.06, bookmarkedEvidenceCount * 0.02);
+    const confidence = Math.min(0.94, Number(confidenceBase.toFixed(2)));
 
     return {
-      summary: hiddenShift,
-      insightBrief: [
-        {
-          title: '경쟁 흐름',
-          summary: `${peers.join(', ')} 카드를 함께 놓고 보면 ${dominantKeyword} 경쟁은 기능 우위보다 ${competitionFrame}을 먼저 증명하는 방향으로 이동하고 있습니다.`,
-          reasoning: [
-            `수집 에이전트는 ${selectedCards.length}건의 선택 카드 중 ${evidenceTitles.join(' / ')}를 1차 근거 묶음으로 올렸습니다.`,
-            `비교 에이전트는 카드 본문과 요약을 다시 대조해 ${keywordHitSummary} 순으로 반복 신호를 확인했고, 단일 키워드가 아니라 여러 카드에 걸친 공통 패턴으로 판단했습니다.`,
-            `요약 에이전트는 "${selectedEvidenceCards[0]?.snippet ?? '관련 실행 신호가 반복됩니다.'}" 같은 문장을 핵심 증거로 삼아, 기능 설명보다 실행 장면과 성과 맥락이 더 강한 경쟁 신호라고 압축했습니다.`,
-          ],
-          evidenceTags: evidenceTitles.slice(0, 2),
-          evidenceCards: selectedEvidenceCards.slice(0, 2),
-          skAxMeaning: 'SK AX는 개별 기능 소개보다 반복적으로 검증된 실행 장면과 성과 표현을 먼저 제시할 때 더 경쟁력 있는 제안 문장을 만들 수 있습니다.',
-        },
-        {
-          title: '판단 기준',
-          summary: `${primaryIndustries} · ${primaryCustomers} 맥락에서는 새 기술 자체보다 ${buyerFrame}을 먼저 확인하는 쪽으로 판단 기준이 이동하고 있습니다.`,
-          reasoning: [
-            `분류 에이전트는 입력 조건을 ${primaryIndustries} · ${primaryCustomers} 조합으로 정리했고, 근거 카드에서도 이 조합과 맞닿은 운영형 표현이 반복된다고 표시했습니다.`,
-            `검토 에이전트는 "${selectedEvidenceCards[1]?.snippet ?? selectedEvidenceCards[0]?.snippet ?? '운영 안정성과 KPI 개선 표현이 반복됩니다.'}" 같은 문장을 핵심 판단 근거로 선택해, 도입 이후 효과를 먼저 설명하는 흐름이 우세하다고 봤습니다.`,
-            '전략 에이전트는 그 결과를 바탕으로 고객 설득 포인트를 기술 스펙 소개보다 업무 KPI 개선, 운영 안정성, 적용 이후 전환 효과 중심으로 재정렬하는 것이 타당하다고 정리했습니다.',
-          ],
-          evidenceTags: [primaryIndustries, primaryCustomers, `${selectedCustomers.length}개 고객군`],
-          evidenceCards: selectedEvidenceCards.slice(0, 2),
-          skAxMeaning: 'SK AX는 제안 초반부터 운영 KPI 개선, 리스크 완화, 적용 이후 안정성까지 한 문장으로 묶는 방식이 더 효과적입니다.',
-        },
-        {
-          title: '제안 포인트',
-          summary: `SK AX는 ${dominantKeyword}를 단독 기능 메시지로 설명하기보다 ${skAxFrame}로 제시할 때 더 분명한 차별화 기회를 만들 수 있습니다.`,
-          reasoning: [
-            `우선순위 에이전트는 현재 선택 조합에 포함된 북마크 ${bookmarkedEvidenceCount}건을 별도 가중치로 반영해, 사용자가 중요하게 남긴 근거와 반복 신호가 겹치는 지점을 먼저 살폈습니다.`,
-            `그래서 이 인사이트는 임의 요약이 아니라 ${selectedCards.length}건 카드 중 실제 선택 카드와 북마크 카드가 동시에 지지하는 패턴을 우선 반영한 결과입니다.`,
-            `마지막으로 제안 에이전트는 "${selectedEvidenceCards[0]?.title ?? '선택 카드'}" 같은 근거를 SK AX 제안 문장으로 다시 번역해, 내부 해석을 바로 실행 문장으로 연결하는 역할을 수행했습니다.`,
-          ],
-          evidenceTags: [`북마크 ${bookmarkedEvidenceCount}건`, ...connections.slice(0, 2)],
-          evidenceCards: selectedEvidenceCards,
-          skAxMeaning: 'SK AX는 믹서 결과를 통해 경쟁사 신호를 내부 보고용 정리에서 끝내지 않고 실제 제안 문장과 브리핑 문장으로 변환하는 출발점을 얻을 수 있습니다.',
-        },
-      ],
-      derivedOutcome: {
-        summary: opportunityLine,
-        items: [
-          {
-            title: '놓치기 쉬운 결론',
-            body: hiddenShift,
-          },
-          {
-            title: '바로 쓸 제안 문장',
-            body: proposalOneLiner,
-          },
-        ],
+      mix_id: `mix-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      mix_insight: mixInsight,
+      common_pattern: {
+        finding: `여러 카드에서 ${signalTheme}이 ${sharedScene}을 설명하는 핵심 장치로 반복되고 있습니다.`,
+        rationale: `${firstEvidence?.peer ?? peers[0]}는 "${firstEvidence?.text ?? ''}"를 통해 ${firstFocus}을 강조하고, ${secondEvidence?.peer ?? peers[1] ?? peers[0]}는 "${secondEvidence?.text ?? ''}"를 통해 ${sharedScene}을 더 넓은 성장·운영 맥락으로 연결합니다.`,
+        evidence: selectedEvidenceCards.slice(0, 2),
+        evidence_card_ids: selectedEvidenceCards.slice(0, 2).map((item) => item.card_id),
       },
-      implications: implicationLines,
-      proposalActions: proposalActionLines,
-      evidenceLogic: [
-        `선택 카드 ${selectedCards.length}건`,
-        `Peer ${peers.length}개사`,
-        `키워드 ${selectedKeywords.length}개`,
-        `북마크 근거 ${bookmarkedEvidenceCount}건`,
-      ],
-      actions: [
-        '고객 미팅 전 카드뉴스 묶음을 3문장 브리핑으로 변환',
-        '제안서 첫 장에 수주/운영/보안 근거를 함께 배치',
-        '반복 키워드와 근거 카드를 함께 검토해 제안 문장으로 재정리',
-      ],
-      connections: connections.length > 0 ? connections : [...selectedKeywords, '고객 제안'].slice(0, 5),
-      skAxPerspective: selectedCards[0]?.card.actionItems?.[0] ?? '선택한 카드 묶음을 산업별 제안 근거와 실행 문장으로 재구성할 수 있습니다.',
+      comparison_point: {
+        finding: `${firstEvidence?.peer ?? peers[0]}는 ${firstFocus}에, ${secondEvidence?.peer ?? peers[1] ?? peers[0]}는 ${secondFocus}에 상대적으로 더 무게를 두고 있습니다.`,
+        rationale: `같은 ${signalTheme} 흐름 안에서도 ${firstEvidence?.peer ?? peers[0]}는 ${firstEvidence?.title ?? '첫 번째 카드'}처럼 구체적 실행 장면을, ${secondEvidence?.peer ?? peers[1] ?? peers[0]}는 ${secondEvidence?.title ?? '두 번째 카드'}처럼 확산 또는 성장 맥락을 선택해 설명합니다.`,
+        evidence: selectedEvidenceCards.slice(0, 2),
+        evidence_card_ids: selectedEvidenceCards.slice(0, 2).map((item) => item.card_id),
+      },
+      hidden_conclusion: {
+        finding: hiddenConclusion,
+        rationale: `${primaryIndustries} · ${primaryCustomers} 조합에서 반복된 카드들은 새 기술 자체보다 운영 책임, 확산 구조, 적용 이후 효과를 근거로 삼고 있어 SK AX도 메시지의 중심축을 이 지점에 맞출 필요가 있습니다.`,
+        evidence: selectedEvidenceCards.slice(0, 3),
+        evidence_card_ids: selectedEvidenceCards.slice(0, 3).map((item) => item.card_id),
+      },
+      recommended_action_basis: actionBasis,
+      action_details: actionDetails,
+      recommended_actions: actionDetails.map((item) => item.action),
+      sources_used: selectedEvidenceCards.map((item) => item.card_id),
+      confidence,
+      provenance: {
+        llm_model: 'frontend-preview',
+        prompt_version: 'mixer-insight-layout-v1',
+        source_card_ids: selectedEvidenceCards.map((item) => item.card_id),
+        ratios: {
+          peer: clampRatio(peers.length / totalWeight),
+          industry: clampRatio(Math.max(selectedIndustries.length, 1) / totalWeight),
+          keyword: clampRatio(Math.max(keywordHitStats.length, selectedKeywords.length, 1) / totalWeight),
+        },
+        analysis_basis: 'integrated_issue+analysis+implication+frontend-preview',
+      },
+      created_at: new Date().toISOString(),
     };
   };
 
@@ -505,7 +529,7 @@ export function MixerView({
     generationTimeoutRef.current = window.setTimeout(() => {
       const nextResult = buildMixerResult();
       setResult(nextResult);
-      setActiveResultInsightIndex(0);
+      setActiveResultSectionKey('common_pattern');
       setIsMixerReasoningOpen(false);
       setMode('result');
       setIsGenerating(false);
@@ -610,7 +634,44 @@ export function MixerView({
   }
 
   if (mode === 'result' && result) {
-    const activeResultInsight = result.insightBrief[activeResultInsightIndex] ?? result.insightBrief[0];
+    const actionEvidence = Array.from(
+      new Map(
+        result.action_details
+          .flatMap((item) => item.evidence)
+          .map((evidence) => [evidence.card_id, evidence]),
+      ).values(),
+    );
+    const resultSections = [
+      {
+        key: 'common_pattern' as const,
+        label: '공통 패턴',
+        finding: result.common_pattern.finding,
+        rationale: result.common_pattern.rationale,
+        evidence: result.common_pattern.evidence,
+      },
+      {
+        key: 'comparison_point' as const,
+        label: '비교 포인트',
+        finding: result.comparison_point.finding,
+        rationale: result.comparison_point.rationale,
+        evidence: result.comparison_point.evidence,
+      },
+      {
+        key: 'hidden_conclusion' as const,
+        label: '숨은 결론',
+        finding: result.hidden_conclusion.finding,
+        rationale: result.hidden_conclusion.rationale,
+        evidence: result.hidden_conclusion.evidence,
+      },
+      {
+        key: 'action_direction' as const,
+        label: '대응 방향',
+        finding: result.recommended_actions[0] ?? '추천 액션을 먼저 검토합니다.',
+        rationale: result.recommended_action_basis.join(' · '),
+        evidence: actionEvidence,
+      },
+    ];
+    const activeResultSection = resultSections.find((section) => section.key === activeResultSectionKey) ?? resultSections[0];
     return (
       <ExecutivePage className="overflow-visible">
         <ExecutiveContainer className="pb-12">
@@ -630,159 +691,121 @@ export function MixerView({
             }
           />
 
-          <section>
-            <article data-guide="mixer-result" className="axis-panel-flat min-h-[360px] overflow-hidden border-[rgba(220,90,36,0.26)]">
-              <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-6 py-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="axis-kicker">What this mix reveals</p>
-                    <h2 className="mt-2 text-heading-3 font-display leading-tight text-[var(--axis-ink)]">
-                      {result.summary}
-                    </h2>
+          <section data-guide="mixer-result" className="space-y-5">
+            <article className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.18)]">
+              <div className="border-l-4 border-[var(--axis-accent)] px-5 py-5 lg:px-6">
+                <div className="flex flex-wrap items-center gap-2">
+                  <ExecutiveBadge tone="accent">믹스 인사이트</ExecutiveBadge>
+                </div>
+                <h2 className="mt-4 max-w-5xl text-[1.9rem] font-display font-semibold leading-[1.2] tracking-[-0.04em] text-[var(--axis-ink)] lg:text-[2.3rem]">
+                  {result.mix_insight}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">
+                  여러 카드에서 공통으로 읽히는 방향을 한 문장으로 먼저 정리한 결과입니다.
+                </p>
+              </div>
+            </article>
+
+            <article className="axis-panel-flat p-5">
+              <div>
+                <p className="axis-kicker">Step view</p>
+                <h3 className="axis-section-heading mt-1">상세 해석 보기</h3>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {resultSections.map((section) => {
+                      const isActive = section.key === activeResultSectionKey;
+                      return (
+                        <button
+                          key={`nav-${section.key}`}
+                          type="button"
+                          onClick={() => setActiveResultSectionKey(section.key)}
+                          className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                            isActive
+                              ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
+                              : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)] hover:border-[var(--axis-accent)]'
+                          }`}
+                        >
+                          {section.label}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsMixerReasoningOpen(true)}
-                    className="mt-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
-                    aria-label="선택한 인사이트의 에이전트 추론 과정 보기"
-                  >
-                    !
-                  </button>
+                  <ExecutiveButton variant="secondary" onClick={() => setIsMixerReasoningOpen(true)}>
+                    상세 근거
+                  </ExecutiveButton>
                 </div>
               </div>
-              <div className="p-6">
-                <div className="space-y-3">
-                  {result.insightBrief.map((item, index) => {
-                    const isActive = index === activeResultInsightIndex;
-                    return (
-                      <button
-                        key={item.title}
-                        type="button"
-                        onClick={() => setActiveResultInsightIndex(index)}
-                        className={`block w-full rounded-[var(--axis-radius-md)] border p-4 text-left transition ${
-                          isActive
-                            ? 'border-[rgba(220,90,36,0.30)] bg-[rgba(220,90,36,0.08)] shadow-[0_18px_42px_-34px_rgba(220,90,36,0.55)]'
-                            : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] hover:border-[var(--axis-accent)]'
-                        }`}
-                        aria-pressed={isActive}
-                      >
-                        <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
-                            {index + 1}
-                          </span>
-                          <div>
-                            <p className="text-sm font-semibold text-[var(--axis-accent-strong)]">{item.title}</p>
-                            <p className="mt-2 text-base font-semibold leading-7 text-[var(--axis-ink)]">{item.summary}</p>
+              <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1.08fr)_340px]">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">핵심 문장</p>
+                  <p className="mt-2 text-[1.15rem] font-semibold leading-8 text-[var(--axis-ink)]">
+                    {activeResultSection.finding}
+                  </p>
+                  <div className="mt-5 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">왜 이렇게 해석했는가</p>
+                    <p className="mt-2 text-sm leading-7 text-[var(--axis-body)]">{activeResultSection.rationale}</p>
+                  </div>
+                  {activeResultSection.key === 'action_direction' ? (
+                    <div className="mt-5 grid gap-3">
+                      {result.action_details.map((detail) => (
+                        <div key={`${detail.use_case}-${detail.action}`} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{detail.use_case}</p>
+                          <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{detail.action}</p>
+                          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{detail.why}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">근거 카드</p>
+                  <div className="mt-3 grid gap-3">
+                    {activeResultSection.evidence.map((evidence, index) => {
+                      const sourceCard = mixerSourceCardById.get(evidence.card_id);
+
+                      return (
+                        <div key={`${activeResultSection.key}-${evidence.card_id}`} className={`rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-3 ${index > 0 ? 'mt-0' : ''}`}>
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              onClick={() => openMixerCard(evidence.card_id)}
+                              className="relative h-16 w-20 shrink-0 overflow-hidden rounded-[var(--axis-radius-sm)] bg-[#081324] transition hover:opacity-90"
+                              aria-label={`${evidence.title} 카드 보기`}
+                            >
+                              {sourceCard?.coverImageUrl ? (
+                                <img
+                                  src={sourceCard.coverImageUrl}
+                                  alt={sourceCard.coverImageAlt}
+                                  className="h-full w-full object-cover opacity-75"
+                                />
+                              ) : null}
+                              <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/35" />
+                            </button>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ExecutiveBadge tone="accent">{evidence.peer}</ExecutiveBadge>
+                                <button
+                                  type="button"
+                                  onClick={() => openMixerCard(evidence.card_id)}
+                                  className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                                >
+                                  카드 보기
+                                </button>
+                              </div>
+                              <p className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">
+                                {evidence.title}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.18)] bg-[linear-gradient(135deg,rgba(220,90,36,0.08),rgba(250,248,245,0.92))] p-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">What comes out of this mix</p>
-                  <h3 className="mt-2 text-lg font-semibold text-[var(--axis-ink)]">결과</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{result.derivedOutcome.summary}</p>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    {result.derivedOutcome.items.map((item) => (
-                      <div
-                        key={`${item.title}-${item.body}`}
-                        className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.16)] bg-[var(--axis-canvas)] p-3"
-                      >
-                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">{item.title}</p>
-                        <p className="mt-2 text-sm leading-6 text-[var(--axis-ink)]">{item.body}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.22)] bg-[rgba(90,107,87,0.08)] p-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-success)]">시사점</p>
-                    <div className="mt-3 grid gap-2">
-                      {result.implications.map((item) => (
-                        <div key={item} className="rounded-[var(--axis-radius-sm)] bg-[var(--axis-canvas)] px-3 py-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.08)] p-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">대응 방향</p>
-                    <div className="mt-3 grid gap-2">
-                      {result.proposalActions.map((item) => (
-                        <div key={item} className="rounded-[var(--axis-radius-sm)] bg-[var(--axis-canvas)] px-3 py-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </section>
-
-          <section className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-            <article data-guide="mixer-signal-map" className="axis-panel-flat min-h-[430px] p-5">
-              <p className="axis-kicker">How the mix reads</p>
-              <h3 className="axis-section-heading mt-1">레이더 차트</h3>
-              <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">결론이 어떤 축에서 나왔는지 보여줍니다.</p>
-              <div className="mt-3 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3">
-                <div className="h-[286px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={resultRadarData} outerRadius={106} margin={{ top: 22, right: 48, bottom: 8, left: 48 }}>
-                    <PolarGrid stroke="var(--axis-graph-edge)" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fontWeight: 700, fill: 'var(--axis-ink)' }} />
-                    <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                    <RadarShape name="선택 조합 신호" dataKey="mixed" stroke="var(--axis-graph-ax)" strokeWidth={2.6} fill="var(--axis-graph-ax)" fillOpacity={0.24} />
-                    <Legend verticalAlign="bottom" height={24} iconType="circle" wrapperStyle={{ fontSize: 12, color: 'var(--axis-muted)' }} />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--axis-canvas)',
-                        border: '1px solid var(--axis-hairline)',
-                        borderRadius: 8,
-                        color: 'var(--axis-ink)',
-                      }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {result.evidenceLogic.map((item) => (
-                  <span key={item} className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-xs font-semibold text-[var(--axis-body)]">
-                    {item}
-                  </span>
-                ))}
               </div>
             </article>
 
-            <article data-guide="mixer-evidence" className="axis-panel-flat min-h-[430px] p-5">
-              <p className="axis-kicker">Source cards</p>
-              <h3 className="axis-section-heading mt-1">믹서 카드 뉴스</h3>
-              <div className="mt-4 grid gap-3">
-                {selectedCards.slice(0, 3).map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setMixerDetailCardId(item.card.id);
-                      setMixerDetailSlideIndex(0);
-                    }}
-                    className="flex w-full gap-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-3 text-left transition hover:bg-[var(--axis-surface-soft)] hover:ring-1 hover:ring-[var(--axis-accent)]"
-                  >
-                    <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-[var(--axis-radius-sm)] bg-[#081324]">
-                      {item.card.coverImageUrl ? (
-                        <img src={item.card.coverImageUrl} alt={item.card.coverImageAlt} className="h-full w-full object-cover opacity-70" />
-                      ) : null}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[var(--axis-accent-strong)]">{item.peer}</p>
-                      <h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{item.card.title}</h4>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </article>
           </section>
         </ExecutiveContainer>
         {mixerDetailCard ? (
@@ -808,8 +831,8 @@ export function MixerView({
             <section className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-[var(--axis-radius-lg)] border border-[rgba(255,255,255,0.16)] bg-[var(--axis-surface)] text-[var(--axis-ink)] shadow-[0_28px_90px_-42px_rgba(0,0,0,0.72)]">
               <header className="flex items-center justify-between gap-3 border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">AI Agent reasoning</p>
-                  <h2 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{activeResultInsight?.title}</h2>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">Mixer detail</p>
+                  <h2 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{activeResultSection.label}</h2>
                 </div>
                 <button
                   type="button"
@@ -822,50 +845,46 @@ export function MixerView({
               </header>
               <article className="min-h-0 flex-1 overflow-y-auto p-5">
                 <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
-                  <p className="text-sm font-semibold leading-7 text-[var(--axis-ink)]">{activeResultInsight?.summary}</p>
-                  <div className="mt-4 space-y-3">
-                    {activeResultInsight?.reasoning.map((item, index) => (
-                      <div key={`${activeResultInsight.title}-${index}`} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-3">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(90,107,87,0.12)] text-xs font-bold text-[var(--axis-success)]">
-                          {index + 1}
-                        </span>
-                        <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {activeResultInsight?.evidenceTags.map((item) => (
-                      <ExecutiveBadge key={item} tone="accent">{item}</ExecutiveBadge>
-                    ))}
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-success)]">핵심 판단</p>
+                  <p className="mt-2 text-lg font-semibold leading-8 text-[var(--axis-ink)]">{activeResultSection.finding}</p>
+                  <div className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">판단 근거</p>
+                    <p className="mt-2 text-sm leading-7 text-[var(--axis-body)]">{activeResultSection.rationale}</p>
                   </div>
                 </div>
-                {activeResultInsight?.evidenceCards.length ? (
+                {activeResultSection.evidence.length ? (
                   <div className="mt-4 grid gap-3">
-                    {activeResultInsight.evidenceCards.map((card) => (
-                      <div key={`${activeResultInsight.title}-${card.title}`} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">{card.peer}</p>
-                        <p className="mt-1 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</p>
-                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{card.snippet}</p>
+                    {activeResultSection.evidence.map((card) => (
+                      <div key={`${activeResultSection.key}-${card.card_id}`} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">{card.peer}</p>
+                            <p className="mt-1 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => openMixerCard(card.card_id)}
+                            className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                          >
+                            {card.card_id}
+                          </button>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{card.text}</p>
                       </div>
                     ))}
                   </div>
                 ) : null}
-                <div className="mt-4 grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
-                  <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
-                    <p className="text-xs font-semibold text-[var(--axis-success)]">{mockMixerConfig.insightTemplate.evidenceLabel}</p>
-                    <div className="mt-3 grid gap-2">
-                      {result.evidenceLogic.map((item) => (
-                        <span key={item} className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-sm font-semibold text-[var(--axis-ink)]">
-                          {item}
-                        </span>
-                      ))}
-                    </div>
+                {activeResultSection.key === 'action_direction' ? (
+                  <div className="mt-4 grid gap-3">
+                    {result.action_details.map((detail) => (
+                      <div key={`detail-${detail.use_case}`} className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.18)] bg-[var(--axis-surface-soft)] p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">{detail.use_case}</p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{detail.action}</p>
+                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{detail.why}</p>
+                      </div>
+                    ))}
                   </div>
-                  <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-muted)] p-4">
-                    <p className="text-xs font-semibold text-[var(--axis-accent-strong)]">SK AX 활용 해석</p>
-                    <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{activeResultInsight?.skAxMeaning ?? result.skAxPerspective}</p>
-                  </div>
-                </div>
+                ) : null}
               </article>
             </section>
           </div>
@@ -945,7 +964,7 @@ export function MixerView({
               <ExecutiveBadge tone={canGenerate ? 'success' : 'warning'}>{selectedCards.length}개 선택</ExecutiveBadge>
             </div>
             <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4 xl:gap-6">
-              {visibleCards.map((item) => {
+              {pagedVisibleCards.map((item) => {
                 const selected = selectedIds.includes(item.id);
                 const bookmarked = bookmarkedIds.includes(item.card.id);
                 return (
@@ -995,6 +1014,43 @@ export function MixerView({
                 );
               })}
             </div>
+            <div className="mt-5 flex items-center justify-center px-4 py-3">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={candidatePageWindowStart === 1}
+                  onClick={() => setCandidatePage(Math.max(1, candidatePageWindowStart - candidatePaginationWindowSize))}
+                  className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  &lt;
+                </button>
+                {candidatePageNumbers.map((pageNumber) => {
+                  const isActive = pageNumber === candidatePage;
+                  return (
+                    <button
+                      key={`candidate-page-${pageNumber}`}
+                      type="button"
+                      onClick={() => setCandidatePage(pageNumber)}
+                      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-sm font-semibold transition ${
+                        isActive
+                          ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
+                          : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  disabled={candidatePageWindowStart + candidatePaginationWindowSize > totalCandidatePages}
+                  onClick={() => setCandidatePage(Math.min(totalCandidatePages, candidatePageWindowStart + candidatePaginationWindowSize))}
+                  className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  &gt;
+                </button>
+              </div>
+            </div>
           </main>
 
           <aside data-guide="mixer-ratio" className="axis-panel-flat p-5">
@@ -1034,25 +1090,25 @@ export function MixerView({
             <div className="mt-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-ink)]">최근 생성 결과</h3>
-                <span className="text-xs font-semibold text-[var(--axis-muted)]">Preview</span>
+                <span className="text-xs font-semibold text-[var(--axis-muted)]">3개만 표시</span>
               </div>
               <div className="grid gap-3">
-                {Array.from({ length: 3 }).map((_, index) => (
+                {historyPreviewEntries.map((entry) => (
                   <div
-                    key={`mixer-history-placeholder-${index}`}
+                    key={entry.key}
                     className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-4"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
-                        Slot {index + 1}
+                        {entry.date}
                       </span>
-                      <span className="text-xs font-semibold text-[var(--axis-muted)]">누적 예정</span>
+                      <span className="text-xs font-semibold text-[var(--axis-muted)]">최근 결과</span>
                     </div>
                     <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">
-                      믹서 결과가 누적되면 이 영역에 쌓이도록 연결할 예정입니다.
+                      {entry.title}
                     </p>
                     <p className="mt-2 text-xs text-[var(--axis-muted)]">
-                      현재는 프론트 미리보기만 제공하고, 실제 저장이나 누적은 하지 않습니다.
+                      {entry.meta}
                     </p>
                   </div>
                 ))}

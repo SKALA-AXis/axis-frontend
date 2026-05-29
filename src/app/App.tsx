@@ -1,4 +1,4 @@
-import { type CSSProperties, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUp, X } from 'lucide-react';
 import {
   AdminView,
@@ -56,6 +56,8 @@ type GuideLayout = {
   arrowStyle?: CSSProperties;
   arrowClass?: string;
 };
+
+type ViewFreshnessMap = Partial<Record<string, string | null>>;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -502,6 +504,7 @@ function DashboardShell({
   const [activeView, setActiveView] = useViewRouting('home');
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
+  const [viewFreshness, setViewFreshness] = useState<ViewFreshnessMap>({});
   const [peerPlusSelectedPeer, setPeerPlusSelectedPeer] = useState<PeerPlusPeerId | undefined>(undefined);
   const [cardNewsSearchQuery, setCardNewsSearchQuery] = useState('');
   const [globalSearchRequest, setGlobalSearchRequest] = useState<{ query: string; scope: SearchScope; requestKey: number }>({
@@ -605,6 +608,15 @@ function DashboardShell({
     });
   };
 
+  const handleViewFreshnessChange = useCallback((view: string, updatedAt: string | null) => {
+    setViewFreshness((current) => {
+      if (current[view] === updatedAt) {
+        return current;
+      }
+      return { ...current, [view]: updatedAt };
+    });
+  }, []);
+
   const handleViewChange = (view: string) => {
     if (view === 'admin' && !isAdmin) {
       setActiveView('home');
@@ -654,6 +666,7 @@ function DashboardShell({
             onNavigate={handleViewChange}
             bookmarkedIds={bookmarkedIds}
             onToggleBookmark={toggleBookmark}
+            onUpdateTimeChange={(updatedAt) => handleViewFreshnessChange('home', updatedAt)}
           />
         );
       case 'peerPlus':
@@ -663,22 +676,44 @@ function DashboardShell({
             bookmarkedIds={bookmarkedIds}
             onToggleBookmark={toggleBookmark}
             selectedPeerId={peerPlusSelectedPeer}
+            onUpdateTimeChange={(updatedAt) => handleViewFreshnessChange('peerPlus', updatedAt)}
           />
         );
       case 'issues':
-        return <CardNewsWorkspaceView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} initialQuery={cardNewsSearchQuery} />;
+        return (
+          <CardNewsWorkspaceView
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+            initialQuery={cardNewsSearchQuery}
+            onUpdateTimeChange={(updatedAt) => handleViewFreshnessChange('issues', updatedAt)}
+            canManageCards={isAdmin}
+          />
+        );
       case 'mixer':
-        return <MixerView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
+        return (
+          <MixerView
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+            onUpdateTimeChange={(updatedAt) => handleViewFreshnessChange('mixer', updatedAt)}
+          />
+        );
       case 'keywordGraph':
         return (
           <KeywordGraphView
             onNavigate={handleViewChange}
             bookmarkedIds={bookmarkedIds}
             onToggleBookmark={toggleBookmark}
+            onUpdateTimeChange={(updatedAt) => handleViewFreshnessChange('keywordGraph', updatedAt)}
           />
         );
       case 'briefings':
-        return <BriefingsView bookmarkedIds={bookmarkedIds} onToggleBookmark={toggleBookmark} />;
+        return (
+          <BriefingsView
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+            onUpdateTimeChange={(updatedAt) => handleViewFreshnessChange('briefings', updatedAt)}
+          />
+        );
       case 'notifications':
         return <NotificationsView onNavigate={handleViewChange} />;
       case 'search':
@@ -720,6 +755,7 @@ function DashboardShell({
       {/* TopNav 풀폭 (사이드바 위) */}
       <TopNav
         activeView={activeView}
+        currentViewUpdatedAt={viewFreshness[activeView] ?? null}
         currentUser={currentUser}
         onLogoClick={() => handleViewChange('home')}
         onNotificationSelect={handleViewChange}

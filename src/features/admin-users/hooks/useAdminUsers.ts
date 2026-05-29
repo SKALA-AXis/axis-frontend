@@ -1,0 +1,61 @@
+import { useCallback, useEffect, useState } from 'react';
+import { adminUsersRepository } from '../api/adminUsersRepository';
+import type { AdminUser, AdminUserStatus } from '../model/adminUser';
+
+interface UseAdminUsersResult {
+  users: AdminUser[];
+  isLoading: boolean;
+  error: string | null;
+  updatingUserId: string | null;
+  reload: () => Promise<void>;
+  updateStatus: (userId: string, status: AdminUserStatus) => Promise<void>;
+}
+
+export function useAdminUsers(): UseAdminUsersResult {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const nextUsers = await adminUsersRepository.list();
+      setUsers(nextUsers);
+      setError(null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : '사용자 목록을 불러오지 못했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const updateStatus = useCallback(async (userId: string, status: AdminUserStatus) => {
+    setUpdatingUserId(userId);
+
+    try {
+      const updatedUser = await adminUsersRepository.updateStatus(userId, status);
+      setUsers((currentUsers) => currentUsers
+        .map((user) => (user.id === userId ? updatedUser : user))
+        .sort((left, right) => {
+          const leftTime = left.lastLoginAt ? Date.parse(left.lastLoginAt) : Number.NEGATIVE_INFINITY;
+          const rightTime = right.lastLoginAt ? Date.parse(right.lastLoginAt) : Number.NEGATIVE_INFINITY;
+          if (leftTime !== rightTime) return rightTime - leftTime;
+          return left.email.localeCompare(right.email, 'ko');
+        }));
+      setError(null);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : '사용자 상태를 변경하지 못했습니다.');
+      throw updateError;
+    } finally {
+      setUpdatingUserId(null);
+    }
+  }, []);
+
+  return { users, isLoading, error, updatingUserId, reload, updateStatus };
+}

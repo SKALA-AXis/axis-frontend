@@ -31,6 +31,7 @@ import {
   getSummaryLines,
 } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
+import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
 import { homeKeywordSpikeInsights, homeTodayInsightSignals } from '../../../../shared/mocks/homeDashboardPresentation';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -48,10 +49,12 @@ export function HomeDashboardView({
   onNavigate,
   bookmarkedIds = [],
   onToggleBookmark,
+  onUpdateTimeChange,
 }: {
   onNavigate: NavigateHandler;
   bookmarkedIds?: string[];
   onToggleBookmark?: (cardId: string) => void;
+  onUpdateTimeChange?: (updatedAt: string | null) => void;
 }) {
   const { dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard();
   const { cards, isLoading: cardsLoading } = useCardNews();
@@ -81,6 +84,21 @@ export function HomeDashboardView({
     }, 3_000);
     return () => window.clearInterval(id);
   }, [summaryChoices.length]);
+
+  useEffect(() => {
+    if (dashboardLoading || cardsLoading) return;
+
+    if (dashboardError || !dashboard) {
+      onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
+      return;
+    }
+
+    onUpdateTimeChange?.(pickLatestTimestamp([
+      ...cards.flatMap((card) => [card.created_at, card.published_date, card.date]),
+      ...dashboard.articles.map((article) => article.publishedAt),
+      dashboard.dartSummary?.publishedAt ?? null,
+    ]));
+  }, [cards, cardsLoading, dashboard, dashboardError, dashboardLoading, onUpdateTimeChange]);
 
   if (dashboardLoading || cardsLoading) {
     return <LoadingBlock label="홈 대시보드 데이터를 정리하는 중입니다." />;
