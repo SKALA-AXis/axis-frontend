@@ -11,4 +11,5 @@ export type AdminCard = {
   deletionReason: string | null;
   restoredAt: string | null;
   restoredBy: string | null;
+  restoredReason: string | null;
 };

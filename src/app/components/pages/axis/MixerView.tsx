@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bookmark, Box, Check, Filter, Network, Sparkles, X } from 'lucide-react';
+import { Bookmark, Box, Check, Filter, Network, Sparkles } from 'lucide-react';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { buildMixerCards } from '../../../../features/card-news/mappers/cardNewsPresentation';
 import { getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
@@ -144,8 +144,6 @@ function MixerAnalysisOverlay() {
   );
 }
 
-type MixerResultSectionKey = 'common_pattern' | 'comparison_point' | 'hidden_conclusion' | 'action_direction';
-
 type MixerResultEvidence = {
   card_id: string;
   text: string;
@@ -238,8 +236,6 @@ export function MixerView({
   const [candidatePage, setCandidatePage] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<MixerResultView | null>(null);
-  const [activeResultSectionKey, setActiveResultSectionKey] = useState<MixerResultSectionKey>('common_pattern');
-  const [isMixerReasoningOpen, setIsMixerReasoningOpen] = useState(false);
   const [mixerDetailCardId, setMixerDetailCardId] = useState<string | null>(null);
   const [mixerDetailSlideIndex, setMixerDetailSlideIndex] = useState(0);
   const [historyStartDate, setHistoryStartDate] = useState('2026-05-13');
@@ -529,8 +525,6 @@ export function MixerView({
     generationTimeoutRef.current = window.setTimeout(() => {
       const nextResult = buildMixerResult();
       setResult(nextResult);
-      setActiveResultSectionKey('common_pattern');
-      setIsMixerReasoningOpen(false);
       setMode('result');
       setIsGenerating(false);
       generationTimeoutRef.current = null;
@@ -671,7 +665,23 @@ export function MixerView({
         evidence: actionEvidence,
       },
     ];
-    const activeResultSection = resultSections.find((section) => section.key === activeResultSectionKey) ?? resultSections[0];
+    const sharedEvidence = Array.from(
+      new Map(
+        resultSections.flatMap((section) =>
+          section.evidence.map((evidence) => {
+            return [
+              evidence.card_id,
+              {
+                ...evidence,
+                sections: resultSections
+                  .filter((candidate) => candidate.evidence.some((item) => item.card_id === evidence.card_id))
+                  .map((candidate) => candidate.label),
+              },
+            ] as const;
+          }),
+        ),
+      ).values(),
+    );
     return (
       <ExecutivePage className="overflow-visible">
         <ExecutiveContainer className="pb-12">
@@ -710,62 +720,68 @@ export function MixerView({
               <div>
                 <p className="axis-kicker">Step view</p>
                 <h3 className="axis-section-heading mt-1">상세 해석 보기</h3>
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    {resultSections.map((section) => {
-                      const isActive = section.key === activeResultSectionKey;
-                      return (
-                        <button
-                          key={`nav-${section.key}`}
-                          type="button"
-                          onClick={() => setActiveResultSectionKey(section.key)}
-                          className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                            isActive
-                              ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
-                              : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)] hover:border-[var(--axis-accent)]'
-                          }`}
-                        >
-                          {section.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <ExecutiveButton variant="secondary" onClick={() => setIsMixerReasoningOpen(true)}>
-                    상세 근거
-                  </ExecutiveButton>
-                </div>
+                <p className="mt-3 text-sm leading-6 text-[var(--axis-muted)]">
+                  필터를 눌러 바꾸지 않아도, 해석 흐름 4개를 위에서 아래로 한 번에 읽을 수 있게 정리했습니다.
+                </p>
               </div>
-              <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1.08fr)_340px]">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">핵심 문장</p>
-                  <p className="mt-2 text-[1.15rem] font-semibold leading-8 text-[var(--axis-ink)]">
-                    {activeResultSection.finding}
-                  </p>
-                  <div className="mt-5 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">왜 이렇게 해석했는가</p>
-                    <p className="mt-2 text-sm leading-7 text-[var(--axis-body)]">{activeResultSection.rationale}</p>
-                  </div>
-                  {activeResultSection.key === 'action_direction' ? (
-                    <div className="mt-5 grid gap-3">
-                      {result.action_details.map((detail) => (
-                        <div key={`${detail.use_case}-${detail.action}`} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{detail.use_case}</p>
-                          <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{detail.action}</p>
-                          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{detail.why}</p>
-                        </div>
-                      ))}
+              <div className="mt-5 grid gap-5">
+                {resultSections.map((section, sectionIndex) => (
+                  <section
+                    key={section.key}
+                    className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 lg:p-5"
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
+                        {sectionIndex + 1}
+                      </span>
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">해석 단계</p>
+                        <h4 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{section.label}</h4>
+                      </div>
                     </div>
-                  ) : null}
-                </div>
 
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">근거 카드</p>
-                  <div className="mt-3 grid gap-3">
-                    {activeResultSection.evidence.map((evidence, index) => {
+                    <div className="mt-4">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">핵심 문장</p>
+                        <p className="mt-2 text-[1.15rem] font-semibold leading-8 text-[var(--axis-ink)]">
+                          {section.finding}
+                        </p>
+                        <div className="mt-5 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">왜 이렇게 해석했는가</p>
+                          <p className="mt-2 text-sm leading-7 text-[var(--axis-body)]">{section.rationale}</p>
+                        </div>
+                        {section.key === 'action_direction' ? (
+                          <div className="mt-5 grid gap-3">
+                            {result.action_details.map((detail) => (
+                              <div key={`${detail.use_case}-${detail.action}`} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
+                                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{detail.use_case}</p>
+                                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{detail.action}</p>
+                                <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{detail.why}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </section>
+                ))}
+
+                <section className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 lg:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">Shared evidence</p>
+                      <h4 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">근거 카드</h4>
+                    </div>
+                    <p className="text-xs font-semibold text-[var(--axis-muted)]">
+                      해석 4개에서 공통으로 참조한 카드만 한 번 모아 보여줍니다.
+                    </p>
+                  </div>
+                  <div className="mt-4 grid gap-3">
+                    {sharedEvidence.map((evidence) => {
                       const sourceCard = mixerSourceCardById.get(evidence.card_id);
 
                       return (
-                        <div key={`${activeResultSection.key}-${evidence.card_id}`} className={`rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-3 ${index > 0 ? 'mt-0' : ''}`}>
+                        <div key={`shared-${evidence.card_id}`} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-3">
                           <div className="flex gap-3">
                             <button
                               type="button"
@@ -785,6 +801,14 @@ export function MixerView({
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <ExecutiveBadge tone="accent">{evidence.peer}</ExecutiveBadge>
+                                {evidence.sections.map((label) => (
+                                  <span
+                                    key={`${evidence.card_id}-${label}`}
+                                    className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1 text-[11px] font-semibold text-[var(--axis-muted)]"
+                                  >
+                                    {label}
+                                  </span>
+                                ))}
                                 <button
                                   type="button"
                                   onClick={() => openMixerCard(evidence.card_id)}
@@ -793,16 +817,17 @@ export function MixerView({
                                   카드 보기
                                 </button>
                               </div>
-                              <p className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">
+                              <p className="mt-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">
                                 {evidence.title}
                               </p>
+                              <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{evidence.text}</p>
                             </div>
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
+                </section>
               </div>
             </article>
 
@@ -825,69 +850,6 @@ export function MixerView({
               setMixerDetailSlideIndex(0);
             }}
           />
-        ) : null}
-        {isMixerReasoningOpen ? (
-          <div className="fixed inset-0 z-50 bg-[rgba(8,10,14,0.62)] p-5 backdrop-blur-sm">
-            <section className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-[var(--axis-radius-lg)] border border-[rgba(255,255,255,0.16)] bg-[var(--axis-surface)] text-[var(--axis-ink)] shadow-[0_28px_90px_-42px_rgba(0,0,0,0.72)]">
-              <header className="flex items-center justify-between gap-3 border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">Mixer detail</p>
-                  <h2 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{activeResultSection.label}</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsMixerReasoningOpen(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-[8px] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]"
-                  aria-label="에이전트 추론 과정 닫기"
-                >
-                  <X size={17} />
-                </button>
-              </header>
-              <article className="min-h-0 flex-1 overflow-y-auto p-5">
-                <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-success)]">핵심 판단</p>
-                  <p className="mt-2 text-lg font-semibold leading-8 text-[var(--axis-ink)]">{activeResultSection.finding}</p>
-                  <div className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">판단 근거</p>
-                    <p className="mt-2 text-sm leading-7 text-[var(--axis-body)]">{activeResultSection.rationale}</p>
-                  </div>
-                </div>
-                {activeResultSection.evidence.length ? (
-                  <div className="mt-4 grid gap-3">
-                    {activeResultSection.evidence.map((card) => (
-                      <div key={`${activeResultSection.key}-${card.card_id}`} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">{card.peer}</p>
-                            <p className="mt-1 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => openMixerCard(card.card_id)}
-                            className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
-                          >
-                            {card.card_id}
-                          </button>
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{card.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-                {activeResultSection.key === 'action_direction' ? (
-                  <div className="mt-4 grid gap-3">
-                    {result.action_details.map((detail) => (
-                      <div key={`detail-${detail.use_case}`} className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.18)] bg-[var(--axis-surface-soft)] p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">{detail.use_case}</p>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{detail.action}</p>
-                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{detail.why}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </article>
-            </section>
-          </div>
         ) : null}
       </ExecutivePage>
     );

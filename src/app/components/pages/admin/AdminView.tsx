@@ -95,8 +95,8 @@ export function AdminView() {
                 error={cardsError}
                 updatingCardId={updatingCardId}
                 onReload={() => void reloadCards()}
-                onRestore={async (cardId) => {
-                  await updateCardStatus(cardId, 'ACTIVE');
+                onRestore={async (cardId, reason) => {
+                  await updateCardStatus(cardId, 'ACTIVE', reason);
                   await reloadCards();
                 }}
               />
@@ -443,16 +443,27 @@ function AdminDeletedCardsPanel({
   error: string | null;
   updatingCardId: string | null;
   onReload: () => void;
-  onRestore: (cardId: string) => Promise<void>;
+  onRestore: (cardId: string, reason: string) => Promise<void>;
 }) {
   const handleRestore = async (card: AdminCard) => {
+    const reason = window.prompt(`"${card.title}" 카드뉴스 복구 사유를 입력해주세요.`);
+    if (reason === null) {
+      return;
+    }
+
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      window.alert('복구 사유를 입력해주세요.');
+      return;
+    }
+
     const confirmed = window.confirm(`"${card.title}" 카드뉴스를 복구할까요?`);
     if (!confirmed) {
       return;
     }
 
     try {
-      await onRestore(card.id);
+      await onRestore(card.id, trimmedReason);
     } catch {
       // Hook error state is surfaced in the panel.
     }

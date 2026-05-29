@@ -12,6 +12,7 @@ type RawAdminCard = {
   deletion_reason?: string | null;
   restored_at?: string | null;
   restored_by?: string | null;
+  restored_reason?: string | null;
 };
 
 type AdminCardsResponse = {
@@ -61,5 +62,6 @@ function toAdminCard(raw: RawAdminCard): AdminCard {
     deletionReason: typeof raw.deletion_reason === 'string' ? raw.deletion_reason : null,
     restoredAt: typeof raw.restored_at === 'string' ? raw.restored_at : null,
     restoredBy: typeof raw.restored_by === 'string' ? raw.restored_by : null,
+    restoredReason: typeof raw.restored_reason === 'string' ? raw.restored_reason : null,
   };
 }

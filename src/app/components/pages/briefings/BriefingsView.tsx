@@ -17,9 +17,9 @@ import { useContentViewMode } from '../../../../shared/hooks/useContentViewMode'
 import { buildBriefingPrintHtml, buildBriefingReportText } from './print';
 import type { BriefingPeriod } from './types';
 import {
-  briefingFocusTitle,
   buildBriefing,
   buildBriefingRange,
+  getBriefingFocusTitle,
   getWeekOptions,
   periodMeta,
   toDateInputValue,
@@ -61,7 +61,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
   const [activeInsightStep, setActiveInsightStep] = useState(0);
-  const [activeBriefingReasoningId, setActiveBriefingReasoningId] = useState<'focus' | 'market' | 'skax' | null>(null);
+  const [activeBriefingReasoningId, setActiveBriefingReasoningId] = useState<'focus' | null>(null);
   const activeFlowStep = mockInsightResult.flowSteps[activeInsightStep] ?? mockInsightResult.flowSteps[0];
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
@@ -76,7 +76,8 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
   }, [cards, isLoading, onUpdateTimeChange]);
   const briefing = useMemo(() => buildBriefing(period, rankedCards, briefingRange), [period, rankedCards, briefingRange]);
-  const reportText = useMemo(() => buildBriefingReportText(briefing), [briefing]);
+  const briefingFocusTitle = useMemo(() => getBriefingFocusTitle(period), [period]);
+  const reportText = useMemo(() => buildBriefingReportText(briefing, briefingFocusTitle), [briefing, briefingFocusTitle]);
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
   const isVisualMode = contentViewMode === 'visual';
   const evidenceCards = briefing.selectedCards
@@ -96,17 +97,13 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
       ].filter(Boolean)),
     ).slice(0, 6)
   );
-  const briefingReasoningSections = useMemo<Record<'focus' | 'market' | 'skax', BriefingReasoningModal>>(() => {
+  const briefingReasoningSections = useMemo<Record<'focus', BriefingReasoningModal>>(() => {
     const focusEvidenceCards = briefing.signalCards.flatMap((item, index) => {
       const relatedCards = briefing.selectedCards
         .filter((card) => item.relatedCardIds.includes(card.id))
         .slice(0, 3);
       return relatedCards.length ? relatedCards : getSupportingCards(index, 2);
     }).filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index).slice(0, 6);
-    const analysisEvidenceCards = [0, 1, 2, 3]
-      .flatMap((index) => getSupportingCards(index, 2))
-      .filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index)
-      .slice(0, 6);
 
     return {
       focus: {
@@ -131,38 +128,6 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
         ],
         evidenceTags: buildEvidenceTags(focusEvidenceCards, [briefing.label, briefingFocusTitle]),
         evidenceCards: focusEvidenceCards,
-      },
-      market: {
-        id: 'market',
-        title: '시장 해석 포인트 추론 과정',
-        summary: '시장 해석 에이전트가 반복 신호를 어떤 순서로 교차 검토하고, 어떤 문장을 시장 판단으로 압축했는지 보여줍니다.',
-        groups: [
-          {
-            title: '시장 해석 에이전트의 판단 메모',
-            items: mockInsightResult.problemChain.map((item) => ({
-              label: item.title,
-              body: `에이전트 판단: ${item.body} 근거 연결: ${item.reason}`,
-            })),
-          },
-        ],
-        evidenceTags: buildEvidenceTags(analysisEvidenceCards, [briefing.label, '시장 해석']),
-        evidenceCards: analysisEvidenceCards,
-      },
-      skax: {
-        id: 'skax',
-        title: 'SK AX 시사점 추론 과정',
-        summary: '대응 전략 에이전트가 시장 신호를 SK AX 실행 문장으로 어떻게 번역했는지 보여줍니다.',
-        groups: [
-          {
-            title: '전략 에이전트의 대응 포인트 정리',
-            items: mockInsightResult.solutionChain.map((item) => ({
-              label: item.title,
-              body: `에이전트 제안: ${item.body} 판단 근거: ${item.reason}`,
-            })),
-          },
-        ],
-        evidenceTags: buildEvidenceTags(analysisEvidenceCards, [briefing.label, 'SK AX 시사점']),
-        evidenceCards: analysisEvidenceCards,
       },
     };
   }, [briefing.label, briefing.selectedCards, briefing.signalCards]);
@@ -203,7 +168,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     }
 
     printWindow.document.open();
-    printWindow.document.write(buildBriefingPrintHtml(briefing));
+    printWindow.document.write(buildBriefingPrintHtml(briefing, briefingFocusTitle));
     printWindow.document.close();
     printWindow.focus();
     window.setTimeout(() => {
@@ -366,11 +331,6 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                     </div>
                   </div>
                   <div className="space-y-4 p-6">
-                    <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.30)] bg-[radial-gradient(circle_at_18%_20%,rgba(220,90,36,0.16),transparent_32%),rgba(220,90,36,0.08)] p-5 shadow-[0_18px_48px_-38px_rgba(220,90,36,0.35)]">
-                      <p className="axis-kicker">Core change</p>
-                      <p className="mt-3 text-xl font-semibold leading-8 text-[var(--axis-ink)]">{briefing.whatHappenedDigest[0]}</p>
-                      <p className="mt-3 text-base leading-7 text-[var(--axis-body)]">{briefing.whatHappenedDigest[2]}</p>
-                    </div>
                     <div className="grid gap-4 xl:grid-cols-2">
                       {briefing.signalCards.map((item, index) => (
                         <article
@@ -444,61 +404,21 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                         <p className="axis-kicker">{activeFlowStep.label}</p>
                         <h3 className="mt-2 text-[1.1rem] font-semibold leading-8 text-[var(--axis-ink)]">{activeFlowStep.headline}</h3>
                         <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{activeFlowStep.description}</p>
-                      </div>
-                    </article>
-                  </div>
-                </section>
-
-                <section data-guide="insight-analysis">
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                  {[
-                    { title: '시장 해석 포인트', label: 'Market reading', items: mockInsightResult.problemChain, tone: 'success' as const },
-                    { title: 'SK AX 시사점', label: 'SK AX view', items: mockInsightResult.solutionChain, tone: 'accent' as const },
-                  ].map((group) => (
-                    <section key={group.title} className="axis-panel-flat overflow-hidden">
-                      <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="axis-kicker">{group.label}</p>
-                            <h2 className="axis-section-heading mt-1">{group.title}</h2>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setActiveBriefingReasoningId(group.tone === 'success' ? 'market' : 'skax')}
-                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
-                            aria-label={`${group.title} 추론 과정 보기`}
-                          >
-                            !
-                          </button>
+                        <div className="mt-4 grid gap-3">
+                          {activeFlowStep.details.map((detail, detailIndex) => (
+                            <div
+                              key={`${activeFlowStep.id}-${detailIndex}`}
+                              className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4"
+                            >
+                              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
+                                {String(activeInsightStep + 1).padStart(2, '0')}-{detailIndex + 1}
+                              </p>
+                              <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{detail}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <div className="space-y-5 p-5">
-                        {group.items.map((item, index) => (
-                          <article
-                            key={item.title}
-                            className="grid gap-3 border-b border-[rgba(26,26,31,0.08)] pb-5 last:border-b-0 last:pb-0 md:grid-cols-[52px_minmax(0,1fr)]"
-                          >
-                            <div className="flex items-start">
-                              <span
-                                className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-black ${
-                                  group.tone === 'success'
-                                    ? 'bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
-                                    : 'bg-[rgba(220,90,36,0.12)] text-[var(--axis-accent-strong)]'
-                                }`}
-                              >
-                                {String(index + 1).padStart(2, '0')}
-                              </span>
-                            </div>
-                            <div>
-                              <h3 className="text-[1.02rem] font-semibold leading-7 text-[var(--axis-ink)]">{item.title}</h3>
-                              <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-                              <p className="mt-3 text-[12px] leading-5 text-[var(--axis-muted)]">이렇게 읽는 이유: {item.reason}</p>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
+                    </article>
                   </div>
                 </section>
               </>
@@ -522,17 +442,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                     </div>
                   </div>
                   <div className="p-6">
-                    <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.30)] bg-[rgba(220,90,36,0.08)] p-5 shadow-[0_18px_48px_-38px_rgba(220,90,36,0.35)]">
-                      <p className="text-xl font-semibold leading-8 text-[var(--axis-ink)]">{briefing.whatHappenedDigest[0]}</p>
-                      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                        {briefing.whatHappenedDigest.slice(1).map((item) => (
-                          <p key={item} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/92 p-4 text-base font-medium leading-7 text-[var(--axis-body)]">
-                            {item}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                    <div className="grid gap-3 lg:grid-cols-3">
                       {briefing.signalCards.map((item, index) => (
                         <article key={item.label} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_14px_36px_-34px_rgba(0,0,0,0.35)]">
                           <p className="axis-kicker">{String(index + 1).padStart(2, '0')} · {item.label}</p>
@@ -580,76 +490,17 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                       <p className="axis-kicker">{activeFlowStep.label}</p>
                       <h3 className="mt-1.5 text-base font-semibold text-[var(--axis-ink)]">{activeFlowStep.headline}</h3>
                       <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{activeFlowStep.description}</p>
-                    </div>
-                  </div>
-                </section>
-
-                <section data-guide="insight-analysis">
-                  <div className="grid gap-5 lg:grid-cols-2">
-                  <div className="axis-panel-flat overflow-hidden border-[rgba(90,107,87,0.28)]">
-                    <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="axis-kicker">Market reading</p>
-                          <h2 className="axis-section-heading mt-1">시장 해석 포인트</h2>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setActiveBriefingReasoningId('market')}
-                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
-                          aria-label="시장 해석 포인트 추론 과정 보기"
-                        >
-                          !
-                        </button>
+                      <div className="mt-4 grid gap-3">
+                        {activeFlowStep.details.map((detail, detailIndex) => (
+                          <div key={`${activeFlowStep.id}-${detailIndex}`} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-3">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
+                              {String(activeInsightStep + 1).padStart(2, '0')}-{detailIndex + 1}
+                            </p>
+                            <p className="mt-1.5 text-sm leading-6 text-[var(--axis-body)]">{detail}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <ul className="space-y-4 p-5">
-                      {mockInsightResult.problemChain.map((item, index) => (
-                        <li key={item.title} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 border-b border-[rgba(26,26,31,0.08)] pb-4 last:border-b-0 last:pb-0">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(90,107,87,0.12)] text-xs font-semibold text-[var(--axis-success)]">
-                            {index + 1}
-                          </span>
-                          <div>
-                            <p className="text-base font-semibold leading-7 text-[var(--axis-ink)]">{item.title}</p>
-                            <p className="mt-1 text-base leading-7 text-[var(--axis-body)]">{item.body}</p>
-                            <p className="mt-2 text-sm leading-6 text-[var(--axis-muted)]">이렇게 읽는 이유: {item.reason}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.28)]">
-                    <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.07)] px-5 py-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="axis-kicker">SK AX view</p>
-                          <h2 className="axis-section-heading mt-1">SK AX 시사점</h2>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setActiveBriefingReasoningId('skax')}
-                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
-                          aria-label="SK AX 시사점 추론 과정 보기"
-                        >
-                          !
-                        </button>
-                      </div>
-                    </div>
-                    <ul className="space-y-4 p-5">
-                      {mockInsightResult.solutionChain.map((item, index) => (
-                        <li key={item.title} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 border-b border-[rgba(26,26,31,0.08)] pb-4 last:border-b-0 last:pb-0">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(220,90,36,0.11)] text-xs font-semibold text-[var(--axis-accent-strong)]">
-                            {index + 1}
-                          </span>
-                          <div>
-                            <p className="text-base font-semibold leading-7 text-[var(--axis-ink)]">{item.title}</p>
-                            <p className="mt-1 text-base leading-7 text-[var(--axis-body)]">{item.body}</p>
-                            <p className="mt-2 text-sm leading-6 text-[var(--axis-muted)]">이렇게 읽는 이유: {item.reason}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
                   </div>
                 </section>
               </>
@@ -724,34 +575,40 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                 <p className="mt-4 text-base font-semibold leading-7 text-[#2D2D33]">{briefing.briefingLead}</p>
                 <section className="mt-6 rounded-[10px] border border-[#EDE4D8] bg-[#FFFCF7] p-4">
                   <h2 className="text-base font-bold text-[#1A1A1F]">{briefingFocusTitle}</h2>
-                  <ol className="mt-3 space-y-2">
-                    {briefing.whatHappenedDigest.map((item, index) => (
-                      <li key={item} className="grid grid-cols-[24px_minmax(0,1fr)] gap-2 text-sm leading-6 text-[#2D2D33]">
-                        <span className="font-bold text-[#B8451A]">{index + 1}</span>
-                        <span>{item}</span>
-                      </li>
+                  <div className="mt-3 space-y-3">
+                    {briefing.signalCards.map((item, index) => (
+                      <section key={item.label} className="rounded-[10px] border border-[#EDE4D8] bg-[#FFFFFF] p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#B8451A]">
+                          {String(index + 1).padStart(2, '0')} {item.label}
+                        </p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-[#1A1A1F]">{item.title}</p>
+                        <p className="mt-1.5 text-sm leading-6 text-[#2D2D33]">{item.summary}</p>
+                      </section>
                     ))}
-                  </ol>
+                  </div>
                 </section>
-                {[
-                  { title: '시장 해석 포인트', items: mockInsightResult.problemChain },
-                  { title: 'SK AX 시사점', items: mockInsightResult.solutionChain },
-                ].map((group) => (
-                  <section key={group.title} className="mt-6 rounded-[10px] border border-[#EDE4D8] bg-[#FFFCF7] p-4">
-                    <h2 className="text-base font-bold text-[#1A1A1F]">{group.title}</h2>
-                    <ol className="mt-3 space-y-3">
-                      {group.items.map((item, index) => (
-                        <li key={item.title} className="grid grid-cols-[24px_minmax(0,1fr)] gap-2 text-sm leading-6 text-[#2D2D33]">
-                          <span className="font-bold text-[#B8451A]">{index + 1}</span>
-                          <div>
-                            <p className="font-semibold">{item.title}</p>
-                            <p className="mt-1">{item.body}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-                  </section>
-                ))}
+                <section className="mt-6 rounded-[10px] border border-[#EDE4D8] bg-[#FFFCF7] p-4">
+                  <h2 className="text-base font-bold text-[#1A1A1F]">해석 흐름</h2>
+                  <div className="mt-3 space-y-4">
+                    {mockInsightResult.flowSteps.map((step, index) => (
+                      <section key={step.id} className="rounded-[10px] border border-[#EDE4D8] bg-[#FFFFFF] p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#B8451A]">
+                          {String(index + 1).padStart(2, '0')} {step.label}
+                        </p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-[#1A1A1F]">{step.headline}</p>
+                        <p className="mt-1.5 text-sm leading-6 text-[#2D2D33]">{step.description}</p>
+                        <ol className="mt-3 space-y-2">
+                          {step.details.map((detail, detailIndex) => (
+                            <li key={`${step.id}-${detailIndex}`} className="grid grid-cols-[24px_minmax(0,1fr)] gap-2 text-sm leading-6 text-[#2D2D33]">
+                              <span className="font-bold text-[#B8451A]">{detailIndex + 1}</span>
+                              <span>{detail}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </section>
+                    ))}
+                  </div>
+                </section>
               </div>
             </article>
             <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">

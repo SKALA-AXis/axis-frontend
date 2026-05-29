@@ -178,7 +178,7 @@ export function TopNav({
 
         <div className="hidden min-w-0 flex-col gap-1 leading-none lg:flex">
             <span
-              className="text-[10px] tracking-[0.16em] uppercase text-stone"
+              className="text-fine-print tracking-[0.16em] uppercase text-stone"
               style={{ fontWeight: 600 }}
             >
               Now Viewing
@@ -206,7 +206,7 @@ export function TopNav({
             <select
               value={searchScope}
               onChange={(event) => setSearchScope(event.target.value as SearchScope)}
-              className="h-full w-[118px] shrink-0 border-r border-hairline bg-transparent px-3 text-xs font-bold text-[var(--axis-ink)] outline-none sm:w-[132px]"
+              className="h-full w-[118px] shrink-0 border-r border-hairline bg-transparent px-3 text-caption-bold text-[var(--axis-ink)] outline-none sm:w-[132px]"
               aria-label="검색 범위"
             >
               {searchScopeOptions.map((option) => (
@@ -223,7 +223,7 @@ export function TopNav({
               className="h-full min-w-0 flex-1 bg-transparent px-3 pr-2 text-body-sm text-charcoal outline-none placeholder:text-stone"
               placeholder="Peer 동향 · 키워드 · 카드뉴스 검색..."
             />
-            <kbd className="pointer-events-none mr-3 hidden shrink-0 rounded-sm border border-hairline bg-cream-soft px-1.5 py-0.5 font-mono text-[10px] text-stone md:inline">
+            <kbd className="pointer-events-none mr-3 hidden shrink-0 rounded-sm border border-hairline bg-cream-soft px-1.5 py-0.5 font-mono text-fine-print text-stone md:inline">
               /
             </kbd>
           </div>
@@ -234,7 +234,7 @@ export function TopNav({
       <div className="relative flex min-w-fit shrink-0 items-center justify-end gap-1">
         {/* 마지막 크롤링 업데이트 */}
         <div data-guide="topnav-notifications" className="mr-1 hidden items-center gap-2 rounded-md border border-hairline bg-cream-soft px-2.5 py-1.5 xl:flex">
-          <span className="text-[13px] font-semibold uppercase tracking-[0.08em] text-charcoal">
+          <span className="text-caption-bold uppercase tracking-[0.08em] text-charcoal">
             업데이트
           </span>
           <span className="text-stone/40">·</span>
