@@ -1,0 +1,1 @@
+export { CardNewsWorkspaceView } from './CardNewsWorkspaceView';

@@ -1,4 +1,4 @@
-import { homeKeywordSpikeInsights } from '../../../../shared/mocks/homeDashboardPresentation';
+import { homeKeywordSpikeInsights } from '../../../../../shared/mocks/homeDashboardPresentation';
 
 export type PositioningTone = 'accent' | 'company' | 'infra' | 'security' | 'deal' | 'success';
 

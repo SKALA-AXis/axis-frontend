@@ -1,7 +1,7 @@
 export const largeTextPreferenceStorageKey = 'axis:large-text-preference';
 export const largeTextPreferenceChangeEvent = 'axis:large-text-preference-change';
 
-export const textScaleSteps = [1, 1.06, 1.12, 1.18, 1.24, 1.32] as const;
+export const textScaleSteps = [1, 1.1, 1.22, 1.36, 1.52, 1.7] as const;
 export const defaultTextScaleStep = 2;
 
 export type TextPreference = {

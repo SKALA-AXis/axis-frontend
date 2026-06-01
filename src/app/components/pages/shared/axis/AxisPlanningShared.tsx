@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react';
 
-import { ExecutivePage } from '../../executive/ExecutiveSystem';
+import { ExecutivePage } from '../../../executive/ExecutiveSystem';
 import { DonutCalloutChart } from './DonutCalloutChart';
-import { HomePositioningMap } from './HomePositioningMap';
 
 export type { DonutCalloutDatum, KeywordSpikeInsight, PositioningPoint, PositioningTone } from './types';
-export { DonutCalloutChart, HomePositioningMap };
+export { DonutCalloutChart };
 
 export function LoadingBlock({ label }: { label: string }) {
   return (

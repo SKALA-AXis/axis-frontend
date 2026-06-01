@@ -1,10 +1,10 @@
 export { AdminView } from './admin/AdminView';
-export { AlertsView } from './alerts/AlertsView';
-export { HomeDashboardView, CardNewsWorkspaceView, KeywordGraphView, MixerView, PeerPlusView } from './axis';
+export { HomeDashboardView } from './home';
+export { CardNewsWorkspaceView } from './card-news-workspace';
+export { KeywordGraphView } from './keyword-graph';
+export { MixerView } from './mixer';
+export { PeerPlusView } from './peer-plus';
 export { BriefingsView } from './briefings/BriefingsView';
-export { HomeCardNewsView } from './home-card-news/HomeCardNewsView';
-export { IssuesView } from './issues/IssuesView';
-export { MonitoringView } from './monitoring/MonitoringView';
 export { NotificationsView } from './notifications/NotificationsView';
 export { RawArticlesView } from './raw-articles/RawArticlesView';
 export { SearchResultsView } from './search/SearchResultsView';

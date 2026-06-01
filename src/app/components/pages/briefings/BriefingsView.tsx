@@ -47,6 +47,20 @@ type BriefingsViewProps = {
   onUpdateTimeChange?: (updatedAt: string | null) => void;
 };
 
+function stripLeadingRangeLabel(text: string, leadLabel: string) {
+  if (text.startsWith(`${leadLabel}에는 `)) {
+    return text.slice(`${leadLabel}에는 `.length);
+  }
+  if (text.startsWith(`${leadLabel}에 `)) {
+    return text.slice(`${leadLabel}에 `.length);
+  }
+  return text;
+}
+
+function normalizeBriefingText(text: string) {
+  return text.replace(/(^|\s)\d+\.\s*/g, '$1').replace(/\s+/g, ' ').trim();
+}
+
 export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTimeChange }: BriefingsViewProps) {
   const { cards, isLoading, error } = useCardNews();
   const contentViewMode = useContentViewMode();
@@ -77,6 +91,14 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   }, [cards, isLoading, onUpdateTimeChange]);
   const briefing = useMemo(() => buildBriefing(period, rankedCards, briefingRange), [period, rankedCards, briefingRange]);
   const briefingFocusTitle = useMemo(() => getBriefingFocusTitle(period), [period]);
+  const briefingLeadText = useMemo(
+    () => stripLeadingRangeLabel(briefing.briefingLead, briefingRange.leadLabel),
+    [briefing.briefingLead, briefingRange.leadLabel],
+  );
+  const briefingOverviewLines = useMemo(
+    () => [briefingLeadText, briefing.briefingSummaryLine].map((line) => normalizeBriefingText(line)).filter(Boolean),
+    [briefing.briefingSummaryLine, briefingLeadText],
+  );
   const reportText = useMemo(() => buildBriefingReportText(briefing, briefingFocusTitle), [briefing, briefingFocusTitle]);
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
   const isVisualMode = contentViewMode === 'visual';
@@ -293,16 +315,24 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
             <section className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.24)]">
               <div className="h-1.5 bg-[linear-gradient(90deg,var(--axis-accent),rgba(220,90,36,0.16))]" />
               <div className="p-5">
-                <p className="axis-kicker">{briefing.window}</p>
                 <h2 className="mt-2 text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">
                   {briefing.title}
                 </h2>
-                <p className="mt-3 max-w-4xl text-base font-semibold leading-7 text-[var(--axis-ink)]">
-                  {briefing.briefingLead}
-                </p>
-                <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">
-                  {briefing.briefingSummaryLine}
-                </p>
+                <div className="mt-4 space-y-3">
+                  {briefingOverviewLines.map((line, index) => (
+                    <div
+                      key={`${briefing.title}-overview-${index}`}
+                      className={`flex items-start gap-3 ${index === 0 ? '' : 'border-t border-[var(--axis-hairline)] pt-3'}`}
+                    >
+                      <span className="mt-0.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] px-2 text-sm font-black text-[var(--axis-accent-strong)]">
+                        {index + 1}
+                      </span>
+                      <p className="min-w-0 flex-1 text-base font-semibold leading-7 text-[var(--axis-ink)]">
+                        {line}
+                      </p>
+                    </div>
+                  ))}
+                </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {briefing.peers.slice(0, 4).map((peer) => (
                     <ExecutiveBadge key={peer} tone="accent">{peer}</ExecutiveBadge>
@@ -341,15 +371,15 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-black text-[var(--axis-accent-strong)]">
                               {String(index + 1).padStart(2, '0')}
                             </span>
-                            <div>
-                              <p className="axis-kicker">{item.label}</p>
-                              <h3 className="mt-1 text-lg font-semibold leading-7 text-[var(--axis-ink)]">{item.title}</h3>
-                            </div>
+                            <p className="text-base font-semibold text-[var(--axis-accent-strong)]">{item.label}</p>
                           </div>
-                          <p className="mt-4 text-sm leading-6 text-[var(--axis-body)]">{item.summary}</p>
-                          <div className="mt-4 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
-                            <p className="text-xs font-semibold text-[var(--axis-muted)]">왜 이 변화가 중요한가</p>
-                            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-body)]">{item.reason}</p>
+                          <div className="mt-4 space-y-3">
+                            <p className="text-base font-semibold leading-7 text-[var(--axis-ink)]">
+                              {normalizeBriefingText(item.title)}
+                            </p>
+                            <p className="text-base font-medium leading-7 text-[var(--axis-body)]">
+                              {normalizeBriefingText(item.summary)}
+                            </p>
                           </div>
                         </article>
                       ))}
@@ -391,12 +421,12 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                     </div>
                     <article className="mt-5 grid gap-5 xl:grid-cols-[120px_minmax(0,1fr)]">
                       <div className="flex items-start xl:justify-center">
-                        <div className="rounded-[20px] border border-[rgba(220,90,36,0.18)] bg-[rgba(220,90,36,0.08)] px-4 py-5 text-center">
+                        <div className="flex min-h-[176px] w-[128px] flex-col items-center justify-center rounded-[20px] border border-[rgba(220,90,36,0.18)] bg-[rgba(220,90,36,0.08)] px-4 py-5 text-center">
                           <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">Step</span>
-                          <span className="mt-1.5 block text-[1.7rem] font-display font-semibold text-[var(--axis-ink)]">
+                          <span className="mt-2 block text-[1.4rem] font-display font-semibold text-[var(--axis-accent-strong)]">
                             {String(activeInsightStep + 1).padStart(2, '0')}
                           </span>
-                          <span className="mt-1.5 block text-xs font-semibold text-[var(--axis-body)]">{activeFlowStep.label}</span>
+                          <span className="mt-2 block text-sm font-semibold text-[var(--axis-accent-strong)]">{activeFlowStep.label}</span>
                         </div>
                       </div>
                       <div className="relative overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-5 py-5">
@@ -445,9 +475,16 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                     <div className="grid gap-3 lg:grid-cols-3">
                       {briefing.signalCards.map((item, index) => (
                         <article key={item.label} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_14px_36px_-34px_rgba(0,0,0,0.35)]">
-                          <p className="axis-kicker">{String(index + 1).padStart(2, '0')} · {item.label}</p>
-                          <p className="mt-3 text-base font-semibold leading-7 text-[var(--axis-ink)]">{item.title}</p>
-                          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{item.summary}</p>
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-black text-[var(--axis-accent-strong)]">
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <p className="text-base font-semibold text-[var(--axis-accent-strong)]">{item.label}</p>
+                          </div>
+                          <div className="mt-3 space-y-2.5">
+                            <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{normalizeBriefingText(item.title)}</p>
+                            <p className="text-sm font-medium leading-6 text-[var(--axis-body)]">{normalizeBriefingText(item.summary)}</p>
+                          </div>
                         </article>
                       ))}
                     </div>
