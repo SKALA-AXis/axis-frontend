@@ -3,18 +3,73 @@ import { Box, Filter, Maximize2, Minus, Network, Plus } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import * as THREE from 'three';
 import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
+import { normalizeCardNewsItem } from '../../../../features/card-news/api/cardNewsRepository';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
-import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
+import { getDisplayDate, getPeerLabel } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
 import type { DashboardKeywordSearchPoint } from '../../../../features/dashboard/model/dashboard';
+import { httpClient } from '../../../../shared/api/httpClient';
 import { pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
-import { graphCategoryColor, graphCompanyAliases, graphEdges, graphNodes, type KeywordEdge, type KeywordNode } from '../../../../shared/mocks/keywordGraph';
+import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/mocks/keywordGraph';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { FilterChip, MiniStat } from '../shared/axis';
 
 type NavigateHandler = (view: string) => void;
+
+type KeywordGraphPayload = {
+  selectedId?: string;
+  nodes?: Array<Partial<KeywordNode>>;
+  edges?: Array<Partial<KeywordEdge>>;
+};
+
+type KeywordGraphCardsPayload = {
+  items?: Array<Partial<CardNewsItem>>;
+  total?: number;
+};
+
+const graphCategories = ['AX', '보안', '인프라', '수주'] as const;
+const allGraphCategories = ['기업', ...graphCategories] as const;
+const emptySelectedNode: KeywordNode = {
+  id: 'sk-axis',
+  label: 'SK AX',
+  x: 450,
+  y: 280,
+  size: 46,
+  category: '기업',
+  score: 0,
+  changeRate: 0,
+  sourceType: 'raw_articles',
+};
+
+function normalizeKeywordGraphNode(node: Partial<KeywordNode>, index: number): KeywordNode | null {
+  if (!node.id || !node.label) return null;
+  const category = allGraphCategories.includes(node.category as KeywordNode['category'])
+    ? node.category as KeywordNode['category']
+    : 'AX';
+  return {
+    id: node.id,
+    label: node.label,
+    x: typeof node.x === 'number' ? node.x : 450 + Math.cos(index) * 180,
+    y: typeof node.y === 'number' ? node.y : 280 + Math.sin(index) * 180,
+    size: typeof node.size === 'number' ? node.size : 18,
+    category,
+    score: typeof node.score === 'number' ? node.score : 0,
+    changeRate: typeof node.changeRate === 'number' ? node.changeRate : 0,
+    sourceType: node.sourceType ?? 'raw_articles',
+  };
+}
+
+function normalizeKeywordGraphEdge(edge: Partial<KeywordEdge>): KeywordEdge | null {
+  if (!edge.source || !edge.target) return null;
+  return {
+    source: edge.source,
+    target: edge.target,
+    weight: typeof edge.weight === 'number' ? edge.weight : 2,
+    relationType: edge.relationType ?? '관련 기사',
+  };
+}
 
 function KeywordRelatedCardButton({ card, onOpen }: { card: CardNewsItem; onOpen: () => void }) {
   return (
@@ -44,6 +99,61 @@ function normalizeGraphTerm(value: string) {
   return value.replace(/\s/g, '').toLowerCase();
 }
 
+const graphCompanySearchTerms: Record<string, string[]> = {
+  'sk-axis': ['SK AX', 'SKAX', 'SK C&C', 'SK㈜ C&C', '에스케이씨앤씨', '에스케이에이엑스'],
+  'samsung-sds': ['samsung_sds', '삼성 SDS', '삼성SDS', '삼성에스디에스'],
+  'lg-cns': ['lg_cns', 'LG CNS', 'LGCNS', '엘지씨엔에스'],
+  'hyundai-autoever': ['hyundai_autoever', '현대 오토에버', '현대오토에버'],
+  'posco-dx': ['posco_dx', '포스코 DX', '포스코DX', '포스코디엑스', '포스코ICT'],
+};
+
+const graphCompanyPeerIdByNodeId: Record<string, string> = {
+  'samsung-sds': 'samsung_sds',
+  'lg-cns': 'lg_cns',
+  'hyundai-autoever': 'hyundai_autoever',
+  'posco-dx': 'posco_dx',
+};
+
+function cardSearchText(card: CardNewsItem) {
+  return normalizeGraphTerm([
+    card.peer_id,
+    getPeerLabel(card),
+    card.title,
+    card.category,
+    card.category_label,
+    card.subtitle,
+    card.sector,
+    ...(card.keywords ?? []),
+    ...(card.summary_lines ?? card.summary),
+    ...(card.insights ?? []),
+  ].filter(Boolean).join(' '));
+}
+
+function fallbackCompanyCards(
+  companyNode: KeywordNode,
+  cards: CardNewsItem[],
+  nodes: KeywordNode[],
+  edges: KeywordEdge[],
+) {
+  const connectedKeywordTerms = edges
+    .filter((edge) => edge.source === companyNode.id || edge.target === companyNode.id)
+    .map((edge) => nodes.find((node) => node.id === (edge.source === companyNode.id ? edge.target : edge.source))?.label)
+    .filter((label): label is string => Boolean(label));
+  const terms = [
+    graphCompanyPeerIdByNodeId[companyNode.id],
+    companyNode.label,
+    ...(graphCompanySearchTerms[companyNode.id] ?? []),
+    ...connectedKeywordTerms.slice(0, 6),
+  ]
+    .filter((term): term is string => Boolean(term))
+    .map(normalizeGraphTerm);
+
+  return cards.filter((card) => {
+    const haystack = cardSearchText(card);
+    return terms.some((term) => term.length > 0 && (haystack.includes(term) || term.includes(haystack)));
+  });
+}
+
 function resolveCssColor(value: string, fallback: string) {
   if (typeof window === 'undefined') return fallback;
   const variableMatch = value.match(/^var\((--[^)]+)\)$/);
@@ -53,10 +163,10 @@ function resolveCssColor(value: string, fallback: string) {
 
 function getGraphNodeDisplayRadius(node: KeywordNode, active = false) {
   const base = node.category === '기업'
-    ? node.size / 3.2
+    ? node.size / 3.35
     : node.size >= 22
-      ? node.size / 3.8
-      : node.size / 4.35;
+      ? node.size / 3.65
+      : node.size / 4.05;
   return base + (active ? 2.4 : 0);
 }
 
@@ -73,7 +183,7 @@ function splitGraphLabel(label: string) {
   return [label];
 }
 
-function getSpherePosition(node: KeywordNode, radius: number, index = 0) {
+function getSpherePosition(node: KeywordNode, radius: number, index = 0, totalNodes = 5) {
   if (node.id === 'sk-axis') {
     return new THREE.Vector3(0, 0, 0);
   }
@@ -92,7 +202,7 @@ function getSpherePosition(node: KeywordNode, radius: number, index = 0) {
 
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   const normalizedIndex = index + 1.5;
-  const phi = Math.acos(1 - (2 * normalizedIndex) / (graphNodes.length + 2));
+  const phi = Math.acos(1 - (2 * normalizedIndex) / (totalNodes + 2));
   const theta = normalizedIndex * goldenAngle;
   const layer = node.size >= 21 ? 0.94 : 0.58 + (index % 6) * 0.07;
   const layeredRadius = radius * Math.min(1, layer);
@@ -160,7 +270,7 @@ function KeywordSphereGraph({
 
     const radius = fullscreen ? 214 : 146;
     const nodePositions = new Map<string, THREE.Vector3>();
-    nodes.forEach((node, index) => nodePositions.set(node.id, getSpherePosition(node, radius, index)));
+    nodes.forEach((node, index) => nodePositions.set(node.id, getSpherePosition(node, radius, index, nodes.length)));
     const isDarkMode = document.documentElement.classList.contains('dark');
 
     group.add(new THREE.AmbientLight(0xffffff, 1.4));
@@ -193,11 +303,11 @@ function KeywordSphereGraph({
       const labelCanvas = document.createElement('canvas');
       const context = labelCanvas.getContext('2d');
       const labelLines = splitGraphLabel(label);
-      const fontSize = category === '기업' ? (active ? 36 : 31) : active ? 29 : 23;
-      const lineHeight = fontSize * 1.05;
+      const fontSize = category === '기업' ? (active ? 35 : 30) : active ? 31 : 26;
+      const lineHeight = fontSize * 1.08;
       const longestLine = labelLines.reduce((longest, line) => Math.max(longest, line.length), 0);
-      const width = Math.max(120, longestLine * fontSize * 0.82 + 28);
-      const height = Math.max(48, labelLines.length * lineHeight + 18);
+      const width = Math.max(150, longestLine * fontSize * 0.86 + 34);
+      const height = Math.max(58, labelLines.length * lineHeight + 22);
       labelCanvas.width = width;
       labelCanvas.height = height;
       if (context) {
@@ -206,7 +316,7 @@ function KeywordSphereGraph({
         context.textBaseline = 'middle';
         context.fillStyle = labelColor;
         context.strokeStyle = labelStroke;
-        context.lineWidth = isDarkMode ? 7 : 6;
+        context.lineWidth = isDarkMode ? 8 : 7;
         labelLines.forEach((line, index) => {
           const y = height / 2 + (index - (labelLines.length - 1) / 2) * lineHeight;
           context.strokeText(line, width / 2, y);
@@ -221,7 +331,7 @@ function KeywordSphereGraph({
         depthTest: false,
       });
       const sprite = new THREE.Sprite(material);
-      sprite.scale.set(width / (fullscreen ? 4.7 : 5.2), height / (fullscreen ? 4.7 : 5.2), 1);
+      sprite.scale.set(width / (fullscreen ? 4.8 : 5.15), height / (fullscreen ? 4.8 : 5.15), 1);
       return sprite;
     };
 
@@ -232,7 +342,7 @@ function KeywordSphereGraph({
       const color = resolveCssColor(graphCategoryColor[node.category], '#D48362');
       const visibleRadius = getGraphNodeDisplayRadius(node, active);
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(Math.max(4.8, visibleRadius), 24, 16),
+        new THREE.SphereGeometry(Math.max(node.category === '기업' ? 10 : 6.5, visibleRadius), 28, 18),
         new THREE.MeshStandardMaterial({
           color,
           emissive: color,
@@ -246,7 +356,7 @@ function KeywordSphereGraph({
       group.add(mesh);
 
       const hitMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(Math.max(visibleRadius + 8, node.category === '기업' ? 20 : 14), 18, 12),
+        new THREE.SphereGeometry(Math.max(visibleRadius + 8, node.category === '기업' ? 22 : 15), 18, 12),
         new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
       );
       hitMesh.position.copy(position);
@@ -393,7 +503,7 @@ function KeywordSphereGraph({
         </button>
       ) : null}
       <div className="pointer-events-none absolute bottom-5 left-5 right-5 flex flex-wrap gap-2">
-        {(['기업', 'AX', '보안', '인프라', '수주'] as const).map((item) => (
+        {allGraphCategories.map((item) => (
           <span key={item} className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/86 px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)] backdrop-blur">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: graphCategoryColor[item] }} />
             {item}
@@ -417,6 +527,12 @@ export function KeywordGraphView({
 }) {
   const { dashboard, isLoading: dashboardLoading } = useDashboard();
   const { cards, isLoading: cardsLoading } = useCardNews();
+  const [graphPayload, setGraphPayload] = useState<KeywordGraphPayload | null>(null);
+  const [graphLoading, setGraphLoading] = useState(true);
+  const [graphError, setGraphError] = useState<string | null>(null);
+  const [keywordRelatedCards, setKeywordRelatedCards] = useState<CardNewsItem[]>([]);
+  const [keywordCardsLoading, setKeywordCardsLoading] = useState(false);
+  const [keywordCardsError, setKeywordCardsError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState('sk-axis');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [category, setCategory] = useState<KeywordNode['category'] | '전체'>('전체');
@@ -432,40 +548,132 @@ export function KeywordGraphView({
   const [keywordDetailSlideIndex, setKeywordDetailSlideIndex] = useState(0);
   const [themeRevision, setThemeRevision] = useState(0);
 
-  const visibleNodes = useMemo(() => graphNodes.filter((node) => category === '전체' || node.category === category), [category]);
+  const keywordNodes = useMemo(() => {
+    const normalized = graphPayload?.nodes
+      ?.map(normalizeKeywordGraphNode)
+      .filter((node): node is KeywordNode => Boolean(node));
+    return normalized ?? [];
+  }, [graphPayload?.nodes]);
+  const keywordEdges = useMemo(() => {
+    const nodeIds = new Set(keywordNodes.map((node) => node.id));
+    const normalized = graphPayload?.edges
+      ?.map(normalizeKeywordGraphEdge)
+      .filter((edge): edge is KeywordEdge => {
+        if (!edge) return false;
+        return nodeIds.has(edge.source) && nodeIds.has(edge.target);
+      });
+    return normalized ?? [];
+  }, [graphPayload?.edges, keywordNodes]);
+  const visibleNodes = useMemo(() => keywordNodes.filter((node) => (
+    node.category === '기업' || category === '전체' || node.category === category
+  )), [category, keywordNodes]);
   const visibleEdges = useMemo(() => {
     const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
-    return graphEdges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
-  }, [visibleNodes]);
-  const selected = graphNodes.find((node) => node.id === selectedId) ?? graphNodes[0];
+    return keywordEdges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
+  }, [keywordEdges, visibleNodes]);
+  const selected = keywordNodes.find((node) => node.id === selectedId) ?? keywordNodes[0] ?? emptySelectedNode;
   const trendData: DashboardKeywordSearchPoint[] = dashboard?.keywordSearchPoints ?? [];
-  const rankedCardsForKeyword = useMemo(() => getExecutiveRank(cards), [cards]);
-  const overlayCardsAll = useMemo(() => {
-    const normalizedTerms = [selected.label, selected.category, selected.sourceType, ...(graphCompanyAliases[selected.id] ?? [])]
-      .filter(Boolean)
-      .map(normalizeGraphTerm);
-    const matched = rankedCardsForKeyword.filter((card) => {
-      const haystack = normalizeGraphTerm([
-        card.title,
-        getPeerLabel(card),
-        card.category,
-        card.category_label,
-        card.subtitle,
-        card.sector,
-        ...(card.summary_lines ?? card.summary),
-        ...(card.insights ?? []),
-      ]
-        .filter(Boolean)
-        .join(' '));
-      return normalizedTerms.some((term) => haystack.includes(term) || term.includes(normalizeGraphTerm(card.category_label ?? card.category)));
-    });
-    return matched.length > 0 ? matched : rankedCardsForKeyword;
-  }, [rankedCardsForKeyword, selected.category, selected.id, selected.label, selected.sourceType]);
+  const overlayCardsAll = keywordRelatedCards;
   const overlayPageSize = 3;
   const overlayPageCount = Math.max(1, Math.ceil(overlayCardsAll.length / overlayPageSize));
   const safeOverlayPage = ((overlayPage % overlayPageCount) + overlayPageCount) % overlayPageCount;
   const overlayCards = overlayCardsAll.slice(safeOverlayPage * overlayPageSize, safeOverlayPage * overlayPageSize + overlayPageSize);
-  const keywordDetailCard = keywordDetailCardId ? cards.find((card) => card.id === keywordDetailCardId) ?? null : null;
+  const keywordDetailCard = keywordDetailCardId
+    ? overlayCardsAll.find((card) => card.id === keywordDetailCardId) ?? cards.find((card) => card.id === keywordDetailCardId) ?? null
+    : null;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadKeywordGraph() {
+      if (!httpClient) {
+        setGraphLoading(false);
+        setGraphError('API client is not configured.');
+        return;
+      }
+      try {
+        setGraphLoading(true);
+        setGraphError(null);
+        const payload = await httpClient.get<KeywordGraphPayload>('/api/keyword-graph');
+        if (cancelled) return;
+        setGraphPayload(payload);
+        if (payload.selectedId) {
+          setSelectedId(payload.selectedId);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setGraphPayload(null);
+          setGraphError(loadError instanceof Error ? loadError.message : '키워드 그래프 API를 불러오지 못했습니다.');
+        }
+      } finally {
+        if (!cancelled) {
+          setGraphLoading(false);
+        }
+      }
+    }
+
+    void loadKeywordGraph();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (keywordNodes.length === 0) return;
+    if (!keywordNodes.some((node) => node.id === selectedId)) {
+      setSelectedId(keywordNodes[0]?.id ?? 'sk-axis');
+    }
+  }, [keywordNodes, selectedId]);
+
+  useEffect(() => {
+    if (visibleNodes.length === 0) return;
+    if (!visibleNodes.some((node) => node.id === selectedId)) {
+      setSelectedId('sk-axis');
+    }
+  }, [selectedId, visibleNodes]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const selectedNode = keywordNodes.find((node) => node.id === selectedId);
+    if (!selectedNode) {
+      setKeywordRelatedCards([]);
+      setKeywordCardsError(null);
+      setKeywordCardsLoading(false);
+      return undefined;
+    }
+    const activeSelectedNode = selectedNode;
+
+    async function loadKeywordCards() {
+      if (!httpClient) return;
+      try {
+        setKeywordCardsLoading(true);
+        setKeywordCardsError(null);
+        const payload = await httpClient.get<KeywordGraphCardsPayload>(`/api/keyword-graph/${encodeURIComponent(selectedId)}/cards?limit=30`);
+        if (cancelled) return;
+        const apiCards = (payload.items ?? []).map(normalizeCardNewsItem);
+        setKeywordRelatedCards(apiCards.length > 0 || activeSelectedNode.category !== '기업'
+          ? apiCards
+          : fallbackCompanyCards(activeSelectedNode, cards, keywordNodes, keywordEdges).slice(0, 30));
+      } catch (loadError) {
+        if (!cancelled) {
+          const fallbackCards = activeSelectedNode.category === '기업'
+            ? fallbackCompanyCards(activeSelectedNode, cards, keywordNodes, keywordEdges).slice(0, 30)
+            : [];
+          setKeywordRelatedCards(fallbackCards);
+          setKeywordCardsError(fallbackCards.length > 0 ? null : loadError instanceof Error ? loadError.message : '관련 카드뉴스를 불러오지 못했습니다.');
+        }
+      } finally {
+        if (!cancelled) {
+          setKeywordCardsLoading(false);
+        }
+      }
+    }
+
+    void loadKeywordCards();
+    return () => {
+      cancelled = true;
+    };
+  }, [cards, keywordEdges, keywordNodes, selectedId]);
 
   useEffect(() => {
     setOverlayPage(0);
@@ -493,7 +701,7 @@ export function KeywordGraphView({
     return () => observer.disconnect();
   }, []);
 
-  const getNode = (id: string) => graphNodes.find((node) => node.id === id) ?? graphNodes[0];
+  const getNode = (id: string) => keywordNodes.find((node) => node.id === id) ?? keywordNodes[0] ?? emptySelectedNode;
   const selectGraphNode = (nodeId: string) => {
     setSelectedId(nodeId);
     if (window.matchMedia('(min-width: 1280px)').matches) {
@@ -603,7 +811,7 @@ export function KeywordGraphView({
             <div data-guide="keyword-controls" className="flex flex-wrap gap-2">
               <div data-guide="keyword-filter" className="flex flex-wrap gap-2">
               <FilterChip active={category === '전체'} onClick={() => setCategory('전체')}>전체</FilterChip>
-              {(['기업', 'AX', '보안', '인프라', '수주'] as const).map((item) => (
+              {graphCategories.map((item) => (
                 <FilterChip key={item} active={category === item} onClick={() => setCategory(item)}>{item}</FilterChip>
               ))}
               </div>
@@ -631,7 +839,26 @@ export function KeywordGraphView({
 
           <div className="grid h-[calc(100dvh-156px)] min-h-[620px] gap-0 xl:grid-cols-[minmax(0,1fr)_300px]">
             <main data-guide="keyword-map" className="relative min-h-0 bg-[var(--axis-surface-soft)]" onWheel={handleGraphWheel}>
-              {graphMode === '3d' ? (
+              {graphLoading ? (
+                <div className="flex h-full min-h-[420px] items-center justify-center p-6">
+                  <div className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-5 py-4 text-sm font-semibold text-[var(--axis-body)]">
+                    키워드 그래프 API를 불러오는 중입니다.
+                  </div>
+                </div>
+              ) : graphError ? (
+                <div className="flex h-full min-h-[420px] items-center justify-center p-6">
+                  <div className="max-w-[520px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-5 py-4 text-sm text-[var(--axis-body)]">
+                    <p className="font-semibold text-[var(--axis-ink)]">키워드 그래프 API 연결 실패</p>
+                    <p className="mt-2 text-[var(--axis-muted)]">{graphError}</p>
+                  </div>
+                </div>
+              ) : keywordNodes.length === 0 ? (
+                <div className="flex h-full min-h-[420px] items-center justify-center p-6">
+                  <div className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-5 py-4 text-sm font-semibold text-[var(--axis-body)]">
+                    raw_articles.matched_sector_details.keyword 데이터가 없습니다.
+                  </div>
+                </div>
+              ) : graphMode === '3d' ? (
                 <KeywordSphereGraph
                   nodes={visibleNodes}
                   edges={visibleEdges}
@@ -693,16 +920,26 @@ export function KeywordGraphView({
                         </button>
                       </div>
                     </div>
-                    <div className="grid auto-rows-fr gap-3 md:grid-cols-3">
-                      {overlayCards.map((card) => (
-                        <KeywordRelatedCardButton
-                          key={card.id}
-                          card={card}
-                          onOpen={() => setKeywordDetailCardId(card.id)}
-                        />
-                      ))}
-                    </div>
-                    {overlayCardsAll.length === 0 ? (
+                    {keywordCardsLoading ? (
+                      <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
+                        관련 카드뉴스를 불러오는 중입니다.
+                      </div>
+                    ) : keywordCardsError ? (
+                      <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
+                        {keywordCardsError}
+                      </div>
+                    ) : (
+                      <div className="grid auto-rows-fr gap-3 md:grid-cols-3">
+                        {overlayCards.map((card) => (
+                          <KeywordRelatedCardButton
+                            key={card.id}
+                            card={card}
+                            onOpen={() => setKeywordDetailCardId(card.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {!keywordCardsLoading && overlayCardsAll.length === 0 ? (
                       <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
                         연결된 카드뉴스가 없습니다.
                       </div>
@@ -735,7 +972,7 @@ export function KeywordGraphView({
                   <div>
                     <p className="axis-kicker">Connected</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {graphEdges
+                      {keywordEdges
                         .filter((edge) => edge.source === selected.id || edge.target === selected.id)
                         .map((edge) => {
                           const connectedId = edge.source === selected.id ? edge.target : edge.source;
@@ -782,7 +1019,7 @@ export function KeywordGraphView({
             </div>
           )}
           <div className="absolute left-3 right-3 top-16 z-20 flex flex-wrap justify-end gap-2 sm:left-auto sm:right-5 sm:top-20 sm:max-w-[520px]">
-            {(['전체', '기업', 'AX', '보안', '인프라', '수주'] as const).map((item) => (
+            {(['전체', ...graphCategories] as const).map((item) => (
               <button
                 key={item}
                 type="button"
@@ -890,15 +1127,30 @@ export function KeywordGraphView({
                     </button>
                   </div>
                 </div>
-                <div className="grid auto-rows-fr gap-3 md:grid-cols-3">
-                  {overlayCards.map((card) => (
-                    <KeywordRelatedCardButton
-                      key={card.id}
-                      card={card}
-                      onOpen={() => setKeywordDetailCardId(card.id)}
-                    />
-                  ))}
-                </div>
+                {keywordCardsLoading ? (
+                  <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
+                    관련 카드뉴스를 불러오는 중입니다.
+                  </div>
+                ) : keywordCardsError ? (
+                  <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
+                    {keywordCardsError}
+                  </div>
+                ) : (
+                  <div className="grid auto-rows-fr gap-3 md:grid-cols-3">
+                    {overlayCards.map((card) => (
+                      <KeywordRelatedCardButton
+                        key={card.id}
+                        card={card}
+                        onOpen={() => setKeywordDetailCardId(card.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+                {!keywordCardsLoading && overlayCardsAll.length === 0 ? (
+                  <div className="mt-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
+                    연결된 카드뉴스가 없습니다.
+                  </div>
+                ) : null}
               </section>
             </>
           ) : null}
