@@ -151,6 +151,7 @@ export type CardNewsItem = {
   summary_lines?: string[];
   event_type?: EventType;
   sector?: SectorId;
+  keywords?: string[];
   exposure_band?: ExposureBand;
   exposure_score?: number;
   trust_score?: number;

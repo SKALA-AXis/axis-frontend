@@ -78,7 +78,7 @@ function resolveSourceName(sourceName?: string, url?: string) {
   }
 }
 
-function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
+export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
   const primarySlide = card.slides?.find((slide) => slide.order === 1) ?? card.slides?.[0];
   const derivedSummary = card.summary_lines?.length
     ? card.summary_lines
@@ -156,6 +156,7 @@ function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
     summary_lines: card.summary_lines ?? derivedSummary,
     event_type: card.event_type,
     sector: card.sector,
+    keywords: card.keywords?.filter((keyword): keyword is string => typeof keyword === 'string' && keyword.trim().length > 0) ?? [],
     exposure_band: card.exposure_band,
     exposure_score: card.exposure_score,
     trust_score: card.trust_score,
