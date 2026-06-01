@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bookmark, Box, Check, Filter, Network, Sparkles } from 'lucide-react';
+import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { buildMixerCards } from '../../../../features/card-news/mappers/cardNewsPresentation';
 import { getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
@@ -804,7 +805,7 @@ export function MixerView({
                                 <img
                                   src={sourceCard.coverImageUrl}
                                   alt={sourceCard.coverImageAlt}
-                                  className="h-full w-full object-cover opacity-75"
+                                  className={getCardLogoImageClass(sourceCard.coverImageUrl, 'compact') ?? 'h-full w-full object-cover opacity-75'}
                                 />
                               ) : null}
                               <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/35" />
@@ -953,7 +954,11 @@ export function MixerView({
                       className="relative block aspect-[3/4] w-full overflow-hidden text-left sm:aspect-[4/5]"
                     >
                       {item.card.coverImageUrl ? (
-                        <img src={item.card.coverImageUrl} alt={item.card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
+                        <img
+                          src={item.card.coverImageUrl}
+                          alt={item.card.coverImageAlt}
+                          className={getCardLogoImageClass(item.card.coverImageUrl, 'card') ?? 'absolute inset-0 h-full w-full object-cover opacity-55'}
+                        />
                       ) : null}
                       <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#081324]/48 to-black/92" />
                       <div className="relative flex h-full flex-col justify-between p-3 text-white sm:p-4">

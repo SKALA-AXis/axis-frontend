@@ -2,6 +2,7 @@ import { type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEv
 import { Box, Filter, Maximize2, Minus, Network, Plus } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import * as THREE from 'three';
+import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
@@ -24,7 +25,11 @@ function KeywordRelatedCardButton({ card, onOpen }: { card: CardNewsItem; onOpen
     >
       <div className="relative mb-3 aspect-[4/3] w-full shrink-0 overflow-hidden rounded-[var(--axis-radius-md)] bg-[#081324]">
         {card.coverImageUrl ? (
-          <img src={card.coverImageUrl} alt={card.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-55" />
+          <img
+            src={card.coverImageUrl}
+            alt={card.coverImageAlt}
+            className={getCardLogoImageClass(card.coverImageUrl, 'related') ?? 'absolute inset-0 h-full w-full object-cover opacity-55'}
+          />
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
         <span className="absolute bottom-2 left-2 max-w-[calc(100%_-_16px)] truncate text-xs font-semibold text-white">{getPeerLabel(card)}</span>
