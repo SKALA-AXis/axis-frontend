@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Bookmark, CalendarDays, Filter, Share2, Trash2 } from 'lucide-react';
+import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { buildCardCatalog } from '../../../../features/card-news/mappers/cardNewsPresentation';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
@@ -242,7 +243,7 @@ export function CardNewsWorkspaceView({
                           <img
                             src={row.card.coverImageUrl}
                             alt={row.card.coverImageAlt}
-                            className="absolute inset-0 h-full w-full object-cover opacity-55"
+                            className={getCardLogoImageClass(row.card.coverImageUrl, 'card') ?? 'absolute inset-0 h-full w-full object-cover opacity-55'}
                           />
                         ) : (
                           <div className="absolute inset-0" style={{ background: row.coverStyle }} />

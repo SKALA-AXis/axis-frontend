@@ -1,4 +1,5 @@
 import { httpClient } from '../../../shared/api/httpClient';
+import { getFallbackCardLogo } from '../cardLogoFallback';
 import type { CardNewsItem } from '../model/cardNews';
 
 export interface CardNewsRepository {
@@ -53,6 +54,10 @@ const sourceNameByHost: Record<string, string> = {
   'newstomato.com': '뉴스토마토',
 };
 
+function firstNonEmptyString(...values: Array<string | null | undefined>) {
+  return values.find((value) => typeof value === 'string' && value.trim().length > 0);
+}
+
 function resolveSourceName(sourceName?: string, url?: string) {
   if (sourceName && sourceName !== 'naver_news') {
     return sourceName;
@@ -89,17 +94,19 @@ function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
           title: slide.title,
           paragraphs: slide.body ? slide.body.split('\n').filter(Boolean) : [],
         }))
-      : [
+        : [
           {
             title: card.detailTitle ?? card.title ?? '카드뉴스 상세',
             paragraphs: [card.detailDescription ?? derivedSummary[0] ?? '상세 설명이 없습니다.'],
           },
         ];
-  const coverImageUrl =
-    card.coverImageUrl ??
-    card.display?.background_asset_url ??
-    primarySlide?.image_url ??
-    '/png.png';
+  const fallbackLogo = getFallbackCardLogo(card);
+  const coverImageUrl = firstNonEmptyString(
+    card.coverImageUrl,
+    card.display?.background_asset_url,
+    primarySlide?.image_url,
+    fallbackLogo?.url,
+  ) ?? '/png.png';
   const normalizedSources = card.sources?.map((source) => ({
     ...source,
     source_name: resolveSourceName(source.source_name, source.url),
@@ -122,9 +129,11 @@ function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
     title: card.title ?? '제목 없음',
     coverImageUrl,
     coverImageAlt:
-      card.coverImageAlt ??
-      card.display?.background_asset_url ??
-      primarySlide?.image_alt ??
+      firstNonEmptyString(
+        card.coverImageAlt,
+        primarySlide?.image_alt,
+        coverImageUrl === fallbackLogo?.url ? fallbackLogo?.alt : undefined,
+      ) ??
       `${card.title ?? '카드뉴스'} 대표 이미지`,
     summary: card.summary?.length ? card.summary : derivedSummary,
     articlePages: derivedArticlePages,

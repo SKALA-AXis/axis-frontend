@@ -22,6 +22,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { getCardLogoImageClass } from '../../../../../features/card-news/cardLogoFallback';
 import { useCardNews } from '../../../../../features/card-news/hooks/useCardNews';
 import {
   getDisplayDate,
@@ -505,7 +506,7 @@ export function HomeDashboardView({
                 <img
                   src={summaryCard.coverImageUrl}
                   alt={summaryCard.coverImageAlt}
-                  className="absolute inset-0 h-full w-full object-cover opacity-60"
+                  className={getCardLogoImageClass(summaryCard.coverImageUrl, 'card') ?? 'absolute inset-0 h-full w-full object-cover opacity-60'}
                 />
               ) : null}
               <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#091524]/50 to-black/90" />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Bookmark, ChevronLeft, ChevronRight, ExternalLink, Newspaper, Share2, X } from 'lucide-react';
+import { getCardLogoImageClass, isCardLogoUrl } from '../../../features/card-news/cardLogoFallback';
 import type { CardNewsItem } from '../../../features/card-news/model/cardNews';
 import { getDisplayDate, getPeerLabel, getSummaryLines } from '../../../features/card-news/mappers/cardNewsExecutive';
 
@@ -101,6 +102,7 @@ export function FloatingCardNewsOverlay({
   const activeSlide = slides[activeIndex] ?? slides[0];
   const slideImage = card.slides?.[activeIndex]?.image_url ?? card.coverImageUrl;
   const slideImageAlt = card.slides?.[activeIndex]?.image_alt ?? card.coverImageAlt;
+  const slideImageClass = getCardLogoImageClass(slideImage, 'hero') ?? 'absolute inset-0 h-full w-full object-cover opacity-58 transition-opacity';
   const [shareFeedback, setShareFeedback] = useState('');
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const sourceOptions = getCardSourceOptions(card);
@@ -157,7 +159,7 @@ export function FloatingCardNewsOverlay({
           <div className="min-h-[360px] border-b border-[var(--axis-hairline)] bg-[#081324] md:min-h-0 md:border-b-0 md:border-r">
             <div className="relative h-full min-h-[360px] w-full overflow-hidden bg-[#081324] md:min-h-0">
               {slideImage ? (
-                <img src={slideImage} alt={slideImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-58 transition-opacity" />
+                <img src={slideImage} alt={slideImageAlt} className={slideImageClass} />
               ) : null}
               <div className="absolute inset-0 bg-gradient-to-b from-black/22 via-[#081324]/40 to-black/90" />
               <div className="relative flex h-full min-h-[360px] flex-col justify-between p-4 text-white md:min-h-0">
@@ -341,7 +343,13 @@ export function FloatingCardNewsOverlay({
         >
           <div className="relative h-[128px]">
             {previousCard.coverImageUrl ? (
-              <img src={previousCard.coverImageUrl} alt={previousCard.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]" />
+              <img
+                src={previousCard.coverImageUrl}
+                alt={previousCard.coverImageAlt}
+                className={isCardLogoUrl(previousCard.coverImageUrl)
+                  ? `${getCardLogoImageClass(previousCard.coverImageUrl, 'related')} blur-[1px]`
+                  : 'absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]'}
+              />
             ) : null}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
             <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/12 px-2 py-1 text-[10px] font-semibold text-white/80">
@@ -364,7 +372,13 @@ export function FloatingCardNewsOverlay({
         >
           <div className="relative h-[128px]">
             {nextCard.coverImageUrl ? (
-              <img src={nextCard.coverImageUrl} alt={nextCard.coverImageAlt} className="absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]" />
+              <img
+                src={nextCard.coverImageUrl}
+                alt={nextCard.coverImageAlt}
+                className={isCardLogoUrl(nextCard.coverImageUrl)
+                  ? `${getCardLogoImageClass(nextCard.coverImageUrl, 'related')} blur-[1px]`
+                  : 'absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]'}
+              />
             ) : null}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
             <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/12 px-2 py-1 text-[10px] font-semibold text-white/80">
