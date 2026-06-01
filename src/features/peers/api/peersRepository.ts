@@ -19,7 +19,7 @@ class HttpPeersRepository implements PeersRepository {
       throw new Error('API client is not configured.');
     }
 
-    return httpClient.get<PeersData>('/peers');
+    return httpClient.get<PeersData>('/api/peers');
   }
 }
 
