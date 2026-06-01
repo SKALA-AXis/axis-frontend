@@ -19,7 +19,7 @@ class HttpBriefingsRepository implements BriefingsRepository {
       throw new Error('API client is not configured.');
     }
 
-    return httpClient.get<BriefingsData>('/briefings');
+    return httpClient.get<BriefingsData>('/api/briefings');
   }
 }
 
