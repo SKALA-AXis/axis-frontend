@@ -7,7 +7,7 @@ import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { mockMixerConfig } from '../../../../shared/mocks/mixer';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
-import { DonutCalloutChart, LoadingBlock, buildSelectionRatioData, normalizeMixerPeerLabel } from './AxisPlanningShared';
+import { DonutCalloutChart, LoadingBlock, buildSelectionRatioData, normalizeMixerPeerLabel } from '../shared/axis';
 
 function MixerAnalysisOverlay() {
   const loadingSteps = [
@@ -236,6 +236,7 @@ export function MixerView({
   const [candidatePage, setCandidatePage] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<MixerResultView | null>(null);
+  const [activeResultStep, setActiveResultStep] = useState(0);
   const [mixerDetailCardId, setMixerDetailCardId] = useState<string | null>(null);
   const [mixerDetailSlideIndex, setMixerDetailSlideIndex] = useState(0);
   const [historyStartDate, setHistoryStartDate] = useState('2026-05-13');
@@ -524,6 +525,7 @@ export function MixerView({
 
     generationTimeoutRef.current = window.setTimeout(() => {
       const nextResult = buildMixerResult();
+      setActiveResultStep(0);
       setResult(nextResult);
       setMode('result');
       setIsGenerating(false);
@@ -682,6 +684,7 @@ export function MixerView({
         ),
       ).values(),
     );
+    const activeSection = resultSections[activeResultStep] ?? resultSections[0];
     return (
       <ExecutivePage className="overflow-visible">
         <ExecutiveContainer className="pb-12">
@@ -710,9 +713,6 @@ export function MixerView({
                 <h2 className="mt-4 max-w-5xl text-[1.9rem] font-display font-semibold leading-[1.2] tracking-[-0.04em] text-[var(--axis-ink)] lg:text-[2.3rem]">
                   {result.mix_insight}
                 </h2>
-                <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">
-                  여러 카드에서 공통으로 읽히는 방향을 한 문장으로 먼저 정리한 결과입니다.
-                </p>
               </div>
             </article>
 
@@ -720,51 +720,62 @@ export function MixerView({
               <div>
                 <p className="axis-kicker">Step view</p>
                 <h3 className="axis-section-heading mt-1">상세 해석 보기</h3>
-                <p className="mt-3 text-sm leading-6 text-[var(--axis-muted)]">
-                  필터를 눌러 바꾸지 않아도, 해석 흐름 4개를 위에서 아래로 한 번에 읽을 수 있게 정리했습니다.
-                </p>
               </div>
               <div className="mt-5 grid gap-5">
-                {resultSections.map((section, sectionIndex) => (
-                  <section
-                    key={section.key}
-                    className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 lg:p-5"
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
-                        {sectionIndex + 1}
-                      </span>
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">해석 단계</p>
-                        <h4 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{section.label}</h4>
-                      </div>
-                    </div>
+                <div className="flex flex-wrap gap-2">
+                  {resultSections.map((section, sectionIndex) => (
+                    <button
+                      key={section.key}
+                      type="button"
+                      onClick={() => setActiveResultStep(sectionIndex)}
+                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                        activeResultStep === sectionIndex
+                          ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.12)] text-[var(--axis-accent-strong)]'
+                          : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-ink)] hover:border-[var(--axis-accent)]'
+                      }`}
+                      aria-pressed={activeResultStep === sectionIndex}
+                    >
+                      <span className="text-[11px] font-black">{sectionIndex + 1}</span>
+                      <span>{section.label}</span>
+                    </button>
+                  ))}
+                </div>
 
-                    <div className="mt-4">
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">핵심 문장</p>
-                        <p className="mt-2 text-[1.15rem] font-semibold leading-8 text-[var(--axis-ink)]">
-                          {section.finding}
-                        </p>
-                        <div className="mt-5 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">왜 이렇게 해석했는가</p>
-                          <p className="mt-2 text-sm leading-7 text-[var(--axis-body)]">{section.rationale}</p>
-                        </div>
-                        {section.key === 'action_direction' ? (
-                          <div className="mt-5 grid gap-3">
-                            {result.action_details.map((detail) => (
-                              <div key={`${detail.use_case}-${detail.action}`} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
-                                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{detail.use_case}</p>
-                                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{detail.action}</p>
-                                <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{detail.why}</p>
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
+                <section className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 lg:p-5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
+                      {activeResultStep + 1}
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">해석 단계</p>
+                      <h4 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{activeSection.label}</h4>
                     </div>
-                  </section>
-                ))}
+                  </div>
+
+                  <div className="mt-4">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">핵심 문장</p>
+                      <p className="mt-2 text-[1.15rem] font-semibold leading-8 text-[var(--axis-ink)]">
+                        {activeSection.finding}
+                      </p>
+                      <div className="mt-5 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">왜 이렇게 해석했는가</p>
+                        <p className="mt-2 text-sm leading-7 text-[var(--axis-body)]">{activeSection.rationale}</p>
+                      </div>
+                      {activeSection.key === 'action_direction' ? (
+                        <div className="mt-5 grid gap-3">
+                          {result.action_details.map((detail) => (
+                            <div key={`${detail.use_case}-${detail.action}`} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{detail.use_case}</p>
+                              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{detail.action}</p>
+                              <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{detail.why}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </section>
 
                 <section className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 lg:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">

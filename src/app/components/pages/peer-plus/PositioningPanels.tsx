@@ -14,53 +14,29 @@ import {
 
 import type { PeerPositioningData, PeerPositioningPoint } from '../../../../features/peers/model/peerPositioning';
 
-const SEG_POS_END = 8000;
-const SEG_CLUSTER_START = 30000;
-const AXIS_SEG_POS_END = 0.22;
-const AXIS_SEG_CLUSTER_START = 0.26;
+function getRevenueTickStep(min: number, max: number) {
+  const spread = Math.max(max - min, 1000);
+  const roughStep = spread / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalized = roughStep / magnitude;
 
-const X_MIN = 0;
-const X_MAX = 1;
-
-type RevenueScale = {
-  revenueMin: number;
-  revenueMax: number;
-};
-
-function revToX(rev: number, scale: RevenueScale): number {
-  if (rev <= SEG_POS_END) {
-    return ((rev - scale.revenueMin) / (SEG_POS_END - scale.revenueMin)) * AXIS_SEG_POS_END;
-  }
-  if (rev <= SEG_CLUSTER_START) {
-    return (
-      AXIS_SEG_POS_END +
-      ((rev - SEG_POS_END) / (SEG_CLUSTER_START - SEG_POS_END)) *
-        (AXIS_SEG_CLUSTER_START - AXIS_SEG_POS_END)
-    );
-  }
-  return (
-    AXIS_SEG_CLUSTER_START +
-    ((rev - SEG_CLUSTER_START) / (scale.revenueMax - SEG_CLUSTER_START)) *
-      (1 - AXIS_SEG_CLUSTER_START)
-  );
+  if (normalized <= 1) return magnitude;
+  if (normalized <= 2) return 2 * magnitude;
+  if (normalized <= 5) return 5 * magnitude;
+  return 10 * magnitude;
 }
 
-function xToRev(x: number, scale: RevenueScale): number {
-  if (x <= AXIS_SEG_POS_END) {
-    return scale.revenueMin + (x / AXIS_SEG_POS_END) * (SEG_POS_END - scale.revenueMin);
+function buildRevenueTicks(min: number, max: number) {
+  const step = getRevenueTickStep(min, max);
+  const start = Math.floor(min / step) * step;
+  const end = Math.ceil(max / step) * step;
+  const ticks: number[] = [];
+
+  for (let value = start; value <= end; value += step) {
+    ticks.push(value);
   }
-  if (x <= AXIS_SEG_CLUSTER_START) {
-    return (
-      SEG_POS_END +
-      ((x - AXIS_SEG_POS_END) / (AXIS_SEG_CLUSTER_START - AXIS_SEG_POS_END)) *
-        (SEG_CLUSTER_START - SEG_POS_END)
-    );
-  }
-  return (
-    SEG_CLUSTER_START +
-    ((x - AXIS_SEG_CLUSTER_START) / (1 - AXIS_SEG_CLUSTER_START)) *
-      (scale.revenueMax - SEG_CLUSTER_START)
-  );
+
+  return Array.from(new Set([min, ...ticks, max])).sort((left, right) => left - right);
 }
 
 function formatRevenueTick(value: number) {
@@ -99,41 +75,21 @@ export function PositioningPanel({ positioning, isLoading, error }: PositioningP
       point.revenueKrwBn != null && point.revenueYoyPct != null,
   );
   const revenueValues = validPoints.map((point) => point.revenueKrwBn);
-  const revenueMin = revenueValues.length > 0 ? Math.min(...revenueValues) : 1000;
-  const revenueMax = revenueValues.length > 0 ? Math.max(...revenueValues) : 50000;
-  const revenueSpread = Math.max(revenueMax - revenueMin, 5000);
-  const paddedRevenueMin = Math.max(
-    500,
-    Math.min(
-      Math.floor((revenueMin - revenueSpread * 0.18) / 100) * 100,
-      SEG_POS_END - 700,
-    ),
-  );
-  const paddedRevenueMax = Math.max(
-    SEG_CLUSTER_START + 5000,
-    Math.ceil((revenueMax + revenueSpread * 0.12) / 1000) * 1000,
-  );
-  const revenueScale: RevenueScale = {
-    revenueMin: paddedRevenueMin,
-    revenueMax: paddedRevenueMax,
-  };
+  const rawRevenueMin = revenueValues.length > 0 ? Math.min(...revenueValues) : 1000;
+  const rawRevenueMax = revenueValues.length > 0 ? Math.max(...revenueValues) : 50000;
+  const revenueSpread = Math.max(rawRevenueMax - rawRevenueMin, Math.max(rawRevenueMax * 0.18, 2500));
+  const paddedRevenueMin = Math.max(0, Math.floor((rawRevenueMin - revenueSpread * 0.18) / 500) * 500);
+  const paddedRevenueMax = Math.ceil((rawRevenueMax + revenueSpread * 0.14) / 500) * 500;
   const chartPoints = validPoints.map((point) => ({
     ...point,
-    x: revToX(point.revenueKrwBn, revenueScale),
+    x: point.revenueKrwBn,
     y: point.revenueYoyPct,
     color: colorForPoint(point),
   }));
 
-  const revenueTickValues = Array.from(
-    new Set([
-      revenueScale.revenueMin,
-      ...validPoints.map((point) => point.revenueKrwBn),
-      revenueScale.revenueMax,
-    ]),
-  )
-    .sort((left, right) => left - right)
-    .filter((value, index, values) => index === 0 || Math.abs(value - values[index - 1]) >= 1500);
-  const xTicks = revenueTickValues.map((value) => revToX(value, revenueScale));
+  const xMin = paddedRevenueMin;
+  const xMax = paddedRevenueMax > paddedRevenueMin ? paddedRevenueMax : paddedRevenueMin + 2000;
+  const xTicks = buildRevenueTicks(xMin, xMax);
 
   const rawYMin = chartPoints.length > 0 ? Math.min(...chartPoints.map((point) => point.y)) : -10;
   const rawYMax = chartPoints.length > 0 ? Math.max(...chartPoints.map((point) => point.y)) : 15;
@@ -182,9 +138,9 @@ export function PositioningPanel({ positioning, isLoading, error }: PositioningP
                 type="number"
                 dataKey="x"
                 name="사업 규모"
-                domain={[X_MIN, X_MAX]}
+                domain={[xMin, xMax]}
                 ticks={xTicks}
-                tickFormatter={(value: number) => formatRevenueTick(xToRev(value, revenueScale))}
+                tickFormatter={(value: number) => formatRevenueTick(value)}
                 tick={{ fontSize: 10, fill: '#6B6B73' }}
                 label={{
                   value: positioning?.xAxisLabel ?? '사업 규모',
@@ -311,7 +267,6 @@ function buildSkAxMirrorLine(
     PeerPositioningPoint & {
       revenueKrwBn: number;
       revenueYoyPct: number;
-      x: number;
       y: number;
       color: string;
     }

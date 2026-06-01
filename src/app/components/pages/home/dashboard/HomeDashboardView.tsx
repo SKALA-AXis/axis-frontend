@@ -22,26 +22,26 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
+import { useCardNews } from '../../../../../features/card-news/hooks/useCardNews';
 import {
   getDisplayDate,
   getExecutiveRank,
   getLatestFirst,
   getPeerLabel,
   getSummaryLines,
-} from '../../../../features/card-news/mappers/cardNewsExecutive';
-import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
-import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
-import { homeKeywordSpikeInsights, homeTodayInsightSignals } from '../../../../shared/mocks/homeDashboardPresentation';
-import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
-import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
+} from '../../../../../features/card-news/mappers/cardNewsExecutive';
+import { useDashboard } from '../../../../../features/dashboard/hooks/useDashboard';
+import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
+import { homeKeywordSpikeInsights, homeTodayInsightSignals } from '../../../../../shared/mocks/homeDashboardPresentation';
+import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../../executive/ExecutiveSystem';
+import { FloatingCardNewsOverlay } from '../../../shared/FloatingCardNewsOverlay';
 import {
   ChartButton,
   ChartLegend,
   LoadingBlock,
   MiniStat,
   type KeywordSpikeInsight,
-} from './AxisPlanningShared';
+} from '../../shared/axis';
 
 type NavigateHandler = (view: string) => void;
 
@@ -381,9 +381,9 @@ export function HomeDashboardView({
                   const isActive = signal.id === selectedSignalId;
                   return (
                     <button
-                      key={signal.id}
-                      type="button"
-                      onClick={() => setSelectedSignalId(signal.id)}
+                    key={signal.id}
+                    type="button"
+                    onClick={() => setSelectedSignalId(signal.id)}
                       aria-pressed={isActive}
                       className={`rounded-[var(--axis-radius-md)] p-3 text-left transition ${
                         isActive
@@ -394,7 +394,7 @@ export function HomeDashboardView({
                       <p className={`text-[11px] font-semibold ${isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}`}>
                         {signal.label}
                       </p>
-                      <p className="mt-1 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{signal.value}</p>
+                      <p className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{signal.value}</p>
                     </button>
                   );
                 })}
@@ -408,19 +408,19 @@ export function HomeDashboardView({
                   <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">
                     {selectedSignal.label}
                   </p>
-                  <h3 className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{selectedSignal.value}</h3>
+                  <h3 className="mt-1.5 text-[1.08rem] font-semibold leading-7 text-[var(--axis-ink)]">{selectedSignal.value}</h3>
                 </header>
 
                 {/* AI 추론 과정 — 근거 위쪽. agent 가 어떤 데이터 → 어떤 추론 → 결론에 도달했는지 chain 으로 노출. */}
                 <section className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.18)] bg-[rgba(220,90,36,0.05)] p-4">
                   <div className="flex items-center gap-2">
                     <Sparkles size={14} className="text-[var(--axis-accent-strong)]" />
-                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">AI 추론 과정</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">AI 추론 과정</p>
                   </div>
                   <ol className="mt-2.5 space-y-2">
                     {selectedSignal.reasoning.map((step, idx) => (
-                      <li key={step.stage} className="grid grid-cols-[30px_minmax(0,1fr)] gap-2 text-[13px] leading-5">
-                        <span className="flex h-5 w-7 items-center justify-center rounded bg-[var(--axis-canvas)] text-[10px] font-black text-[var(--axis-accent-strong)]">
+                      <li key={step.stage} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 text-sm leading-6">
+                        <span className="flex h-6 w-8 items-center justify-center rounded bg-[var(--axis-canvas)] text-[11px] font-black text-[var(--axis-accent-strong)]">
                           0{idx + 1}
                         </span>
                         <span className="text-[var(--axis-body)]">
@@ -436,10 +436,10 @@ export function HomeDashboardView({
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   {/* 근거 */}
                   <section>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">근거</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">근거</p>
                     <ul className="mt-2 space-y-1.5">
                       {selectedSignal.evidence.grounds.map((g) => (
-                        <li key={g} className="grid grid-cols-[12px_minmax(0,1fr)] gap-2 text-[13px] leading-5 text-[var(--axis-body)]">
+                        <li key={g} className="grid grid-cols-[14px_minmax(0,1fr)] gap-2 text-sm leading-6 text-[var(--axis-body)]">
                           <span className="font-bold text-[var(--axis-accent-strong)]">·</span>
                           <span>{g}</span>
                         </li>
@@ -449,10 +449,10 @@ export function HomeDashboardView({
 
                   {/* 달라진 점 */}
                   <section>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">달라진 점</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">달라진 점</p>
                     <ul className="mt-2 space-y-1.5">
                       {selectedSignal.evidence.changes.map((c) => (
-                        <li key={c} className="grid grid-cols-[12px_minmax(0,1fr)] gap-2 text-[13px] leading-5 text-[var(--axis-body)]">
+                        <li key={c} className="grid grid-cols-[14px_minmax(0,1fr)] gap-2 text-sm leading-6 text-[var(--axis-body)]">
                           <span className="font-bold text-[var(--axis-success)]">↗</span>
                           <span>{c}</span>
                         </li>
@@ -464,12 +464,12 @@ export function HomeDashboardView({
                 {/* 관련 키워드 */}
                 {selectedSignal.evidence.relatedKeywords.length > 0 ? (
                   <section className="mt-4 border-t border-[var(--axis-hairline)] pt-3">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">관련 키워드</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">관련 키워드</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {selectedSignal.evidence.relatedKeywords.map((k) => (
                         <span
                           key={k}
-                          className="inline-flex items-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-body)]"
+                          className="inline-flex items-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)]"
                         >
                           {k}
                         </span>

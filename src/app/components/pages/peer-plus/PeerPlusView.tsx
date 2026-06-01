@@ -11,7 +11,7 @@ import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
 import { ExecutiveBadge, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
-import { LoadingBlock } from './AxisPlanningShared';
+import { LoadingBlock } from '../shared/axis';
 import { PositioningPanel } from './PositioningPanels';
 
 type NavigateHandler = (view: string) => void;
@@ -635,9 +635,6 @@ export function PeerPlusView({
                 <h2 className="mt-2 text-lg font-display font-semibold leading-tight text-[var(--axis-ink)]">
                   경쟁 메시지 차이와 SK AX 대응 포인트
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-                  왼쪽은 실무 비교에 바로 쓰는 핵심 신호만, 오른쪽은 포지셔닝 관점까지 포함한 SWOT 해석만 따로 분리해 읽도록 구성했습니다.
-                </p>
               </div>
             </div>
             <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -656,9 +653,6 @@ export function PeerPlusView({
                     </button>
                   </div>
                 </div>
-                <p className="mb-4 text-xs leading-5 text-[var(--axis-muted)]">
-                  사업 신호, 기술 신호, 리스크만 남겨 실제 제안이나 내부 브리핑에서 바로 비교 가능한 축으로 압축했습니다.
-                </p>
                 <div className="grid gap-3">
                   {peerInsightItems.filter((item) => item.label !== '포지셔닝').map((item, index) => (
                     <article
@@ -688,9 +682,6 @@ export function PeerPlusView({
                     </button>
                   </div>
                 </div>
-                <p className="mb-4 text-xs leading-5 text-[var(--axis-muted)]">
-                  포지셔닝은 SWOT 안에서 해석하고, 각 항목이 SK AX의 대응 방향에 어떤 의미를 갖는지 한 번에 보이도록 정리했습니다.
-                </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   {swotItems.map((item, index) => (
                     <article

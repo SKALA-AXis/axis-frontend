@@ -12,8 +12,8 @@ import {
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
-import type { UserRole } from '../../App';
 import { adminNavigationItem, primaryNavigationItems } from '../../../shared/content/navigation';
+import type { UserRole } from '../../types/userRole';
 
 interface SidebarProps {
   activeView: string;

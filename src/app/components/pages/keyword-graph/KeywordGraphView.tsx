@@ -11,7 +11,7 @@ import { pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
 import { graphCategoryColor, graphCompanyAliases, graphEdges, graphNodes, type KeywordEdge, type KeywordNode } from '../../../../shared/mocks/keywordGraph';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
-import { FilterChip, MiniStat } from './AxisPlanningShared';
+import { FilterChip, MiniStat } from '../shared/axis';
 
 type NavigateHandler = (view: string) => void;
 

@@ -8,7 +8,7 @@ import { adminCardsRepository } from '../../../../features/admin-cards/api/admin
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveHeader, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay, shareCardNews } from '../../shared/FloatingCardNewsOverlay';
-import { EmptyBlock, LoadingBlock } from './AxisPlanningShared';
+import { EmptyBlock, LoadingBlock } from '../shared/axis';
 
 function buildCardNewsRows(cards: CardNewsItem[]) {
   const catalog = buildCardCatalog(getLatestFirst(cards));
