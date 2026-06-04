@@ -34,6 +34,16 @@ export interface DashboardKeywordSeries {
   total: string;
 }
 
+export interface DashboardKeywordInsight {
+  key: string;
+  time: string;
+  title: string;
+  valueLabel: string;
+  reason: string;
+  skAxPoint: string;
+  evidence?: Array<Record<string, unknown>>;
+}
+
 export interface DashboardNotification {
   title: string;
   detail: string;
@@ -109,6 +119,7 @@ export interface DashboardData {
   keywords: DashboardKeyword[];
   keywordSearchPoints: DashboardKeywordSearchPoint[];
   keywordSeries: DashboardKeywordSeries[];
+  keywordInsights?: DashboardKeywordInsight[];
   stockPoints: DashboardStockPoint[];
   stockRatePoints?: DashboardStockRatePoint[];
   stockSource?: DashboardStockSource | null;

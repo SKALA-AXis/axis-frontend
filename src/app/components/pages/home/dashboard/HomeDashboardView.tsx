@@ -33,14 +33,13 @@ import {
 } from '../../../../../features/card-news/mappers/cardNewsExecutive';
 import { useDashboard } from '../../../../../features/dashboard/hooks/useDashboard';
 import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
-import { homeKeywordSpikeInsights, homeTodayInsightSignals } from '../../../../../shared/mocks/homeDashboardPresentation';
+import { homeTodayInsightSignals } from '../../../../../shared/mocks/homeDashboardPresentation';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../../shared/FloatingCardNewsOverlay';
 import {
   ChartButton,
   ChartLegend,
   LoadingBlock,
-  MiniStat,
   type KeywordSpikeInsight,
 } from '../../shared/axis';
 
@@ -160,6 +159,7 @@ export function HomeDashboardView({
     };
   });
   const keywordSeriesKeys = dashboard.keywordSeries.map((series) => series.key);
+  const keywordSpikeInsights = dashboard.keywordInsights ?? [];
   const keywordAxisAbsMax = dashboard.keywordSearchPoints.reduce((max, point) => {
     const pointMax = keywordSeriesKeys.reduce((innerMax, key) => {
       const value = point[key];
@@ -289,8 +289,16 @@ export function HomeDashboardView({
     }
 
     const chartPoint = (payload[0] as { payload?: Record<string, number | string | null | undefined> })?.payload;
+    const matchedInsight = payload
+      .map((item) => {
+        const dataKey = typeof item.dataKey === 'string' ? item.dataKey : '';
+        return keywordSpikeInsights.find((insight) => insight.key === dataKey && insight.time === label) ?? null;
+      })
+      .find((insight): insight is KeywordSpikeInsight => insight !== null);
+
     return (
-      <div className="min-w-[220px] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur">
+      <div className="relative min-w-[240px] max-w-[340px] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur">
+        <span className="absolute -bottom-1.5 left-8 h-3 w-3 rotate-45 border-b border-r border-[var(--axis-hairline)] bg-white/95" />
         <p className="text-[11px] font-semibold text-[var(--axis-muted)]">{label}</p>
         <div className="mt-2 space-y-1.5">
           {payload.map((item) => {
@@ -310,6 +318,14 @@ export function HomeDashboardView({
             );
           })}
         </div>
+        {matchedInsight ? (
+          <div className="mt-3 border-t border-[var(--axis-hairline)] pt-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">급등 원인 후보</p>
+            <p className="mt-1.5 text-xs font-semibold leading-4 text-[var(--axis-ink)]">{matchedInsight.title}</p>
+            <p className="mt-1.5 text-[11px] leading-4 text-[var(--axis-body)]">{matchedInsight.reason}</p>
+            <p className="mt-1.5 text-[11px] font-semibold leading-4 text-[var(--axis-ink)]">{matchedInsight.skAxPoint}</p>
+          </div>
+        ) : null}
       </div>
     );
   };
@@ -628,27 +644,51 @@ export function HomeDashboardView({
                         strokeWidth={index === 0 ? 2.4 : 2.2}
                         dot={({ cx, cy, payload }) => {
                           if (typeof cx !== 'number' || typeof cy !== 'number' || !payload) return <></>;
-                          const matchedInsight = homeKeywordSpikeInsights.find(
+                          const matchedInsight = keywordSpikeInsights.find(
                             (item) => item.key === series.key && item.time === String(payload.date ?? payload.time),
                           );
                           const isSelected =
                             matchedInsight?.key === selectedKeywordInsight?.key &&
                             matchedInsight?.time === selectedKeywordInsight?.time;
+                          if (matchedInsight) {
+                            return (
+                              <g
+                                className="cursor-pointer"
+                                tabIndex={0}
+                                onMouseEnter={() => setSelectedKeywordInsight(matchedInsight)}
+                                onFocus={() => setSelectedKeywordInsight(matchedInsight)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedKeywordInsight(matchedInsight);
+                                }}
+                              >
+                                <circle
+                                  cx={cx}
+                                  cy={cy}
+                                  r={isSelected ? 11 : 9}
+                                  fill="rgba(190,255,0,0.18)"
+                                  stroke="#beff00"
+                                  strokeWidth={2.4}
+                                />
+                                <circle
+                                  cx={cx}
+                                  cy={cy}
+                                  r={isSelected ? 5.5 : 4.5}
+                                  fill={series.color}
+                                  stroke="rgba(255,255,255,0.98)"
+                                  strokeWidth={2.4}
+                                />
+                              </g>
+                            );
+                          }
                           return (
                             <circle
                               cx={cx}
                               cy={cy}
-                              r={matchedInsight ? (isSelected ? 5.5 : 4.5) : 2.5}
+                              r={2.5}
                               fill={series.color}
-                              stroke={matchedInsight ? 'rgba(255,255,255,0.95)' : series.color}
-                              strokeWidth={matchedInsight ? 2 : 0}
-                              className={matchedInsight ? 'cursor-pointer' : undefined}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (matchedInsight) {
-                                  setSelectedKeywordInsight(matchedInsight);
-                                }
-                              }}
+                              stroke={series.color}
+                              strokeWidth={0}
                             />
                           );
                         }}
@@ -675,25 +715,6 @@ export function HomeDashboardView({
                 ? `Peer 4사 전일 대비 주가 증감률 · ${dashboard.stockSource?.label ?? 'mock stockPoints fallback'}`
                 : '키워드 검색지수 일별 전일 대비 지수 차이 (네이버 데이터랩 상대지수)'}
             </p>
-            {!showStockChart && selectedKeywordInsight ? (
-              <div
-                className="mt-3 rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.18)] bg-[rgba(255,255,255,0.78)] p-3"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">튀는 값 원인</p>
-                    <h4 className="mt-2 text-sm font-semibold text-[var(--axis-ink)]">{selectedKeywordInsight.title}</h4>
-                  </div>
-                  <div className="grid min-w-[170px] gap-2 sm:grid-cols-2">
-                    <MiniStat label="발생 시점" value={selectedKeywordInsight.time} />
-                    <MiniStat label="검색 지수" value={selectedKeywordInsight.valueLabel} />
-                  </div>
-                </div>
-                <p className="mt-2.5 text-[13px] leading-5 text-[var(--axis-body)]">{selectedKeywordInsight.reason}</p>
-                <p className="mt-1.5 text-[13px] font-semibold leading-5 text-[var(--axis-ink)]">{selectedKeywordInsight.skAxPoint}</p>
-              </div>
-            ) : null}
           </ChartButton>
           </div>
           </div>
