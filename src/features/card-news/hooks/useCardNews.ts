@@ -1,36 +1,28 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
+import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';
 import { cardNewsRepository } from '../api/cardNewsRepository';
 import type { CardNewsItem } from '../model/cardNews';
 
 interface UseCardNewsResult {
   cards: CardNewsItem[];
+  status: AsyncStatus;
   isLoading: boolean;
   error: string | null;
   reload: () => Promise<void>;
 }
 
 export function useCardNews(): UseCardNewsResult {
-  const [cards, setCards] = useState<CardNewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(() => cardNewsRepository.list(), []);
+  const {
+    data: cards,
+    status,
+    isLoading,
+    error,
+    reload,
+  } = useAsyncResource<CardNewsItem[]>(load, [], [load], {
+    errorMessage: '카드뉴스를 불러오지 못했습니다.',
+  });
 
-  const reload = useCallback(async () => {
-    setIsLoading(true);
-
-    try {
-      const nextCards = await cardNewsRepository.list();
-      setCards(nextCards);
-      setError(null);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : '카드뉴스를 불러오지 못했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  return { cards, isLoading, error, reload };
+  return { cards, status, isLoading, error, reload };
 }

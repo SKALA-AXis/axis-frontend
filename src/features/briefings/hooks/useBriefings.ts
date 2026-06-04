@@ -1,12 +1,15 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
+import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';
 import { briefingsRepository } from '../api/briefingsRepository';
 import { mapBriefingsToViewModel, type BriefingsViewModel } from '../mappers/briefingsMapper';
 
 interface UseBriefingsResult {
   briefings: BriefingsViewModel | null;
+  status: AsyncStatus;
   isLoading: boolean;
   error: string | null;
+  reload: () => Promise<void>;
 }
 
 export function useBriefings(): UseBriefingsResult {
@@ -14,7 +17,9 @@ export function useBriefings(): UseBriefingsResult {
     const data = await briefingsRepository.getBriefings();
     return mapBriefingsToViewModel(data);
   }, []);
-  const { data: briefings, isLoading, error } = useAsyncResource<BriefingsViewModel | null>(load, null, [load]);
+  const { data: briefings, status, isLoading, error, reload } = useAsyncResource<BriefingsViewModel | null>(load, null, [load], {
+    errorMessage: '브리핑을 불러오지 못했습니다.',
+  });
 
-  return { briefings, isLoading, error };
+  return { briefings, status, isLoading, error, reload };
 }

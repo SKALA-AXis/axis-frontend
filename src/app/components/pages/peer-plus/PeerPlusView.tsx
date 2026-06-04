@@ -10,7 +10,7 @@ import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
 import { ExecutiveBadge, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
-import { LoadingBlock } from '../shared/axis';
+import { PageProcessLoading, PageState } from '../../shared/PageState';
 import { PositioningPanel } from './PositioningPanels';
 
 type NavigateHandler = (view: string) => void;
@@ -315,8 +315,13 @@ export function PeerPlusView({
   selectedPeerId?: PeerPlusPeerId;
   onUpdateTimeChange?: (updatedAt: string | null) => void;
 }) {
-  const { cards, isLoading, error } = useCardNews();
-  const { peerOverview, isLoading: isPeerOverviewLoading, error: peerOverviewError } = usePeerOverview();
+  const { cards, isLoading, error, reload } = useCardNews();
+  const {
+    peerOverview,
+    isLoading: isPeerOverviewLoading,
+    error: peerOverviewError,
+    reload: reloadPeerOverview,
+  } = usePeerOverview();
   const { peerPositioning, isLoading: isPeerPositioningLoading, error: peerPositioningError } = usePeerPositioning();
   const peerOptions = mockPeerPlusOptions;
   const filterOptions: Array<{ id: PeerPlusFilterId; label: string }> = [{ id: 'all', label: '전체' }, ...peerOptions, globalIndustryFilterOption];
@@ -512,9 +517,33 @@ export function PeerPlusView({
   }, [comparisonLabel, peerEvidenceCards, peerInsightItems, swotItems]);
   const activePeerReasoning = activePeerReasoningId ? peerReasoningSections[activePeerReasoningId] : null;
 
-  if (isLoading || isPeerOverviewLoading) return <LoadingBlock label="Peer+ 분석 데이터를 불러오는 중입니다." />;
-  if (error) return <LoadingBlock label={error} />;
-  if (peerOverviewError && !peerOverview) return <LoadingBlock label={peerOverviewError} />;
+  if (isLoading || isPeerOverviewLoading || error || (peerOverviewError && !peerOverview)) {
+    return (
+      <PageState
+        loading={isLoading || isPeerOverviewLoading}
+        error={error ?? (peerOverviewError && !peerOverview ? peerOverviewError : null)}
+        loadingLabel="Peer+ 분석 데이터를 불러오는 중입니다."
+        loadingFallback={(
+          <PageProcessLoading
+            eyebrow="Peer+ analysis"
+            title="Peer+ 분석 데이터를 불러오는 중"
+            description="경쟁사 개요와 카드뉴스 신호를 함께 불러와 비교 패널과 포지셔닝 화면을 준비합니다."
+            steps={[
+              { label: 'Peer 개요 요청', detail: '/api/monitoring/overview/peer-table 응답 대기' },
+              { label: '카드 신호 연결', detail: '/api/cards 기반 근거 카드 매칭' },
+              { label: '분석 패널 구성', detail: '비교, SWOT, 포지셔닝 영역 준비' },
+            ]}
+            meta={['source: peer overview + card news', 'endpoints: /api/monitoring/overview/peer-table, /api/cards']}
+          />
+        )}
+        onRetry={async () => {
+          await Promise.all([reload(), reloadPeerOverview()]);
+        }}
+      >
+        {null}
+      </PageState>
+    );
+  }
 
   return (
     <ExecutivePage className="overflow-visible">

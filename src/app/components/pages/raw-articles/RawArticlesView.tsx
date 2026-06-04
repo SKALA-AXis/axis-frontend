@@ -18,6 +18,7 @@ import {
   ExecutiveMetric,
   ExecutivePage,
 } from '../../executive/ExecutiveSystem';
+import { PageProcessLoading, PageState } from '../../shared/PageState';
 
 interface RawArticlesViewProps {
   bookmarkedIds: string[];
@@ -33,7 +34,7 @@ type MixerResultView = {
 };
 
 export function RawArticlesView({ bookmarkedIds }: RawArticlesViewProps) {
-  const { cards, isLoading, error } = useCardNews();
+  const { cards, isLoading, error, reload } = useCardNews();
   const bookmarkedCards = useMemo(() => getExecutiveRank(cards).filter((card) => bookmarkedIds.includes(card.id)), [bookmarkedIds, cards]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [result, setResult] = useState<MixerResultView | null>(null);
@@ -74,12 +75,30 @@ export function RawArticlesView({ bookmarkedIds }: RawArticlesViewProps) {
     });
   };
 
-  if (isLoading) {
-    return <ExecutivePage className="p-6 text-sm text-[var(--axis-muted)]">믹서기 후보 카드를 불러오는 중입니다.</ExecutivePage>;
-  }
-
-  if (error) {
-    return <ExecutivePage className="p-6 text-sm text-[var(--axis-muted)]">{error}</ExecutivePage>;
+  if (isLoading || error) {
+    return (
+      <PageState
+        loading={isLoading}
+        error={error}
+        loadingLabel="믹서기 후보 카드를 불러오는 중입니다."
+        loadingFallback={(
+          <PageProcessLoading
+            eyebrow="Bookmarked mixer"
+            title="북마크 후보 카드를 불러오는 중"
+            description="북마크된 카드만 추려 조합 가능한 후보와 결과 초안을 만들 수 있게 준비합니다."
+            steps={[
+              { label: '카드 목록 요청', detail: '/api/cards 응답 대기' },
+              { label: '북마크 매칭', detail: '저장된 카드 ID와 후보 카드 연결' },
+              { label: '작업대 구성', detail: '선택 목록과 결과 패널 준비' },
+            ]}
+            meta={['source: bookmarked card news', 'endpoint: /api/cards']}
+          />
+        )}
+        onRetry={reload}
+      >
+        {null}
+      </PageState>
+    );
   }
 
   return (

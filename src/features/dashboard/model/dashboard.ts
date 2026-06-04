@@ -127,3 +127,12 @@ export interface DashboardData {
   keywordNewsCount: string;
   dartSummary?: DashboardDartSummary | null;
 }
+
+export interface DashboardKeywordTrendsData {
+  keywordSearchPoints: DashboardKeywordSearchPoint[];
+  keywordSeries: DashboardKeywordSeries[];
+  keywordInsights?: DashboardKeywordInsight[];
+  sourceName?: string | null;
+  cachedAt?: string | null;
+  stale?: boolean;
+}

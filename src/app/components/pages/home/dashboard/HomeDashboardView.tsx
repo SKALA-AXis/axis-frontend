@@ -31,15 +31,16 @@ import {
   getPeerLabel,
   getSummaryLines,
 } from '../../../../../features/card-news/mappers/cardNewsExecutive';
-import { useDashboard } from '../../../../../features/dashboard/hooks/useDashboard';
+import { useDashboard, useDashboardKeywordTrends } from '../../../../../features/dashboard/hooks/useDashboard';
 import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
 import { homeTodayInsightSignals } from '../../../../../shared/mocks/homeDashboardPresentation';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../../shared/FloatingCardNewsOverlay';
+import { PageProcessLoading, PageState } from '../../../shared/PageState';
+import { Skeleton } from '../../../ui/skeleton';
 import {
   ChartButton,
   ChartLegend,
-  LoadingBlock,
   type KeywordSpikeInsight,
 } from '../../shared/axis';
 
@@ -56,8 +57,19 @@ export function HomeDashboardView({
   onToggleBookmark?: (cardId: string) => void;
   onUpdateTimeChange?: (updatedAt: string | null) => void;
 }) {
-  const { dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard();
-  const { cards, isLoading: cardsLoading } = useCardNews();
+  const {
+    dashboard,
+    isLoading: dashboardLoading,
+    error: dashboardError,
+    reload: reloadDashboard,
+  } = useDashboard();
+  const {
+    keywordTrends,
+    isLoading: keywordTrendsLoading,
+    error: keywordTrendsError,
+    reload: reloadKeywordTrends,
+  } = useDashboardKeywordTrends();
+  const { cards, isLoading: cardsLoading, reload: reloadCards } = useCardNews();
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const latestCards = useMemo(() => getLatestFirst(cards), [cards]);
@@ -100,12 +112,32 @@ export function HomeDashboardView({
     ]));
   }, [cards, cardsLoading, dashboard, dashboardError, dashboardLoading, onUpdateTimeChange]);
 
-  if (dashboardLoading || cardsLoading) {
-    return <LoadingBlock label="홈 대시보드 데이터를 정리하는 중입니다." />;
-  }
-
-  if (dashboardError || !dashboard) {
-    return <LoadingBlock label={dashboardError ?? '대시보드를 표시할 수 없습니다.'} />;
+  if (dashboardLoading || cardsLoading || dashboardError || !dashboard) {
+    return (
+      <PageState
+        loading={dashboardLoading || cardsLoading}
+        error={dashboardError || (!dashboard ? '대시보드를 표시할 수 없습니다.' : null)}
+        loadingLabel="홈 대시보드 데이터를 정리하는 중입니다."
+        loadingFallback={(
+          <PageProcessLoading
+            eyebrow="Home dashboard"
+            title="홈 대시보드 데이터를 정리하는 중"
+            description="요약 지표와 카드뉴스를 함께 불러와 오늘의 변화, 차트, 핵심 카드를 구성합니다."
+            steps={[
+              { label: '요약 API 요청', detail: '/api/dashboard/summary 응답 대기' },
+              { label: '카드뉴스 연결', detail: '/api/cards 목록과 최신 시각 확인' },
+              { label: '화면 구성', detail: '인사이트, 차트, 카드 영역 배치' },
+            ]}
+            meta={['source: dashboard summary + card news', 'endpoints: /api/dashboard/summary, /api/cards']}
+          />
+        )}
+        onRetry={async () => {
+          await Promise.all([reloadDashboard(), reloadCards()]);
+        }}
+      >
+        {null}
+      </PageState>
+    );
   }
 
   const heroCard = rankedCards[0] ?? latestCards[0];
@@ -114,7 +146,7 @@ export function HomeDashboardView({
   const changeSummary = [
     { label: '오늘 감지된 변화', value: `${dashboard.trends.length + cards.length}건` },
     { label: '전주 대비', value: '+18%' },
-    { label: '핵심 키워드', value: dashboard.keywordSeries[0]?.name ?? '-' },
+    { label: '핵심 키워드', value: keywordTrends?.keywordSeries[0]?.name ?? '-' },
   ];
   const stockPointByDate = new Map(dashboard.stockPoints.map((point) => [point.date, point]));
   const rawStockRateChartPoints =
@@ -158,9 +190,11 @@ export function HomeDashboardView({
       poscoDxClose: closePoint?.poscoDx ?? null,
     };
   });
-  const keywordSeriesKeys = dashboard.keywordSeries.map((series) => series.key);
-  const keywordSpikeInsights = dashboard.keywordInsights ?? [];
-  const keywordAxisAbsMax = dashboard.keywordSearchPoints.reduce((max, point) => {
+  const keywordSearchPoints = keywordTrends?.keywordSearchPoints ?? [];
+  const keywordSeries = keywordTrends?.keywordSeries ?? [];
+  const keywordSpikeInsights = keywordTrends?.keywordInsights ?? [];
+  const keywordSeriesKeys = keywordSeries.map((series) => series.key);
+  const keywordAxisAbsMax = keywordSearchPoints.reduce((max, point) => {
     const pointMax = keywordSeriesKeys.reduce((innerMax, key) => {
       const value = point[key];
       if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -337,6 +371,7 @@ export function HomeDashboardView({
     displayValue: item.displayValue,
   })) ?? [];
   const showStockChart = interestChartIndex % 2 === 1;
+  const hasKeywordTrendChart = keywordSearchPoints.length > 0 && keywordSeries.length > 0;
   const chartSwitcher = (
     <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
       <button
@@ -589,8 +624,8 @@ export function HomeDashboardView({
             controls={chartSwitcher}
           >
             <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                {showStockChart ? (
+              {showStockChart ? (
+                <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={stockRateChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
                     <CartesianGrid stroke="var(--axis-graph-edge)" />
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
@@ -615,8 +650,43 @@ export function HomeDashboardView({
                     <Line type="linear" dataKey="hyundaiAutoever" name="현대오토에버" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
                     <Line type="linear" dataKey="poscoDx" name="포스코DX" stroke="var(--axis-graph-deal)" strokeWidth={2.2} dot={false} />
                   </LineChart>
-                ) : (
-                  <LineChart data={dashboard.keywordSearchPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
+                </ResponsiveContainer>
+              ) : keywordTrendsLoading ? (
+                <div className="flex h-full flex-col justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="axis-kicker">Keyword trend</p>
+                      <p className="mt-1 text-sm font-semibold text-[var(--axis-ink)]">검색지수 그래프를 따로 불러오는 중입니다.</p>
+                    </div>
+                    <span className="rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
+                      lazy load
+                    </span>
+                  </div>
+                  <div className="mt-5 grid gap-3">
+                    <Skeleton className="h-8 w-2/3 bg-[var(--axis-surface-muted)]" />
+                    <Skeleton className="h-24 w-full bg-[var(--axis-surface-muted)]" />
+                    <div className="grid grid-cols-4 gap-2">
+                      {Array.from({ length: 4 }).map((_, index) => (
+                        <Skeleton key={index} className="h-5 bg-[var(--axis-surface-muted)]" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : keywordTrendsError ? (
+                <div className="flex h-full flex-col items-center justify-center rounded-[var(--axis-radius-md)] border border-[rgba(218,30,40,0.18)] bg-[rgba(218,30,40,0.06)] p-4 text-center">
+                  <p className="text-sm font-semibold text-[var(--axis-danger)]">검색지수 그래프를 불러오지 못했습니다.</p>
+                  <p className="mt-2 max-w-[320px] text-xs leading-5 text-[var(--axis-muted)]">{keywordTrendsError}</p>
+                  <button
+                    type="button"
+                    onClick={() => void reloadKeywordTrends()}
+                    className="mt-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-xs font-semibold text-[var(--axis-ink)] hover:border-[var(--axis-accent)]"
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              ) : hasKeywordTrendChart ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={keywordSearchPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
                     <CartesianGrid stroke="var(--axis-graph-edge)" />
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
                     <YAxis
@@ -634,7 +704,7 @@ export function HomeDashboardView({
                         })
                       }
                     />
-                    {dashboard.keywordSeries.map((series, index) => (
+                    {keywordSeries.map((series, index) => (
                       <Line
                         key={series.key}
                         type="linear"
@@ -696,14 +766,21 @@ export function HomeDashboardView({
                       />
                     ))}
                   </LineChart>
-                )}
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4 text-center">
+                  <p className="text-sm font-semibold text-[var(--axis-ink)]">표시할 검색지수 데이터가 없습니다.</p>
+                  <p className="mt-2 max-w-[320px] text-xs leading-5 text-[var(--axis-muted)]">
+                    백엔드의 검색지수 캐시가 아직 비어 있거나 raw_articles 검색 트렌드 데이터가 없습니다.
+                  </p>
+                </div>
+              )}
             </div>
             <ChartLegend
               items={
                 showStockChart
                   ? stockLegendItems
-                  : dashboard.keywordSeries.map((series) => ({
+                  : keywordSeries.map((series) => ({
                       label: series.name,
                       color: series.color,
                     }))
@@ -713,7 +790,7 @@ export function HomeDashboardView({
             <p className="mt-2 text-[10px] leading-4 text-[var(--axis-muted)]">
               {showStockChart
                 ? `Peer 4사 전일 대비 주가 증감률 · ${dashboard.stockSource?.label ?? 'mock stockPoints fallback'}`
-                : '키워드 검색지수 일별 전일 대비 지수 차이 (네이버 데이터랩 상대지수)'}
+                : `키워드 검색지수 일별 전일 대비 지수 차이 · ${keywordTrends?.sourceName ?? 'lazy keyword trend endpoint'}`}
             </p>
           </ChartButton>
           </div>

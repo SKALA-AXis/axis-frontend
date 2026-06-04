@@ -8,7 +8,8 @@ import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { mockMixerConfig } from '../../../../shared/mocks/mixer';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
-import { DonutCalloutChart, LoadingBlock, buildSelectionRatioData, normalizeMixerPeerLabel } from '../shared/axis';
+import { PageProcessLoading, PageState } from '../../shared/PageState';
+import { DonutCalloutChart, buildSelectionRatioData, normalizeMixerPeerLabel } from '../shared/axis';
 
 function MixerAnalysisOverlay() {
   const loadingSteps = [
@@ -226,7 +227,7 @@ export function MixerView({
   onToggleBookmark: (cardId: string) => void;
   onUpdateTimeChange?: (updatedAt: string | null) => void;
 }) {
-  const { cards, isLoading, error } = useCardNews();
+  const { cards, isLoading, error, reload } = useCardNews();
   const [mode, setMode] = useState<'select' | 'result' | 'history'>('select');
   const [selectedPeers, setSelectedPeers] = useState<string[]>([]);
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
@@ -534,8 +535,31 @@ export function MixerView({
     }, 1800);
   };
 
-  if (isLoading) return <LoadingBlock label="믹서 후보 카드를 불러오는 중입니다." />;
-  if (error) return <LoadingBlock label={error} />;
+  if (isLoading || error) {
+    return (
+      <PageState
+        loading={isLoading}
+        error={error}
+        loadingLabel="믹서 후보 카드를 불러오는 중입니다."
+        loadingFallback={(
+          <PageProcessLoading
+            eyebrow="Mixer workspace"
+            title="믹서 후보 카드를 불러오는 중"
+            description="카드뉴스를 가져와 조합 가능한 후보, 산업, 키워드 필터로 나눠 믹서 작업대를 준비합니다."
+            steps={[
+              { label: '후보 카드 요청', detail: '/api/cards 응답 대기' },
+              { label: '조합 재료 정리', detail: 'Peer사, 산업, 키워드 축 추출' },
+              { label: '믹서 화면 준비', detail: '선택 영역과 결과 패널 구성' },
+            ]}
+            meta={['source: card news', 'endpoint: /api/cards']}
+          />
+        )}
+        onRetry={reload}
+      >
+        {null}
+      </PageState>
+    );
+  }
 
   if (mode === 'history') {
     return (

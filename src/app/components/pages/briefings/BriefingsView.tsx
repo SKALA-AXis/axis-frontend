@@ -13,6 +13,7 @@ import {
   ExecutivePage,
 } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
+import { PageProcessLoading, PageState } from '../../shared/PageState';
 import { useContentViewMode } from '../../../../shared/hooks/useContentViewMode';
 import { buildBriefingPrintHtml, buildBriefingReportText } from './print';
 import type { BriefingPeriod } from './types';
@@ -62,7 +63,7 @@ function normalizeBriefingText(text: string) {
 }
 
 export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTimeChange }: BriefingsViewProps) {
-  const { cards, isLoading, error } = useCardNews();
+  const { cards, isLoading, error, reload } = useCardNews();
   const contentViewMode = useContentViewMode();
   const [period, setPeriod] = useState<BriefingPeriod>('daily');
   const [dailyDate, setDailyDate] = useState(() => toDateInputValue());
@@ -198,12 +199,30 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     }, 180);
   };
 
-  if (isLoading) {
-    return <ExecutivePage className="p-6 text-sm text-[var(--axis-muted)]">브리핑을 불러오는 중입니다.</ExecutivePage>;
-  }
-
-  if (error) {
-    return <ExecutivePage className="p-6 text-sm text-[var(--axis-muted)]">{error}</ExecutivePage>;
+  if (isLoading || error) {
+    return (
+      <PageState
+        loading={isLoading}
+        error={error}
+        loadingLabel="브리핑을 불러오는 중입니다."
+        loadingFallback={(
+          <PageProcessLoading
+            eyebrow="Briefing"
+            title="브리핑 재료를 불러오는 중"
+            description="카드뉴스 신호를 기간별 브리핑 섹션으로 묶고, 공유와 출력에 필요한 본문 구조를 준비합니다."
+            steps={[
+              { label: '카드뉴스 요청', detail: '/api/cards 응답 대기' },
+              { label: '기간별 분류', detail: '오늘, 주간, 월간 브리핑 후보 정리' },
+              { label: '본문 구성', detail: '요약, 근거 카드, 출력용 문서 구조 준비' },
+            ]}
+            meta={['source: card news briefing material', 'endpoint: /api/cards']}
+          />
+        )}
+        onRetry={reload}
+      >
+        {null}
+      </PageState>
+    );
   }
 
   return (
