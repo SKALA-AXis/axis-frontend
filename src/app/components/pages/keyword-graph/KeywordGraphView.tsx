@@ -1,6 +1,5 @@
-import { type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Filter, Maximize2, Minus, Network, Plus } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { type WheelEvent as ReactWheelEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { Filter, Maximize2, Minus, Plus } from 'lucide-react';
 import * as THREE from 'three';
 import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
 import { normalizeCardNewsItem } from '../../../../features/card-news/api/cardNewsRepository';
@@ -8,13 +7,12 @@ import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { getDisplayDate, getPeerLabel } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
-import type { DashboardKeywordSearchPoint } from '../../../../features/dashboard/model/dashboard';
 import { httpClient } from '../../../../shared/api/httpClient';
 import { pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
 import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/mocks/keywordGraph';
-import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
+import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
-import { FilterChip, MiniStat } from '../shared/axis';
+import { FilterChip } from '../shared/axis';
 
 type NavigateHandler = (view: string) => void;
 
@@ -152,6 +150,31 @@ function fallbackCompanyCards(
     const haystack = cardSearchText(card);
     return terms.some((term) => term.length > 0 && (haystack.includes(term) || term.includes(haystack)));
   });
+}
+
+function fallbackKeywordCards(keywordNode: KeywordNode, cards: CardNewsItem[]) {
+  const keywordTerm = normalizeGraphTerm(keywordNode.label);
+  if (!keywordTerm) return [];
+  return cards.filter((card) => cardSearchText(card).includes(keywordTerm));
+}
+
+function fallbackNodeCards(
+  node: KeywordNode,
+  cards: CardNewsItem[],
+  nodes: KeywordNode[],
+  edges: KeywordEdge[],
+) {
+  return node.category === '기업'
+    ? fallbackCompanyCards(node, cards, nodes, edges)
+    : fallbackKeywordCards(node, cards);
+}
+
+async function fetchKeywordGraphCards(nodeId: string) {
+  if (!httpClient) {
+    throw new Error('API client is not configured.');
+  }
+  const payload = await httpClient.get<KeywordGraphCardsPayload>(`/api/keyword-graph/${encodeURIComponent(nodeId)}/cards?limit=30`);
+  return (payload.items ?? []).map(normalizeCardNewsItem);
 }
 
 function resolveCssColor(value: string, fallback: string) {
@@ -515,7 +538,6 @@ function KeywordSphereGraph({
 }
 
 export function KeywordGraphView({
-  onNavigate,
   bookmarkedIds = [],
   onToggleBookmark,
   onUpdateTimeChange,
@@ -534,19 +556,15 @@ export function KeywordGraphView({
   const [keywordCardsLoading, setKeywordCardsLoading] = useState(false);
   const [keywordCardsError, setKeywordCardsError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState('sk-axis');
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [category, setCategory] = useState<KeywordNode['category'] | '전체'>('전체');
   const [scale, setScale] = useState(1);
-  const [graphPan, setGraphPan] = useState({ x: 0, y: 0 });
-  const graphPanRef = useRef({ dragging: false, lastX: 0, lastY: 0 });
-  const [detailOpen, setDetailOpen] = useState(() => window.matchMedia('(min-width: 1280px)').matches);
   const [keywordOverlayOpen, setKeywordOverlayOpen] = useState(false);
   const [overlayPage, setOverlayPage] = useState(0);
-  const [graphMode, setGraphMode] = useState<'2d' | '3d'>('3d');
-  const [graphFullscreenMode, setGraphFullscreenMode] = useState<'2d' | '3d' | null>(null);
+  const [graphFullscreenOpen, setGraphFullscreenOpen] = useState(false);
   const [keywordDetailCardId, setKeywordDetailCardId] = useState<string | null>(null);
   const [keywordDetailSlideIndex, setKeywordDetailSlideIndex] = useState(0);
   const [themeRevision, setThemeRevision] = useState(0);
+  const keywordCardsCacheRef = useRef(new Map<string, CardNewsItem[]>());
 
   const keywordNodes = useMemo(() => {
     const normalized = graphPayload?.nodes
@@ -572,7 +590,6 @@ export function KeywordGraphView({
     return keywordEdges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
   }, [keywordEdges, visibleNodes]);
   const selected = keywordNodes.find((node) => node.id === selectedId) ?? keywordNodes[0] ?? emptySelectedNode;
-  const trendData: DashboardKeywordSearchPoint[] = dashboard?.keywordSearchPoints ?? [];
   const overlayCardsAll = keywordRelatedCards;
   const overlayPageSize = 3;
   const overlayPageCount = Math.max(1, Math.ceil(overlayCardsAll.length / overlayPageSize));
@@ -633,6 +650,36 @@ export function KeywordGraphView({
   }, [selectedId, visibleNodes]);
 
   useEffect(() => {
+    if (!httpClient || visibleNodes.length === 0) return undefined;
+    let cancelled = false;
+
+    async function prefetchKeywordCards() {
+      const nodesToPrefetch = [
+        ...visibleNodes.filter((node) => node.id === selectedId),
+        ...visibleNodes.filter((node) => node.id !== selectedId),
+      ];
+      for (const node of nodesToPrefetch) {
+        if (cancelled) return;
+        if (keywordCardsCacheRef.current.has(node.id)) continue;
+        try {
+          const apiCards = await fetchKeywordGraphCards(node.id);
+          if (cancelled) return;
+          if (apiCards.length > 0) {
+            keywordCardsCacheRef.current.set(node.id, apiCards);
+          }
+        } catch {
+          // Click-time loading still handles the fallback and error state.
+        }
+      }
+    }
+
+    void prefetchKeywordCards();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, visibleNodes]);
+
+  useEffect(() => {
     let cancelled = false;
     const selectedNode = keywordNodes.find((node) => node.id === selectedId);
     if (!selectedNode) {
@@ -642,25 +689,31 @@ export function KeywordGraphView({
       return undefined;
     }
     const activeSelectedNode = selectedNode;
+    const localFallbackCards = fallbackNodeCards(activeSelectedNode, cards, keywordNodes, keywordEdges).slice(0, 30);
+    const cachedCards = keywordCardsCacheRef.current.get(selectedId);
+    if (cachedCards) {
+      setKeywordRelatedCards(cachedCards);
+      setKeywordCardsError(null);
+      setKeywordCardsLoading(false);
+      return undefined;
+    }
+    setKeywordRelatedCards([]);
 
     async function loadKeywordCards() {
       if (!httpClient) return;
       try {
         setKeywordCardsLoading(true);
         setKeywordCardsError(null);
-        const payload = await httpClient.get<KeywordGraphCardsPayload>(`/api/keyword-graph/${encodeURIComponent(selectedId)}/cards?limit=30`);
+        const apiCards = await fetchKeywordGraphCards(selectedId);
         if (cancelled) return;
-        const apiCards = (payload.items ?? []).map(normalizeCardNewsItem);
-        setKeywordRelatedCards(apiCards.length > 0 || activeSelectedNode.category !== '기업'
-          ? apiCards
-          : fallbackCompanyCards(activeSelectedNode, cards, keywordNodes, keywordEdges).slice(0, 30));
+        if (apiCards.length > 0) {
+          keywordCardsCacheRef.current.set(selectedId, apiCards);
+        }
+        setKeywordRelatedCards(apiCards.length > 0 ? apiCards : localFallbackCards);
       } catch (loadError) {
         if (!cancelled) {
-          const fallbackCards = activeSelectedNode.category === '기업'
-            ? fallbackCompanyCards(activeSelectedNode, cards, keywordNodes, keywordEdges).slice(0, 30)
-            : [];
-          setKeywordRelatedCards(fallbackCards);
-          setKeywordCardsError(fallbackCards.length > 0 ? null : loadError instanceof Error ? loadError.message : '관련 카드뉴스를 불러오지 못했습니다.');
+          setKeywordRelatedCards(localFallbackCards);
+          setKeywordCardsError(localFallbackCards.length > 0 ? null : loadError instanceof Error ? loadError.message : '관련 카드뉴스를 불러오지 못했습니다.');
         }
       } finally {
         if (!cancelled) {
@@ -701,111 +754,20 @@ export function KeywordGraphView({
     return () => observer.disconnect();
   }, []);
 
-  const getNode = (id: string) => keywordNodes.find((node) => node.id === id) ?? keywordNodes[0] ?? emptySelectedNode;
   const selectGraphNode = (nodeId: string) => {
     setSelectedId(nodeId);
-    if (window.matchMedia('(min-width: 1280px)').matches) {
-      setDetailOpen(true);
-    }
     setKeywordOverlayOpen(true);
-  };
-  const handleGraphPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if ((event.target as Element).closest('g[role="button"]')) return;
-    graphPanRef.current = { dragging: true, lastX: event.clientX, lastY: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-  const handleGraphPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (!graphPanRef.current.dragging) return;
-    const dx = event.clientX - graphPanRef.current.lastX;
-    const dy = event.clientY - graphPanRef.current.lastY;
-    graphPanRef.current.lastX = event.clientX;
-    graphPanRef.current.lastY = event.clientY;
-    setGraphPan((current) => ({ x: current.x + dx, y: current.y + dy }));
-  };
-  const handleGraphPointerUp = (event: ReactPointerEvent<SVGSVGElement>) => {
-    graphPanRef.current.dragging = false;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
   };
   const handleGraphWheel = (event: ReactWheelEvent<HTMLElement>) => {
     event.preventDefault();
     const nextDelta = event.deltaY > 0 ? -0.08 : 0.08;
     setScale((current) => Math.min(1.45, Math.max(0.75, Number((current + nextDelta).toFixed(2)))));
   };
-  const renderKeywordSvg = (fullscreen = false) => (
-    <svg
-      viewBox="0 0 900 560"
-      className={`h-full w-full cursor-grab active:cursor-grabbing ${fullscreen ? 'bg-[var(--axis-surface-soft)]' : ''}`}
-      role="img"
-      aria-label="키워드 관계 그래프"
-      style={{ touchAction: 'none' }}
-      onPointerDown={handleGraphPointerDown}
-      onPointerMove={handleGraphPointerMove}
-      onPointerUp={handleGraphPointerUp}
-      onPointerLeave={handleGraphPointerUp}
-    >
-      <g transform={`translate(${graphPan.x + 450 - 450 * scale} ${graphPan.y + 280 - 280 * scale}) scale(${scale})`}>
-        {visibleEdges.map((edge) => {
-          const source = getNode(edge.source);
-          const target = getNode(edge.target);
-          const active = selectedId === edge.source || selectedId === edge.target || hoveredId === edge.source || hoveredId === edge.target;
-          return (
-            <line
-              key={`${edge.source}-${edge.target}`}
-              x1={source.x}
-              y1={source.y}
-              x2={target.x}
-              y2={target.y}
-              stroke={active ? 'var(--axis-graph-active-edge)' : 'var(--axis-graph-edge)'}
-              strokeWidth={edge.weight}
-              strokeLinecap="round"
-            />
-          );
-        })}
-        {visibleNodes.map((node) => {
-          const active = selectedId === node.id || hoveredId === node.id;
-          return (
-            <g
-              key={node.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => selectGraphNode(node.id)}
-              onDoubleClick={() => onNavigate(node.sourceType === 'cardnews' ? 'issues' : 'briefings')}
-              onMouseEnter={() => setHoveredId(node.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              className="cursor-pointer"
-            >
-              <circle
-                cx={node.x}
-                cy={node.y}
-                r={node.size + (active ? 5 : 0)}
-                fill={graphCategoryColor[node.category]}
-                fillOpacity={active ? 0.95 : 0.78}
-                stroke={active ? 'var(--axis-ink)' : 'var(--axis-canvas)'}
-                strokeWidth={active ? 3 : 2}
-              />
-              <text
-                x={node.x}
-                y={node.y + node.size + 18}
-                textAnchor="middle"
-                fontSize={active ? 15 : 13}
-                fontWeight={active ? 700 : 600}
-                fill="var(--axis-ink)"
-              >
-                {node.label}
-              </text>
-            </g>
-          );
-        })}
-      </g>
-    </svg>
-  );
 
   return (
-    <ExecutivePage>
-      <ExecutiveContainer className="max-w-none px-3 pb-3 pt-2 sm:px-4 lg:px-4">
-        <section className="axis-panel-flat min-h-0 overflow-hidden">
+    <ExecutivePage className="h-full overflow-hidden">
+      <ExecutiveContainer className="flex h-full max-w-none flex-col overflow-hidden px-3 pb-3 pt-2 sm:px-4 lg:px-4">
+        <section className="axis-panel-flat flex min-h-0 flex-1 flex-col overflow-hidden">
           <header className="flex flex-col gap-2 p-3 lg:flex-row lg:items-center lg:justify-end">
             <h1 className="sr-only">키워드 그래프</h1>
             <div data-guide="keyword-controls" className="flex flex-wrap gap-2">
@@ -821,24 +783,17 @@ export function KeywordGraphView({
               </span>
               <ExecutiveButton variant="secondary" icon={<Plus size={15} />} onClick={() => setScale((current) => Math.min(1.45, Number((current + 0.1).toFixed(2))))}>확대</ExecutiveButton>
               <ExecutiveButton
-                variant={graphMode === '3d' ? 'primary' : 'secondary'}
-                icon={<Box size={15} />}
-                onClick={() => setGraphMode((mode) => (mode === '3d' ? '2d' : '3d'))}
-              >
-                3D 보기
-              </ExecutiveButton>
-              <ExecutiveButton
                 variant="secondary"
                 icon={<Maximize2 size={15} />}
-                onClick={() => setGraphFullscreenMode(graphMode)}
+                onClick={() => setGraphFullscreenOpen(true)}
               >
                 전체화면
               </ExecutiveButton>
             </div>
           </header>
 
-          <div className="grid h-[calc(100dvh-156px)] min-h-[620px] gap-0 xl:grid-cols-[minmax(0,1fr)_300px]">
-            <main data-guide="keyword-map" className="relative min-h-0 bg-[var(--axis-surface-soft)]" onWheel={handleGraphWheel}>
+          <div className="grid min-h-0 flex-1 gap-0">
+            <main data-guide="keyword-map" className="relative min-h-0 overscroll-contain bg-[var(--axis-surface-soft)]" onWheel={handleGraphWheel}>
               {graphLoading ? (
                 <div className="flex h-full min-h-[420px] items-center justify-center p-6">
                   <div className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-5 py-4 text-sm font-semibold text-[var(--axis-body)]">
@@ -858,7 +813,7 @@ export function KeywordGraphView({
                     raw_articles.matched_sector_details.keyword 데이터가 없습니다.
                   </div>
                 </div>
-              ) : graphMode === '3d' ? (
+              ) : (
                 <KeywordSphereGraph
                   nodes={visibleNodes}
                   edges={visibleEdges}
@@ -867,14 +822,7 @@ export function KeywordGraphView({
                   themeRevision={themeRevision}
                   onSelectNode={selectGraphNode}
                 />
-              ) : (
-                renderKeywordSvg()
               )}
-              {hoveredId ? (
-                <div className="pointer-events-none absolute left-5 top-5 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-xs text-[var(--axis-body)]">
-                  {getNode(hoveredId).label}
-                </div>
-              ) : null}
               {keywordOverlayOpen ? (
                 <div
                   className="absolute inset-0 z-20 bg-[rgba(250,248,244,0.72)] p-5 backdrop-blur-[2px] dark:bg-[rgba(24,25,31,0.72)]"
@@ -920,7 +868,7 @@ export function KeywordGraphView({
                         </button>
                       </div>
                     </div>
-                    {keywordCardsLoading ? (
+                    {keywordCardsLoading && overlayCardsAll.length === 0 ? (
                       <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
                         관련 카드뉴스를 불러오는 중입니다.
                       </div>
@@ -948,76 +896,20 @@ export function KeywordGraphView({
                 </div>
               ) : null}
             </main>
-
-            <aside data-guide="keyword-detail" className={`min-h-0 overflow-y-auto border-t border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 xl:border-l xl:border-t-0 ${detailOpen ? '' : 'xl:w-20'}`}>
-              <button
-                type="button"
-                onClick={() => setDetailOpen((open) => !open)}
-                className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--axis-accent-strong)]"
-              >
-                <Network size={16} />
-                {detailOpen ? '상세 접기' : '상세 열기'}
-              </button>
-              {detailOpen ? (
-                <div className="min-w-0 space-y-4">
-                  <div className="min-w-0">
-                    <p className="axis-kicker">Selected keyword</p>
-                    <h2 className="mt-1 break-keep text-xl font-display font-semibold leading-tight text-ink">{selected.label}</h2>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                    <MiniStat label="전일 대비" value={`${selected.changeRate > 0 ? '+' : ''}${selected.changeRate}%`} />
-                    <MiniStat label="분류" value={selected.category} />
-                    <MiniStat label="출처" value={selected.sourceType} />
-                  </div>
-                  <div>
-                    <p className="axis-kicker">Connected</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {keywordEdges
-                        .filter((edge) => edge.source === selected.id || edge.target === selected.id)
-                        .map((edge) => {
-                          const connectedId = edge.source === selected.id ? edge.target : edge.source;
-                          return (
-                            <ExecutiveBadge key={`${edge.source}-${edge.target}`} tone="accent">
-                              {getNode(connectedId).label}
-                            </ExecutiveBadge>
-                          );
-                        })}
-                    </div>
-                  </div>
-                  <div className="h-[142px] min-w-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={trendData} margin={{ top: 8, right: 10, left: -24, bottom: 0 }}>
-                        <CartesianGrid stroke="var(--axis-graph-edge)" />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--axis-muted)' }} />
-                        <YAxis tick={{ fontSize: 10, fill: 'var(--axis-muted)' }} />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="agenticAi" name="언급량" stroke="var(--axis-graph-ax)" strokeWidth={2.2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              ) : null}
-            </aside>
           </div>
         </section>
       </ExecutiveContainer>
-      {graphFullscreenMode ? (
+      {graphFullscreenOpen ? (
         <div className="fixed inset-0 z-50 bg-[var(--axis-canvas)]" onWheel={handleGraphWheel}>
-          {graphFullscreenMode === '3d' ? (
-            <KeywordSphereGraph
-              nodes={visibleNodes}
-              edges={visibleEdges}
-              selectedId={selectedId}
-              zoom={scale}
-              themeRevision={themeRevision}
-              fullscreen
-              onSelectNode={selectGraphNode}
-            />
-          ) : (
-            <div className="h-full w-full bg-[var(--axis-surface-soft)]">
-              {renderKeywordSvg(true)}
-            </div>
-          )}
+          <KeywordSphereGraph
+            nodes={visibleNodes}
+            edges={visibleEdges}
+            selectedId={selectedId}
+            zoom={scale}
+            themeRevision={themeRevision}
+            fullscreen
+            onSelectNode={selectGraphNode}
+          />
           <div className="absolute left-3 right-3 top-16 z-20 flex flex-wrap justify-end gap-2 sm:left-auto sm:right-5 sm:top-20 sm:max-w-[520px]">
             {(['전체', ...graphCategories] as const).map((item) => (
               <button
@@ -1034,7 +926,7 @@ export function KeywordGraphView({
               </button>
             ))}
           </div>
-          <div className="absolute left-3 right-3 top-3 z-20 grid grid-cols-[44px_64px_44px_minmax(92px,1fr)_112px] gap-2 sm:left-auto sm:right-5 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+          <div className="absolute left-3 right-3 top-3 z-20 grid grid-cols-[44px_64px_44px_112px] gap-2 sm:left-auto sm:right-5 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
             <button
               type="button"
               aria-label="키워드 그래프 축소"
@@ -1058,22 +950,7 @@ export function KeywordGraphView({
             </button>
             <button
               type="button"
-              onClick={() => {
-                const nextMode = graphFullscreenMode === '3d' ? '2d' : '3d';
-                setGraphFullscreenMode(nextMode);
-                setGraphMode(nextMode);
-              }}
-              className={`h-10 min-w-0 rounded-[var(--axis-radius-md)] border px-2 text-xs font-semibold shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] transition sm:w-[104px] sm:px-4 sm:text-sm ${
-                graphFullscreenMode === '3d'
-                  ? 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)] hover:border-[var(--axis-accent)]'
-                  : 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
-              }`}
-            >
-              {graphFullscreenMode === '3d' ? '키워드 보기' : '3D 보기'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setGraphFullscreenMode(null)}
+              onClick={() => setGraphFullscreenOpen(false)}
               className="h-10 min-w-0 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 text-xs font-semibold text-[var(--axis-ink)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] hover:border-[var(--axis-accent)] sm:w-[126px] sm:px-4 sm:text-sm"
             >
               전체화면 닫기
@@ -1127,7 +1004,7 @@ export function KeywordGraphView({
                     </button>
                   </div>
                 </div>
-                {keywordCardsLoading ? (
+                {keywordCardsLoading && overlayCardsAll.length === 0 ? (
                   <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
                     관련 카드뉴스를 불러오는 중입니다.
                   </div>

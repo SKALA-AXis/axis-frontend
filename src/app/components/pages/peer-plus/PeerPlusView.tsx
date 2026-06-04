@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BrainCircuit, Globe2, LineChart, ShieldCheck, Sparkles, X } from 'lucide-react';
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RadarShape, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
@@ -451,26 +450,6 @@ export function PeerPlusView({
       { label: 'Threat', body: '대형 프로젝트와 산업 자동화 실적이 부각되면 SK AX가 상대적으로 추상적인 대안으로 읽힐 위험이 있습니다.' },
     ],
   };
-  const peerRadarData = [
-    { subject: '수익성', sk_ax: 72, samsung_sds: 63, lg_cns: 68, hyundai_autoever: 67, posco_dx: 59 },
-    { subject: '성장성', sk_ax: 70, samsung_sds: 82, lg_cns: 78, hyundai_autoever: 66, posco_dx: 71 },
-    { subject: 'AX 집중도', sk_ax: 78, samsung_sds: 79, lg_cns: 85, hyundai_autoever: 72, posco_dx: 76 },
-    { subject: '수주 모멘텀', sk_ax: 73, samsung_sds: 81, lg_cns: 87, hyundai_autoever: 69, posco_dx: 75 },
-    { subject: '운영 효율', sk_ax: 74, samsung_sds: 67, lg_cns: 70, hyundai_autoever: 69, posco_dx: 61 },
-    { subject: '시장 노출', sk_ax: 69, samsung_sds: 88, lg_cns: 80, hyundai_autoever: 65, posco_dx: 72 },
-  ] as const;
-  const radarLegendConfig: Record<'sk_ax' | PeerPlusPeerId, { label: string; color: string }> = {
-    sk_ax: { label: 'SK AX', color: 'var(--axis-accent)' },
-    samsung_sds: { label: '삼성 SDS', color: 'var(--axis-graph-company)' },
-    lg_cns: { label: 'LG CNS', color: 'var(--axis-graph-infra)' },
-    hyundai_autoever: { label: '현대 오토에버', color: 'var(--axis-graph-security)' },
-    posco_dx: { label: '포스코 DX', color: 'var(--axis-graph-deal)' },
-  };
-  const radarKeys = isAllFilter
-    ? (['sk_ax', ...peerOptions.map((peer) => peer.id)] as Array<'sk_ax' | PeerPlusPeerId>)
-    : isGlobalIndustry || !selectedPeer
-      ? (['sk_ax', ...peerOptions.map((peer) => peer.id)] as Array<'sk_ax' | PeerPlusPeerId>)
-      : (['sk_ax', selectedPeer.id] as Array<'sk_ax' | PeerPlusPeerId>);
   const peerInsightItems = peerInsightCatalog[selectedPeerAnalysisId];
   const swotItems = swotCatalog[selectedPeerAnalysisId];
   const peerReasoningSections = useMemo<Record<'comparison' | 'swot', PeerReasoningModal>>(() => {
@@ -738,7 +717,7 @@ export function PeerPlusView({
         </section>
 
         {isAllFilter ? (
-          <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.98fr)]">
+          <section className="mt-5">
             <div data-guide="peer-positioning">
               <PositioningPanel
                 positioning={peerPositioning}
@@ -746,103 +725,8 @@ export function PeerPlusView({
                 error={peerPositioningError}
               />
             </div>
-            <article data-guide="peer-radar" className="axis-panel-flat p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="axis-kicker">DART balance</p>
-                  <h2 className="axis-section-heading mt-1">Peer 재무 체질 레이더 비교</h2>
-                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-                    전체 모드에서는 SK AX와 주요 Peer를 한 번에 겹쳐 시장 평균 대비 어디가 두드러지는지 보는 용도입니다.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3">
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {radarKeys.map((key) => (
-                    <span
-                      key={key}
-                      className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)]"
-                    >
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: radarLegendConfig[key].color }} />
-                      {radarLegendConfig[key].label}
-                    </span>
-                  ))}
-                </div>
-                <div className="h-[380px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart data={[...peerRadarData]} outerRadius={122} margin={{ top: 10, right: 34, bottom: 10, left: 34 }}>
-                      <PolarGrid stroke="rgba(117,117,128,0.22)" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: 'var(--axis-body)', fontWeight: 700 }} />
-                      <PolarRadiusAxis tick={false} axisLine={false} />
-                      {radarKeys.map((key) => (
-                        <RadarShape
-                          key={key}
-                          name={radarLegendConfig[key].label}
-                          dataKey={key}
-                          stroke={radarLegendConfig[key].color}
-                          fill={radarLegendConfig[key].color}
-                          fillOpacity={key === 'sk_ax' ? 0.2 : 0.1}
-                          strokeWidth={key === 'sk_ax' ? 2.6 : 2}
-                        />
-                      ))}
-                      <Tooltip formatter={(value: number, name: string) => [`${value}`, name]} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <p className="mt-3 text-xs leading-5 text-[var(--axis-muted)]">축 기준은 수익성, 성장성, AX 집중도, 수주 모멘텀, 운영 효율, 시장 노출이며, 수치 자체보다 상대적 모양과 벌어진 구간을 읽는 비교용 목업입니다.</p>
-            </article>
           </section>
-        ) : (
-          <section className="mt-5">
-            <article data-guide="peer-radar" className="axis-panel-flat p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="axis-kicker">DART balance</p>
-                  <h2 className="axis-section-heading mt-1">{selectedPeer?.label ?? '선택 Peer'} vs SK AX 재무 체질 레이더</h2>
-                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-                    기업별 모드에서는 SK AX와 선택 기업만 겹쳐 재무 체질 차이를 빠르게 읽는 비교 레이어로 사용합니다.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3">
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {radarKeys.map((key) => (
-                    <span
-                      key={key}
-                      className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)]"
-                    >
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: radarLegendConfig[key].color }} />
-                      {radarLegendConfig[key].label}
-                    </span>
-                  ))}
-                </div>
-                <div className="h-[380px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart data={[...peerRadarData]} outerRadius={122} margin={{ top: 10, right: 34, bottom: 10, left: 34 }}>
-                      <PolarGrid stroke="rgba(117,117,128,0.22)" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: 'var(--axis-body)', fontWeight: 700 }} />
-                      <PolarRadiusAxis tick={false} axisLine={false} />
-                      {radarKeys.map((key) => (
-                        <RadarShape
-                          key={key}
-                          name={radarLegendConfig[key].label}
-                          dataKey={key}
-                          stroke={radarLegendConfig[key].color}
-                          fill={radarLegendConfig[key].color}
-                          fillOpacity={key === 'sk_ax' ? 0.2 : 0.1}
-                          strokeWidth={key === 'sk_ax' ? 2.6 : 2}
-                        />
-                      ))}
-                      <Tooltip formatter={(value: number, name: string) => [`${value}`, name]} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <p className="mt-3 text-xs leading-5 text-[var(--axis-muted)]">축 기준은 수익성, 성장성, AX 집중도, 수주 모멘텀, 운영 효율, 시장 노출이며, 수치 자체보다 상대적 모양과 벌어진 구간을 읽는 비교용 목업입니다.</p>
-            </article>
-          </section>
-        )}
+        ) : null}
           </>
         )}
       </ExecutiveContainer>

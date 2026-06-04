@@ -755,11 +755,15 @@ export function MixerView({
 
                   <div className="mt-4">
                     <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">핵심 문장</p>
-                      <p className="mt-2 text-[1.15rem] font-semibold leading-8 text-[var(--axis-ink)]">
-                        {activeSection.finding}
-                      </p>
-                      <div className="mt-5 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
+                      {activeSection.key !== 'action_direction' ? (
+                        <>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">핵심 문장</p>
+                          <p className="mt-2 text-[1.15rem] font-semibold leading-8 text-[var(--axis-ink)]">
+                            {activeSection.finding}
+                          </p>
+                        </>
+                      ) : null}
+                      <div className={`${activeSection.key === 'action_direction' ? '' : 'mt-5'} rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4`}>
                         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">왜 이렇게 해석했는가</p>
                         <p className="mt-2 text-sm leading-7 text-[var(--axis-body)]">{activeSection.rationale}</p>
                       </div>
