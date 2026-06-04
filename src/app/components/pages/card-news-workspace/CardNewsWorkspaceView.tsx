@@ -9,7 +9,8 @@ import { adminCardsRepository } from '../../../../features/admin-cards/api/admin
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveHeader, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay, shareCardNews } from '../../shared/FloatingCardNewsOverlay';
-import { EmptyBlock, LoadingBlock } from '../shared/axis';
+import { PageProcessLoading, PageState } from '../../shared/PageState';
+import { EmptyBlock } from '../shared/axis';
 
 function buildCardNewsRows(cards: CardNewsItem[]) {
   const catalog = buildCardCatalog(getLatestFirst(cards));
@@ -111,8 +112,31 @@ export function CardNewsWorkspaceView({
     onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
   }, [cards, isLoading, onUpdateTimeChange]);
 
-  if (isLoading) return <LoadingBlock label="카드뉴스를 불러오는 중입니다." />;
-  if (error) return <LoadingBlock label={error} />;
+  if (isLoading || error) {
+    return (
+      <PageState
+        loading={isLoading}
+        error={error}
+        loadingLabel="카드뉴스를 불러오는 중입니다."
+        loadingFallback={(
+          <PageProcessLoading
+            eyebrow="Card news workspace"
+            title="카드뉴스 목록을 불러오는 중"
+            description="카드 원본을 가져온 뒤 필터, 북마크, 커버 이미지 정보를 한 화면에서 탐색할 수 있게 정리합니다."
+            steps={[
+              { label: '카드 API 요청', detail: '/api/cards 응답 대기' },
+              { label: '카탈로그 정리', detail: '중복 카드 제거와 최신순 정렬' },
+              { label: '필터 준비', detail: 'Peer사, 섹터, 날짜, 검색 필터 구성' },
+            ]}
+            meta={['source: card news', 'endpoint: /api/cards']}
+          />
+        )}
+        onRetry={reload}
+      >
+        {null}
+      </PageState>
+    );
+  }
 
   const handleDeleteCard = async (card: CardNewsItem) => {
     const reason = window.prompt(`"${card.title}" 카드뉴스 삭제 사유를 입력해주세요.`);

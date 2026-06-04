@@ -12,6 +12,7 @@ import { pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
 import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/mocks/keywordGraph';
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
+import { Skeleton } from '../../ui/skeleton';
 import { FilterChip } from '../shared/axis';
 
 type NavigateHandler = (view: string) => void;
@@ -26,6 +27,8 @@ type KeywordGraphCardsPayload = {
   items?: Array<Partial<CardNewsItem>>;
   total?: number;
 };
+
+type KeywordGraphLoadStage = 'requesting' | 'normalizing' | 'rendering';
 
 const graphCategories = ['AX', '보안', '인프라', '수주'] as const;
 const allGraphCategories = ['기업', ...graphCategories] as const;
@@ -90,6 +93,57 @@ function KeywordRelatedCardButton({ card, onOpen }: { card: CardNewsItem; onOpen
       <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
       <h3 className="mt-1 min-h-[3.75rem] line-clamp-3 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</h3>
     </button>
+  );
+}
+
+function KeywordRelatedCardsLoading() {
+  return (
+    <div className="grid auto-rows-fr gap-3 md:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div key={index} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3">
+          <Skeleton className="aspect-[4/3] w-full bg-[var(--axis-surface-muted)]" />
+          <Skeleton className="mt-3 h-3 w-20 bg-[var(--axis-surface-muted)]" />
+          <Skeleton className="mt-2 h-4 w-full bg-[var(--axis-surface-muted)]" />
+          <Skeleton className="mt-2 h-4 w-4/5 bg-[var(--axis-surface-muted)]" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function KeywordGraphLoading({
+  stage,
+  elapsedSeconds,
+}: {
+  stage: KeywordGraphLoadStage;
+  elapsedSeconds: number;
+}) {
+  const stageIndex = stage === 'requesting' ? 0 : stage === 'normalizing' ? 1 : 2;
+  const progress = Math.max(12, Math.min(92, 18 + elapsedSeconds * 9 + stageIndex * 12));
+
+  return (
+    <div className="flex h-full min-h-[420px] items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-[320px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-7 text-center shadow-[0_24px_70px_-42px_rgba(0,0,0,0.28)]">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.08)]">
+          <div className="relative h-11 w-7 animate-[spin_1.8s_ease-in-out_infinite]">
+            <div className="absolute inset-x-0 top-0 mx-auto h-5 w-6 rounded-b-full border-2 border-[var(--axis-accent)] border-t-0" />
+            <div className="absolute inset-x-0 bottom-0 mx-auto h-5 w-6 rounded-t-full border-2 border-[var(--axis-accent)] border-b-0" />
+            <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--axis-accent)]" />
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-end justify-center gap-1">
+          <span className="text-4xl font-semibold tabular-nums text-[var(--axis-ink)]">{Math.round(progress)}</span>
+          <span className="mb-1 text-sm font-semibold text-[var(--axis-muted)]">%</span>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--axis-surface-muted)]">
+          <div
+            className="h-full rounded-full bg-[var(--axis-accent)] transition-[width] duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -551,6 +605,9 @@ export function KeywordGraphView({
   const { cards, isLoading: cardsLoading } = useCardNews();
   const [graphPayload, setGraphPayload] = useState<KeywordGraphPayload | null>(null);
   const [graphLoading, setGraphLoading] = useState(true);
+  const [graphLoadStage, setGraphLoadStage] = useState<KeywordGraphLoadStage>('requesting');
+  const [graphLoadingStartedAt, setGraphLoadingStartedAt] = useState(() => Date.now());
+  const [graphLoadingElapsed, setGraphLoadingElapsed] = useState(0);
   const [graphError, setGraphError] = useState<string | null>(null);
   const [keywordRelatedCards, setKeywordRelatedCards] = useState<CardNewsItem[]>([]);
   const [keywordCardsLoading, setKeywordCardsLoading] = useState(false);
@@ -609,21 +666,32 @@ export function KeywordGraphView({
         return;
       }
       try {
+        setGraphLoadingStartedAt(Date.now());
+        setGraphLoadingElapsed(0);
         setGraphLoading(true);
+        setGraphLoadStage('requesting');
         setGraphError(null);
         const payload = await httpClient.get<KeywordGraphPayload>('/api/keyword-graph');
         if (cancelled) return;
+        setGraphLoadStage('normalizing');
         setGraphPayload(payload);
         if (payload.selectedId) {
           setSelectedId(payload.selectedId);
         }
+        window.requestAnimationFrame(() => {
+          if (!cancelled) {
+            setGraphLoadStage('rendering');
+            window.requestAnimationFrame(() => {
+              if (!cancelled) {
+                setGraphLoading(false);
+              }
+            });
+          }
+        });
       } catch (loadError) {
         if (!cancelled) {
           setGraphPayload(null);
           setGraphError(loadError instanceof Error ? loadError.message : '키워드 그래프 API를 불러오지 못했습니다.');
-        }
-      } finally {
-        if (!cancelled) {
           setGraphLoading(false);
         }
       }
@@ -634,6 +702,14 @@ export function KeywordGraphView({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!graphLoading) return undefined;
+    const intervalId = window.setInterval(() => {
+      setGraphLoadingElapsed(Math.max(0, Math.floor((Date.now() - graphLoadingStartedAt) / 1000)));
+    }, 500);
+    return () => window.clearInterval(intervalId);
+  }, [graphLoading, graphLoadingStartedAt]);
 
   useEffect(() => {
     if (keywordNodes.length === 0) return;
@@ -657,7 +733,8 @@ export function KeywordGraphView({
       const nodesToPrefetch = [
         ...visibleNodes.filter((node) => node.id === selectedId),
         ...visibleNodes.filter((node) => node.id !== selectedId),
-      ];
+      ].slice(0, 4);
+      await new Promise((resolve) => window.setTimeout(resolve, 350));
       for (const node of nodesToPrefetch) {
         if (cancelled) return;
         if (keywordCardsCacheRef.current.has(node.id)) continue;
@@ -795,11 +872,7 @@ export function KeywordGraphView({
           <div className="grid min-h-0 flex-1 gap-0">
             <main data-guide="keyword-map" className="relative min-h-0 overscroll-contain bg-[var(--axis-surface-soft)]" onWheel={handleGraphWheel}>
               {graphLoading ? (
-                <div className="flex h-full min-h-[420px] items-center justify-center p-6">
-                  <div className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-5 py-4 text-sm font-semibold text-[var(--axis-body)]">
-                    키워드 그래프 API를 불러오는 중입니다.
-                  </div>
-                </div>
+                <KeywordGraphLoading stage={graphLoadStage} elapsedSeconds={graphLoadingElapsed} />
               ) : graphError ? (
                 <div className="flex h-full min-h-[420px] items-center justify-center p-6">
                   <div className="max-w-[520px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-5 py-4 text-sm text-[var(--axis-body)]">
@@ -869,9 +942,7 @@ export function KeywordGraphView({
                       </div>
                     </div>
                     {keywordCardsLoading && overlayCardsAll.length === 0 ? (
-                      <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
-                        관련 카드뉴스를 불러오는 중입니다.
-                      </div>
+                      <KeywordRelatedCardsLoading />
                     ) : keywordCardsError ? (
                       <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
                         {keywordCardsError}
@@ -1005,9 +1076,7 @@ export function KeywordGraphView({
                   </div>
                 </div>
                 {keywordCardsLoading && overlayCardsAll.length === 0 ? (
-                  <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
-                    관련 카드뉴스를 불러오는 중입니다.
-                  </div>
+                  <KeywordRelatedCardsLoading />
                 ) : keywordCardsError ? (
                   <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4 text-sm text-[var(--axis-muted)]">
                     {keywordCardsError}

@@ -1,50 +1,64 @@
-import { DependencyList, useEffect, useState } from 'react';
+import { DependencyList, useCallback, useEffect, useRef, useState } from 'react';
+
+export type AsyncStatus = 'idle' | 'loading' | 'success' | 'error';
+
+interface UseAsyncResourceOptions {
+  errorMessage?: string;
+}
 
 interface UseAsyncResourceResult<T> {
   data: T;
+  status: AsyncStatus;
   isLoading: boolean;
   error: string | null;
+  reload: () => Promise<void>;
 }
 
 export function useAsyncResource<T>(
   load: () => Promise<T>,
   initialValue: T,
   deps: DependencyList,
+  options: UseAsyncResourceOptions = {},
 ): UseAsyncResourceResult<T> {
   const [data, setData] = useState<T>(initialValue);
-  const [isLoading, setIsLoading] = useState(true);
+  const [status, setStatus] = useState<AsyncStatus>('loading');
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const run = async () => {
-      setIsLoading(true);
-
-      try {
-        const result = await load();
-
-        if (isMounted) {
-          setData(result);
-          setError(null);
-        }
-      } catch (loadError) {
-        if (isMounted) {
-          setError(loadError instanceof Error ? loadError.message : 'Unknown error');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void run();
+    isMountedRef.current = true;
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  }, []);
+
+  const reload = useCallback(async () => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    setStatus('loading');
+    setError(null);
+
+    try {
+      const result = await load();
+
+      if (isMountedRef.current && requestIdRef.current === requestId) {
+        setData(result);
+        setError(null);
+        setStatus('success');
+      }
+    } catch (loadError) {
+      if (isMountedRef.current && requestIdRef.current === requestId) {
+        setError(loadError instanceof Error ? loadError.message : options.errorMessage ?? 'Unknown error');
+        setStatus('error');
+      }
+    }
   }, deps);
 
-  return { data, isLoading, error };
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { data, status, isLoading: status === 'loading', error, reload };
 }

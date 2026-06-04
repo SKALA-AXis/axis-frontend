@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { adminUsersRepository } from '../api/adminUsersRepository';
 import type { AdminUser, AdminUserStatus } from '../model/adminUser';
 
 interface UseAdminUsersResult {
   users: AdminUser[];
+  status: AsyncStatus;
   isLoading: boolean;
   error: string | null;
   updatingUserId: string | null;
@@ -13,21 +15,21 @@ interface UseAdminUsersResult {
 
 export function useAdminUsers(): UseAdminUsersResult {
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [status, setStatus] = useState<AsyncStatus>('loading');
   const [error, setError] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    setIsLoading(true);
+    setStatus('loading');
 
     try {
       const nextUsers = await adminUsersRepository.list();
       setUsers(nextUsers);
       setError(null);
+      setStatus('success');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : '사용자 목록을 불러오지 못했습니다.');
-    } finally {
-      setIsLoading(false);
+      setStatus('error');
     }
   }, []);
 
@@ -57,5 +59,5 @@ export function useAdminUsers(): UseAdminUsersResult {
     }
   }, []);
 
-  return { users, isLoading, error, updatingUserId, reload, updateStatus };
+  return { users, status, isLoading: status === 'loading', error, updatingUserId, reload, updateStatus };
 }
