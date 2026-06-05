@@ -5,7 +5,9 @@ import { mockDashboardData } from '../../../shared/mocks/dashboard';
 
 export interface DashboardRepository {
   getDashboard(): Promise<DashboardData>;
+  getKeywordTrends(): Promise<DashboardKeywordTrendsData>;
   prefetch?(): Promise<void>;
+  prefetchKeywordTrends?(): Promise<void>;
 }
 
 class HttpDashboardRepository implements DashboardRepository {
@@ -17,6 +19,10 @@ class HttpDashboardRepository implements DashboardRepository {
     return prefetchCachedResource('dashboard:summary', () => this.loadDashboard());
   }
 
+  prefetchKeywordTrends(): Promise<void> {
+    return prefetchCachedResource('dashboard:keyword-trends', () => this.loadKeywordTrends());
+  }
+
   private async loadDashboard(): Promise<DashboardData> {
     if (!httpClient) {
       throw new Error('대시보드 API 주소가 설정되어 있지 않습니다. VITE_API_BASE_URL을 확인하세요.');
@@ -25,6 +31,10 @@ class HttpDashboardRepository implements DashboardRepository {
   }
 
   async getKeywordTrends(): Promise<DashboardKeywordTrendsData> {
+    return getCachedResource('dashboard:keyword-trends', () => this.loadKeywordTrends());
+  }
+
+  private async loadKeywordTrends(): Promise<DashboardKeywordTrendsData> {
     if (!httpClient) {
       throw new Error('대시보드 API 주소가 설정되어 있지 않습니다. VITE_API_BASE_URL을 확인하세요.');
     }

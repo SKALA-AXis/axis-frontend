@@ -24,6 +24,7 @@ export function bootstrapAppData(): () => void {
 
     const firstWave = [
       dashboardRepository.prefetch?.(),
+      dashboardRepository.prefetchKeywordTrends?.(),
       cardNewsRepository.prefetchList?.(),
     ];
     void Promise.allSettled(firstWave);

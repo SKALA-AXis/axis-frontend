@@ -780,14 +780,17 @@ export function KeywordGraphView({
     setKeywordRelatedCards([]);
 
     async function loadKeywordCards() {
-      const client = httpClient;
-      if (!client) return;
+      if (!httpClient) {
+        setKeywordRelatedCards(localFallbackCards);
+        setKeywordCardsLoading(false);
+        return;
+      }
       try {
         setKeywordCardsLoading(true);
         setKeywordCardsError(null);
-        const payload = await getCachedResource(
+        const apiCards = await getCachedResource(
           `keyword-graph:cards:${selectedId}`,
-          () => client.get<KeywordGraphCardsPayload>(`/api/keyword-graph/${encodeURIComponent(selectedId)}/cards?limit=30`),
+          () => fetchKeywordGraphCards(selectedId),
         );
         if (cancelled) return;
         if (apiCards.length > 0) {
