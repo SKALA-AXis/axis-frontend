@@ -244,7 +244,7 @@ export function PositioningPanel({ positioning, isLoading, error }: PositioningP
 
           <p className="mt-3 rounded-md border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-2 text-[10px] leading-5 text-[var(--axis-muted)]">
             <span className="font-semibold text-[var(--axis-body)]">데이터 출처:</span>{' '}
-            {positioning?.financialSourceLabel ?? 'raw_article_financial_metrics 기준'}
+            {positioning?.financialSourceLabel ?? '각 사 IR·사업보고서 기반'}
             {positioning?.coverageLabel ? ` / ${positioning.coverageLabel}` : ''}
           </p>
         </>
