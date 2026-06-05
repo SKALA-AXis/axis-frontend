@@ -3,7 +3,7 @@ import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';
 import { dashboardRepository } from '../api/dashboardRepository';
 import { mapDashboardToViewModel, type DashboardViewModel } from '../mappers/dashboardMapper';
-import type { DashboardKeywordTrendsData } from '../model/dashboard';
+import type { DashboardKeywordTrendsData, TodayInsightData } from '../model/dashboard';
 
 interface UseDashboardResult {
   dashboard: DashboardViewModel | null;
@@ -46,4 +46,27 @@ export function useDashboardKeywordTrends(): UseDashboardKeywordTrendsResult {
   });
 
   return { keywordTrends, status, isLoading, error, reload };
+}
+
+interface UseTodayInsightResult {
+  todayInsight: TodayInsightData | null;
+  status: AsyncStatus;
+  isLoading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+}
+
+export function useTodayInsight(): UseTodayInsightResult {
+  const load = useCallback(() => dashboardRepository.getTodayInsight(), []);
+  const {
+    data: todayInsight,
+    status,
+    isLoading,
+    error,
+    reload,
+  } = useAsyncResource<TodayInsightData | null>(load, null, [load], {
+    errorMessage: "Today's Insight를 불러오지 못했습니다.",
+  });
+
+  return { todayInsight, status, isLoading, error, reload };
 }

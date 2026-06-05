@@ -56,6 +56,7 @@ function normalizePeerOverviewRow(value: unknown): PeerOverviewRow {
     revenueQoqPct: pickNumber(row, 'revenueQoqPct', 'revenue_qoq_pct'),
     operatingProfitKrwBn: pickNumber(row, 'operatingProfitKrwBn', 'operating_profit_krwbn'),
     operatingProfitQoqPct: pickNumber(row, 'operatingProfitQoqPct', 'operating_profit_qoq_pct'),
+    netIncomeKrwBn: pickNumber(row, 'netIncomeKrwBn', 'net_income_krwbn'),
     operatingMarginPct: pickNumber(row, 'operatingMarginPct', 'operating_margin_pct'),
     operatingMarginQoqDeltaPctp: pickNumber(row, 'operatingMarginQoqDeltaPctp', 'operating_margin_qoq_delta_pctp'),
     axRevenueSharePct: pickNumber(row, 'axRevenueSharePct', 'ax_revenue_share_pct'),

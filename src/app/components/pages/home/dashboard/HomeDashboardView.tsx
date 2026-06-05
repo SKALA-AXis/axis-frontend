@@ -31,9 +31,14 @@ import {
   getPeerLabel,
   getSummaryLines,
 } from '../../../../../features/card-news/mappers/cardNewsExecutive';
-import { useDashboard, useDashboardKeywordTrends } from '../../../../../features/dashboard/hooks/useDashboard';
+import { useDashboard, useDashboardKeywordTrends, useTodayInsight } from '../../../../../features/dashboard/hooks/useDashboard';
+import type {
+  TodayInsightAction,
+  TodayInsightSignal as ApiTodayInsightSignal,
+  TodayInsightSource,
+} from '../../../../../features/dashboard/model/dashboard';
 import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
-import { homeTodayInsightSignals } from '../../../../../shared/mocks/homeDashboardPresentation';
+import { homeTodayInsightSignals, type TodayInsightSignal as MockTodayInsightSignal } from '../../../../../shared/mocks/homeDashboardPresentation';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../../shared/FloatingCardNewsOverlay';
 import { PageProcessLoading, PageState } from '../../../shared/PageState';
@@ -45,6 +50,69 @@ import {
 } from '../../shared/axis';
 
 type NavigateHandler = (view: string) => void;
+
+type HomeTodayInsightSignal = {
+  id: string;
+  label: string;
+  value: string;
+  reasoning: Array<{ stage: string; detail: string }>;
+  evidence: {
+    grounds: string[];
+    changes: string[];
+    relatedKeywords: string[];
+    sourceIds: string[];
+  };
+};
+
+function normalizeTodayInsightSignal(signal: MockTodayInsightSignal | ApiTodayInsightSignal | {
+  id?: string;
+  label?: string;
+  value?: string;
+  reasoning?: ReadonlyArray<{ stage?: string; detail?: string }>;
+  evidence?: {
+    grounds?: ReadonlyArray<string>;
+    changes?: ReadonlyArray<string>;
+    related_keywords?: ReadonlyArray<string>;
+    relatedKeywords?: ReadonlyArray<string>;
+    source_ids?: ReadonlyArray<string>;
+    sourceIds?: ReadonlyArray<string>;
+  };
+}): HomeTodayInsightSignal {
+  const evidence = (signal.evidence ?? {}) as {
+    grounds?: ReadonlyArray<string>;
+    changes?: ReadonlyArray<string>;
+    related_keywords?: ReadonlyArray<string>;
+    relatedKeywords?: ReadonlyArray<string>;
+    source_ids?: ReadonlyArray<string>;
+    sourceIds?: ReadonlyArray<string>;
+  };
+  return {
+    id: signal.id ?? 'signal',
+    label: signal.label ?? '주요 신호',
+    value: signal.value ?? '',
+    reasoning: (signal.reasoning ?? [])
+      .filter((step) => step.detail)
+      .map((step) => ({ stage: step.stage ?? '판단', detail: step.detail ?? '' })),
+    evidence: {
+      grounds: Array.from(evidence.grounds ?? []),
+      changes: Array.from(evidence.changes ?? []),
+      relatedKeywords: Array.from(evidence.relatedKeywords ?? evidence.related_keywords ?? []),
+      sourceIds: Array.from(evidence.sourceIds ?? evidence.source_ids ?? []),
+    },
+  };
+}
+
+function actionOwner(action: TodayInsightAction): string {
+  return action.decision_owner ?? action.decisionOwner ?? '';
+}
+
+function actionHorizon(action: TodayInsightAction): string {
+  return action.time_horizon ?? action.timeHorizon ?? '';
+}
+
+function sourceName(source: TodayInsightSource): string {
+  return source.source_name ?? source.sourceName ?? source.publisher ?? 'source';
+}
 
 export function HomeDashboardView({
   onNavigate,
@@ -69,6 +137,12 @@ export function HomeDashboardView({
     error: keywordTrendsError,
     reload: reloadKeywordTrends,
   } = useDashboardKeywordTrends();
+  const {
+    todayInsight,
+    isLoading: todayInsightLoading,
+    error: todayInsightError,
+    reload: reloadTodayInsight,
+  } = useTodayInsight();
   const { cards, isLoading: cardsLoading, reload: reloadCards } = useCardNews();
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
@@ -79,14 +153,35 @@ export function HomeDashboardView({
   const [homeDetailCardId, setHomeDetailCardId] = useState<string | null>(null);
   const [homeDetailSlideIndex, setHomeDetailSlideIndex] = useState(0);
   const [selectedKeywordInsight, setSelectedKeywordInsight] = useState<KeywordSpikeInsight | null>(null);
+  const todayInsightSignals = useMemo<HomeTodayInsightSignal[]>(
+    () => {
+      const liveSignals = todayInsight?.signals?.length
+        ? todayInsight.signals.map((signal) => normalizeTodayInsightSignal(signal))
+        : [];
+      return liveSignals.length
+        ? liveSignals
+        : homeTodayInsightSignals.map((signal) => normalizeTodayInsightSignal(signal));
+    },
+    [todayInsight],
+  );
   // 첫 신호 pre-selected — empty state 회피, 진입 즉시 evidence 패널 노출
-  const [selectedSignalId, setSelectedSignalId] = useState<string | null>(
-    homeTodayInsightSignals[0]?.id ?? null,
-  );
+  const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
   const selectedSignal = useMemo(
-    () => homeTodayInsightSignals.find((s) => s.id === selectedSignalId) ?? null,
-    [selectedSignalId],
+    () => todayInsightSignals.find((s) => s.id === selectedSignalId) ?? null,
+    [selectedSignalId, todayInsightSignals],
   );
+
+  useEffect(() => {
+    if (todayInsightSignals.length === 0) {
+      setSelectedSignalId(null);
+      return;
+    }
+    setSelectedSignalId((current) => (
+      current && todayInsightSignals.some((signal) => signal.id === current)
+        ? current
+        : todayInsightSignals[0].id
+    ));
+  }, [todayInsightSignals]);
 
   useEffect(() => {
     if (summaryChoices.length <= 1) return undefined;
@@ -106,11 +201,12 @@ export function HomeDashboardView({
     }
 
     onUpdateTimeChange?.(pickLatestTimestamp([
+      todayInsight?.generated_at ?? null,
       ...cards.flatMap((card) => [card.created_at, card.published_date, card.date]),
       ...dashboard.articles.map((article) => article.publishedAt),
       dashboard.dartSummary?.publishedAt ?? null,
     ]));
-  }, [cards, cardsLoading, dashboard, dashboardError, dashboardLoading, onUpdateTimeChange]);
+  }, [cards, cardsLoading, dashboard, dashboardError, dashboardLoading, onUpdateTimeChange, todayInsight]);
 
   if (dashboardLoading || cardsLoading || dashboardError || !dashboard) {
     return (
@@ -128,11 +224,11 @@ export function HomeDashboardView({
               { label: '카드뉴스 연결', detail: '/api/cards 목록과 최신 시각 확인' },
               { label: '화면 구성', detail: '인사이트, 차트, 카드 영역 배치' },
             ]}
-            meta={['source: dashboard summary + card news', 'endpoints: /api/dashboard/summary, /api/cards']}
-          />
-        )}
+          meta={['source: dashboard summary + card news', 'endpoints: /api/dashboard/summary, /api/cards']}
+        />
+      )}
         onRetry={async () => {
-          await Promise.all([reloadDashboard(), reloadCards()]);
+          await Promise.all([reloadDashboard(), reloadCards(), reloadTodayInsight()]);
         }}
       >
         {null}
@@ -143,11 +239,21 @@ export function HomeDashboardView({
   const heroCard = rankedCards[0] ?? latestCards[0];
   const summaryCard = summaryChoices[summaryIndex % Math.max(summaryChoices.length, 1)] ?? heroCard;
   const homeDetailCard = homeDetailCardId ? cards.find((card) => card.id === homeDetailCardId) ?? null : null;
-  const changeSummary = [
-    { label: '오늘 감지된 변화', value: `${dashboard.trends.length + cards.length}건` },
-    { label: '전주 대비', value: '+18%' },
-    { label: '핵심 키워드', value: keywordTrends?.keywordSeries[0]?.name ?? '-' },
-  ];
+  const changeSummary = todayInsight?.change_summary?.length
+    ? todayInsight.change_summary
+    : [
+        { label: '오늘 감지된 변화', value: `${dashboard.trends.length + cards.length}건` },
+        { label: '전주 대비', value: '+18%' },
+        { label: '핵심 키워드', value: keywordTrends?.keywordSeries[0]?.name ?? '-' },
+      ];
+  const selectedSourceIdSet = new Set(selectedSignal?.evidence.sourceIds ?? []);
+  const selectedSources = (todayInsight?.sources ?? [])
+    .filter((source) => selectedSourceIdSet.size === 0 || selectedSourceIdSet.has(source.id))
+    .slice(0, 3);
+  const selectedActions = (todayInsight?.response_direction ?? []).slice(0, 2);
+  const todayInsightTitle = todayInsight?.headline?.trim()
+    || todayInsightSignals[0]?.value
+    || "Today's insight";
   const stockPointByDate = new Map(dashboard.stockPoints.map((point) => [point.date, point]));
   const rawStockRateChartPoints =
     dashboard.stockRatePoints && dashboard.stockRatePoints.length > 0
@@ -400,12 +506,25 @@ export function HomeDashboardView({
               주요 신호 카드 click → 하단 evidence 패널 toggle (동적 크기). 외부 nav 연결 없음. */}
           <div data-guide="home-insight" className="relative flex flex-col gap-5 p-1">
             <div className="min-w-0">
-              <p className="axis-kicker">Today&apos;s insight</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="axis-kicker">Today&apos;s insight</p>
+                {todayInsightLoading ? (
+                  <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
+                    생성 중
+                  </span>
+                ) : todayInsightError ? (
+                  <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
+                    fallback
+                  </span>
+                ) : null}
+              </div>
               <h2 className="mt-2 max-w-3xl text-[clamp(2rem,3.1vw,3.7rem)] font-display leading-[1.08] text-ink">
-                과거와의 변화를 기반으로 오늘의 동향
+                {todayInsightTitle}
               </h2>
               <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
-                {heroCard
+                {todayInsight?.executive_summary
+                  ? todayInsight.executive_summary
+                  : heroCard
                   ? getSummaryLines(heroCard)[0]
                   : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.'}
               </p>
@@ -429,7 +548,7 @@ export function HomeDashboardView({
 
               {/* 주요 신호 카드 — 각각 button. click 시 selectedSignalId 갱신 (active 카드 재클릭 = no-op, 다른 카드 클릭 = 즉시 교체). */}
               <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                {homeTodayInsightSignals.map((signal) => {
+                {todayInsightSignals.map((signal) => {
                   const isActive = signal.id === selectedSignalId;
                   return (
                     <button
@@ -525,6 +644,51 @@ export function HomeDashboardView({
                         >
                           {k}
                         </span>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
+                {selectedActions.length > 0 ? (
+                  <section className="mt-4 border-t border-[var(--axis-hairline)] pt-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">대응방향</p>
+                    <div className="mt-2 grid gap-2">
+                      {selectedActions.map((action) => (
+                        <div key={action.action} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2.5">
+                          <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{action.action}</p>
+                          <p className="mt-1 text-xs leading-5 text-[var(--axis-body)]">{action.rationale}</p>
+                          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold text-[var(--axis-muted)]">
+                            {actionOwner(action) ? <span>{actionOwner(action)}</span> : null}
+                            {actionHorizon(action) ? <span>{actionHorizon(action)}</span> : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
+                {selectedSources.length > 0 ? (
+                  <section className="mt-4 border-t border-[var(--axis-hairline)] pt-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">출처</p>
+                    <div className="mt-2 grid gap-2">
+                      {selectedSources.map((source) => (
+                        source.url ? (
+                          <a
+                            key={source.id}
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-sm font-semibold leading-5 text-[var(--axis-ink)] transition hover:text-[var(--axis-accent-strong)]"
+                          >
+                            <span className="block truncate">{source.title}</span>
+                            <span className="mt-0.5 block text-[11px] text-[var(--axis-muted)]">{sourceName(source)}</span>
+                          </a>
+                        ) : (
+                          <div key={source.id} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">
+                            <span className="block truncate">{source.title}</span>
+                            <span className="mt-0.5 block text-[11px] text-[var(--axis-muted)]">{sourceName(source)}</span>
+                          </div>
+                        )
                       ))}
                     </div>
                   </section>
