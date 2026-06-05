@@ -1,12 +1,22 @@
 import { httpClient } from '../../../shared/api/httpClient';
+import { getCachedResource, prefetchCachedResource } from '../../../shared/api/resourceCache';
 import type { PeerPositioningData, PeerPositioningPoint } from '../model/peerPositioning';
 
 export interface PeerPositioningRepository {
   getPeerPositioning(): Promise<PeerPositioningData>;
+  prefetch?(): Promise<void>;
 }
 
 class HttpPeerPositioningRepository implements PeerPositioningRepository {
   async getPeerPositioning(): Promise<PeerPositioningData> {
+    return getCachedResource('peers:positioning', () => this.loadPeerPositioning());
+  }
+
+  prefetch(): Promise<void> {
+    return prefetchCachedResource('peers:positioning', () => this.loadPeerPositioning());
+  }
+
+  private async loadPeerPositioning(): Promise<PeerPositioningData> {
     if (!httpClient) {
       throw new Error('API client is not configured.');
     }

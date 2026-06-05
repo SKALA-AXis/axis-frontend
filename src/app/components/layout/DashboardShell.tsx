@@ -3,6 +3,7 @@ import { bookmarksRepository } from '../../../features/bookmarks/api/bookmarksRe
 import type { AuthUser } from '../../../features/auth/model/auth';
 import type { SearchScope } from '../../../features/search/model/search';
 import type { UserRole } from '../../types/userRole';
+import { bootstrapAppData } from '../../../shared/api/appDataBootstrap';
 import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../shared/mocks/peerPlus';
 import { useViewRouting } from '../../../shared/hooks/useViewRouting';
 import type { TextPreference } from '../../../shared/config/textPreferences';
@@ -83,6 +84,11 @@ export function DashboardShell({
       setActiveView('home');
     }
   }, [activeView, isAdmin, setActiveView]);
+
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    return bootstrapAppData();
+  }, [currentUser?.email, currentUser?.id]);
 
   useEffect(() => {
     window.localStorage.setItem(bookmarksStorageKey, JSON.stringify(bookmarkedIds));

@@ -1,10 +1,12 @@
 import type { AlertsData } from '../model/alert';
 import { httpClient } from '../../../shared/api/httpClient';
+import { getCachedResource, prefetchCachedResource } from '../../../shared/api/resourceCache';
 import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
 import { mockAlertsData } from '../../../shared/mocks/alerts';
 
 export interface AlertsRepository {
   getAlerts(): Promise<AlertsData>;
+  prefetch?(): Promise<void>;
 }
 
 class MockAlertsRepository implements AlertsRepository {
@@ -30,10 +32,17 @@ class HybridAlertsRepository implements AlertsRepository {
   ) {}
 
   async getAlerts(): Promise<AlertsData> {
-    return resolveWithFallback(
+    return getCachedResource('alerts:summary', () => resolveWithFallback(
       () => this.remoteRepository.getAlerts(),
       () => this.fallbackRepository.getAlerts(),
-    );
+    ));
+  }
+
+  prefetch(): Promise<void> {
+    return prefetchCachedResource('alerts:summary', () => resolveWithFallback(
+      () => this.remoteRepository.getAlerts(),
+      () => this.fallbackRepository.getAlerts(),
+    ));
   }
 }
 

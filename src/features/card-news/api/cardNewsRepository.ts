@@ -1,14 +1,33 @@
 import { httpClient } from '../../../shared/api/httpClient';
+import {
+  getCachedResource,
+  invalidateCachedResource,
+  prefetchCachedResource,
+} from '../../../shared/api/resourceCache';
 import { getFallbackCardLogo } from '../cardLogoFallback';
 import type { CardNewsItem } from '../model/cardNews';
 
 export interface CardNewsRepository {
   list(): Promise<CardNewsItem[]>;
   today(): Promise<CardNewsItem[]>;
+  prefetchList?(): Promise<void>;
+  invalidateList?(): void;
 }
 
 class HttpCardNewsRepository implements CardNewsRepository {
   async list(): Promise<CardNewsItem[]> {
+    return getCachedResource('card-news:list', () => this.loadList());
+  }
+
+  async prefetchList(): Promise<void> {
+    return prefetchCachedResource('card-news:list', () => this.loadList());
+  }
+
+  invalidateList(): void {
+    invalidateCachedResource('card-news:list');
+  }
+
+  private async loadList(): Promise<CardNewsItem[]> {
     if (!httpClient) {
       throw new Error('API client is not configured.');
     }
@@ -18,6 +37,10 @@ class HttpCardNewsRepository implements CardNewsRepository {
   }
 
   async today(): Promise<CardNewsItem[]> {
+    return getCachedResource('card-news:today', () => this.loadToday());
+  }
+
+  private async loadToday(): Promise<CardNewsItem[]> {
     if (!httpClient) {
       throw new Error('API client is not configured.');
     }

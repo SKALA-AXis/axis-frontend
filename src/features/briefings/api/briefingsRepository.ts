@@ -1,10 +1,12 @@
 import type { BriefingsData } from '../model/briefing';
 import { httpClient } from '../../../shared/api/httpClient';
+import { getCachedResource, prefetchCachedResource } from '../../../shared/api/resourceCache';
 import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
 import { mockBriefingsData } from '../../../shared/mocks/briefings';
 
 export interface BriefingsRepository {
   getBriefings(): Promise<BriefingsData>;
+  prefetch?(): Promise<void>;
 }
 
 class MockBriefingsRepository implements BriefingsRepository {
@@ -30,10 +32,17 @@ class HybridBriefingsRepository implements BriefingsRepository {
   ) {}
 
   async getBriefings(): Promise<BriefingsData> {
-    return resolveWithFallback(
+    return getCachedResource('briefings:summary', () => resolveWithFallback(
       () => this.remoteRepository.getBriefings(),
       () => this.fallbackRepository.getBriefings(),
-    );
+    ));
+  }
+
+  prefetch(): Promise<void> {
+    return prefetchCachedResource('briefings:summary', () => resolveWithFallback(
+      () => this.remoteRepository.getBriefings(),
+      () => this.fallbackRepository.getBriefings(),
+    ));
   }
 }
 

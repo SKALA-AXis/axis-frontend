@@ -1,12 +1,22 @@
 import { httpClient } from '../../../shared/api/httpClient';
+import { getCachedResource, prefetchCachedResource } from '../../../shared/api/resourceCache';
 import type { PeerOverviewData, PeerOverviewRow } from '../model/peerOverview';
 
 export interface PeerOverviewRepository {
   getPeerOverview(): Promise<PeerOverviewData>;
+  prefetch?(): Promise<void>;
 }
 
 class HttpPeerOverviewRepository implements PeerOverviewRepository {
   async getPeerOverview(): Promise<PeerOverviewData> {
+    return getCachedResource('peers:overview', () => this.loadPeerOverview());
+  }
+
+  prefetch(): Promise<void> {
+    return prefetchCachedResource('peers:overview', () => this.loadPeerOverview());
+  }
+
+  private async loadPeerOverview(): Promise<PeerOverviewData> {
     if (!httpClient) {
       throw new Error('API client is not configured.');
     }

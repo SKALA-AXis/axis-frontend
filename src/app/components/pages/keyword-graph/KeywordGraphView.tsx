@@ -9,6 +9,7 @@ import { getDisplayDate, getPeerLabel } from '../../../../features/card-news/map
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
 import type { DashboardKeywordSearchPoint } from '../../../../features/dashboard/model/dashboard';
+import { getCachedResource } from '../../../../shared/api/resourceCache';
 import { httpClient } from '../../../../shared/api/httpClient';
 import { pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
 import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/mocks/keywordGraph';
@@ -586,7 +587,8 @@ export function KeywordGraphView({
     let cancelled = false;
 
     async function loadKeywordGraph() {
-      if (!httpClient) {
+      const client = httpClient;
+      if (!client) {
         setGraphLoading(false);
         setGraphError('API client is not configured.');
         return;
@@ -594,7 +596,7 @@ export function KeywordGraphView({
       try {
         setGraphLoading(true);
         setGraphError(null);
-        const payload = await httpClient.get<KeywordGraphPayload>('/api/keyword-graph');
+        const payload = await getCachedResource('keyword-graph:overview', () => client.get<KeywordGraphPayload>('/api/keyword-graph'));
         if (cancelled) return;
         setGraphPayload(payload);
         if (payload.selectedId) {
@@ -644,11 +646,15 @@ export function KeywordGraphView({
     const activeSelectedNode = selectedNode;
 
     async function loadKeywordCards() {
-      if (!httpClient) return;
+      const client = httpClient;
+      if (!client) return;
       try {
         setKeywordCardsLoading(true);
         setKeywordCardsError(null);
-        const payload = await httpClient.get<KeywordGraphCardsPayload>(`/api/keyword-graph/${encodeURIComponent(selectedId)}/cards?limit=30`);
+        const payload = await getCachedResource(
+          `keyword-graph:cards:${selectedId}`,
+          () => client.get<KeywordGraphCardsPayload>(`/api/keyword-graph/${encodeURIComponent(selectedId)}/cards?limit=30`),
+        );
         if (cancelled) return;
         const apiCards = (payload.items ?? []).map(normalizeCardNewsItem);
         setKeywordRelatedCards(apiCards.length > 0 || activeSelectedNode.category !== '기업'

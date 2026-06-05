@@ -1,10 +1,12 @@
 import type { PeersData } from '../model/peer';
 import { httpClient } from '../../../shared/api/httpClient';
+import { getCachedResource, prefetchCachedResource } from '../../../shared/api/resourceCache';
 import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
 import { mockPeersData } from '../../../shared/mocks/peers';
 
 export interface PeersRepository {
   getPeers(): Promise<PeersData>;
+  prefetch?(): Promise<void>;
 }
 
 class MockPeersRepository implements PeersRepository {
@@ -30,10 +32,17 @@ class HybridPeersRepository implements PeersRepository {
   ) {}
 
   async getPeers(): Promise<PeersData> {
-    return resolveWithFallback(
+    return getCachedResource('peers:list', () => resolveWithFallback(
       () => this.remoteRepository.getPeers(),
       () => this.fallbackRepository.getPeers(),
-    );
+    ));
+  }
+
+  prefetch(): Promise<void> {
+    return prefetchCachedResource('peers:list', () => resolveWithFallback(
+      () => this.remoteRepository.getPeers(),
+      () => this.fallbackRepository.getPeers(),
+    ));
   }
 }
 
