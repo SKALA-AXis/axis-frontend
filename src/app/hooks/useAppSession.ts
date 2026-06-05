@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { authRepository } from '../../features/auth/api/authRepository';
+import { dashboardRepository } from '../../features/dashboard/api/dashboardRepository';
 import type { AuthUser, SignupPayload } from '../../features/auth/model/auth';
 import { clearAccessToken, setAccessToken } from '../../shared/api/authSession';
 import {
@@ -47,6 +48,12 @@ function applyRefreshMarker(rememberMe: boolean) {
 
   window.sessionStorage.setItem(refreshMarkerStorageKey, 'true');
   window.localStorage.removeItem(refreshMarkerStorageKey);
+}
+
+function warmupTodayInsightAfterAuth() {
+  void dashboardRepository.warmupTodayInsight().catch(() => {
+    // Warm-up은 로그인 UX를 막지 않는다. 홈 화면의 일반 조회 fallback 경로가 후속 처리한다.
+  });
 }
 
 type UseAppSessionResult = {
@@ -126,6 +133,7 @@ export function useAppSession(): UseAppSessionResult {
     authRepository.refresh()
       .then(async (response) => {
         setAccessToken(response.access_token ?? null);
+        warmupTodayInsightAfterAuth();
         return response.user ?? authRepository.me();
       })
       .then((user) => {
@@ -166,6 +174,7 @@ export function useAppSession(): UseAppSessionResult {
       remember_me: form.rememberMe,
     });
     setAccessToken(response.access_token ?? null);
+    warmupTodayInsightAfterAuth();
     setCurrentUser(response.user ?? await authRepository.me());
     applyRefreshMarker(form.rememberMe);
     setShowGuide(false);

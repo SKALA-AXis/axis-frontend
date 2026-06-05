@@ -136,3 +136,76 @@ export interface DashboardKeywordTrendsData {
   cachedAt?: string | null;
   stale?: boolean;
 }
+
+export interface TodayInsightReasoningStep {
+  stage: string;
+  detail: string;
+}
+
+export interface TodayInsightEvidence {
+  grounds: string[];
+  changes: string[];
+  related_keywords?: string[];
+  relatedKeywords?: string[];
+  source_ids?: string[];
+  sourceIds?: string[];
+}
+
+export interface TodayInsightSignal {
+  id: string;
+  label: string;
+  value: string;
+  reasoning: TodayInsightReasoningStep[];
+  evidence: TodayInsightEvidence;
+}
+
+export interface TodayInsightAction {
+  action: string;
+  decision_owner?: string;
+  decisionOwner?: string;
+  time_horizon?: string;
+  timeHorizon?: string;
+  rationale: string;
+  evidence_refs?: string[];
+  evidenceRefs?: string[];
+}
+
+export interface TodayInsightSource {
+  id: string;
+  title: string;
+  source_name?: string;
+  sourceName?: string;
+  publisher?: string;
+  url?: string;
+  published_at?: string | null;
+  publishedAt?: string | null;
+}
+
+export interface TodayInsightChangeSummary {
+  label: string;
+  value: string;
+}
+
+export interface TodayInsightData {
+  report_date: string;
+  generated_at: string;
+  headline: string;
+  executive_summary: string;
+  executive_implication?: string;
+  change_summary?: TodayInsightChangeSummary[];
+  signals: TodayInsightSignal[];
+  response_direction?: TodayInsightAction[];
+  sources?: TodayInsightSource[];
+  source_integrated_issue_ids?: string[];
+  source_card_ids?: string[];
+  peer_ids?: string[];
+  sectors?: string[];
+  confidence?: number;
+  warning?: string | null;
+}
+
+export interface TodayInsightWarmupResult {
+  status: string;
+  anchor_date: string;
+  refresh_policy: string;
+}
