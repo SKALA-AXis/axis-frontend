@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { adminCardsRepository } from '../api/adminCardsRepository';
 import type { AdminCard, AdminCardStatus } from '../model/adminCard';
 
 interface UseAdminCardsResult {
   cards: AdminCard[];
+  status: AsyncStatus;
   isLoading: boolean;
   error: string | null;
   updatingCardId: string | null;
@@ -13,21 +15,21 @@ interface UseAdminCardsResult {
 
 export function useAdminCards(status?: AdminCardStatus): UseAdminCardsResult {
   const [cards, setCards] = useState<AdminCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadStatus, setLoadStatus] = useState<AsyncStatus>('loading');
   const [error, setError] = useState<string | null>(null);
   const [updatingCardId, setUpdatingCardId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    setIsLoading(true);
+    setLoadStatus('loading');
 
     try {
       const nextCards = await adminCardsRepository.list(status);
       setCards(nextCards);
       setError(null);
+      setLoadStatus('success');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : '카드뉴스 목록을 불러오지 못했습니다.');
-    } finally {
-      setIsLoading(false);
+      setLoadStatus('error');
     }
   }, [status]);
 
@@ -52,5 +54,5 @@ export function useAdminCards(status?: AdminCardStatus): UseAdminCardsResult {
     }
   }, [status]);
 
-  return { cards, isLoading, error, updatingCardId, reload, updateStatus };
+  return { cards, status: loadStatus, isLoading: loadStatus === 'loading', error, updatingCardId, reload, updateStatus };
 }

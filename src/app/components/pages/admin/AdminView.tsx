@@ -14,6 +14,7 @@ import type { AdminCard } from '../../../../features/admin-cards/model/adminCard
 import { useAdminUsers } from '../../../../features/admin-users/hooks/useAdminUsers';
 import type { AdminUser, AdminUserStatus } from '../../../../features/admin-users/model/adminUser';
 import { mockAdminPeers } from '../../../../shared/mocks/admin';
+import { TableStateRow } from '../../shared/PageState';
 
 type AdminTab = 'users' | 'peers' | 'cards' | 'audit';
 
@@ -267,17 +268,9 @@ function AdminUsersPanel({
           </thead>
           <tbody>
             {isLoading ? (
-              <tr>
-                <td colSpan={4} className="py-10 text-center text-sm text-[var(--axis-muted)]">
-                  사용자 목록을 불러오는 중입니다.
-                </td>
-              </tr>
+              <TableStateRow colSpan={4} label="사용자 목록을 불러오는 중입니다." skeleton />
             ) : filteredUsers.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-10 text-center text-sm text-[var(--axis-muted)]">
-                  표시할 사용자가 없습니다.
-                </td>
-              </tr>
+              <TableStateRow colSpan={4} label="표시할 사용자가 없습니다." />
             ) : visibleUsers.map((user) => {
               const isUpdating = updatingUserId === user.id;
               const isEditing = editingUserId === user.id;
@@ -505,17 +498,9 @@ function AdminDeletedCardsPanel({
           </thead>
           <tbody>
             {isLoading ? (
-              <tr>
-                <td colSpan={6} className="py-10 text-center text-sm text-[var(--axis-muted)]">
-                  삭제된 카드뉴스를 불러오는 중입니다.
-                </td>
-              </tr>
+              <TableStateRow colSpan={6} label="삭제된 카드뉴스를 불러오는 중입니다." skeleton />
             ) : cards.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="py-10 text-center text-sm text-[var(--axis-muted)]">
-                  삭제된 카드뉴스가 없습니다.
-                </td>
-              </tr>
+              <TableStateRow colSpan={6} label="삭제된 카드뉴스가 없습니다." />
             ) : cards.map((card) => (
               <tr key={card.id}>
                 <td className="font-semibold text-[var(--axis-ink)]">{card.title}</td>
@@ -594,17 +579,9 @@ function AdminAuditLogsPanel({
           </thead>
           <tbody>
             {isLoading ? (
-              <tr>
-                <td colSpan={5} className="py-10 text-center text-sm text-[var(--axis-muted)]">
-                  감사 로그를 불러오는 중입니다.
-                </td>
-              </tr>
+              <TableStateRow colSpan={5} label="감사 로그를 불러오는 중입니다." skeleton />
             ) : logs.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="py-10 text-center text-sm text-[var(--axis-muted)]">
-                  표시할 감사 로그가 없습니다.
-                </td>
-              </tr>
+              <TableStateRow colSpan={5} label="표시할 감사 로그가 없습니다." />
             ) : logs.map((log) => (
               <tr key={log.id}>
                 <td>{formatLastLogin(log.createdAt)}</td>

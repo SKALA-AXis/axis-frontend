@@ -1,5 +1,3 @@
-import { homeKeywordSpikeInsights } from '../../../../../shared/mocks/homeDashboardPresentation';
-
 export type PositioningTone = 'accent' | 'company' | 'infra' | 'security' | 'deal' | 'success';
 
 export type PositioningPoint = {
@@ -19,7 +17,15 @@ export type PositioningPoint = {
   evidenceNote: string;
 };
 
-export type KeywordSpikeInsight = (typeof homeKeywordSpikeInsights)[number];
+export type KeywordSpikeInsight = {
+  key: string;
+  time: string;
+  title: string;
+  valueLabel: string;
+  reason: string;
+  skAxPoint: string;
+  evidence?: Array<Record<string, unknown>>;
+};
 
 export type DonutCalloutDatum = {
   name: string;
