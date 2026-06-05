@@ -122,7 +122,7 @@ export function PageProcessLoading({
 
   return (
     <ExecutivePage>
-      <ExecutiveContainer className="flex min-h-full items-center justify-center py-10">
+      <ExecutiveContainer className="flex min-h-[calc(100dvh-7rem)] items-center justify-center py-10">
         <div className="w-full max-w-[320px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-7 text-center shadow-[0_24px_70px_-42px_rgba(0,0,0,0.28)]">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.08)]">
             <div className="relative h-11 w-7 animate-[spin_1.8s_ease-in-out_infinite]">

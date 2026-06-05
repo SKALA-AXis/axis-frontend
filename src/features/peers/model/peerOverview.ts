@@ -5,6 +5,7 @@ export interface PeerOverviewRow {
   revenueQoqPct: number | null;
   operatingProfitKrwBn: number | null;
   operatingProfitQoqPct: number | null;
+  netIncomeKrwBn: number | null;
   operatingMarginPct: number | null;
   operatingMarginQoqDeltaPctp: number | null;
   axRevenueSharePct: number | null;

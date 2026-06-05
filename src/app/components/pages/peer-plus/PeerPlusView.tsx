@@ -364,6 +364,7 @@ export function PeerPlusView({
       revenueQoqPct: null,
       operatingProfitKrwBn: null,
       operatingProfitQoqPct: null,
+      netIncomeKrwBn: null,
       operatingMarginPct: null,
       operatingMarginQoqDeltaPctp: null,
       axRevenueSharePct: null,
@@ -378,6 +379,7 @@ export function PeerPlusView({
       revenueQoqPct: null,
       operatingProfitKrwBn: null,
       operatingProfitQoqPct: null,
+      netIncomeKrwBn: null,
       operatingMarginPct: null,
       operatingMarginQoqDeltaPctp: null,
       axRevenueSharePct: null,
@@ -396,19 +398,19 @@ export function PeerPlusView({
       { label: '포지셔닝', body: '전체 비교에서는 SK AX를 기준축으로 두고, 삼성 SDS는 ITS·클라우드·AI, LG CNS는 금융·공공·클라우드, 현대 오토에버는 모빌리티·운영, 포스코 DX는 산업DX·이차전지 문맥으로 나뉘어 보입니다.' },
       { label: '사업 신호', body: '공시 수치 기준 2025Q4 매출은 삼성 SDS 3.54조, LG CNS 1.94조, 현대 오토에버 1.32조, 포스코 DX 2,608억 수준으로 읽히며, 기업별로 규모 차이가 크게 나타납니다.' },
       { label: '기술 신호', body: '키워드 기준으로는 FabriX·Brity, 금융·공공 AI/DX, 커넥티드카·OTA, 산업DX·LLM처럼 각사가 반복적으로 내세우는 기술 문맥이 분명하게 갈립니다.' },
-      { label: '리스크', body: 'AX 비중과 수주 수처럼 공시에서 직접 확인되지 않는 값은 비교 해석에 한계가 있어, 현재 화면은 실수치와 키워드 중심의 1차 비교로 읽는 편이 안전합니다.' },
+      { label: '리스크', body: '수주 수처럼 공시에서 직접 확인되지 않는 값은 비교 해석에 한계가 있어, 현재 화면은 실수치와 키워드 중심의 1차 비교로 읽는 편이 안전합니다.' },
     ],
     samsung_sds: [
       { label: '포지셔닝', body: '삼성 SDS는 2025Q4 기준 매출 3.54조, 영업이익 2,261억원 수준으로 규모 우위가 크고, SK AX와 비교할 때 ITS·클라우드·AI가 동시에 보이는 복합 신호 축으로 읽힙니다.' },
       { label: '사업 신호', body: '공시 실수치 기준으로는 분기 매출이 3조원대 중반을 유지하고 있어 사업 규모 자체가 비교 기준점으로 작동합니다.' },
       { label: '기술 신호', body: 'FabriX, Brity, 에이전틱 AI, ITS, 클라우드 같은 키워드가 함께 나타나 기술 메시지가 운영형 AI와 서비스 축으로 묶여 보입니다.' },
-      { label: '리스크', body: 'AX 비중이나 수주 수는 공시에서 직접 확인되지 않기 때문에, 현재 단계에서는 규모와 키워드 강도 중심으로만 비교하는 편이 적절합니다.' },
+      { label: '리스크', body: '수주 수는 공시에서 직접 확인되지 않기 때문에, 현재 단계에서는 규모와 수익성, 키워드 강도 중심으로만 비교하는 편이 적절합니다.' },
     ],
     lg_cns: [
       { label: '포지셔닝', body: 'LG CNS는 2025Q4 기준 매출 1.94조, 영업이익 2,119억원 수준이며 금융·공공·클라우드/MSP·AI/DX가 함께 보이는 다축형 경쟁군으로 읽힙니다.' },
       { label: '사업 신호', body: '공시 실수치 기준으로 영업이익률이 10%대를 보여 수익성 측면에서는 네 곳 중 상대적으로 안정적으로 읽히는 편입니다.' },
       { label: '기술 신호', body: '금융, 공공, 클라우드 MSP, AI/DX, 스마트물류 키워드가 반복돼 기술 신호가 특정 산업보다 플랫폼형 문맥으로 넓게 퍼져 있습니다.' },
-      { label: '리스크', body: '실수치는 강하지만 AX 비중, 수주 수 등 직접 비교 지표는 공시 미기재라서, 현재 화면만으로는 확장 속도까지 단정하기 어렵습니다.' },
+      { label: '리스크', body: '실수치는 강하지만 수주 수 같은 직접 비교 지표는 공시 미기재라서, 현재 화면만으로는 확장 속도까지 단정하기 어렵습니다.' },
     ],
     hyundai_autoever: [
       { label: '포지셔닝', body: '현대 오토에버는 2025Q4 기준 매출 1.32조, 영업이익 764억원 수준이며 스마트모빌리티, SI, ITES/유지운영 축으로 포지셔닝이 읽힙니다.' },
@@ -420,7 +422,7 @@ export function PeerPlusView({
       { label: '포지셔닝', body: '포스코 DX는 2025Q4 기준 매출 2,608억원, 영업이익 -13억원 수준이며 산업DX, 이차전지/EV, AI/지능화 키워드가 주된 구분축으로 보입니다.' },
       { label: '사업 신호', body: '2025Q4에는 영업이익이 적자로 전환되어 실적 측면에서는 다른 Peer보다 보수적으로 읽을 필요가 있습니다.' },
       { label: '기술 신호', body: '산업DX, 스마트팩토리, 이차전지, EV, AI, LLM 키워드가 반복돼 산업 현장형 기술 문맥이 강하게 남아 있습니다.' },
-      { label: '리스크', body: '분기 이익 변동성이 크고 세부 부문 매출과 AX 비중이 공시 미기재라서, 현재 단계에서는 산업 키워드 강도와 총실적만 우선 비교하는 편이 적절합니다.' },
+      { label: '리스크', body: '분기 이익 변동성이 크고 세부 부문 매출이 공시 미기재라서, 현재 단계에서는 산업 키워드 강도와 총실적만 우선 비교하는 편이 적절합니다.' },
     ],
   };
   const swotCatalog: Record<'all' | PeerPlusPeerId, Array<{ label: 'Strength' | 'Weakness' | 'Opportunity' | 'Threat'; body: string }>> = {
@@ -594,7 +596,7 @@ export function PeerPlusView({
             </div>
             <div className="mt-4 overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)]">
               <div className="grid grid-cols-[1.08fr_0.98fr_0.98fr_0.88fr_0.82fr_0.88fr_1fr] gap-px bg-[var(--axis-hairline)] text-xs font-semibold text-[var(--axis-muted)]">
-                {['기업', '매출', '영업이익', '영업이익률', 'AX 비중', '수주 수', '핵심 키워드'].map((label) => (
+                {['기업', '매출', '영업이익', '영업이익률', '순이익', '수주 수', '핵심 키워드'].map((label) => (
                   <div key={label} className="bg-[var(--axis-surface-soft)] px-3 py-3">{label}</div>
                 ))}
                 {peerOverviewVisibleRows.map((row) => (
@@ -620,7 +622,7 @@ export function PeerPlusView({
                         <div>{formatPercent(row.operatingMarginPct)}</div>
                         {formatQoqPctPoint(row.operatingMarginQoqDeltaPctp) ? <div className={`mt-1 text-[10px] ${trendToneClass(row.operatingMarginQoqDeltaPctp)}`}>{formatQoqPctPoint(row.operatingMarginQoqDeltaPctp)}</div> : null}
                       </div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{formatPercent(row.axRevenueSharePct)}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{formatKrwBn(row.netIncomeKrwBn)}</div>
                       <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{formatCount(row.contractCount)}</div>
                       <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.topKeyword?.trim() ? row.topKeyword : '-'}</div>
                     </div>
@@ -630,7 +632,7 @@ export function PeerPlusView({
             <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3 text-[11px] leading-5 text-[var(--axis-muted)]">
               <p>기준 분기: {peerOverview?.periodLabel ?? '-'} · {peerOverview?.coverageLabel ?? '공통 분기 미확보'}</p>
               <p className="mt-1">표 안의 작은 `+ / -` 수치는 전분기 대비 증감률이며, 영업이익률은 `%p` 기준으로 표기합니다.</p>
-              <p className="mt-1">재무값 출처: {peerOverview?.financialSourceLabel ?? '미확인'} · 보조값 출처: {peerOverview?.supplementalSourceLabel ?? '미확인'} · 미확보 값은 `-` 로 표기합니다.</p>
+              <p className="mt-1">재무 자료: {peerOverview?.financialSourceLabel ?? '미확인'} · 보조 지표: {peerOverview?.supplementalSourceLabel ?? '미확인'} · 미확보 값은 `-` 로 표기합니다.</p>
             </div>
           </article>
         </section>

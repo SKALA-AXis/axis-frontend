@@ -3,10 +3,10 @@ import type { CardNewsItem } from './model/cardNews';
 export type CardLogoKey = NonNullable<CardNewsItem['peer_id']> | 'sk_ax';
 
 export const cardLogoByKey: Record<CardLogoKey, string> = {
-  samsung_sds: '/card_logos/samsung_sds.jpeg',
-  lg_cns: '/card_logos/lg_cns.png',
-  hyundai_autoever: '/card_logos/hyundai_autoever.png',
-  posco_dx: '/card_logos/posco_dx.jpg',
+  samsung_sds: '/card_logos/samsung_sds-removebg-preview.png',
+  lg_cns: '/card_logos/lg_cns-removebg-preview.png',
+  hyundai_autoever: '/card_logos/hyundai_autoever-removebg-preview.png',
+  posco_dx: '/card_logos/posco_dx-removebg-preview.png',
   sk_ax: '/card_logos/sk_ax.png',
 };
 
@@ -79,10 +79,10 @@ const cardLogoScaleByKey: Record<CardLogoKey, string> = {
 };
 
 const cardLogoClassBySize: Record<CardLogoImageSize, string> = {
-  hero: 'absolute inset-0 h-full w-full bg-white object-contain opacity-90 transition-opacity',
-  card: 'absolute inset-0 h-full w-full bg-white object-contain opacity-90',
-  related: 'absolute inset-0 h-full w-full bg-white object-contain opacity-90',
-  compact: 'h-full w-full bg-white object-contain opacity-90',
+  hero: 'absolute inset-0 h-full w-full bg-white object-contain opacity-100 transition-opacity',
+  card: 'absolute inset-0 h-full w-full bg-white object-contain opacity-100',
+  related: 'absolute inset-0 h-full w-full bg-white object-contain opacity-100',
+  compact: 'h-full w-full bg-white object-contain opacity-100',
 };
 
 export function getCardLogoImageClass(url: string | null | undefined, size: CardLogoImageSize) {
