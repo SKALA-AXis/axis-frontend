@@ -60,6 +60,28 @@ type SearchResultsViewProps = {
   onNavigate: (target: string, options?: { peerId?: PeerPlusPeerId; query?: string }) => void;
 };
 
+// 섹터/카테고리 표기 약자 — 전체 대문자로 노출. 그 외 토큰은 첫 글자만 대문자.
+const SECTOR_UPPERCASE_TERMS = new Set([
+  'ax', 'ai', 'it', 'ict', 'bpo', 'erp', 'crm', 'scm', 'si', 'sm', 'iot',
+  'rpa', 'esg', 'hr', 'cx', 'ux', 'ui', 'b2b', 'b2c', 'saas', 'paas', 'iaas',
+  'llm', 'genai', 'mlops', 'devops', 'r&d',
+]);
+
+// "financial" → "Financial", "ax" → "AX", "data infra" → "Data Infra"
+function formatSectorLabel(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  return trimmed
+    .split(/(\s+)/)
+    .map((token) => {
+      if (!token || /^\s+$/.test(token)) return token;
+      const lower = token.toLowerCase();
+      if (SECTOR_UPPERCASE_TERMS.has(lower)) return token.toUpperCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join('');
+}
+
 function formatResultDate(value: string) {
   if (!value) return '날짜 없음';
   const date = new Date(value);
@@ -410,7 +432,11 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
                             {item.badge} · {formatResultDate(item.date)}
                           </span>
                           <span className="mt-1 block text-base font-bold leading-6 text-[var(--axis-ink)]">{item.title}</span>
-                          <span className="mt-1 line-clamp-2 block text-sm leading-6 text-[var(--axis-muted)]">{item.snippet || '관련 결과를 확인합니다.'}</span>
+                          <span className="mt-1 line-clamp-2 block text-sm leading-6 text-[var(--axis-muted)]">
+                            {item.type === 'CARD_NEWS' && item.snippet
+                              ? formatSectorLabel(item.snippet)
+                              : item.snippet || '관련 결과를 확인합니다.'}
+                          </span>
                         </button>
                       )) : (
                         <p className="px-4 py-6 text-sm font-semibold text-[var(--axis-muted)]">{section.empty}</p>
