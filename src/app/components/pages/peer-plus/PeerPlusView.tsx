@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BrainCircuit, Globe2, LineChart, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { BrainCircuit, ExternalLink, Globe2, Info, LineChart, ShieldCheck, Sparkles, X } from 'lucide-react';
 
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { usePeerPositioning } from '../../../../features/peers/hooks/usePeerPositioning';
 import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOverview';
+import type { PeerComparisonInsightItem, PeerOverviewRow, PeerSwotInsightItem } from '../../../../features/peers/model/peerOverview';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
 import { ExecutiveBadge, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { PageProcessLoading, PageState } from '../../shared/PageState';
+import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { PositioningPanel } from './PositioningPanels';
 
 type NavigateHandler = (view: string) => void;
@@ -276,11 +278,6 @@ function formatPercent(value: number | null | undefined) {
   return `${trimDecimal(value, 2)}%`;
 }
 
-function formatCount(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return '-';
-  return `${new Intl.NumberFormat('ko-KR').format(value)}건`;
-}
-
 function formatQoqPercent(value: number | null | undefined) {
   if (value == null || Number.isNaN(value)) return null;
   const sign = value > 0 ? '+' : '';
@@ -291,6 +288,190 @@ function formatQoqPctPoint(value: number | null | undefined) {
   if (value == null || Number.isNaN(value)) return null;
   const sign = value > 0 ? '+' : '';
   return `${sign}${trimDecimal(value, 2)}%p`;
+}
+
+function normalizeEvidenceText(text: string) {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function buildEvidenceReason(source: string, interpretation: string) {
+  const cleanInterpretation = normalizeEvidenceText(interpretation);
+  if (cleanInterpretation) return cleanInterpretation;
+
+  return normalizeEvidenceText(source);
+}
+
+function parseTopKeywordEvidence(evidence: string) {
+  if (evidence.includes(' 기준: ') && (evidence.includes('. 카드뉴스 내용: ') || evidence.includes('. 근거 내용: '))) {
+    const [contextPart, rest = ''] = evidence.split(' 기준: ');
+    const [activityPart, detailRest = ''] = rest.includes('. 근거 내용: ')
+      ? rest.split('. 근거 내용: ')
+      : rest.split('. 카드뉴스 내용: ');
+    const [sourcePart, interpretationPart = ''] = detailRest.includes('. 판단 이유: ')
+      ? detailRest.split('. 판단 이유: ')
+      : detailRest.split('. 왜 핵심인가: ');
+    const [sourceText] = sourcePart.includes('. 원문 확인 문구: ')
+      ? sourcePart.split('. 원문 확인 문구: ')
+      : [sourcePart, ''];
+    const [cleanSourceText] = sourceText.split('. 원문 위치: ');
+
+    return {
+      context: `${contextPart.trim()} 기준`,
+      activity: activityPart.trim(),
+      reason: buildEvidenceReason(cleanSourceText, interpretationPart),
+    };
+  }
+
+  if (evidence.includes(' 활동: ') && evidence.includes('. 카드뉴스 내용: ')) {
+    const [contextPart, rest = ''] = evidence.split(' 활동: ');
+    const [activityPart, detailRest = ''] = rest.split('. 카드뉴스 내용: ');
+    const [sourcePart, interpretationPart = ''] = detailRest.includes('. 판단 이유: ')
+      ? detailRest.split('. 판단 이유: ')
+      : detailRest.split('. 왜 핵심인가: ');
+    const [cleanSourcePart] = sourcePart.split('. 원문 위치: ');
+
+    return {
+      context: `${contextPart.trim()} 활동`,
+      activity: activityPart.trim(),
+      reason: buildEvidenceReason(cleanSourcePart, interpretationPart),
+    };
+  }
+
+  const [contextPart, rest = ''] = evidence.split(' 근거: ');
+  const [sourcePart, interpretationPart = ''] = rest.includes('. 왜 핵심인가: ')
+    ? rest.split('. 왜 핵심인가: ')
+    : rest.includes('. 판단 이유: ')
+      ? rest.split('. 판단 이유: ')
+      : rest.split('. 이 내용은 ');
+
+  return {
+    context: contextPart.trim(),
+    activity: '',
+    reason: buildEvidenceReason(sourcePart.split('. 원문 위치: ')[0], interpretationPart),
+  };
+}
+
+function splitTopKeyword(topKeyword: string | null | undefined) {
+  const [businessKeyword, technologyKeyword] = (topKeyword ?? '')
+    .split(/\r?\n/)
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
+
+  return {
+    businessKeyword: businessKeyword || null,
+    technologyKeyword: technologyKeyword || null,
+  };
+}
+
+function buildAxisFallbackReason(axisLabel: '사업 키워드' | '기술 키워드', keyword: string, row: Pick<PeerOverviewRow, 'label' | 'topKeywordReason'>) {
+  if (axisLabel === '사업 키워드') {
+    return `${row.label}의 최근 사업 방향으로 '${keyword}'를 표시합니다. 다만 현재 응답에는 이 사업 키워드만을 위한 분리 근거가 없어, 백엔드가 제공한 공통 설명 대신 사업 축 기준으로만 안내합니다. ${row.topKeywordReason ?? ''}`.trim();
+  }
+
+  return `${row.label}의 최근 기술 방향으로 '${keyword}'를 표시합니다. 다만 현재 응답에는 이 기술 키워드만을 위한 분리 근거가 없어, 백엔드가 제공한 공통 설명 대신 기술 축 기준으로만 안내합니다. ${row.topKeywordReason ?? ''}`.trim();
+}
+
+function KeywordInfoPopover({
+  axisLabel,
+  keyword,
+  row,
+}: {
+  axisLabel: '사업 키워드' | '기술 키워드';
+  keyword: string;
+  row: Pick<PeerOverviewRow, 'label' | 'topKeyword' | 'topKeywordReason' | 'topKeywordEvidence' | 'topKeywordEvidenceUrls'>;
+}) {
+  const axisEvidenceMarker = axisLabel === '사업 키워드' ? ' 사업 키워드 기준: ' : ' 기술 키워드 기준: ';
+  const rawEvidenceItems = row.topKeywordEvidence ?? [];
+  const evidenceUrls = row.topKeywordEvidenceUrls ?? [];
+  const evidenceItems = rawEvidenceItems
+    .map((evidence, evidenceIndex) => ({ evidence, evidenceUrl: evidenceUrls[evidenceIndex] }))
+    .filter(({ evidence }) => evidence.includes(axisEvidenceMarker));
+  const fallbackReason = buildAxisFallbackReason(axisLabel, keyword, row);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] text-[var(--axis-muted)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--axis-accent)]/30"
+          aria-label={`${row.label} ${axisLabel} 선정 근거 보기`}
+        >
+          <Info size={12} strokeWidth={2.2} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="max-h-[min(520px,var(--radix-popover-content-available-height))] w-[360px] overflow-y-auto border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-0 text-[var(--axis-body)] shadow-xl">
+        <div className="divide-y divide-[var(--axis-hairline)]">
+          <div className="px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">{row.label}</p>
+            <p className="mt-1 text-[11px] font-semibold text-[var(--axis-accent-strong)]">{axisLabel} 선정 근거</p>
+            <p className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{keyword}</p>
+          </div>
+          {evidenceItems.length > 0 ? (
+            evidenceItems.map(({ evidence, evidenceUrl }) => {
+              const parsedEvidence = parseTopKeywordEvidence(evidence);
+
+              return (
+                <div key={`${axisLabel}-${evidence}`} className="space-y-3 px-4 py-3">
+                  {parsedEvidence.context ? (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">{parsedEvidence.context}</p>
+                      {parsedEvidence.activity ? (
+                        <p className="mt-1 text-[12px] font-semibold leading-5 text-[var(--axis-ink)]">{parsedEvidence.activity}</p>
+                      ) : (
+                        <p className="mt-1 text-[12px] font-semibold leading-5 text-[var(--axis-ink)]">{parsedEvidence.context}</p>
+                      )}
+                    </div>
+                  ) : null}
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">판단 근거</p>
+                    <p className="mt-1 whitespace-pre-line break-words text-[12px] leading-5 text-[var(--axis-body)]">{parsedEvidence.reason || normalizeEvidenceText(evidence)}</p>
+                  </div>
+                  {evidenceUrl ? (
+                    <a
+                      href={evidenceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] px-2.5 text-[11px] font-semibold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[var(--axis-surface-soft)]"
+                    >
+                      원문 보기
+                      <ExternalLink size={12} strokeWidth={2.2} />
+                    </a>
+                  ) : null}
+                </div>
+              );
+            })
+          ) : (
+            <div className="px-4 py-3 text-[12px] leading-5 text-[var(--axis-body)]">
+              {fallbackReason}
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function KeywordCell({
+  axisLabel,
+  keyword,
+  row,
+}: {
+  axisLabel: '사업 키워드' | '기술 키워드';
+  keyword: string | null;
+  row: Pick<PeerOverviewRow, 'label' | 'topKeyword' | 'topKeywordReason' | 'topKeywordEvidence' | 'topKeywordEvidenceUrls'>;
+}) {
+  return (
+    <div className="flex min-w-0 items-start justify-between gap-2">
+      {keyword ? (
+        <>
+          <span className="min-w-0 flex-1 text-[12px] font-semibold leading-4 text-[var(--axis-ink)]">{keyword}</span>
+          <KeywordInfoPopover axisLabel={axisLabel} keyword={keyword} row={row} />
+        </>
+      ) : (
+        <span>-</span>
+      )}
+    </div>
+  );
 }
 
 function trendToneClass(value: number | null | undefined) {
@@ -365,11 +546,18 @@ export function PeerPlusView({
       operatingProfitKrwBn: null,
       operatingProfitQoqPct: null,
       netIncomeKrwBn: null,
+      netIncomeQoqPct: null,
       operatingMarginPct: null,
       operatingMarginQoqDeltaPctp: null,
       axRevenueSharePct: null,
-      contractCount: null,
       topKeyword: null,
+      businessKeyword: null,
+      technologyKeyword: null,
+      topKeywordReason: null,
+      topKeywordBasis: null,
+      topKeywordScore: null,
+      topKeywordEvidence: [],
+      topKeywordEvidenceUrls: [],
       dartRceptNo: null,
     },
     ...peerOptions.map((peer) => ({
@@ -380,11 +568,18 @@ export function PeerPlusView({
       operatingProfitKrwBn: null,
       operatingProfitQoqPct: null,
       netIncomeKrwBn: null,
+      netIncomeQoqPct: null,
       operatingMarginPct: null,
       operatingMarginQoqDeltaPctp: null,
       axRevenueSharePct: null,
-      contractCount: null,
       topKeyword: null,
+      businessKeyword: null,
+      technologyKeyword: null,
+      topKeywordReason: null,
+      topKeywordBasis: null,
+      topKeywordScore: null,
+      topKeywordEvidence: [],
+      topKeywordEvidenceUrls: [],
       dartRceptNo: null,
     })),
   ].map((baseRow) => {
@@ -393,24 +588,24 @@ export function PeerPlusView({
   });
   const peerOverviewVisibleRows = peerOverviewRows.filter((row) => isAllFilter || row.id === 'sk_ax' || row.id === selectedPeer?.id);
 
-  const peerInsightCatalog: Record<'all' | PeerPlusPeerId, Array<{ label: '포지셔닝' | '사업 신호' | '기술 신호' | '리스크'; body: string }>> = {
+  const peerInsightCatalog: Record<'all' | PeerPlusPeerId, PeerComparisonInsightItem[]> = {
     all: [
       { label: '포지셔닝', body: '전체 비교에서는 SK AX를 기준축으로 두고, 삼성 SDS는 ITS·클라우드·AI, LG CNS는 금융·공공·클라우드, 현대 오토에버는 모빌리티·운영, 포스코 DX는 산업DX·이차전지 문맥으로 나뉘어 보입니다.' },
       { label: '사업 신호', body: '공시 수치 기준 2025Q4 매출은 삼성 SDS 3.54조, LG CNS 1.94조, 현대 오토에버 1.32조, 포스코 DX 2,608억 수준으로 읽히며, 기업별로 규모 차이가 크게 나타납니다.' },
       { label: '기술 신호', body: '키워드 기준으로는 FabriX·Brity, 금융·공공 AI/DX, 커넥티드카·OTA, 산업DX·LLM처럼 각사가 반복적으로 내세우는 기술 문맥이 분명하게 갈립니다.' },
-      { label: '리스크', body: '수주 수처럼 공시에서 직접 확인되지 않는 값은 비교 해석에 한계가 있어, 현재 화면은 실수치와 키워드 중심의 1차 비교로 읽는 편이 안전합니다.' },
+      { label: '리스크', body: '기업별 세부 부문 공시 범위가 달라, 현재 화면은 실수치와 키워드 중심의 1차 비교로 읽는 편이 안전합니다.' },
     ],
     samsung_sds: [
       { label: '포지셔닝', body: '삼성 SDS는 2025Q4 기준 매출 3.54조, 영업이익 2,261억원 수준으로 규모 우위가 크고, SK AX와 비교할 때 ITS·클라우드·AI가 동시에 보이는 복합 신호 축으로 읽힙니다.' },
       { label: '사업 신호', body: '공시 실수치 기준으로는 분기 매출이 3조원대 중반을 유지하고 있어 사업 규모 자체가 비교 기준점으로 작동합니다.' },
       { label: '기술 신호', body: 'FabriX, Brity, 에이전틱 AI, ITS, 클라우드 같은 키워드가 함께 나타나 기술 메시지가 운영형 AI와 서비스 축으로 묶여 보입니다.' },
-      { label: '리스크', body: '수주 수는 공시에서 직접 확인되지 않기 때문에, 현재 단계에서는 규모와 수익성, 키워드 강도 중심으로만 비교하는 편이 적절합니다.' },
+      { label: '리스크', body: '세부 사업 지표는 공시 범위가 달라, 현재 단계에서는 규모와 수익성, 키워드 강도 중심으로만 비교하는 편이 적절합니다.' },
     ],
     lg_cns: [
       { label: '포지셔닝', body: 'LG CNS는 2025Q4 기준 매출 1.94조, 영업이익 2,119억원 수준이며 금융·공공·클라우드/MSP·AI/DX가 함께 보이는 다축형 경쟁군으로 읽힙니다.' },
       { label: '사업 신호', body: '공시 실수치 기준으로 영업이익률이 10%대를 보여 수익성 측면에서는 네 곳 중 상대적으로 안정적으로 읽히는 편입니다.' },
       { label: '기술 신호', body: '금융, 공공, 클라우드 MSP, AI/DX, 스마트물류 키워드가 반복돼 기술 신호가 특정 산업보다 플랫폼형 문맥으로 넓게 퍼져 있습니다.' },
-      { label: '리스크', body: '실수치는 강하지만 수주 수 같은 직접 비교 지표는 공시 미기재라서, 현재 화면만으로는 확장 속도까지 단정하기 어렵습니다.' },
+      { label: '리스크', body: '실수치는 강하지만 세부 사업 지표는 기업별 공시 범위가 달라, 현재 화면만으로는 확장 속도까지 단정하기 어렵습니다.' },
     ],
     hyundai_autoever: [
       { label: '포지셔닝', body: '현대 오토에버는 2025Q4 기준 매출 1.32조, 영업이익 764억원 수준이며 스마트모빌리티, SI, ITES/유지운영 축으로 포지셔닝이 읽힙니다.' },
@@ -425,7 +620,7 @@ export function PeerPlusView({
       { label: '리스크', body: '분기 이익 변동성이 크고 세부 부문 매출이 공시 미기재라서, 현재 단계에서는 산업 키워드 강도와 총실적만 우선 비교하는 편이 적절합니다.' },
     ],
   };
-  const swotCatalog: Record<'all' | PeerPlusPeerId, Array<{ label: 'Strength' | 'Weakness' | 'Opportunity' | 'Threat'; body: string }>> = {
+  const swotCatalog: Record<'all' | PeerPlusPeerId, PeerSwotInsightItem[]> = {
     all: [
       { label: 'Strength', body: 'SK AX는 운영 KPI와 실행 관리 프레임을 기준축으로 세우기 좋아 전체 비교에서 관점 중심을 잡을 수 있습니다.' },
       { label: 'Weakness', body: '전체 모드는 산업별 차이를 압축해 보여주기 때문에 SK AX의 세부 강점이 다소 넓고 추상적으로 보일 수 있습니다.' },
@@ -457,8 +652,14 @@ export function PeerPlusView({
       { label: 'Threat', body: '대형 프로젝트와 산업 자동화 실적이 부각되면 SK AX가 상대적으로 추상적인 대안으로 읽힐 위험이 있습니다.' },
     ],
   };
-  const peerInsightItems = peerInsightCatalog[selectedPeerAnalysisId];
-  const swotItems = swotCatalog[selectedPeerAnalysisId];
+  const apiPeerInsightItems = peerOverview?.comparisonInsights?.[selectedPeerAnalysisId];
+  const peerInsightItems = apiPeerInsightItems && apiPeerInsightItems.length > 0
+    ? apiPeerInsightItems
+    : peerInsightCatalog[selectedPeerAnalysisId];
+  const apiSwotItems = peerOverview?.swotInsights?.[selectedPeerAnalysisId];
+  const swotItems = apiSwotItems && apiSwotItems.length > 0
+    ? apiSwotItems
+    : swotCatalog[selectedPeerAnalysisId];
   const peerReasoningSections = useMemo<Record<'comparison' | 'swot', PeerReasoningModal>>(() => {
     const getEvidenceSlice = (startIndex: number, count = 3) => {
       if (peerEvidenceCards.length === 0) return [] as CardNewsItem[];
@@ -595,11 +796,16 @@ export function PeerPlusView({
               </div>
             </div>
             <div className="mt-4 overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)]">
-              <div className="grid grid-cols-[1.08fr_0.98fr_0.98fr_0.88fr_0.82fr_0.88fr_1fr] gap-px bg-[var(--axis-hairline)] text-xs font-semibold text-[var(--axis-muted)]">
-                {['기업', '매출', '영업이익', '영업이익률', '순이익', '수주 수', '핵심 키워드'].map((label) => (
+              <div className="grid grid-cols-6 gap-px bg-[var(--axis-hairline)] text-xs font-semibold text-[var(--axis-muted)]">
+                {['기업', '매출', '영업이익', '영업이익률', '사업 키워드', '기술 키워드'].map((label) => (
                   <div key={label} className="bg-[var(--axis-surface-soft)] px-3 py-3">{label}</div>
                 ))}
-                {peerOverviewVisibleRows.map((row) => (
+                {peerOverviewVisibleRows.map((row) => {
+                  const fallbackKeywords = splitTopKeyword(row.topKeyword);
+                  const businessKeyword = row.businessKeyword ?? fallbackKeywords.businessKeyword;
+                  const technologyKeyword = row.technologyKeyword ?? fallbackKeywords.technologyKeyword;
+
+                  return (
                     <div key={row.id} className="contents">
                       <div
                         className={`px-3 py-3 text-left text-sm font-semibold ${
@@ -622,11 +828,15 @@ export function PeerPlusView({
                         <div>{formatPercent(row.operatingMarginPct)}</div>
                         {formatQoqPctPoint(row.operatingMarginQoqDeltaPctp) ? <div className={`mt-1 text-[10px] ${trendToneClass(row.operatingMarginQoqDeltaPctp)}`}>{formatQoqPctPoint(row.operatingMarginQoqDeltaPctp)}</div> : null}
                       </div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{formatKrwBn(row.netIncomeKrwBn)}</div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{formatCount(row.contractCount)}</div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">{row.topKeyword?.trim() ? row.topKeyword : '-'}</div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                        <KeywordCell axisLabel="사업 키워드" keyword={businessKeyword} row={row} />
+                      </div>
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                        <KeywordCell axisLabel="기술 키워드" keyword={technologyKeyword} row={row} />
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             </div>
             <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3 text-[11px] leading-5 text-[var(--axis-muted)]">
@@ -643,7 +853,7 @@ export function PeerPlusView({
               <div>
                 <p className="axis-kicker">Comparison summary</p>
                 <h2 className="mt-2 text-lg font-display font-semibold leading-tight text-[var(--axis-ink)]">
-                  경쟁 메시지 차이와 SK AX 대응 포인트
+                  Peer 사업·기술 비교 흐름
                 </h2>
               </div>
             </div>
@@ -664,14 +874,14 @@ export function PeerPlusView({
                   </div>
                 </div>
                 <div className="grid gap-3">
-                  {peerInsightItems.filter((item) => item.label !== '포지셔닝').map((item, index) => (
+                  {peerInsightItems.filter((item) => item.label !== '포지셔닝').map((item) => (
                     <article
                       key={`${item.label}-${item.body}`}
                       className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4"
                     >
                       <div className="mb-2">
                         <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</span>
-                        <p className={`${index === 0 ? 'mt-2 text-base leading-7' : 'mt-2 text-sm leading-6'} font-semibold text-[var(--axis-ink)]`}>{item.body}</p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
                       </div>
                     </article>
                   ))}
