@@ -1,0 +1,7 @@
+title = "axis-frontend gitleaks config"
+
+[allowlist]
+paths = [
+  '''docs/.*''',
+  '''\.env\.example$''',
+]
