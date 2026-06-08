@@ -1,0 +1,74 @@
+export type AssistantRole = 'user' | 'assistant' | 'system';
+
+export type AssistantHistoryTurn = {
+  role: AssistantRole;
+  content: string;
+};
+
+export type AssistantPageContext = {
+  route?: string;
+  title?: string;
+  visible_item_ids?: Record<string, string[]>;
+  filters?: Record<string, unknown>;
+};
+
+export type AssistantHandoff = {
+  type: 'navigate';
+  target_route: string;
+  label: string;
+  handoff_id: string;
+  payload_preview?: Record<string, unknown>;
+};
+
+export type AssistantSource = {
+  type: string;
+  id: string;
+  title?: string;
+  snippet?: string;
+  score?: number;
+};
+
+export type AssistantChatResponse = {
+  conversation_id: string;
+  session_id?: string;
+  message_id?: string;
+  reply?: string;
+  message?: {
+    role?: AssistantRole;
+    content?: string;
+  };
+  intent?: string;
+  scope?: string;
+  answer_blocks?: Array<Record<string, unknown>>;
+  sources?: AssistantSource[];
+  follow_up_suggestions?: string[];
+  confidence?: number;
+  blocked?: boolean;
+  blocked_reason?: string | null;
+  handoff?: AssistantHandoff | null;
+  provenance?: Record<string, unknown>;
+};
+
+export type AssistantConversationSummary = {
+  conversation_id: string;
+  title?: string;
+  summary?: string;
+  status?: string;
+  message_count?: number;
+  last_message_at?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AssistantConversationDetail = {
+  conversation_id: string;
+  messages: Array<{
+    message_id?: string;
+    role: AssistantRole;
+    content: string;
+    intent?: string;
+    sources?: AssistantSource[];
+    handoff?: AssistantHandoff | Record<string, never> | null;
+    created_at?: string;
+  }>;
+};

@@ -306,6 +306,8 @@ export function DashboardShell({
       </div>
 
       <FloatingAiChat
+        activeView={activeView}
+        onNavigate={handleViewChange}
         scrollToTopControl={<ScrollToTopButton scrollTargetRef={mainScrollRef} watchKey={activeView} />}
       />
 
