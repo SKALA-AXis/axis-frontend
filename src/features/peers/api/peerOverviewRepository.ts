@@ -1,5 +1,5 @@
 import { httpClient } from '../../../shared/api/httpClient';
-import type { PeerOverviewData, PeerOverviewRow } from '../model/peerOverview';
+import type { PeerComparisonInsightItem, PeerOverviewData, PeerOverviewRow, PeerSwotInsightItem } from '../model/peerOverview';
 
 export interface PeerOverviewRepository {
   getPeerOverview(): Promise<PeerOverviewData>;
@@ -43,6 +43,12 @@ function normalizePeerOverviewData(payload: unknown): PeerOverviewData {
     coverageLabel: pickString(record, 'coverageLabel') ?? '공통 분기 미확보',
     financialSourceLabel: pickString(record, 'financialSourceLabel') ?? '미확인',
     supplementalSourceLabel: pickString(record, 'supplementalSourceLabel') ?? '미확인',
+    comparisonInsights: normalizeComparisonInsights(
+      record.comparisonInsights ?? (record.data as Record<string, unknown> | undefined)?.comparisonInsights
+    ),
+    swotInsights: normalizeSwotInsights(
+      record.swotInsights ?? (record.data as Record<string, unknown> | undefined)?.swotInsights
+    ),
     rows: candidateRows.map(normalizePeerOverviewRow),
   };
 }
@@ -57,11 +63,18 @@ function normalizePeerOverviewRow(value: unknown): PeerOverviewRow {
     operatingProfitKrwBn: pickNumber(row, 'operatingProfitKrwBn', 'operating_profit_krwbn'),
     operatingProfitQoqPct: pickNumber(row, 'operatingProfitQoqPct', 'operating_profit_qoq_pct'),
     netIncomeKrwBn: pickNumber(row, 'netIncomeKrwBn', 'net_income_krwbn'),
+    netIncomeQoqPct: pickNumber(row, 'netIncomeQoqPct', 'net_income_qoq_pct'),
     operatingMarginPct: pickNumber(row, 'operatingMarginPct', 'operating_margin_pct'),
     operatingMarginQoqDeltaPctp: pickNumber(row, 'operatingMarginQoqDeltaPctp', 'operating_margin_qoq_delta_pctp'),
     axRevenueSharePct: pickNumber(row, 'axRevenueSharePct', 'ax_revenue_share_pct'),
-    contractCount: pickInteger(row, 'contractCount', 'contract_count'),
     topKeyword: pickString(row, 'topKeyword', 'top_keyword'),
+    businessKeyword: pickString(row, 'businessKeyword', 'business_keyword'),
+    technologyKeyword: pickString(row, 'technologyKeyword', 'technology_keyword'),
+    topKeywordReason: pickString(row, 'topKeywordReason', 'top_keyword_reason'),
+    topKeywordBasis: pickString(row, 'topKeywordBasis', 'top_keyword_basis'),
+    topKeywordScore: pickNumber(row, 'topKeywordScore', 'top_keyword_score'),
+    topKeywordEvidence: pickStringArray(row, 'topKeywordEvidence', 'top_keyword_evidence'),
+    topKeywordEvidenceUrls: pickStringArray(row, 'topKeywordEvidenceUrls', 'top_keyword_evidence_urls'),
     dartRceptNo: pickString(row, 'dartRceptNo', 'dart_rcept_no'),
   };
 }
@@ -92,7 +105,70 @@ function pickNumber(record: Record<string, unknown>, ...keys: string[]) {
   return null;
 }
 
-function pickInteger(record: Record<string, unknown>, ...keys: string[]) {
-  const value = pickNumber(record, ...keys);
-  return value == null ? null : Math.trunc(value);
+function pickStringArray(record: Record<string, unknown>, ...keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    }
+  }
+  return [];
+}
+
+function normalizeComparisonInsights(value: unknown): Record<string, PeerComparisonInsightItem[]> {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+
+  const result: Record<string, PeerComparisonInsightItem[]> = {};
+  for (const [key, rawItems] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(rawItems)) continue;
+    const items = rawItems
+      .map((item) => {
+        const record = (item ?? {}) as Record<string, unknown>;
+        const label = pickString(record, 'label');
+        const body = pickString(record, 'body');
+        if (!isComparisonInsightLabel(label) || !body) return null;
+        return { label, body };
+      })
+      .filter((item): item is PeerComparisonInsightItem => item !== null);
+    if (items.length > 0) {
+      result[key] = items;
+    }
+  }
+
+  return result;
+}
+
+function isComparisonInsightLabel(value: string | null): value is PeerComparisonInsightItem['label'] {
+  return value === '포지셔닝' || value === '사업 신호' || value === '기술 신호' || value === '리스크';
+}
+
+function normalizeSwotInsights(value: unknown): Record<string, PeerSwotInsightItem[]> {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+
+  const result: Record<string, PeerSwotInsightItem[]> = {};
+  for (const [key, rawItems] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(rawItems)) continue;
+    const items = rawItems
+      .map((item) => {
+        const record = (item ?? {}) as Record<string, unknown>;
+        const label = pickString(record, 'label');
+        const body = pickString(record, 'body');
+        if (!isSwotInsightLabel(label) || !body) return null;
+        return { label, body };
+      })
+      .filter((item): item is PeerSwotInsightItem => item !== null);
+    if (items.length > 0) {
+      result[key] = items;
+    }
+  }
+
+  return result;
+}
+
+function isSwotInsightLabel(value: string | null): value is PeerSwotInsightItem['label'] {
+  return value === 'Strength' || value === 'Weakness' || value === 'Opportunity' || value === 'Threat';
 }
