@@ -24,18 +24,23 @@ export interface PeerOverviewRow {
 export interface PeerComparisonInsightItem {
   label: '포지셔닝' | '사업 신호' | '기술 신호' | '리스크';
   body: string;
+  reasoningSummary?: string;
+  evidenceSummary?: string;
 }
 
 export interface PeerSwotInsightItem {
   label: 'Strength' | 'Weakness' | 'Opportunity' | 'Threat';
   body: string;
   title?: string;
+  reasoningSummary?: string;
   evidenceSummary?: string;
 }
 
 export interface PeerAnalysisTraceItem {
   label: '근거 확인' | '비교 판단' | '결론' | string;
   body: string;
+  reasoning?: string;
+  evidence?: string;
 }
 
 export interface PeerOverviewData {

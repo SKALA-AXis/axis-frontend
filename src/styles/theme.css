@@ -119,7 +119,7 @@
   --axis-graph-security: #5A6B57;
   --axis-graph-infra: #E0822F;
   --axis-graph-deal: #6B6B73;
-  --axis-graph-edge: rgba(26, 26, 31, 0.18);
+  --axis-graph-edge: rgba(57, 48, 39, 0.54);
   --axis-graph-active-edge: #DC5A24;
 
   /* ─── 자체 axis-* alias (호출 코드 보존 — designing 브랜치 호환) ───── */
@@ -220,7 +220,7 @@
   --axis-graph-security: #8FA58C;
   --axis-graph-infra: #C69A64;
   --axis-graph-deal: #9B98A3;
-  --axis-graph-edge: rgba(246, 241, 232, 0.16);
+  --axis-graph-edge: rgba(255, 241, 216, 0.46);
   --axis-graph-active-edge: #E2A079;
   --axis-navy: var(--surface-code);
 }

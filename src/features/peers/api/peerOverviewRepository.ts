@@ -132,7 +132,14 @@ function normalizeComparisonInsights(value: unknown): Record<string, PeerCompari
         const label = pickString(record, 'label');
         const body = pickString(record, 'body');
         if (!isComparisonInsightLabel(label) || !body) return null;
-        return { label, body };
+        const reasoningSummary = pickString(record, 'reasoningSummary', 'reasoning_summary');
+        const evidenceSummary = pickString(record, 'evidenceSummary', 'evidence_summary');
+        return {
+          label,
+          body,
+          ...(reasoningSummary ? { reasoningSummary } : {}),
+          ...(evidenceSummary ? { evidenceSummary } : {}),
+        };
       })
       .filter((item): item is PeerComparisonInsightItem => item !== null);
     if (items.length > 0) {
@@ -166,8 +173,10 @@ function normalizeSwotInsights(value: unknown): Record<string, PeerSwotInsightIt
           body,
         };
         const title = pickString(record, 'title');
+        const reasoningSummary = pickString(record, 'reasoningSummary', 'reasoning_summary');
         const evidenceSummary = pickString(record, 'evidenceSummary', 'evidence_summary');
         if (title) normalized.title = title;
+        if (reasoningSummary) normalized.reasoningSummary = reasoningSummary;
         if (evidenceSummary) normalized.evidenceSummary = evidenceSummary;
         return normalized;
       })
@@ -197,8 +206,15 @@ function normalizeAnalysisTraces(value: unknown): Record<string, PeerAnalysisTra
         const record = (item ?? {}) as Record<string, unknown>;
         const label = pickString(record, 'label', 'step');
         const body = pickString(record, 'body', 'summary');
-        if (!label || !body) return null;
-        return { label, body };
+        const reasoning = pickString(record, 'reasoning', 'reasoningSummary', 'reasoning_summary', 'interpretation');
+        const evidence = pickString(record, 'evidence', 'evidenceSummary', 'evidence_summary', 'basis', 'sourceSummary', 'source_summary');
+        if (!label || (!body && !reasoning && !evidence)) return null;
+        return {
+          label,
+          body: body ?? reasoning ?? evidence ?? '',
+          ...(reasoning ? { reasoning } : {}),
+          ...(evidence ? { evidence } : {}),
+        };
       })
       .filter((item): item is PeerAnalysisTraceItem => item !== null);
     if (items.length > 0) {
