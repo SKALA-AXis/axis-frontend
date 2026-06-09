@@ -12,6 +12,7 @@ export const viewLabels: Record<string, string> = {
   notifications: '알림',
   search: '검색',
   settings: '설정',
+  globalTrends: '글로벌 동향',
   admin: '관리자',
 };
 
@@ -22,6 +23,7 @@ export const primaryNavigationItems = [
   { id: 'issues', label: '카드뉴스' },
   { id: 'mixer', label: '믹서' },
   { id: 'keywordGraph', label: '키워드 그래프' },
+  { id: 'globalTrends', label: '글로벌 동향' },
 ] as const;
 
 export const adminNavigationItem = { id: 'admin', label: '관리자' } as const;
