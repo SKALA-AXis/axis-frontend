@@ -563,7 +563,11 @@ export function HomeDashboardView({
                   ? getSummaryLines(heroCard)[0]
                   : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.'}
               </p>
-              {todayInsight?.executive_implication ? (
+              {todayInsight?.executive_implication &&
+              !(
+                insightHiddenGems[0]?.narrative_hint &&
+                todayInsight.executive_implication.trim() === insightHiddenGems[0].narrative_hint.trim()
+              ) ? (
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--axis-muted)]">
                   {todayInsight.executive_implication}
                 </p>
