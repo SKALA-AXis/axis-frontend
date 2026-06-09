@@ -1,5 +1,5 @@
 import { httpClient } from '../../../shared/api/httpClient';
-import type { PeerComparisonInsightItem, PeerOverviewData, PeerOverviewRow, PeerSwotInsightItem } from '../model/peerOverview';
+import type { PeerAnalysisTraceItem, PeerComparisonInsightItem, PeerOverviewData, PeerOverviewRow, PeerSwotInsightItem } from '../model/peerOverview';
 
 export interface PeerOverviewRepository {
   getPeerOverview(): Promise<PeerOverviewData>;
@@ -48,6 +48,9 @@ function normalizePeerOverviewData(payload: unknown): PeerOverviewData {
     ),
     swotInsights: normalizeSwotInsights(
       record.swotInsights ?? (record.data as Record<string, unknown> | undefined)?.swotInsights
+    ),
+    analysisTraces: normalizeAnalysisTraces(
+      record.analysisTraces ?? (record.data as Record<string, unknown> | undefined)?.analysisTraces
     ),
     rows: candidateRows.map(normalizePeerOverviewRow),
   };
@@ -158,7 +161,15 @@ function normalizeSwotInsights(value: unknown): Record<string, PeerSwotInsightIt
         const label = pickString(record, 'label');
         const body = pickString(record, 'body');
         if (!isSwotInsightLabel(label) || !body) return null;
-        return { label, body };
+        const normalized: PeerSwotInsightItem = {
+          label,
+          body,
+        };
+        const title = pickString(record, 'title');
+        const evidenceSummary = pickString(record, 'evidenceSummary', 'evidence_summary');
+        if (title) normalized.title = title;
+        if (evidenceSummary) normalized.evidenceSummary = evidenceSummary;
+        return normalized;
       })
       .filter((item): item is PeerSwotInsightItem => item !== null);
     if (items.length > 0) {
@@ -171,4 +182,29 @@ function normalizeSwotInsights(value: unknown): Record<string, PeerSwotInsightIt
 
 function isSwotInsightLabel(value: string | null): value is PeerSwotInsightItem['label'] {
   return value === 'Strength' || value === 'Weakness' || value === 'Opportunity' || value === 'Threat';
+}
+
+function normalizeAnalysisTraces(value: unknown): Record<string, PeerAnalysisTraceItem[]> {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+
+  const result: Record<string, PeerAnalysisTraceItem[]> = {};
+  for (const [key, rawItems] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(rawItems)) continue;
+    const items = rawItems
+      .map((item) => {
+        const record = (item ?? {}) as Record<string, unknown>;
+        const label = pickString(record, 'label', 'step');
+        const body = pickString(record, 'body', 'summary');
+        if (!label || !body) return null;
+        return { label, body };
+      })
+      .filter((item): item is PeerAnalysisTraceItem => item !== null);
+    if (items.length > 0) {
+      result[key] = items;
+    }
+  }
+
+  return result;
 }

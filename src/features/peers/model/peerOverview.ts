@@ -29,6 +29,13 @@ export interface PeerComparisonInsightItem {
 export interface PeerSwotInsightItem {
   label: 'Strength' | 'Weakness' | 'Opportunity' | 'Threat';
   body: string;
+  title?: string;
+  evidenceSummary?: string;
+}
+
+export interface PeerAnalysisTraceItem {
+  label: '근거 확인' | '비교 판단' | '결론' | string;
+  body: string;
 }
 
 export interface PeerOverviewData {
@@ -38,5 +45,6 @@ export interface PeerOverviewData {
   supplementalSourceLabel: string;
   comparisonInsights: Record<string, PeerComparisonInsightItem[]>;
   swotInsights: Record<string, PeerSwotInsightItem[]>;
+  analysisTraces: Record<string, PeerAnalysisTraceItem[]>;
   rows: PeerOverviewRow[];
 }

@@ -6,7 +6,7 @@ import type { CardNewsItem } from '../../../../features/card-news/model/cardNews
 import { GlobalTrendsPanel } from '../../../../features/global-trends/components/GlobalTrendsPanel';
 import { usePeerPositioning } from '../../../../features/peers/hooks/usePeerPositioning';
 import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOverview';
-import type { PeerComparisonInsightItem, PeerOverviewRow, PeerSwotInsightItem } from '../../../../features/peers/model/peerOverview';
+import type { PeerAnalysisTraceItem, PeerComparisonInsightItem, PeerOverviewRow, PeerSwotInsightItem } from '../../../../features/peers/model/peerOverview';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
@@ -31,8 +31,6 @@ type PeerReasoningModal = {
       body: string;
     }>;
   }>;
-  evidenceTags: string[];
-  evidenceCards: CardNewsItem[];
 };
 
 const globalIndustryFilterOption = { id: 'global_industry' as const, label: '글로벌 산업' };
@@ -76,24 +74,75 @@ function buildEvidenceReason(source: string, interpretation: string) {
   return normalizeEvidenceText(source);
 }
 
+function stripEvidenceStageLabels(text: string) {
+  return normalizeEvidenceText(text.replace(/(?:진행 내용|근거 확인|후보 정제|최종 판단):/g, ' '));
+}
+
+function sanitizeObjectivePeerFlowText(text: string) {
+  return normalizeEvidenceText(
+    text
+      .replace(/SK AX와 비교했을 때/g, '')
+      .replace(/SK AX와 비교해/g, '')
+      .replace(/SK AX와 비교하면/g, '')
+      .replace(/SK AX 대비/g, '')
+      .replace(/SK AX 기준/g, '')
+      .replace(/SK AX 관점에서/g, '')
+      .replace(/SK AX는/g, '해당 기업은')
+      .replace(/SK AX의/g, '해당 기업의')
+      .replace(/자사/g, '해당 기업'),
+  );
+}
+
 function parseTopKeywordEvidence(evidence: string) {
+  if (evidence.includes(' 기준: ') && evidence.includes('. 진행 내용: ')) {
+    const [contextPart, rest = ''] = evidence.split(' 기준: ');
+    const [keywordPart, detailRest = ''] = rest.split('. 진행 내용: ');
+    const [activityPart] = detailRest.includes('. 근거 확인: ')
+      ? detailRest.split('. 근거 확인: ')
+      : [detailRest, ''];
+    const reasoningSource = `진행 내용: ${detailRest}`;
+
+    return {
+      context: `${contextPart.trim()} 기준`,
+      activity: normalizeEvidenceText(activityPart) || keywordPart.trim(),
+      reason: stripEvidenceStageLabels(buildEvidenceReason(activityPart, reasoningSource)),
+    };
+  }
+
   if (evidence.includes(' 기준: ') && (evidence.includes('. 카드뉴스 내용: ') || evidence.includes('. 근거 내용: '))) {
     const [contextPart, rest = ''] = evidence.split(' 기준: ');
     const [activityPart, detailRest = ''] = rest.includes('. 근거 내용: ')
       ? rest.split('. 근거 내용: ')
       : rest.split('. 카드뉴스 내용: ');
-    const [sourcePart, interpretationPart = ''] = detailRest.includes('. 판단 이유: ')
+    const [sourcePart, interpretationPart = ''] = detailRest.includes('. 근거 확인: ')
+      ? detailRest.split('. 근거 확인: ')
+      : detailRest.includes('. 판단 이유: ')
       ? detailRest.split('. 판단 이유: ')
       : detailRest.split('. 왜 핵심인가: ');
     const [sourceText] = sourcePart.includes('. 원문 확인 문구: ')
       ? sourcePart.split('. 원문 확인 문구: ')
       : [sourcePart, ''];
     const [cleanSourceText] = sourceText.split('. 원문 위치: ');
+    const reasoningSource = detailRest.includes('. 근거 확인: ')
+      ? `근거 확인: ${interpretationPart}`
+      : interpretationPart;
 
     return {
       context: `${contextPart.trim()} 기준`,
       activity: activityPart.trim(),
-      reason: buildEvidenceReason(cleanSourceText, interpretationPart),
+      reason: stripEvidenceStageLabels(buildEvidenceReason(cleanSourceText, reasoningSource)),
+    };
+  }
+
+  if (evidence.includes(' 기준: ')) {
+    const [contextPart, rest = ''] = evidence.split(' 기준: ');
+    const [keywordPart, ...reasonParts] = rest.split('. ');
+    const reason = reasonParts.join('. ').trim();
+
+    return {
+      context: `${contextPart.trim()} 기준`,
+      activity: keywordPart.trim(),
+      reason: reason || normalizeEvidenceText(rest),
     };
   }
 
@@ -174,29 +223,14 @@ function KeywordInfoPopover({
           <Info size={12} strokeWidth={2.2} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="max-h-[min(520px,var(--radix-popover-content-available-height))] w-[360px] overflow-y-auto border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-0 text-[var(--axis-body)] shadow-xl">
+      <PopoverContent align="end" className="max-h-[min(420px,var(--radix-popover-content-available-height))] w-[340px] overflow-y-auto border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-0 text-[var(--axis-body)] shadow-xl">
         <div className="divide-y divide-[var(--axis-hairline)]">
-          <div className="px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">{row.label}</p>
-            <p className="mt-1 text-[11px] font-semibold text-[var(--axis-accent-strong)]">{axisLabel} 선정 근거</p>
-            <p className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{keyword}</p>
-          </div>
           {evidenceItems.length > 0 ? (
             evidenceItems.map(({ evidence, evidenceUrl }) => {
               const parsedEvidence = parseTopKeywordEvidence(evidence);
 
               return (
                 <div key={`${axisLabel}-${evidence}`} className="space-y-3 px-4 py-3">
-                  {parsedEvidence.context ? (
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">{parsedEvidence.context}</p>
-                      {parsedEvidence.activity ? (
-                        <p className="mt-1 text-[12px] font-semibold leading-5 text-[var(--axis-ink)]">{parsedEvidence.activity}</p>
-                      ) : (
-                        <p className="mt-1 text-[12px] font-semibold leading-5 text-[var(--axis-ink)]">{parsedEvidence.context}</p>
-                      )}
-                    </div>
-                  ) : null}
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">판단 근거</p>
                     <p className="mt-1 whitespace-pre-line break-words text-[12px] leading-5 text-[var(--axis-body)]">{parsedEvidence.reason || normalizeEvidenceText(evidence)}</p>
@@ -216,8 +250,9 @@ function KeywordInfoPopover({
               );
             })
           ) : (
-            <div className="px-4 py-3 text-[12px] leading-5 text-[var(--axis-body)]">
-              {fallbackReason}
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">판단 근거</p>
+              <p className="mt-1 text-[12px] leading-5 text-[var(--axis-body)]">{fallbackReason}</p>
             </div>
           )}
         </div>
@@ -320,6 +355,7 @@ export function PeerPlusView({
   const peerEvidenceCards = (peerCards.length > 0 ? peerCards : rankedCards).slice(0, 6);
   const peerDetailCard = peerDetailCardId ? cards.find((card) => card.id === peerDetailCardId) ?? null : null;
   const comparisonLabel = isGlobalIndustry ? '글로벌 산업 IT 동향' : isAllFilter ? 'SK AX vs Peer 전체' : `SK AX vs ${selectedPeer?.label ?? '선택 Peer'}`;
+  const peerFlowLabel = isAllFilter ? 'Peer 전체' : selectedPeer?.label ?? '선택 Peer';
   const peerOverviewApiRows = Array.isArray(peerOverview?.rows) ? peerOverview.rows : [];
   const peerOverviewRows = [
     {
@@ -437,71 +473,89 @@ export function PeerPlusView({
     ],
   };
   const apiPeerInsightItems = peerOverview?.comparisonInsights?.[selectedPeerAnalysisId];
-  const peerInsightItems = apiPeerInsightItems && apiPeerInsightItems.length > 0
+  const peerInsightItems = (apiPeerInsightItems && apiPeerInsightItems.length > 0
     ? apiPeerInsightItems
-    : peerInsightCatalog[selectedPeerAnalysisId];
+    : peerInsightCatalog[selectedPeerAnalysisId])
+    .map((item) => ({
+      ...item,
+      body: sanitizeObjectivePeerFlowText(item.body),
+    }));
   const apiSwotItems = peerOverview?.swotInsights?.[selectedPeerAnalysisId];
-  const swotItems = apiSwotItems && apiSwotItems.length > 0
+  const swotItems = (apiSwotItems && apiSwotItems.length > 0
     ? apiSwotItems
-    : swotCatalog[selectedPeerAnalysisId];
+    : swotCatalog[selectedPeerAnalysisId])
+    .map((item) => ({
+      ...item,
+      body: sanitizeObjectivePeerFlowText(item.body),
+    }));
+  const apiAnalysisTraceItems = (peerOverview?.analysisTraces?.[selectedPeerAnalysisId] ?? [])
+    .map((item) => ({
+      ...item,
+      body: sanitizeObjectivePeerFlowText(item.body),
+    }));
   const peerReasoningSections = useMemo<Record<'comparison' | 'swot', PeerReasoningModal>>(() => {
-    const getEvidenceSlice = (startIndex: number, count = 3) => {
-      if (peerEvidenceCards.length === 0) return [] as CardNewsItem[];
-      return Array.from({ length: Math.min(count, peerEvidenceCards.length) }, (_, offset) => peerEvidenceCards[(startIndex + offset) % peerEvidenceCards.length])
-        .filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index);
-    };
-    const buildEvidenceTags = (cardsForEvidence: CardNewsItem[], extraTags: string[]) => (
-      Array.from(
-        new Set([
-          ...extraTags,
-          ...cardsForEvidence.map((card) => getPeerLabel(card)),
-          ...cardsForEvidence.map((card) => card.category_label ?? card.category).filter(Boolean),
-        ].filter(Boolean)),
-      ).slice(0, 6)
+    const buildTraceItems = (items: PeerAnalysisTraceItem[]) => (
+      items.map((item) => ({
+        label: item.label,
+        body: item.body,
+      }))
     );
-
-    const evidenceCards = [0, 1, 2, 3]
-      .flatMap((index) => getEvidenceSlice(index, 2))
-      .filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index)
-      .slice(0, 6);
+    const hasApiTrace = apiAnalysisTraceItems.length > 0;
+    const isSwotTraceItem = (item: PeerAnalysisTraceItem) => (
+      ['Strength', 'Weakness', 'Opportunity', 'Threat'].some((label) => item.label.includes(label))
+    );
+    const comparisonTraceItems = apiAnalysisTraceItems.filter((item) => !isSwotTraceItem(item));
+    const swotTraceItems = apiAnalysisTraceItems.filter((item) => (
+      isSwotTraceItem(item) || ['근거 확인', '비교 판단', '결론'].includes(item.label)
+    ));
 
     return {
       comparison: {
         id: 'comparison',
-        title: '핵심 비교 포인트 추론 과정',
-        summary: `${comparisonLabel} 비교에서 비교 에이전트가 어떤 공개 신호를 교차 검토해 핵심 차이 축으로 압축했는지 보여줍니다.`,
+        title: '핵심 비교 포인트 LLM 판단 근거',
+        summary: hasApiTrace
+          ? `${peerFlowLabel}의 사업 신호, 기술 신호, 리스크를 LLM이 왜 그렇게 판단했는지 보여줍니다.`
+          : `${peerFlowLabel}의 공개 신호를 교차 검토해 핵심 차이 축으로 압축한 근거를 보여줍니다.`,
         groups: [
-          {
-            title: '비교 에이전트의 차이 축 정리',
-            items: peerInsightItems
-              .filter((item) => item.label !== '포지셔닝')
-              .map((item) => ({
-                label: item.label,
-                body: `에이전트 판단: ${item.body}`,
-              })),
-          },
+          hasApiTrace
+            ? {
+                title: '저장된 LLM 판단 근거',
+                items: buildTraceItems(comparisonTraceItems.length > 0 ? comparisonTraceItems : apiAnalysisTraceItems),
+              }
+            : {
+                title: '비교 에이전트의 차이 축 정리',
+                items: peerInsightItems
+                  .filter((item) => item.label !== '포지셔닝')
+                  .map((item) => ({
+                    label: item.label,
+                    body: `에이전트 판단: ${item.body}`,
+                })),
+              },
         ],
-        evidenceTags: buildEvidenceTags(evidenceCards, [comparisonLabel, '핵심 비교 포인트']),
-        evidenceCards,
       },
       swot: {
         id: 'swot',
-        title: 'SWOT 분석 추론 과정',
-        summary: `${comparisonLabel} 비교에서 전략 에이전트가 강점·약점·기회·위협을 어떤 문장 기준으로 정리했는지 보여줍니다.`,
+        title: 'SWOT 분석 LLM 판단 근거',
+        summary: hasApiTrace
+          ? `${peerFlowLabel}의 각 SWOT 항목을 LLM이 왜 그렇게 판단했는지 보여줍니다.`
+          : `${peerFlowLabel}의 강점·약점·기회·위협을 어떤 문장 기준으로 정리했는지 보여줍니다.`,
         groups: [
-          {
-            title: '전략 에이전트의 SWOT 정리',
-            items: swotItems.map((item) => ({
-              label: item.label,
-              body: `에이전트 해석: ${item.body}`,
-            })),
-          },
+          hasApiTrace
+            ? {
+                title: '저장된 LLM 판단 근거',
+                items: buildTraceItems(swotTraceItems.length > 0 ? swotTraceItems : apiAnalysisTraceItems),
+              }
+            : {
+                title: '전략 에이전트의 SWOT 정리',
+                items: swotItems.map((item) => ({
+                  label: item.label,
+                  body: `에이전트 해석: ${item.body}`,
+                })),
+              },
         ],
-        evidenceTags: buildEvidenceTags(evidenceCards, [comparisonLabel, 'SWOT']),
-        evidenceCards,
       },
     };
-  }, [comparisonLabel, peerEvidenceCards, peerInsightItems, swotItems]);
+  }, [apiAnalysisTraceItems, peerFlowLabel, peerInsightItems, swotItems]);
   const activePeerReasoning = activePeerReasoningId ? peerReasoningSections[activePeerReasoningId] : null;
 
   if (isGlobalIndustry) {
@@ -675,14 +729,14 @@ export function PeerPlusView({
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">핵심 비교 포인트</h3>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-[var(--axis-muted)]">{comparisonLabel}</span>
+                    <span className="text-xs font-semibold text-[var(--axis-muted)]">{peerFlowLabel}</span>
                     <button
                       type="button"
                       onClick={() => setActivePeerReasoningId('comparison')}
                       className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
-                      aria-label="핵심 비교 포인트 추론 과정 보기"
+                      aria-label="핵심 비교 포인트 LLM 판단 근거 보기"
                     >
-                      !
+                      <Info size={13} strokeWidth={2.2} />
                     </button>
                   </div>
                 </div>
@@ -709,9 +763,9 @@ export function PeerPlusView({
                       type="button"
                       onClick={() => setActivePeerReasoningId('swot')}
                       className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
-                      aria-label="SWOT 분석 추론 과정 보기"
+                      aria-label="SWOT 분석 LLM 판단 근거 보기"
                     >
-                      !
+                      <Info size={13} strokeWidth={2.2} />
                     </button>
                   </div>
                 </div>
@@ -789,14 +843,14 @@ export function PeerPlusView({
           <section className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-[var(--axis-radius-lg)] border border-[rgba(255,255,255,0.16)] bg-[var(--axis-surface)] text-[var(--axis-ink)] shadow-[0_28px_90px_-42px_rgba(0,0,0,0.72)]">
             <header className="flex items-center justify-between gap-3 border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-5 py-4">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">AI Agent reasoning</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">LLM rationale</p>
                 <h2 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{activePeerReasoning.title}</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setActivePeerReasoningId(null)}
                 className="flex h-10 w-10 items-center justify-center rounded-[8px] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]"
-                aria-label="Peer+ 추론 과정 닫기"
+                aria-label="Peer+ LLM 판단 근거 닫기"
               >
                 <X size={17} />
               </button>
@@ -824,43 +878,7 @@ export function PeerPlusView({
                     </section>
                   ))}
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {activePeerReasoning.evidenceTags.map((item) => (
-                    <ExecutiveBadge key={`${activePeerReasoning.id}-${item}`} tone="accent">{item}</ExecutiveBadge>
-                  ))}
-                </div>
               </div>
-              {activePeerReasoning.evidenceCards.length ? (
-                <div className="mt-4 grid gap-3">
-                  {activePeerReasoning.evidenceCards.map((card) => {
-                    const sourceName = card.sources?.[0]?.source_name ?? card.source;
-                    return (
-                      <button
-                        key={`${activePeerReasoning.id}-${card.id}`}
-                        type="button"
-                        onClick={() => {
-                          setActivePeerReasoningId(null);
-                          setPeerDetailCardId(card.id);
-                          setPeerDetailSlideIndex(0);
-                        }}
-                        className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 text-left transition hover:border-[var(--axis-accent)] hover:bg-[var(--axis-surface-soft)]"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">{getPeerLabel(card)}</p>
-                          <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
-                        </div>
-                        <p className="mt-1 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{card.title}</p>
-                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{getSummaryLines(card)[0] ?? card.detailDescription ?? card.title}</p>
-                        {sourceName ? (
-                          <p className="mt-2 text-[11px] leading-5 text-[var(--axis-muted)]">
-                            <span className="font-semibold text-[var(--axis-ink)]">출처:</span> {sourceName}
-                          </p>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
             </article>
           </section>
         </div>
