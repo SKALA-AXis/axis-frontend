@@ -3,11 +3,11 @@ import { globalTrendsRepository } from '../api/globalTrendsRepository';
 import type { GlobalTrendsRunRequest, GlobalTrendsRunResult } from '../model/globalTrends';
 
 const ANALYSIS_STEPS = [
-  { label: 'Snapshot', detail: '글로벌 6사 newsroom 분포 집계' },
-  { label: 'Trend Detection', detail: '키워드 빈도·강도 산출' },
-  { label: 'Peer Alignment', detail: 'SK AX + 4 Peer alignment 비교' },
-  { label: 'Impact Mapping', detail: 'SK AX 사업라인 영향 매트릭스' },
-  { label: 'Synthesis', detail: '전망·의사결정 한 줄 요약' },
+  { label: '스냅샷', detail: '글로벌 6사 newsroom 분포 집계' },
+  { label: '트렌드 탐지', detail: '핵심 IT 키워드·빈도 산출' },
+  { label: '섹터 매핑', detail: '사업 섹터·키워드 분류' },
+  { label: '변화 분석', detail: '과거 대비 트렌드 이동률 계산' },
+  { label: '종합', detail: '글로벌 동향 한 줄 요약' },
 ] as const;
 
 export function useGlobalTrendsAnalysis() {
@@ -28,8 +28,8 @@ export function useGlobalTrendsAnalysis() {
     try {
       const result = await globalTrendsRepository.run({
         window_days: 30,
-        include_peer_alignment: true,
-        max_trend_count: 8,
+        include_peer_alignment: false,
+        max_trend_count: 10,
         min_mention_count: 3,
         ...request,
       });

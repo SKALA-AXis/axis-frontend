@@ -319,7 +319,7 @@ export function PeerPlusView({
   const peerCards = rankedCards.filter((card) => relevantPeerIds.includes(card.peer_id as PeerPlusPeerId));
   const peerEvidenceCards = (peerCards.length > 0 ? peerCards : rankedCards).slice(0, 6);
   const peerDetailCard = peerDetailCardId ? cards.find((card) => card.id === peerDetailCardId) ?? null : null;
-  const comparisonLabel = isGlobalIndustry ? 'SK AX 글로벌 산업 동향' : isAllFilter ? 'SK AX vs Peer 전체' : `SK AX vs ${selectedPeer?.label ?? '선택 Peer'}`;
+  const comparisonLabel = isGlobalIndustry ? '글로벌 산업 IT 동향' : isAllFilter ? 'SK AX vs Peer 전체' : `SK AX vs ${selectedPeer?.label ?? '선택 Peer'}`;
   const peerOverviewApiRows = Array.isArray(peerOverview?.rows) ? peerOverview.rows : [];
   const peerOverviewRows = [
     {
@@ -509,9 +509,9 @@ export function PeerPlusView({
       <ExecutivePage className="overflow-visible">
         <ExecutiveContainer className="pb-12">
           <ExecutiveHeader
-            eyebrow="Global industry intelligence"
-            title="Peer+ Global Signals"
-            subtitle="글로벌 6사 newsroom + SPRi/BCG 리서치 기반 IT 트렌드와 SK AX·Peer alignment를 분석합니다."
+            eyebrow="글로벌 산업 인텔리전스"
+            title="글로벌 IT 동향"
+            subtitle="글로벌 6사 newsroom과 SPRi/BCG 리서치 기반 IT 트렌드·사업 섹터 변화를 파악합니다."
           />
           <section className="relative z-0 mb-5 flex justify-end">
             <div data-guide="peer-selector" className="flex flex-wrap justify-end gap-1.5">

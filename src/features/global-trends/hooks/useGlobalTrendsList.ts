@@ -12,7 +12,7 @@ export function useGlobalTrendsList(windowDays = 30) {
     return globalTrendsRepository.list({
       from: format(from),
       to: format(to),
-      limit: 20,
+      limit: 10,
     });
   }, [windowDays]);
 
