@@ -186,6 +186,42 @@ export interface TodayInsightChangeSummary {
   value: string;
 }
 
+export interface TodayInsightKeywordTrend {
+  metric: string;
+  group_name: string;
+  latest_period?: string;
+  latest_ratio?: number | null;
+  prev_ratio?: number | null;
+  ratio_delta?: number | null;
+  source?: string;
+  note?: string;
+}
+
+export interface TodayInsightSalienceItem {
+  id?: string;
+  kind?: string;
+  title?: string;
+  label?: string;
+  salience_score?: number;
+  exposure_score?: number;
+  narrative_hint?: string;
+}
+
+export interface TodayInsightComparisonFacts {
+  coverage?: {
+    hidden_gem_count?: number;
+    keyword_trends?: number;
+    mode?: string;
+  };
+  keyword_trends?: TodayInsightKeywordTrend[];
+  visibility_gaps?: TodayInsightSalienceItem[];
+  primary_selection?: {
+    must_include_hidden_gem?: boolean;
+    items?: TodayInsightSalienceItem[];
+  };
+  structural?: Array<Record<string, unknown>>;
+}
+
 export interface TodayInsightData {
   report_date: string;
   generated_at: string;
@@ -193,6 +229,7 @@ export interface TodayInsightData {
   executive_summary: string;
   executive_implication?: string;
   change_summary?: TodayInsightChangeSummary[];
+  comparison_facts?: TodayInsightComparisonFacts;
   signals: TodayInsightSignal[];
   response_direction?: TodayInsightAction[];
   sources?: TodayInsightSource[];

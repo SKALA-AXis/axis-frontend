@@ -118,6 +118,13 @@ function sourceName(source: TodayInsightSource): string {
   return source.source_name ?? source.sourceName ?? source.publisher ?? 'source';
 }
 
+function formatKeywordTrendDelta(delta?: number | null) {
+  if (typeof delta !== 'number' || Number.isNaN(delta)) {
+    return '-';
+  }
+  return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}pt`;
+}
+
 export function HomeDashboardView({
   onNavigate,
   bookmarkedIds = [],
@@ -244,12 +251,21 @@ export function HomeDashboardView({
   const heroCard = rankedCards[0] ?? latestCards[0];
   const summaryCard = summaryChoices[summaryIndex % Math.max(summaryChoices.length, 1)] ?? heroCard;
   const homeDetailCard = homeDetailCardId ? cards.find((card) => card.id === homeDetailCardId) ?? null : null;
+  const insightComparison = todayInsight?.comparison_facts;
+  const insightKeywordTrends = insightComparison?.keyword_trends ?? [];
+  const insightHiddenGems = insightComparison?.visibility_gaps ?? [];
+  const insightPrimaryLead = insightComparison?.primary_selection?.items?.[0] ?? null;
   const changeSummary = todayInsight?.change_summary?.length
     ? todayInsight.change_summary
     : [
         { label: '오늘 감지된 변화', value: `${dashboard.trends.length + cards.length}건` },
-        { label: '전주 대비', value: '+18%' },
-        { label: '핵심 키워드', value: keywordTrends?.keywordSeries[0]?.name ?? '-' },
+        insightKeywordTrends[0]
+          ? {
+              label: '검색지수 변화',
+              value: `${insightKeywordTrends[0].group_name} ${formatKeywordTrendDelta(insightKeywordTrends[0].ratio_delta)}`,
+            }
+          : { label: '비교 기준', value: '최근 60일' },
+        { label: '핵심 키워드', value: keywordTrends?.keywordSeries[0]?.name ?? insightPrimaryLead?.title ?? '-' },
       ];
   const selectedSourceIdSet = new Set(selectedSignal?.evidence.sourceIds ?? []);
   const selectedSources = (todayInsight?.sources ?? [])
@@ -547,6 +563,26 @@ export function HomeDashboardView({
                   ? getSummaryLines(heroCard)[0]
                   : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.'}
               </p>
+              {todayInsight?.executive_implication ? (
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--axis-muted)]">
+                  {todayInsight.executive_implication}
+                </p>
+              ) : null}
+              {insightHiddenGems.length > 0 ? (
+                <div className="mt-3 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.06)] px-3 py-2.5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--axis-accent-strong)]">
+                    단건·고임팩트
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-[var(--axis-ink)]">
+                    {insightHiddenGems[0].title}
+                  </p>
+                  {insightHiddenGems[0].narrative_hint ? (
+                    <p className="mt-1 text-xs leading-5 text-[var(--axis-body)]">
+                      {insightHiddenGems[0].narrative_hint}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {changeSummary.map((item, index) => (
                   <span
@@ -564,11 +600,35 @@ export function HomeDashboardView({
                   </span>
                 ))}
               </div>
+              {insightKeywordTrends.length > 0 ? (
+                <div className="mt-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-2.5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--axis-muted)]">
+                    시장 관심 맥락 (검색지수)
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {insightKeywordTrends.slice(0, 4).map((trend) => (
+                      <span
+                        key={`${trend.group_name}-${trend.latest_period ?? trend.latest_ratio}`}
+                        className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs text-[var(--axis-body)]"
+                      >
+                        <span className="font-semibold text-[var(--axis-ink)]">{trend.group_name}</span>
+                        <span className="text-[var(--axis-muted)]">지수 {trend.latest_ratio ?? '-'}</span>
+                        <strong className="text-[var(--axis-success)]">{formatKeywordTrendDelta(trend.ratio_delta)}</strong>
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[11px] leading-5 text-[var(--axis-muted)]">
+                    네이버 DataLab 상대 검색지수 — 특정 뉴스와 직접 연결하지 않습니다.
+                  </p>
+                </div>
+              ) : null}
 
               {/* 주요 신호 카드 — 각각 button. click 시 selectedSignalId 갱신 (active 카드 재클릭 = no-op, 다른 카드 클릭 = 즉시 교체). */}
               <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                {todayInsightSignals.map((signal) => {
+                {todayInsightSignals.map((signal, signalIndex) => {
                   const isActive = signal.id === selectedSignalId;
+                  const showHiddenGemBadge =
+                    signalIndex === 0 && insightPrimaryLead?.label === 'low_visibility_definite_event';
                   return (
                     <button
                     key={signal.id}
@@ -581,9 +641,16 @@ export function HomeDashboardView({
                           : 'bg-[var(--axis-canvas)]/82 hover:bg-[var(--axis-canvas)] hover:ring-1 hover:ring-[var(--axis-hairline)]'
                       }`}
                     >
-                      <p className={`text-[11px] font-semibold ${isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}`}>
-                        {signal.label}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className={`text-[11px] font-semibold ${isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}`}>
+                          {signal.label}
+                        </p>
+                        {showHiddenGemBadge ? (
+                          <span className="rounded-full bg-[rgba(220,90,36,0.12)] px-2 py-0.5 text-[10px] font-bold text-[var(--axis-accent-strong)]">
+                            단건·고임팩트
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{signal.value}</p>
                     </button>
                   );

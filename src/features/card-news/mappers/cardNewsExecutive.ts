@@ -109,8 +109,22 @@ export function getEvidenceCompleteness(card: CardNewsItem) {
   return Math.round((total / 4) * 100);
 }
 
+function getImportanceScore(card: CardNewsItem) {
+  if (typeof card.importance_score === 'number') {
+    return card.importance_score > 1
+      ? Math.round(card.importance_score)
+      : Math.round(card.importance_score * 100);
+  }
+  return getExposureScore(card);
+}
+
 export function getExecutiveRank(cards: CardNewsItem[]) {
   return [...cards].sort((a, b) => {
+    const importanceDelta = getImportanceScore(b) - getImportanceScore(a);
+    if (importanceDelta !== 0) {
+      return importanceDelta;
+    }
+
     const exposureDelta = getExposureScore(b) - getExposureScore(a);
     if (exposureDelta !== 0) {
       return exposureDelta;
