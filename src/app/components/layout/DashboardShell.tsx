@@ -18,7 +18,6 @@ import {
   RawArticlesView,
   SearchResultsView,
   SettingsView,
-  GlobalTrendsView,
 } from '../pages';
 import { FloatingAiChat } from '../shared/FloatingAiChat';
 import { InAppGuideOverlay } from '../shared/InAppGuideOverlay';
@@ -249,12 +248,6 @@ export function DashboardShell({
             bookmarkedIds={bookmarkedIds}
             onToggleBookmark={toggleBookmark}
             onUpdateTimeChange={(updatedAt) => handleViewFreshnessChange('briefings', updatedAt)}
-          />
-        );
-      case 'globalTrends':
-        return (
-          <GlobalTrendsView
-            onUpdateTimeChange={(updatedAt) => handleViewFreshnessChange('globalTrends', updatedAt)}
           />
         );
       case 'notifications':

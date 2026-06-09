@@ -1,1 +1,0 @@
-export { GlobalTrendsView } from './GlobalTrendsView';

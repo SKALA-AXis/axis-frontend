@@ -9,4 +9,3 @@ export { NotificationsView } from './notifications/NotificationsView';
 export { RawArticlesView } from './raw-articles/RawArticlesView';
 export { SearchResultsView } from './search/SearchResultsView';
 export { SettingsView } from './settings/SettingsView';
-export { GlobalTrendsView } from './global-trends';

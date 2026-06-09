@@ -3,7 +3,6 @@ import {
   ChevronRight,
   FileChartColumn,
   FileText,
-  Globe,
   Home,
   Lightbulb,
   Moon,
@@ -32,7 +31,6 @@ const menuIcons = {
   issues: FileChartColumn,
   mixer: Shuffle,
   keywordGraph: Network,
-  globalTrends: Globe,
   admin: Users,
 } as const;
 
