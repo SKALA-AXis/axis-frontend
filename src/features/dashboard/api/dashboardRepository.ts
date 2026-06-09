@@ -9,7 +9,7 @@ import { httpClient } from '../../../shared/api/httpClient';
 export interface DashboardRepository {
   getDashboard(): Promise<DashboardData>;
   getKeywordTrends(): Promise<DashboardKeywordTrendsData>;
-  getTodayInsight(): Promise<TodayInsightData>;
+  getTodayInsight(anchorDate?: string): Promise<TodayInsightData>;
   warmupTodayInsight(): Promise<TodayInsightWarmupResult>;
 }
 
@@ -28,11 +28,14 @@ class HttpDashboardRepository implements DashboardRepository {
     return await httpClient.get<DashboardKeywordTrendsData>('/api/dashboard/keyword-trends');
   }
 
-  async getTodayInsight(): Promise<TodayInsightData> {
+  async getTodayInsight(anchorDate?: string): Promise<TodayInsightData> {
     if (!httpClient) {
       throw new Error('대시보드 API 주소가 설정되어 있지 않습니다. VITE_API_BASE_URL을 확인하세요.');
     }
-    return await httpClient.get<TodayInsightData>('/api/dashboard/today-insight');
+    const query = anchorDate?.trim()
+      ? `?anchor_date=${encodeURIComponent(anchorDate.trim())}`
+      : '';
+    return await httpClient.get<TodayInsightData>(`/api/dashboard/today-insight${query}`);
   }
 
   async warmupTodayInsight(): Promise<TodayInsightWarmupResult> {

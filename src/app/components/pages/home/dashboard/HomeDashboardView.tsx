@@ -31,6 +31,10 @@ import {
   getPeerLabel,
   getSummaryLines,
 } from '../../../../../features/card-news/mappers/cardNewsExecutive';
+import {
+  formatKoreanDate,
+  toDateInputValue,
+} from '../../../../../features/briefings/utils/briefingDate';
 import { useDashboard, useDashboardKeywordTrends, useTodayInsight } from '../../../../../features/dashboard/hooks/useDashboard';
 import type {
   TodayInsightAction,
@@ -137,12 +141,13 @@ export function HomeDashboardView({
     error: keywordTrendsError,
     reload: reloadKeywordTrends,
   } = useDashboardKeywordTrends();
+  const [insightAnchorDate, setInsightAnchorDate] = useState(() => toDateInputValue());
   const {
     todayInsight,
     isLoading: todayInsightLoading,
     error: todayInsightError,
     reload: reloadTodayInsight,
-  } = useTodayInsight();
+  } = useTodayInsight(insightAnchorDate);
   const { cards, isLoading: cardsLoading, reload: reloadCards } = useCardNews();
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
@@ -508,6 +513,20 @@ export function HomeDashboardView({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="axis-kicker">Today&apos;s insight</p>
+                <label className="flex items-center gap-2 text-[11px] font-semibold text-[var(--axis-muted)]">
+                  <span className="hidden sm:inline">기준일</span>
+                  <input
+                    type="date"
+                    value={insightAnchorDate}
+                    onChange={(event) => setInsightAnchorDate(event.target.value)}
+                    className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-1 text-[11px] text-[var(--axis-ink)]"
+                  />
+                </label>
+                {todayInsight?.report_date ? (
+                  <span className="text-[11px] font-semibold text-[var(--axis-muted)]">
+                    저장 리포트 · {formatKoreanDate(todayInsight.report_date)}
+                  </span>
+                ) : null}
                 {todayInsightLoading ? (
                   <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
                     생성 중

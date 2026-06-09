@@ -56,8 +56,11 @@ interface UseTodayInsightResult {
   reload: () => Promise<void>;
 }
 
-export function useTodayInsight(): UseTodayInsightResult {
-  const load = useCallback(() => dashboardRepository.getTodayInsight(), []);
+export function useTodayInsight(anchorDate?: string): UseTodayInsightResult {
+  const load = useCallback(
+    () => dashboardRepository.getTodayInsight(anchorDate),
+    [anchorDate],
+  );
   const {
     data: todayInsight,
     status,

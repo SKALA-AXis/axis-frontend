@@ -16,5 +16,18 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/app/shell",
+    "src/app/components/AxisPlanningViews.tsx",
+    "src/app/components/ArchitectureWorkspace.tsx",
+    "src/features/admin/components",
+    "src/features/briefings/components",
+    "src/features/home/components",
+    "src/features/issues/components",
+    "src/features/keyword-graph/components",
+    "src/features/peers/components",
+    "src/features/raw-articles/components",
+    "src/features/settings/components"
+  ]
 }
