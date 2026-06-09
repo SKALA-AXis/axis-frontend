@@ -119,8 +119,7 @@ export const mockGlobalTrendList: GlobalTrendListResponse = {
 };
 
 export const mockGlobalTrendsRunResult: GlobalTrendsRunResult = {
-  final_one_liner: '글로벌 IT는 PoC에서 운영 책임형 AI로 이동 중이며, SK AX는 Managed Agent + 감사 가능성을 묶은 제안이 필요합니다.',
-  sk_ax_implication: '에이전트·Sovereign AI 두 축을 표준 오퍼링으로 패키징하고 Peer 대비 운영 KPI를 앞세워야 합니다.',
+  final_one_liner: '글로벌 IT는 PoC에서 운영 책임형 AI로 이동 중이며, 에이전트·주권 AI가 newsroom 메시지의 중심축으로 부상하고 있습니다.',
   confidence: 0.76,
   snapshots: [
     { company_id: 'nvidia', card_count: 42, top_themes: ['agentic_ai', 'inference'] },
