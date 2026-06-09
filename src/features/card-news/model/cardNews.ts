@@ -154,6 +154,7 @@ export type CardNewsItem = {
   keywords?: string[];
   exposure_band?: ExposureBand;
   exposure_score?: number;
+  importance_score?: number;
   trust_score?: number;
   implication?: CardNewsImplication;
   sources?: CardNewsSource[];
