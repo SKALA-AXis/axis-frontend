@@ -1,4 +1,4 @@
-import { type WheelEvent as ReactWheelEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type WheelEvent as ReactWheelEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Filter, Maximize2, Minus, Plus } from 'lucide-react';
 import * as THREE from 'three';
 import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
@@ -364,9 +364,9 @@ function KeywordSphereGraph({
       const material = new THREE.LineBasicMaterial({
         color: active
           ? resolveCssColor('var(--axis-graph-active-edge)', '#DC5A24')
-          : (isDarkMode ? '#F5E7D2' : resolveCssColor('var(--axis-graph-edge)', '#8D8173')),
+          : (isDarkMode ? '#FFF1D8' : resolveCssColor('var(--axis-graph-edge)', '#5E5348')),
         transparent: true,
-        opacity: active ? 0.92 : (isDarkMode ? 0.62 : 0.5),
+        opacity: active ? 1 : (isDarkMode ? 0.82 : 0.78),
         depthTest: false,
         depthWrite: false,
       });
@@ -622,6 +622,28 @@ export function KeywordGraphView({
   const [keywordDetailSlideIndex, setKeywordDetailSlideIndex] = useState(0);
   const [themeRevision, setThemeRevision] = useState(0);
   const keywordCardsCacheRef = useRef(new Map<string, CardNewsItem[]>());
+  const keywordCardsInFlightRef = useRef(new Map<string, Promise<CardNewsItem[]>>());
+
+  const loadKeywordCardsForNode = useCallback(async (nodeId: string) => {
+    const cachedCards = keywordCardsCacheRef.current.get(nodeId);
+    if (cachedCards) return cachedCards;
+
+    const inFlight = keywordCardsInFlightRef.current.get(nodeId);
+    if (inFlight) return inFlight;
+
+    const request = fetchKeywordGraphCards(nodeId)
+      .then((apiCards) => {
+        if (apiCards.length > 0) {
+          keywordCardsCacheRef.current.set(nodeId, apiCards);
+        }
+        return apiCards;
+      })
+      .finally(() => {
+        keywordCardsInFlightRef.current.delete(nodeId);
+      });
+    keywordCardsInFlightRef.current.set(nodeId, request);
+    return request;
+  }, []);
 
   const keywordNodes = useMemo(() => {
     const normalized = graphPayload?.nodes
@@ -733,20 +755,21 @@ export function KeywordGraphView({
       const nodesToPrefetch = [
         ...visibleNodes.filter((node) => node.id === selectedId),
         ...visibleNodes.filter((node) => node.id !== selectedId),
-      ].slice(0, 4);
+      ];
       await new Promise((resolve) => window.setTimeout(resolve, 350));
-      for (const node of nodesToPrefetch) {
+      const concurrency = 4;
+      for (let index = 0; index < nodesToPrefetch.length; index += concurrency) {
         if (cancelled) return;
-        if (keywordCardsCacheRef.current.has(node.id)) continue;
-        try {
-          const apiCards = await fetchKeywordGraphCards(node.id);
-          if (cancelled) return;
-          if (apiCards.length > 0) {
-            keywordCardsCacheRef.current.set(node.id, apiCards);
+        const batch = nodesToPrefetch.slice(index, index + concurrency);
+        await Promise.all(batch.map(async (node) => {
+          if (cancelled || keywordCardsCacheRef.current.has(node.id)) return;
+          try {
+            await loadKeywordCardsForNode(node.id);
+          } catch {
+            // Click-time loading still handles the error state.
           }
-        } catch {
-          // Click-time loading still handles the fallback and error state.
-        }
+        }));
+        if (cancelled) return;
       }
     }
 
@@ -754,7 +777,7 @@ export function KeywordGraphView({
     return () => {
       cancelled = true;
     };
-  }, [selectedId, visibleNodes]);
+  }, [loadKeywordCardsForNode, selectedId, visibleNodes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -765,8 +788,6 @@ export function KeywordGraphView({
       setKeywordCardsLoading(false);
       return undefined;
     }
-    const activeSelectedNode = selectedNode;
-    const localFallbackCards = fallbackNodeCards(activeSelectedNode, cards, keywordNodes, keywordEdges).slice(0, 30);
     const cachedCards = keywordCardsCacheRef.current.get(selectedId);
     if (cachedCards) {
       setKeywordRelatedCards(cachedCards);
@@ -781,16 +802,13 @@ export function KeywordGraphView({
       try {
         setKeywordCardsLoading(true);
         setKeywordCardsError(null);
-        const apiCards = await fetchKeywordGraphCards(selectedId);
+        const apiCards = await loadKeywordCardsForNode(selectedId);
         if (cancelled) return;
-        if (apiCards.length > 0) {
-          keywordCardsCacheRef.current.set(selectedId, apiCards);
-        }
-        setKeywordRelatedCards(apiCards.length > 0 ? apiCards : localFallbackCards);
+        setKeywordRelatedCards(apiCards);
       } catch (loadError) {
         if (!cancelled) {
-          setKeywordRelatedCards(localFallbackCards);
-          setKeywordCardsError(localFallbackCards.length > 0 ? null : loadError instanceof Error ? loadError.message : '관련 카드뉴스를 불러오지 못했습니다.');
+          setKeywordRelatedCards([]);
+          setKeywordCardsError(loadError instanceof Error ? loadError.message : '관련 카드뉴스를 불러오지 못했습니다.');
         }
       } finally {
         if (!cancelled) {
@@ -803,7 +821,7 @@ export function KeywordGraphView({
     return () => {
       cancelled = true;
     };
-  }, [cards, keywordEdges, keywordNodes, selectedId]);
+  }, [keywordNodes, loadKeywordCardsForNode, selectedId]);
 
   useEffect(() => {
     setOverlayPage(0);

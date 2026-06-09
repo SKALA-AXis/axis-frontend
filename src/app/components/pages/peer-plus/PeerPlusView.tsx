@@ -24,12 +24,13 @@ type PeerReasoningModal = {
   id: string;
   title: string;
   summary: string;
-  groups: Array<{
-    title: string;
-    items: Array<{
-      label: string;
-      body: string;
-    }>;
+  reasoningItems: Array<{
+    label: string;
+    body: string;
+  }>;
+  evidenceItems: Array<{
+    label: string;
+    body: string;
   }>;
 };
 
@@ -97,15 +98,16 @@ function parseTopKeywordEvidence(evidence: string) {
   if (evidence.includes(' 기준: ') && evidence.includes('. 진행 내용: ')) {
     const [contextPart, rest = ''] = evidence.split(' 기준: ');
     const [keywordPart, detailRest = ''] = rest.split('. 진행 내용: ');
-    const [activityPart] = detailRest.includes('. 근거 확인: ')
+    const [activityPart, sourcePart = ''] = detailRest.includes('. 근거 확인: ')
       ? detailRest.split('. 근거 확인: ')
       : [detailRest, ''];
-    const reasoningSource = `진행 내용: ${detailRest}`;
+    const reasoningSource = `진행 내용: ${activityPart}`;
 
     return {
       context: `${contextPart.trim()} 기준`,
       activity: normalizeEvidenceText(activityPart) || keywordPart.trim(),
-      reason: stripEvidenceStageLabels(buildEvidenceReason(activityPart, reasoningSource)),
+      reasoning: stripEvidenceStageLabels(buildEvidenceReason(activityPart, reasoningSource)),
+      evidence: stripEvidenceStageLabels(sourcePart),
     };
   }
 
@@ -130,7 +132,8 @@ function parseTopKeywordEvidence(evidence: string) {
     return {
       context: `${contextPart.trim()} 기준`,
       activity: activityPart.trim(),
-      reason: stripEvidenceStageLabels(buildEvidenceReason(cleanSourceText, reasoningSource)),
+      reasoning: stripEvidenceStageLabels(reasoningSource),
+      evidence: normalizeEvidenceText(cleanSourceText),
     };
   }
 
@@ -142,7 +145,8 @@ function parseTopKeywordEvidence(evidence: string) {
     return {
       context: `${contextPart.trim()} 기준`,
       activity: keywordPart.trim(),
-      reason: reason || normalizeEvidenceText(rest),
+      reasoning: '',
+      evidence: reason || normalizeEvidenceText(rest),
     };
   }
 
@@ -157,7 +161,8 @@ function parseTopKeywordEvidence(evidence: string) {
     return {
       context: `${contextPart.trim()} 활동`,
       activity: activityPart.trim(),
-      reason: buildEvidenceReason(cleanSourcePart, interpretationPart),
+      reasoning: normalizeEvidenceText(interpretationPart),
+      evidence: normalizeEvidenceText(cleanSourcePart),
     };
   }
 
@@ -171,7 +176,8 @@ function parseTopKeywordEvidence(evidence: string) {
   return {
     context: contextPart.trim(),
     activity: '',
-    reason: buildEvidenceReason(sourcePart.split('. 원문 위치: ')[0], interpretationPart),
+    reasoning: normalizeEvidenceText(interpretationPart),
+    evidence: normalizeEvidenceText(sourcePart.split('. 원문 위치: ')[0]),
   };
 }
 
@@ -233,8 +239,16 @@ function KeywordInfoPopover({
                 <div key={`${axisLabel}-${evidence}`} className="space-y-3 px-4 py-3">
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">판단 근거</p>
-                    <p className="mt-1 whitespace-pre-line break-words text-[12px] leading-5 text-[var(--axis-body)]">{parsedEvidence.reason || normalizeEvidenceText(evidence)}</p>
+                    <p className="mt-1 whitespace-pre-line break-words text-[12px] leading-5 text-[var(--axis-body)]">
+                      {parsedEvidence.reasoning || parsedEvidence.evidence || normalizeEvidenceText(evidence)}
+                    </p>
                   </div>
+                  {parsedEvidence.evidence ? (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">원문 근거</p>
+                      <p className="mt-1 whitespace-pre-line break-words text-[12px] leading-5 text-[var(--axis-body)]">{parsedEvidence.evidence}</p>
+                    </div>
+                  ) : null}
                   {evidenceUrl ? (
                     <a
                       href={evidenceUrl}
@@ -497,7 +511,7 @@ export function PeerPlusView({
     const buildTraceItems = (items: PeerAnalysisTraceItem[]) => (
       items.map((item) => ({
         label: item.label,
-        body: item.body,
+        body: item.reasoning || item.body,
       }))
     );
     const hasApiTrace = apiAnalysisTraceItems.length > 0;
@@ -508,6 +522,16 @@ export function PeerPlusView({
     const swotTraceItems = apiAnalysisTraceItems.filter((item) => (
       isSwotTraceItem(item) || ['근거 확인', '비교 판단', '결론'].includes(item.label)
     ));
+    const comparisonEvidenceItems = peerInsightItems
+      .filter((item) => item.label !== '포지셔닝')
+      .map((item) => ({
+        label: item.label,
+        body: item.evidenceSummary || item.body,
+      }));
+    const swotEvidenceItems = swotItems.map((item) => ({
+      label: item.label,
+      body: item.evidenceSummary || item.body,
+    }));
 
     return {
       comparison: {
@@ -516,22 +540,15 @@ export function PeerPlusView({
         summary: hasApiTrace
           ? `${peerFlowLabel}의 사업 신호, 기술 신호, 리스크를 LLM이 왜 그렇게 판단했는지 보여줍니다.`
           : `${peerFlowLabel}의 공개 신호를 교차 검토해 핵심 차이 축으로 압축한 근거를 보여줍니다.`,
-        groups: [
-          hasApiTrace
-            ? {
-                title: '저장된 LLM 판단 근거',
-                items: buildTraceItems(comparisonTraceItems.length > 0 ? comparisonTraceItems : apiAnalysisTraceItems),
-              }
-            : {
-                title: '비교 에이전트의 차이 축 정리',
-                items: peerInsightItems
-                  .filter((item) => item.label !== '포지셔닝')
-                  .map((item) => ({
-                    label: item.label,
-                    body: `에이전트 판단: ${item.body}`,
-                })),
-              },
-        ],
+        reasoningItems: hasApiTrace
+          ? buildTraceItems(comparisonTraceItems.length > 0 ? comparisonTraceItems : apiAnalysisTraceItems)
+          : peerInsightItems
+              .filter((item) => item.label !== '포지셔닝')
+              .map((item) => ({
+                label: item.label,
+                body: item.reasoningSummary || item.body,
+              })),
+        evidenceItems: comparisonEvidenceItems,
       },
       swot: {
         id: 'swot',
@@ -539,20 +556,13 @@ export function PeerPlusView({
         summary: hasApiTrace
           ? `${peerFlowLabel}의 각 SWOT 항목을 LLM이 왜 그렇게 판단했는지 보여줍니다.`
           : `${peerFlowLabel}의 강점·약점·기회·위협을 어떤 문장 기준으로 정리했는지 보여줍니다.`,
-        groups: [
-          hasApiTrace
-            ? {
-                title: '저장된 LLM 판단 근거',
-                items: buildTraceItems(swotTraceItems.length > 0 ? swotTraceItems : apiAnalysisTraceItems),
-              }
-            : {
-                title: '전략 에이전트의 SWOT 정리',
-                items: swotItems.map((item) => ({
-                  label: item.label,
-                  body: `에이전트 해석: ${item.body}`,
-                })),
-              },
-        ],
+        reasoningItems: hasApiTrace
+          ? buildTraceItems(swotTraceItems.length > 0 ? swotTraceItems : apiAnalysisTraceItems)
+          : swotItems.map((item) => ({
+              label: item.label,
+              body: item.reasoningSummary || item.body,
+            })),
+        evidenceItems: swotEvidenceItems,
       },
     };
   }, [apiAnalysisTraceItems, peerFlowLabel, peerInsightItems, swotItems]);
@@ -859,24 +869,30 @@ export function PeerPlusView({
               <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
                 <p className="text-sm font-semibold leading-7 text-[var(--axis-ink)]">{activePeerReasoning.summary}</p>
                 <div className="mt-4 space-y-4">
-                  {activePeerReasoning.groups.map((group) => (
-                    <section key={`${activePeerReasoning.id}-${group.title}`} className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-3">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-success)]">{group.title}</p>
-                      <div className="mt-3 space-y-3">
-                        {group.items.map((item, index) => (
-                          <div key={`${activePeerReasoning.id}-${group.title}-${item.label}`} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(90,107,87,0.12)] text-xs font-bold text-[var(--axis-success)]">
-                              {index + 1}
-                            </span>
-                            <div>
-                              <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.label}</p>
-                              <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-                            </div>
+                  <section className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-success)]">추론 과정</p>
+                    <div className="mt-3 space-y-3">
+                      {activePeerReasoning.reasoningItems.map((item) => (
+                        <div key={`${activePeerReasoning.id}-reasoning-${item.label}`} className="border-l-2 border-[rgba(90,107,87,0.26)] pl-3">
+                          <div>
+                            <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.label}</p>
+                            <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
                           </div>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                  <section className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.18)] bg-[var(--axis-canvas)] p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">각 항목의 판단 근거</p>
+                    <div className="mt-3 space-y-3">
+                      {activePeerReasoning.evidenceItems.map((item) => (
+                        <div key={`${activePeerReasoning.id}-evidence-${item.label}`} className="rounded-[var(--axis-radius-sm)] bg-[var(--axis-surface-soft)] px-3 py-2">
+                          <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.label}</p>
+                          <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 </div>
               </div>
             </article>
