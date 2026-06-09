@@ -258,6 +258,17 @@ function trimDecimal(value: number, digits: number) {
   return value.toFixed(digits).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
 }
 
+function readStoredPeerPlusFilter(): PeerPlusFilterId {
+  const stored = window.localStorage.getItem(peerPlusSelectionStorageKey);
+  if (stored === 'global_industry' || stored === 'all') {
+    return stored;
+  }
+  if (stored && mockPeerPlusOptions.some((peer) => peer.id === stored)) {
+    return stored as PeerPlusPeerId;
+  }
+  return 'all';
+}
+
 export function PeerPlusView({
   onNavigate: _onNavigate,
   bookmarkedIds = [],
@@ -281,20 +292,18 @@ export function PeerPlusView({
   const { peerPositioning, isLoading: isPeerPositioningLoading, error: peerPositioningError } = usePeerPositioning();
   const peerOptions = mockPeerPlusOptions;
   const filterOptions: Array<{ id: PeerPlusFilterId; label: string }> = [{ id: 'all', label: '전체' }, ...peerOptions, globalIndustryFilterOption];
-  const [selectedPeerId, setSelectedPeerId] = useState<PeerPlusFilterId>(externalSelectedPeerId ?? 'all');
+  const [selectedPeerId, setSelectedPeerId] = useState<PeerPlusFilterId>(
+    () => externalSelectedPeerId ?? readStoredPeerPlusFilter(),
+  );
   const [peerDetailCardId, setPeerDetailCardId] = useState<string | null>(null);
   const [peerDetailSlideIndex, setPeerDetailSlideIndex] = useState(0);
   const [activePeerReasoningId, setActivePeerReasoningId] = useState<'comparison' | 'swot' | null>(null);
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
 
   useEffect(() => {
-    if (externalSelectedPeerId) {
-      window.localStorage.setItem(peerPlusSelectionStorageKey, externalSelectedPeerId);
-      setSelectedPeerId(externalSelectedPeerId);
-      return;
-    }
-    window.localStorage.setItem(peerPlusSelectionStorageKey, 'all');
-    setSelectedPeerId('all');
+    if (!externalSelectedPeerId) return;
+    window.localStorage.setItem(peerPlusSelectionStorageKey, externalSelectedPeerId);
+    setSelectedPeerId(externalSelectedPeerId);
   }, [externalSelectedPeerId]);
 
   useEffect(() => {

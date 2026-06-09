@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { peerPlusSelectionStorageKey } from '../mocks/peerPlus';
 
 const VIEW_TO_PATH: Record<string, string> = {
   home: '/',
@@ -22,7 +23,6 @@ const VIEW_TO_PATH: Record<string, string> = {
   issues: '/issues',
   mixer: '/mixer',
   keywordGraph: '/graph',
-  globalTrends: '/global-trends',
   search: '/search',
   settings: '/settings',
   admin: '/admin',
@@ -44,6 +44,11 @@ function readViewFromUrl(defaultView: string): string {
   const first = path.split('/')[0];
   // back-compat alias: 인사이트 페이지가 브리핑에 흡수되어 /insight 딥링크는 briefings 로.
   if (first === 'insight') return 'briefings';
+  // 글로벌 동향 전용 페이지 제거 — Peer+ 글로벌 산업 필터로 통합.
+  if (first === 'global-trends') {
+    window.localStorage.setItem(peerPlusSelectionStorageKey, 'global_industry');
+    return 'peerPlus';
+  }
   return SLUG_TO_VIEW[first] ?? defaultView;
 }
 
