@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BrainCircuit, ExternalLink, Globe2, Info, LineChart, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { ExternalLink, Globe2, Info, ShieldCheck, X } from 'lucide-react';
 
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
+import { GlobalTrendsPanel } from '../../../../features/global-trends/components/GlobalTrendsPanel';
 import { usePeerPositioning } from '../../../../features/peers/hooks/usePeerPositioning';
 import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOverview';
 import type { PeerComparisonInsightItem, PeerOverviewRow, PeerSwotInsightItem } from '../../../../features/peers/model/peerOverview';
@@ -36,232 +37,6 @@ type PeerReasoningModal = {
 
 const globalIndustryFilterOption = { id: 'global_industry' as const, label: '글로벌 산업' };
 
-const globalIndustryTrendSnapshot = {
-  whyTitle: '왜 지금 봐야 하나',
-  whyBody:
-    '글로벌 IT서비스 시장의 경쟁 축이 단순 SI 납품에서 에이전틱 AI를 설계·구축·운영하고 책임지는 모델로 이동하고 있습니다. SK AX가 투자, 제휴, 산업 우선순위, 제안 메시지를 정할 때 이 변화는 Peer 비교보다 한 단계 앞선 기준선이 됩니다.',
-  decisionPrinciples: [
-    { label: '포트폴리오', body: '산업별 AI 에이전트, AI 인프라, 보안·거버넌스를 따로 팔기보다 하나의 운영 패키지로 묶을지 판단합니다.' },
-    { label: '투자 우선순위', body: 'GPU/프라이빗 AI, 데이터 파운데이션, AI 보안 중 어느 영역을 자체 역량으로 둘지 정합니다.' },
-    { label: '시장 진입', body: '금융·제조·공공처럼 규제와 운영 복잡도가 높은 산업부터 레퍼런스를 만들지 검토합니다.' },
-  ],
-  focusTechnologies: [
-    {
-      label: '제일 관심가는 기술',
-      title: '멀티 에이전트 오케스트레이션',
-      body: '업무 단위 챗봇을 넘어 여러 에이전트가 계획, 실행, 검증, 예외 처리를 나누는 구조입니다.',
-      importance: 'SK AX가 운영형 AX를 차별화하려면 에이전트 설계보다 운영 통제와 성과 책임을 함께 보여줘야 합니다.',
-      metric: '자동 처리율, 예외 전환율, 업무 리드타임',
-    },
-    {
-      label: '제일 관심가는 기술',
-      title: 'AI 퍼스트 인프라와 프라이빗 AI',
-      body: 'AI 워크로드가 늘면서 데이터센터, GPU, 스토리지, 네트워크, 비용 최적화가 제안의 핵심 조건이 됩니다.',
-      importance: '고객은 AI 모델보다 안정적인 실행 환경과 비용 예측 가능성을 먼저 묻기 시작합니다.',
-      metric: '추론 비용, 지연시간, GPU 활용률',
-    },
-    {
-      label: '제일 관심가는 기술',
-      title: 'AI 보안·출처 검증·기밀 컴퓨팅',
-      body: 'AI가 내부 데이터와 고객 접점에 들어갈수록 권한, 감사, 데이터 출처, 모델 리스크 관리가 경쟁 기준이 됩니다.',
-      importance: '금융·공공·제조 고객에게는 “쓸 수 있는 AI”보다 “감사 가능한 AI”가 채택 조건이 될 가능성이 큽니다.',
-      metric: '감사 추적률, 정책 위반 탐지율, 데이터 계보 커버리지',
-    },
-  ],
-  trendShifts: [
-    {
-      label: '트랜드 변화',
-      title: '파일럿 검증에서 전사 확산으로',
-      body: '2026년 글로벌 논의의 초점은 PoC 개수보다 실제 업무 프로세스 안에서 에이전트가 얼마나 안정적으로 반복 운영되는지로 이동합니다.',
-      decision: 'SK AX 제안서는 데모 화면보다 운영 지표, 책임 범위, 예외 처리 체계를 앞쪽에 배치해야 합니다.',
-    },
-    {
-      label: '트랜드 변화',
-      title: '범용 AI에서 산업 특화 AI로',
-      body: '수평형 생산성 도구는 빠르게 평준화되고, 금융 KYC, 제조 품질, 공공 민원처럼 도메인 지식이 깊은 영역이 차별화됩니다.',
-      decision: '산업별 표준 데이터 모델과 업무 템플릿을 먼저 확보한 뒤 반복 판매 가능한 패키지로 전환해야 합니다.',
-    },
-    {
-      label: '트랜드 변화',
-      title: '클라우드 전환에서 AI 주권·하이브리드 운영으로',
-      body: 'AI 인프라는 공용 클라우드만의 문제가 아니라 데이터 위치, 규제, 비용, 온프레미스 연계를 함께 푸는 의제가 됩니다.',
-      decision: '글로벌 CSP 협력과 동시에 국내 규제 산업용 프라이빗 AI 운영 모델을 준비해야 합니다.',
-    },
-  ],
-  aiCapabilities: [
-    {
-      label: 'AI 기술',
-      title: '도메인 특화 언어모델과 RAG 데이터 파운데이션',
-      body: '산업 문서, 운영 로그, 계약·규정 데이터를 신뢰 가능한 지식 자산으로 바꾸는 역량이 AI 성능을 좌우합니다.',
-      decision: '고객별 데이터 정리 사업을 단발 구축이 아니라 지속 운영 계약의 진입점으로 설계합니다.',
-    },
-    {
-      label: 'AI 기술',
-      title: 'AI 네이티브 개발 플랫폼',
-      body: '코드 생성이 아니라 요구사항, 테스트, 배포, 운영 관측까지 연결된 개발 체계가 서비스 생산성을 바꿉니다.',
-      decision: 'SK AX 내부 딜리버리 생산성 개선과 고객 대상 개발 현대화 오퍼링을 동시에 만들 수 있습니다.',
-    },
-    {
-      label: 'AI 기술',
-      title: 'Physical AI와 산업 운영 자동화',
-      body: '로봇, 설비, 디지털 트윈, 비전 AI가 현장 데이터와 결합하면서 제조·물류·에너지 운영 의사결정에 들어옵니다.',
-      decision: '제조 AX는 분석 대시보드가 아니라 현장 조치와 안전·품질 KPI까지 닫히는 구조로 제안해야 합니다.',
-    },
-  ],
-  executiveMoves: [
-    { label: 'Build', title: '운영 책임형 AI 패키지화', body: '에이전트 구축, 데이터 파운데이션, 보안 통제, 운영 KPI를 하나의 표준 제안 묶음으로 만듭니다.' },
-    { label: 'Partner', title: 'GPU·보안·모델 생태계 선택', body: '모든 기술을 직접 보유하기보다 글로벌 CSP, AI 보안, 도메인 모델 파트너를 계층별로 고릅니다.' },
-    { label: 'Run', title: 'AI 운영센터형 수익 모델', body: '일회성 구축보다 모니터링, 품질관리, drift 대응, 감사 리포트를 반복 매출로 전환합니다.' },
-  ],
-};
-
-function GlobalIndustryTrendView() {
-  const snapshot = globalIndustryTrendSnapshot;
-
-  return (
-    <div className="space-y-5">
-      <section data-guide="global-industry-overview" className="axis-panel-flat overflow-hidden p-0">
-        <div className="grid gap-0 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
-          <div className="p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="axis-kicker">Global decision lens</p>
-                <h2 className="axis-section-heading mt-1">글로벌 산업 신호와 SK AX 의사결정 기준</h2>
-              </div>
-              <ExecutiveBadge tone="accent">2026 Signals</ExecutiveBadge>
-            </div>
-            <p className="mt-4 text-sm font-semibold leading-7 text-[var(--axis-ink)]">{snapshot.whyBody}</p>
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              {snapshot.decisionPrinciples.map((item) => (
-                <article key={item.label} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</p>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-body)]">{item.body}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-          <aside className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-5 xl:border-l xl:border-t-0">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-[10px] border border-[rgba(220,90,36,0.24)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]">
-                <Globe2 size={20} />
-              </span>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">What matters</p>
-                <h3 className="text-base font-display font-semibold text-[var(--axis-ink)]">보여줘야 하는 이유</h3>
-              </div>
-            </div>
-            <div className="mt-5 space-y-4">
-              {[
-                ['시장 기준선', '국내 Peer가 아직 말하지 않는 기술·운영 기준을 먼저 잡아 제안 메시지의 선후를 정합니다.'],
-                ['투자 판단', '자체 구축, 제휴, 운영 대행 중 어디에 돈과 인력을 배치할지 빠르게 좁힙니다.'],
-                ['리스크 통제', 'AI 보안, 데이터 주권, 감사 가능성처럼 고객 채택을 막는 조건을 먼저 확인합니다.'],
-              ].map(([label, body]) => (
-                <div key={label} className="border-l-2 border-[var(--axis-accent)] pl-3">
-                  <p className="text-sm font-semibold text-[var(--axis-ink)]">{label}</p>
-                  <p className="mt-1 text-sm leading-6 text-[var(--axis-body)]">{body}</p>
-                </div>
-              ))}
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <section data-guide="global-interesting-tech" className="axis-panel-flat p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="axis-kicker">Executive tech radar</p>
-            <h2 className="axis-section-heading mt-1">제일 관심가는 기술: 의사결정 우선순위</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-              기술 자체의 화제성보다 SK AX가 고객에게 운영 책임과 성과 지표를 제시할 수 있는지를 기준으로 골랐습니다.
-            </p>
-          </div>
-          <Sparkles className="shrink-0 text-[var(--axis-accent-strong)]" size={22} />
-        </div>
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          {snapshot.focusTechnologies.map((item) => (
-            <article key={item.title} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_16px_36px_-30px_rgba(26,26,31,0.30)]">
-              <ExecutiveBadge tone="accent">{item.label}</ExecutiveBadge>
-              <h3 className="mt-3 text-base font-display font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-              <div className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.22)] bg-[rgba(90,107,87,0.08)] p-3">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-success)]">중요한 이유</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.importance}</p>
-                <p className="mt-2 text-xs leading-5 text-[var(--axis-muted)]">볼 지표: {item.metric}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-2">
-        <article data-guide="global-trend-shift" className="axis-panel-flat p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="axis-kicker">Trend shift</p>
-              <h2 className="axis-section-heading mt-1">트렌드 변화: 시장이 바꾸는 구매 기준</h2>
-            </div>
-            <LineChart className="text-[var(--axis-success)]" size={22} />
-          </div>
-          <div className="mt-5 space-y-3">
-            {snapshot.trendShifts.map((item, index) => (
-              <section key={item.title} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[rgba(90,107,87,0.12)] text-sm font-black text-[var(--axis-success)]">{index + 1}</span>
-                <div>
-                  <ExecutiveBadge tone="accent">{item.label}</ExecutiveBadge>
-                  <h3 className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-                  <p className="mt-2 text-xs font-semibold leading-5 text-[var(--axis-accent-strong)]">SK AX 판단: {item.decision}</p>
-                </div>
-              </section>
-            ))}
-          </div>
-        </article>
-
-        <article data-guide="global-ai-tech" className="axis-panel-flat p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="axis-kicker">AI technology playbook</p>
-              <h2 className="axis-section-heading mt-1">AI 기술: 실행 가능한 역량으로 번역</h2>
-            </div>
-            <BrainCircuit className="text-[var(--axis-accent-strong)]" size={23} />
-          </div>
-          <div className="mt-5 space-y-3">
-            {snapshot.aiCapabilities.map((item) => (
-              <section key={item.title} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-                <ExecutiveBadge tone="accent">{item.label}</ExecutiveBadge>
-                <h3 className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-                <p className="mt-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--axis-ink)]">의사결정 연결: {item.decision}</p>
-              </section>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section data-guide="global-action-map" className="axis-panel-flat p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="axis-kicker">SK AX action map</p>
-            <h2 className="axis-section-heading mt-1">글로벌 동향을 다음 의사결정으로 연결</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
-              글로벌 신호는 관찰로 끝나면 가치가 낮습니다. 아래 세 가지 선택지가 실제 사업 포트폴리오 회의에서 바로 다뤄져야 할 안건입니다.
-            </p>
-          </div>
-          <ShieldCheck className="shrink-0 text-[var(--axis-success)]" size={22} />
-        </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
-          {snapshot.executiveMoves.map((item) => (
-            <article key={item.label} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--axis-accent-strong)]">{item.label}</p>
-              <h3 className="mt-2 text-base font-display font-semibold leading-6 text-[var(--axis-ink)]">{item.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-[var(--axis-body)]">{item.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
 
 function formatKrwBn(value: number | null | undefined) {
   if (value == null || Number.isNaN(value)) return '-';
@@ -720,6 +495,43 @@ export function PeerPlusView({
   }, [comparisonLabel, peerEvidenceCards, peerInsightItems, swotItems]);
   const activePeerReasoning = activePeerReasoningId ? peerReasoningSections[activePeerReasoningId] : null;
 
+  if (isGlobalIndustry) {
+    return (
+      <ExecutivePage className="overflow-visible">
+        <ExecutiveContainer className="pb-12">
+          <ExecutiveHeader
+            eyebrow="Global industry intelligence"
+            title="Peer+ Global Signals"
+            subtitle="글로벌 6사 newsroom + SPRi/BCG 리서치 기반 IT 트렌드와 SK AX·Peer alignment를 분석합니다."
+          />
+          <section className="relative z-0 mb-5 flex justify-end">
+            <div data-guide="peer-selector" className="flex flex-wrap justify-end gap-1.5">
+              {filterOptions.map((peer) => (
+                <button
+                  key={peer.id}
+                  type="button"
+                  onClick={() => {
+                    window.localStorage.setItem(peerPlusSelectionStorageKey, peer.id);
+                    setSelectedPeerId(peer.id);
+                  }}
+                  className={`h-8 rounded-full border px-3 text-xs font-semibold transition ${
+                    selectedPeerId === peer.id
+                      ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
+                      : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]'
+                  }`}
+                >
+                  {peer.id === 'global_industry' ? <Globe2 className="mr-1.5 inline-block align-[-2px]" size={13} /> : null}
+                  {peer.label}
+                </button>
+              ))}
+            </div>
+          </section>
+          <GlobalTrendsPanel embedded onUpdateTimeChange={onUpdateTimeChange} />
+        </ExecutiveContainer>
+      </ExecutivePage>
+    );
+  }
+
   if (isLoading || isPeerOverviewLoading || error || (peerOverviewError && !peerOverview)) {
     return (
       <PageState
@@ -752,13 +564,9 @@ export function PeerPlusView({
     <ExecutivePage className="overflow-visible">
       <ExecutiveContainer className="pb-12">
         <ExecutiveHeader
-          eyebrow={isGlobalIndustry ? 'Global industry intelligence' : 'Peer+ analysis'}
-          title={isGlobalIndustry ? 'Peer+ Global Signals' : 'Peer+'}
-          subtitle={
-            isGlobalIndustry
-              ? '글로벌 산업 변화가 SK AX의 투자·제휴·포트폴리오 의사결정에 어떤 기준선을 주는지 정리한 화면입니다.'
-              : '전체 모드에서는 시장 전반 비교를, 기업별 모드에서는 SK AX와 선택 기업의 재무·메시지 차이만 빠르게 읽을 수 있도록 정리한 화면입니다.'
-          }
+          eyebrow="Peer+ analysis"
+          title="Peer+"
+          subtitle="전체 모드에서는 시장 전반 비교를, 기업별 모드에서는 SK AX와 선택 기업의 재무·메시지 차이만 빠르게 읽을 수 있도록 정리한 화면입니다."
         />
         <section className="relative z-0 mb-5 flex justify-end">
           <div data-guide="peer-selector" className="flex flex-wrap justify-end gap-1.5">
@@ -783,10 +591,6 @@ export function PeerPlusView({
           </div>
         </section>
 
-        {isGlobalIndustry ? (
-          <GlobalIndustryTrendView />
-        ) : (
-          <>
         <section className="mb-5">
           <article data-guide="peer-overview" className="axis-panel-flat p-5">
             <div className="flex items-start justify-between gap-4">
@@ -968,8 +772,7 @@ export function PeerPlusView({
             </div>
           </section>
         ) : null}
-          </>
-        )}
+
       </ExecutiveContainer>
 
       {activePeerReasoning ? (
