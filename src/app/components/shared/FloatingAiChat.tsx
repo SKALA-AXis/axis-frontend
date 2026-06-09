@@ -1,10 +1,24 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ExternalLink, History, Loader2, LogOut, MessageSquarePlus, Send, Sparkles, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ExternalLink,
+  FileText,
+  History,
+  Link2,
+  Loader2,
+  LogOut,
+  MessageSquarePlus,
+  Send,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { assistantRepository } from '../../../features/assistant/api/assistantRepository';
 import type {
+  AssistantAnswerBlock,
   AssistantConversationSummary,
   AssistantHandoff,
   AssistantHistoryTurn,
+  AssistantReportDraft,
   AssistantSource,
 } from '../../../features/assistant/model/assistant';
 import { uiText } from '../../../shared/content/uiText';
@@ -14,6 +28,8 @@ type ChatMessage = {
   content: string;
   handoff?: AssistantHandoff | null;
   sources?: AssistantSource[];
+  answerBlocks?: AssistantAnswerBlock[];
+  reportDraft?: AssistantReportDraft | null;
   isGreeting?: boolean;
 };
 
@@ -34,6 +50,7 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
   const [query, setQuery] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<AssistantConversationSummary[]>([]);
+  const [expandedEvidenceKeys, setExpandedEvidenceKeys] = useState<Set<string>>(new Set());
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -83,6 +100,8 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
           content: response.reply || response.message?.content || '답변을 생성하지 못했습니다.',
           handoff: response.handoff ?? null,
           sources: response.sources ?? [],
+          answerBlocks: normalizeAnswerBlocks(response.answer_blocks),
+          reportDraft: normalizeReportDraft(response.report_draft),
         },
       ]);
       assistantRepository.listConversations(deviceId)
@@ -105,6 +124,7 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
     setMessages([{ role: 'assistant', content: greetingMessage, isGreeting: true }]);
     setQuery('');
     setIsHistoryOpen(false);
+    setExpandedEvidenceKeys(new Set());
     try {
       const response = await assistantRepository.createConversation(deviceId);
       setConversationId(response.conversation_id);
@@ -120,6 +140,7 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
     setConversationId(null);
     setMessages([{ role: 'assistant', content: greetingMessage, isGreeting: true }]);
     setIsHistoryOpen(true);
+    setExpandedEvidenceKeys(new Set());
     assistantRepository.listConversations(deviceId)
       .then(setConversations)
       .catch(() => setConversations([]));
@@ -137,15 +158,30 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
               content: message.content,
               handoff: isHandoff(message.handoff) ? message.handoff : null,
               sources: message.sources ?? [],
+              answerBlocks: normalizeAnswerBlocks(message.answer_blocks ?? message.answer_payload?.answer_blocks),
+              reportDraft: normalizeReportDraft(message.report_draft ?? message.answer_payload?.report_draft),
             }))
         : [{ role: 'assistant', content: greetingMessage, isGreeting: true }],
     );
+    setExpandedEvidenceKeys(new Set());
     setIsHistoryOpen(false);
   };
 
   const handleHandoff = (handoff: AssistantHandoff) => {
     onNavigate(routeToView(handoff.target_route));
     setIsOpen(false);
+  };
+
+  const toggleEvidence = (key: string) => {
+    setExpandedEvidenceKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   };
 
   return (
@@ -223,35 +259,68 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
                 ) : null}
               </div>
             ) : (
-              messages.map((message, index) => (
-                <div
-                  key={`${message.role}-${index}`}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
+              messages.map((message, index) => {
+                const evidenceKey = `${message.role}-${index}`;
+                const isEvidenceExpanded = expandedEvidenceKeys.has(evidenceKey);
+                const hasRichContent = Boolean(message.answerBlocks?.length || message.reportDraft);
+                return (
                   <div
-                    className={`max-w-[78%] rounded-[var(--axis-radius-lg)] px-3 py-2 text-sm leading-relaxed ${
-                      message.role === 'user'
-                        ? 'bg-[var(--axis-navy)] text-white'
-                        : 'border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)]'
-                    }`}
+                    key={evidenceKey}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                    {message.sources && message.sources.length > 0 ? (
-                      <p className="mt-2 text-xs text-[var(--axis-muted)]">근거 {message.sources.length}건</p>
-                    ) : null}
-                    {message.handoff ? (
-                      <button
-                        type="button"
-                        onClick={() => handleHandoff(message.handoff as AssistantHandoff)}
-                        className="mt-3 inline-flex items-center gap-1 rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] px-2 py-1 text-xs font-semibold text-white"
-                      >
-                        <ExternalLink className="size-3" />
-                        {message.handoff.label}
-                      </button>
-                    ) : null}
+                    <div
+                      className={`${hasRichContent ? 'max-w-[92%]' : 'max-w-[78%]'} rounded-[var(--axis-radius-lg)] px-3 py-2 text-sm leading-relaxed ${
+                        message.role === 'user'
+                          ? 'bg-[var(--axis-navy)] text-white'
+                          : 'border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)]'
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      {message.answerBlocks && message.answerBlocks.length > 0 ? (
+                        <AnswerBlocks blocks={message.answerBlocks} />
+                      ) : null}
+                      {message.reportDraft ? (
+                        <ReportDraftCard reportDraft={message.reportDraft} />
+                      ) : null}
+                      {message.sources && message.sources.length > 0 ? (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleEvidence(evidenceKey)}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--axis-accent-strong)] transition-colors hover:text-[var(--axis-accent)]"
+                            aria-expanded={isEvidenceExpanded}
+                          >
+                            <span>근거 {message.sources.length}건</span>
+                            <ChevronDown
+                              className={`size-3 transition-transform ${isEvidenceExpanded ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                          {isEvidenceExpanded ? (
+                            <div className="mt-2 space-y-2 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-2">
+                              {message.sources.map((source, sourceIndex) => (
+                                <EvidenceSourceItem
+                                  key={`${source.type}-${source.id}-${sourceIndex}`}
+                                  source={source}
+                                />
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {message.handoff ? (
+                        <button
+                          type="button"
+                          onClick={() => handleHandoff(message.handoff as AssistantHandoff)}
+                          className="mt-3 inline-flex items-center gap-1 rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] px-2 py-1 text-xs font-semibold text-white"
+                        >
+                          <ExternalLink className="size-3" />
+                          {message.handoff.label}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
             {isSending ? (
               <div className="flex justify-start">
@@ -329,11 +398,167 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
   );
 }
 
+function AnswerBlocks({ blocks }: { blocks: AssistantAnswerBlock[] }) {
+  const normalized = blocks
+    .map((block) => ({
+      title: block.title?.trim(),
+      items: Array.isArray(block.items) ? block.items.filter(Boolean).slice(0, 4) : [],
+    }))
+    .filter((block) => block.title || block.items.length > 0);
+  if (normalized.length === 0) return null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      {normalized.map((block, index) => (
+        <div
+          key={`${block.title ?? 'block'}-${index}`}
+          className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-2.5 py-2"
+        >
+          {block.title ? (
+            <p className="text-[11px] font-bold text-[var(--axis-ink)]">{block.title}</p>
+          ) : null}
+          {block.items.length > 0 ? (
+            <ul className="mt-1 space-y-1">
+              {block.items.map((item) => (
+                <li key={item} className="break-words text-[11px] leading-4 text-[var(--axis-body)]">
+                  - {item}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReportDraftCard({ reportDraft }: { reportDraft: AssistantReportDraft }) {
+  const sections = (reportDraft.sections ?? [])
+    .filter((section) => section.title || section.body)
+    .slice(0, 4);
+  if (!reportDraft.title && sections.length === 0) return null;
+
+  return (
+    <div className="mt-2 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.30)] bg-[var(--axis-surface)] p-2.5">
+      <div className="flex items-center gap-1.5">
+        <FileText className="size-3.5 text-[var(--axis-accent)]" />
+        <p className="text-[11px] font-bold text-[var(--axis-accent-strong)]">보고서 초안</p>
+      </div>
+      {reportDraft.title ? (
+        <p className="mt-1 break-words text-sm font-semibold text-[var(--axis-ink)]">
+          {reportDraft.title}
+        </p>
+      ) : null}
+      {sections.length > 0 ? (
+        <div className="mt-2 space-y-2">
+          {sections.map((section, index) => (
+            <section key={`${section.title ?? 'section'}-${index}`}>
+              {section.title ? (
+                <h3 className="text-[11px] font-bold text-[var(--axis-ink)]">{section.title}</h3>
+              ) : null}
+              {section.body ? (
+                <p className="mt-0.5 whitespace-pre-wrap break-words text-[11px] leading-4 text-[var(--axis-body)]">
+                  {section.body}
+                </p>
+              ) : null}
+            </section>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EvidenceSourceItem({ source }: { source: AssistantSource }) {
+  const title = source.source_title || source.title || `${source.type} ${source.id}`;
+  const url = isHttpUrl(source.url) ? source.url : null;
+  const meta = [
+    source.source_name,
+    formatEvidenceDate(source.published_at || source.report_date || source.created_at || source.updated_at),
+    source.peer_id,
+    source.event_type,
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <div className="rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-2">
+      <div className="flex items-start gap-2">
+        <Link2 className="mt-0.5 size-3.5 shrink-0 text-[var(--axis-muted)]" />
+        <div className="min-w-0 flex-1">
+          {url ? (
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="line-clamp-2 break-words text-xs font-semibold text-[var(--axis-ink)] hover:text-[var(--axis-accent)]"
+            >
+              {title}
+            </a>
+          ) : (
+            <p className="line-clamp-2 break-words text-xs font-semibold text-[var(--axis-ink)]">{title}</p>
+          )}
+          {meta ? (
+            <p className="mt-0.5 line-clamp-1 break-words text-[10px] text-[var(--axis-muted)]">{meta}</p>
+          ) : null}
+          {source.snippet ? (
+            <p className="mt-1 line-clamp-3 break-words text-[11px] leading-4 text-[var(--axis-body)]">
+              {source.snippet}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function toHistory(messages: ChatMessage[]): AssistantHistoryTurn[] {
   return messages
     .filter((message) => !message.isGreeting)
     .slice(-8)
     .map((message) => ({ role: message.role, content: message.content }));
+}
+
+function normalizeAnswerBlocks(value: unknown): AssistantAnswerBlock[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((block): block is Record<string, unknown> => Boolean(block && typeof block === 'object'))
+    .map((block) => ({
+      type: typeof block.type === 'string' ? block.type : undefined,
+      title: typeof block.title === 'string' ? block.title : undefined,
+      items: Array.isArray(block.items)
+        ? block.items.map((item) => String(item)).filter(Boolean)
+        : [],
+    }))
+    .filter((block) => block.title || block.items.length > 0)
+    .slice(0, 4);
+}
+
+function normalizeReportDraft(value: unknown): AssistantReportDraft | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const sections = Array.isArray(raw.sections)
+    ? raw.sections
+        .filter((section): section is Record<string, unknown> => Boolean(section && typeof section === 'object'))
+        .map((section) => ({
+          title: typeof section.title === 'string' ? section.title : undefined,
+          body: typeof section.body === 'string' ? section.body : undefined,
+        }))
+        .filter((section) => section.title || section.body)
+        .slice(0, 4)
+    : [];
+  const title = typeof raw.title === 'string' ? raw.title : undefined;
+  if (!title && sections.length === 0) return null;
+  return { title, sections };
+}
+
+function isHttpUrl(value?: string) {
+  return typeof value === 'string' && /^https?:\/\//i.test(value);
+}
+
+function formatEvidenceDate(value?: string) {
+  if (!value) return '';
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return value.slice(0, 10);
+  return `${match[1]}.${match[2]}.${match[3]}`;
 }
 
 function getOrCreateDeviceId() {

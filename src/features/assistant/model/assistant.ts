@@ -25,7 +25,30 @@ export type AssistantSource = {
   id: string;
   title?: string;
   snippet?: string;
+  url?: string;
+  source_name?: string;
+  source_title?: string;
+  published_at?: string;
+  created_at?: string;
+  report_date?: string;
+  updated_at?: string;
+  peer_id?: string;
+  event_type?: string;
   score?: number;
+};
+
+export type AssistantAnswerBlock = {
+  type?: string;
+  title?: string;
+  items?: string[];
+};
+
+export type AssistantReportDraft = {
+  title?: string;
+  sections?: Array<{
+    title?: string;
+    body?: string;
+  }>;
 };
 
 export type AssistantChatResponse = {
@@ -39,7 +62,8 @@ export type AssistantChatResponse = {
   };
   intent?: string;
   scope?: string;
-  answer_blocks?: Array<Record<string, unknown>>;
+  answer_blocks?: AssistantAnswerBlock[];
+  report_draft?: AssistantReportDraft | null;
   sources?: AssistantSource[];
   follow_up_suggestions?: string[];
   confidence?: number;
@@ -68,6 +92,12 @@ export type AssistantConversationDetail = {
     content: string;
     intent?: string;
     sources?: AssistantSource[];
+    answer_blocks?: AssistantAnswerBlock[];
+    report_draft?: AssistantReportDraft | null;
+    answer_payload?: {
+      answer_blocks?: AssistantAnswerBlock[];
+      report_draft?: AssistantReportDraft | null;
+    };
     handoff?: AssistantHandoff | Record<string, never> | null;
     created_at?: string;
   }>;
