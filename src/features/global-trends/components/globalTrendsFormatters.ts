@@ -94,3 +94,42 @@ export function formatLeadingCompanies(companies?: string[]) {
   if (!companies || companies.length === 0) return null;
   return companies.map(companyLabel).join(' · ');
 }
+
+export const PEER_LABELS: Record<string, string> = {
+  sk_ax: 'SK AX',
+  samsung_sds: '삼성SDS',
+  lg_cns: 'LG CNS',
+  posco_dx: '포스코DX',
+  hyundai_autoever: '현대오토에버',
+};
+
+export function peerLabel(peerId: string) {
+  return PEER_LABELS[peerId.trim().toLowerCase()] ?? peerId;
+}
+
+export type AlignmentTone = 'success' | 'warning' | 'neutral' | 'danger';
+
+export const ALIGNMENT_META: Record<string, { label: string; tone: AlignmentTone }> = {
+  aligned: { label: '동행', tone: 'success' },
+  lagging: { label: '추격', tone: 'warning' },
+  missing: { label: '미대응', tone: 'neutral' },
+  diverging: { label: '다른 방향', tone: 'danger' },
+};
+
+export type DeltaTone = 'up' | 'down' | 'flat';
+
+export function deltaTone(value?: number | null): DeltaTone {
+  if (value == null || Number.isNaN(value) || value === 0) return 'flat';
+  return value > 0 ? 'up' : 'down';
+}
+
+/** SK AX 행 우선 + alignment 심각도 순으로 peer 칩 정렬 */
+const ALIGNMENT_ORDER: Record<string, number> = { diverging: 0, missing: 1, lagging: 2, aligned: 3 };
+
+export function sortPeerAlignment<T extends { peer_id: string; alignment_type: string }>(rows: T[]): T[] {
+  return [...rows].sort((left, right) => {
+    if (left.peer_id === 'sk_ax') return -1;
+    if (right.peer_id === 'sk_ax') return 1;
+    return (ALIGNMENT_ORDER[left.alignment_type] ?? 9) - (ALIGNMENT_ORDER[right.alignment_type] ?? 9);
+  });
+}
