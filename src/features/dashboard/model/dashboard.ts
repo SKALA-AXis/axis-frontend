@@ -181,6 +181,17 @@ export interface TodayInsightSource {
   publishedAt?: string | null;
 }
 
+export interface TodayInsightSourceTrace {
+  source_integrated_issue_id?: string;
+  sourceIntegratedIssueId?: string;
+  source_card_id?: string;
+  sourceCardId?: string;
+  source_raw_article_ids?: string[];
+  sourceRawArticleIds?: string[];
+  title?: string;
+  url?: string;
+}
+
 export interface TodayInsightChangeSummary {
   label: string;
   value: string;
@@ -222,6 +233,20 @@ export interface TodayInsightComparisonFacts {
   structural?: Array<Record<string, unknown>>;
 }
 
+export interface TodayInsightSection {
+  id: string;
+  label: string;
+  title?: string;
+  summary?: string;
+  reasoning?: TodayInsightReasoningStep[];
+  evidence?: TodayInsightEvidence;
+  response_direction?: TodayInsightAction[];
+  responseDirection?: TodayInsightAction[];
+  sources?: TodayInsightSource[];
+  source_trace?: TodayInsightSourceTrace[];
+  sourceTrace?: TodayInsightSourceTrace[];
+}
+
 export interface TodayInsightData {
   report_date: string;
   generated_at: string;
@@ -230,14 +255,19 @@ export interface TodayInsightData {
   executive_implication?: string;
   change_summary?: TodayInsightChangeSummary[];
   comparison_facts?: TodayInsightComparisonFacts;
+  insight_sections?: TodayInsightSection[];
+  insightSections?: TodayInsightSection[];
   signals: TodayInsightSignal[];
   response_direction?: TodayInsightAction[];
   sources?: TodayInsightSource[];
+  source_trace?: TodayInsightSourceTrace[];
+  sourceTrace?: TodayInsightSourceTrace[];
   source_integrated_issue_ids?: string[];
   source_card_ids?: string[];
   peer_ids?: string[];
   sectors?: string[];
   confidence?: number;
+  provenance?: Record<string, unknown>;
   warning?: string | null;
 }
 

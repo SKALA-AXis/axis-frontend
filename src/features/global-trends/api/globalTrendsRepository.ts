@@ -1,4 +1,5 @@
 import { httpClient } from '../../../shared/api/httpClient';
+import { env } from '../../../shared/config/env';
 import { mockGlobalTrendList, mockGlobalTrendsRunResult } from '../../../shared/mocks/globalTrends';
 import type {
   GlobalTrendDataSource,
@@ -79,7 +80,10 @@ class HybridGlobalTrendsRepository implements GlobalTrendsRepository {
   async list(params?: GlobalTrendsListParams): Promise<GlobalTrendListResponse> {
     try {
       return await this.remoteRepository.list(params);
-    } catch {
+    } catch (error) {
+      if (!env.enableMockData) {
+        throw error;
+      }
       return this.fallbackRepository.list(params);
     }
   }
@@ -87,7 +91,10 @@ class HybridGlobalTrendsRepository implements GlobalTrendsRepository {
   async run(request?: GlobalTrendsRunRequest): Promise<GlobalTrendsRunResult> {
     try {
       return await this.remoteRepository.run(request);
-    } catch {
+    } catch (error) {
+      if (!env.enableMockData) {
+        throw error;
+      }
       return this.fallbackRepository.run(request);
     }
   }
@@ -97,4 +104,6 @@ const fallbackRepository = new MockGlobalTrendsRepository();
 
 export const globalTrendsRepository: GlobalTrendsRepository = httpClient
   ? new HybridGlobalTrendsRepository(new HttpGlobalTrendsRepository(), fallbackRepository)
-  : fallbackRepository;
+  : env.enableMockData
+    ? fallbackRepository
+    : new HttpGlobalTrendsRepository();

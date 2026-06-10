@@ -2,6 +2,7 @@ import type { BriefingPeriod } from '../data/periodMeta';
 import type { BriefingsData } from '../model/briefing';
 import { httpClient } from '../../../shared/api/httpClient';
 import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
+import { env } from '../../../shared/config/env';
 import { mockBriefingsData } from '../../../shared/mocks/briefings';
 
 export interface BriefingGenerateRequest {
@@ -73,4 +74,6 @@ const fallbackBriefingsRepository = new MockBriefingsRepository();
 
 export const briefingsRepository: BriefingsRepository = httpClient
   ? new HybridBriefingsRepository(new HttpBriefingsRepository(), fallbackBriefingsRepository)
-  : fallbackBriefingsRepository;
+  : env.enableMockData
+    ? fallbackBriefingsRepository
+    : new HttpBriefingsRepository();

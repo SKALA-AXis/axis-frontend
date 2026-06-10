@@ -1,6 +1,7 @@
 import type { PeersData } from '../model/peer';
 import { httpClient } from '../../../shared/api/httpClient';
 import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
+import { env } from '../../../shared/config/env';
 import { mockPeersData } from '../../../shared/mocks/peers';
 
 export interface PeersRepository {
@@ -41,4 +42,6 @@ const fallbackPeersRepository = new MockPeersRepository();
 
 export const peersRepository: PeersRepository = httpClient
   ? new HybridPeersRepository(new HttpPeersRepository(), fallbackPeersRepository)
-  : fallbackPeersRepository;
+  : env.enableMockData
+    ? fallbackPeersRepository
+    : new HttpPeersRepository();

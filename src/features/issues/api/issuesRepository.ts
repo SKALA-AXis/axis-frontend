@@ -1,5 +1,6 @@
 import type { Issue } from '../../../entities/issue/model';
 import { httpClient } from '../../../shared/api/httpClient';
+import { env } from '../../../shared/config/env';
 import { mockIssues } from '../../../shared/mocks/issues';
 
 export interface IssuesRepository {
@@ -24,4 +25,6 @@ class HttpIssuesRepository implements IssuesRepository {
 
 export const issuesRepository: IssuesRepository = httpClient
   ? new HttpIssuesRepository()
-  : new MockIssuesRepository();
+  : env.enableMockData
+    ? new MockIssuesRepository()
+    : new HttpIssuesRepository();
