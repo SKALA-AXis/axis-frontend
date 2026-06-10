@@ -1,9 +1,6 @@
 import type { BriefingPeriod } from '../data/periodMeta';
 import type { BriefingsData } from '../model/briefing';
 import { httpClient } from '../../../shared/api/httpClient';
-import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
-import { env } from '../../../shared/config/env';
-import { mockBriefingsData } from '../../../shared/mocks/briefings';
 
 export interface BriefingGenerateRequest {
   briefing_type: BriefingPeriod;
@@ -24,16 +21,6 @@ export interface BriefingsRepository {
   generateBriefing(request: BriefingGenerateRequest): Promise<BriefingGenerateResult>;
 }
 
-class MockBriefingsRepository implements BriefingsRepository {
-  async getBriefings(): Promise<BriefingsData> {
-    return Promise.resolve(mockBriefingsData);
-  }
-
-  async generateBriefing(): Promise<BriefingGenerateResult> {
-    throw new Error('브리핑 생성 API는 백엔드 연결이 필요합니다.');
-  }
-}
-
 class HttpBriefingsRepository implements BriefingsRepository {
   async getBriefings(): Promise<BriefingsData> {
     if (!httpClient) {
@@ -52,28 +39,4 @@ class HttpBriefingsRepository implements BriefingsRepository {
   }
 }
 
-class HybridBriefingsRepository implements BriefingsRepository {
-  constructor(
-    private readonly remoteRepository: BriefingsRepository,
-    private readonly fallbackRepository: BriefingsRepository,
-  ) {}
-
-  async getBriefings(): Promise<BriefingsData> {
-    return resolveWithFallback(
-      () => this.remoteRepository.getBriefings(),
-      () => this.fallbackRepository.getBriefings(),
-    );
-  }
-
-  async generateBriefing(request: BriefingGenerateRequest): Promise<BriefingGenerateResult> {
-    return this.remoteRepository.generateBriefing(request);
-  }
-}
-
-const fallbackBriefingsRepository = new MockBriefingsRepository();
-
-export const briefingsRepository: BriefingsRepository = httpClient
-  ? new HybridBriefingsRepository(new HttpBriefingsRepository(), fallbackBriefingsRepository)
-  : env.enableMockData
-    ? fallbackBriefingsRepository
-    : new HttpBriefingsRepository();
+export const briefingsRepository: BriefingsRepository = new HttpBriefingsRepository();

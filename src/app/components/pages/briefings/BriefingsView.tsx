@@ -5,7 +5,6 @@ import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
-import { mockInsightResult } from '../../../../shared/mocks/insight';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -16,7 +15,7 @@ import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { PageProcessLoading, PageState } from '../../shared/PageState';
 import { useContentViewMode } from '../../../../shared/hooks/useContentViewMode';
 import { buildBriefingPrintHtml, buildBriefingReportText } from './print';
-import type { BriefingPeriod } from './types';
+import type { BriefingFlowStep, BriefingPeriod, BriefingReport } from './types';
 import {
   buildBriefing,
   buildBriefingRange,
@@ -62,6 +61,52 @@ function normalizeBriefingText(text: string) {
   return text.replace(/(^|\s)\d+\.\s*/g, '$1').replace(/\s+/g, ' ').trim();
 }
 
+function compactFlowDetails(lines: Array<string | null | undefined>, limit = 4) {
+  return lines
+    .map((line) => normalizeBriefingText(line ?? ''))
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function buildBriefingFlowSteps(briefing: BriefingReport, focusTitle: string): BriefingFlowStep[] {
+  const firstSignal = briefing.signalCards[0];
+  const secondSignal = briefing.signalCards[1] ?? firstSignal;
+  const firstMeaning = briefing.meaning[0];
+  const firstBenchmark = briefing.benchmark[0];
+  return [
+    {
+      id: 'observe',
+      label: '관찰',
+      headline: firstSignal?.title ?? briefing.headline,
+      description: `${briefing.label} 브리핑에서 ${briefing.selectedCards.length}건의 실제 카드뉴스를 우선 검토했습니다.`,
+      details: compactFlowDetails(
+        briefing.signalCards.map((item) => `${item.label}: ${item.reason || item.summary}`),
+      ),
+    },
+    {
+      id: 'compare',
+      label: '비교',
+      headline: secondSignal?.title ?? `${focusTitle} 비교`,
+      description: '기간 내 카드뉴스를 Peer사, 산업, 이벤트 성격 기준으로 비교해 중복 신호와 차이를 분리했습니다.',
+      details: compactFlowDetails(briefing.whatHappenedDigest),
+    },
+    {
+      id: 'meaning',
+      label: '시사',
+      headline: firstMeaning?.title ?? '카드뉴스 묶음에서 확인된 시사점',
+      description: firstMeaning?.reason ?? '실제 카드뉴스 근거가 충분히 쌓이면 시사점이 보강됩니다.',
+      details: compactFlowDetails(briefing.meaning.map((item) => `${item.title} ${item.reason}`)),
+    },
+    {
+      id: 'response',
+      label: '대응',
+      headline: firstBenchmark?.title ?? '다음 판단 기준',
+      description: firstBenchmark?.reason ?? '후속 카드뉴스가 수집되면 대응 기준을 다시 점검합니다.',
+      details: compactFlowDetails(briefing.benchmark.map((item) => `${item.title} ${item.reason}`)),
+    },
+  ].filter((step) => step.headline || step.description || step.details.length > 0);
+}
+
 export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTimeChange }: BriefingsViewProps) {
   const { cards, isLoading, error, reload } = useCardNews();
   const contentViewMode = useContentViewMode();
@@ -77,7 +122,6 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   const [shareFeedback, setShareFeedback] = useState('');
   const [activeInsightStep, setActiveInsightStep] = useState(0);
   const [activeBriefingReasoningId, setActiveBriefingReasoningId] = useState<'focus' | null>(null);
-  const activeFlowStep = mockInsightResult.flowSteps[activeInsightStep] ?? mockInsightResult.flowSteps[0];
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const weeklyOptions = useMemo(() => getWeekOptions(weeklyMonth), [weeklyMonth]);
@@ -100,7 +144,22 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     () => [briefingLeadText, briefing.briefingSummaryLine].map((line) => normalizeBriefingText(line)).filter(Boolean),
     [briefing.briefingSummaryLine, briefingLeadText],
   );
-  const reportText = useMemo(() => buildBriefingReportText(briefing, briefingFocusTitle), [briefing, briefingFocusTitle]);
+  const briefingFlowSteps = useMemo(
+    () => buildBriefingFlowSteps(briefing, briefingFocusTitle),
+    [briefing, briefingFocusTitle],
+  );
+  const activeFlowStep = briefingFlowSteps[activeInsightStep] ?? briefingFlowSteps[0];
+  const reportText = useMemo(
+    () => buildBriefingReportText(briefing, briefingFocusTitle, briefingFlowSteps),
+    [briefing, briefingFlowSteps, briefingFocusTitle],
+  );
+
+  useEffect(() => {
+    if (activeInsightStep >= briefingFlowSteps.length) {
+      setActiveInsightStep(0);
+    }
+  }, [activeInsightStep, briefingFlowSteps.length]);
+
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
   const isVisualMode = contentViewMode === 'visual';
   const evidenceCards = briefing.selectedCards
@@ -143,7 +202,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
           },
           {
             title: '해석 에이전트의 판단 흐름',
-            items: mockInsightResult.flowSteps.map((step, index) => ({
+            items: briefingFlowSteps.map((step, index) => ({
               label: `${String(index + 1).padStart(2, '0')} · ${step.label}`,
               body: `${step.headline} 이 단계에서 에이전트는 ${step.description}`,
             })),
@@ -153,7 +212,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
         evidenceCards: focusEvidenceCards,
       },
     };
-  }, [briefing.label, briefing.selectedCards, briefing.signalCards]);
+  }, [briefing.label, briefing.selectedCards, briefing.signalCards, briefingFlowSteps, briefingFocusTitle]);
   const activeBriefingReasoning = activeBriefingReasoningId ? briefingReasoningSections[activeBriefingReasoningId] : null;
 
   const handleShareBriefing = async () => {
@@ -191,7 +250,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     }
 
     printWindow.document.open();
-    printWindow.document.write(buildBriefingPrintHtml(briefing, briefingFocusTitle));
+    printWindow.document.write(buildBriefingPrintHtml(briefing, briefingFocusTitle, briefingFlowSteps));
     printWindow.document.close();
     printWindow.focus();
     window.setTimeout(() => {
@@ -421,7 +480,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                   </div>
                   <div className="p-6">
                     <div className="flex flex-wrap items-center gap-2">
-                      {mockInsightResult.flowSteps.map((step, index) => (
+                      {briefingFlowSteps.map((step, index) => (
                         <button
                           key={step.id}
                           type="button"
@@ -525,7 +584,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                   </div>
                   <div className="p-6">
                     <div className="flex flex-wrap items-center gap-2">
-                      {mockInsightResult.flowSteps.map((step, index) => (
+                      {briefingFlowSteps.map((step, index) => (
                         <button
                           key={step.id}
                           type="button"
@@ -646,7 +705,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                 <section className="mt-6 rounded-[10px] border border-[#EDE4D8] bg-[#FFFCF7] p-4">
                   <h2 className="text-base font-bold text-[#1A1A1F]">해석 흐름</h2>
                   <div className="mt-3 space-y-4">
-                    {mockInsightResult.flowSteps.map((step, index) => (
+                    {briefingFlowSteps.map((step, index) => (
                       <section key={step.id} className="rounded-[10px] border border-[#EDE4D8] bg-[#FFFFFF] p-4">
                         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#B8451A]">
                           {String(index + 1).padStart(2, '0')} {step.label}

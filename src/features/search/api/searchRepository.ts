@@ -1,10 +1,5 @@
 import { getAccessToken } from '../../../shared/api/authSession';
 import { env } from '../../../shared/config/env';
-import { getDisplayDate, getPeerLabel, getSummaryLines } from '../../card-news/mappers/cardNewsExecutive';
-import { cardNewsItems } from '../../../shared/mocks/cardNews';
-import { mockBriefingsData } from '../../../shared/mocks/briefings';
-import { graphNodes } from '../../../shared/mocks/keywordGraph';
-import { mockPeerPlusIrProfiles, mockPeerPlusOptions } from '../../../shared/mocks/peerPlus';
 import type { SearchRequest, SearchResponse, SearchResultItem, SearchScope } from '../model/search';
 
 type ApiResponse<T> = {
@@ -35,17 +30,10 @@ class SearchRepository {
           limit: request.limit ?? 12,
         }),
       });
-      const normalized = normalizeSearchResponse(response, request);
-      if (normalized.items.length > 0 || !shouldUseMockFallback()) {
-        return normalized;
-      }
+      return normalizeSearchResponse(response, request);
     } catch (error) {
-      if (!shouldUseMockFallback()) {
-        throw error;
-      }
+      throw error;
     }
-
-    return buildMockSearchResponse(request);
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {
@@ -124,7 +112,7 @@ function toLegacyCardResultItem(raw: RawSearchItem): SearchResultItem {
     targetId: stringValue(raw.id),
     date: stringValue(raw.date),
     score: 70,
-    metadata: { source: 'fixture' },
+    metadata: { source: 'api_legacy' },
   };
 }
 
@@ -141,7 +129,7 @@ function toLegacyPeerResultItem(raw: RawSearchItem): SearchResultItem {
     targetId: id,
     date: '',
     score: 64,
-    metadata: { peerId: id, source: 'fixture' },
+    metadata: { peerId: id, source: 'api_legacy' },
   };
 }
 
@@ -157,133 +145,8 @@ function toLegacyKeywordResultItem(raw: RawSearchItem): SearchResultItem {
     targetId: text,
     date: '',
     score: numberValue(raw.score) || 60,
-    metadata: { source: 'fixture' },
+    metadata: { source: 'api_legacy' },
   };
-}
-
-function buildMockSearchResponse(request: SearchRequest): SearchResponse {
-  const items = buildMockSearchItems(request)
-    .sort((left, right) => right.score - left.score || stringValue(right.date).localeCompare(stringValue(left.date)))
-    .slice(0, request.limit ?? 12);
-  return {
-    query: request.query,
-    items,
-    counts: buildCounts(items),
-    total: items.length,
-    hasMore: false,
-  };
-}
-
-function buildMockSearchItems(request: SearchRequest): SearchResultItem[] {
-  const scopes = requestedScopes(request);
-  return [
-    ...(scopes.includes('BRIEFING') ? mockBriefingItems(request) : []),
-    ...(scopes.includes('CARD_NEWS') ? mockCardNewsItems(request) : []),
-    ...(scopes.includes('KEYWORD_GRAPH') ? mockKeywordGraphItems(request) : []),
-    ...(scopes.includes('PEER_PLUS') ? mockPeerItems(request) : []),
-  ];
-}
-
-function mockCardNewsItems(request: SearchRequest): SearchResultItem[] {
-  const matched = cardNewsItems
-    .filter((card) => matchesQuery([
-      card.title,
-      getPeerLabel(card),
-      card.category,
-      card.category_label,
-      card.subtitle,
-      card.sector,
-      card.detailDescription,
-      ...getSummaryLines(card),
-      ...(card.insights ?? []),
-      ...(card.actionItems ?? []),
-    ], request.query))
-    .filter((card) => matchesDate(getDisplayDate(card), request));
-  const cards = matched.length > 0 ? matched : cardNewsItems.filter((card) => matchesDate(getDisplayDate(card), request)).slice(0, 4);
-
-  return cards.map((card, index) => ({
-    id: card.id,
-    type: 'CARD_NEWS',
-    title: card.title,
-    snippet: getSummaryLines(card)[0] ?? card.detailDescription,
-    badge: getPeerLabel(card),
-    target: 'issues',
-    targetId: card.id,
-    date: getDisplayDate(card),
-    score: 70 - index,
-    metadata: { source: 'local-mock', peerId: card.peer_id ?? '' },
-  }));
-}
-
-function mockBriefingItems(request: SearchRequest): SearchResultItem[] {
-  const matched = mockBriefingsData.history
-    .filter((briefing) => matchesQuery([
-      briefing.title,
-      briefing.summary,
-      briefing.status,
-      ...(briefing.evidence ?? []),
-    ], request.query) || sameSearchDate(briefing.date, request.query))
-    .filter((briefing) => matchesDate(briefing.date, request));
-  const briefings = matched.length > 0
-    ? matched
-    : mockBriefingsData.history.filter((briefing) => matchesDate(briefing.date, request)).slice(0, 3);
-
-  return briefings.map((briefing, index) => ({
-    id: briefing.id,
-    type: 'BRIEFING',
-    title: briefing.title,
-    snippet: briefing.summary,
-    badge: '브리핑',
-    target: 'briefings',
-    targetId: briefing.id,
-    date: briefing.date,
-    score: 68 - index,
-    metadata: { source: 'local-mock', status: briefing.status },
-  }));
-}
-
-function mockKeywordGraphItems(request: SearchRequest): SearchResultItem[] {
-  const matched = graphNodes.filter((node) => matchesQuery([
-    node.id,
-    node.label,
-    node.category,
-    node.sourceType,
-  ], request.query));
-  const nodes = matched.length > 0 ? matched : graphNodes.slice(0, 5);
-
-  return nodes.map((node) => ({
-    id: node.id,
-    type: 'KEYWORD_GRAPH',
-    title: node.label,
-    snippet: `${node.category} · 언급 점수 ${node.score}`,
-    badge: '키워드 그래프',
-    target: 'keywordGraph',
-    targetId: node.id,
-    date: '',
-    score: node.score,
-    metadata: { source: 'local-mock', category: node.category },
-  }));
-}
-
-function mockPeerItems(request: SearchRequest): SearchResultItem[] {
-  const matched = mockPeerPlusOptions.filter((peer) => {
-    const profile = mockPeerPlusIrProfiles[peer.id];
-    return matchesQuery([peer.id, peer.label, ...(profile?.summary ?? [])], request.query);
-  });
-  const peers = matched.length > 0 ? matched : mockPeerPlusOptions.slice(0, 4);
-
-  return peers.map((peer, index) => ({
-    id: peer.id,
-    type: 'PEER_PLUS',
-    title: peer.label,
-    snippet: mockPeerPlusIrProfiles[peer.id]?.summary[0] ?? 'Peer+ 비교 화면으로 이동합니다.',
-    badge: 'Peer+',
-    target: 'peerPlus',
-    targetId: peer.id,
-    date: '',
-    score: 65 - index,
-    metadata: { source: 'local-mock', peerId: peer.id },
-  }));
 }
 
 async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
@@ -356,83 +219,6 @@ function buildCounts(items: SearchResultItem[]) {
     counts[scope] = items.filter((item) => item.type === scope).length;
     return counts;
   }, {});
-}
-
-function shouldUseMockFallback() {
-  return env.enableMockData;
-}
-
-function normalizeSearchText(value: string) {
-  return value.toLowerCase().replace(/\s+/g, '');
-}
-
-function matchesQuery(values: Array<string | null | undefined>, query: string) {
-  const normalizedQuery = normalizeSearchText(query.trim());
-  if (!normalizedQuery) {
-    return true;
-  }
-  return normalizeSearchText(values.filter(Boolean).join(' ')).includes(normalizedQuery);
-}
-
-function matchesDate(value: string | null | undefined, request: SearchRequest) {
-  const target = parseDate(value);
-  if (!target) {
-    return true;
-  }
-  const { start, end } = resolveDateRange(request);
-  if (start && target < start) return false;
-  if (end && target > end) return false;
-  return true;
-}
-
-function sameSearchDate(value: string | null | undefined, query: string) {
-  const target = parseDate(value);
-  const searched = parseDate(query);
-  return Boolean(target && searched && target === searched);
-}
-
-function parseDate(value: string | null | undefined) {
-  if (!value) return '';
-  const normalized = value.trim().replace(/\./g, '-').replace(/\//g, '-').replace(/-$/g, '');
-  const match = normalized.match(/\d{4}-\d{1,2}-\d{1,2}/);
-  if (!match) return '';
-  const [year, month, day] = match[0].split('-');
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-}
-
-function resolveDateRange(request: SearchRequest) {
-  if (request.period === 'custom') {
-    return {
-      start: parseDate(request.startDate),
-      end: parseDate(request.endDate),
-    };
-  }
-
-  const days = request.period === '7d'
-    ? 7
-    : request.period === '30d'
-      ? 30
-      : request.period === '90d'
-        ? 90
-        : 0;
-  if (!days) {
-    return { start: '', end: '' };
-  }
-
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(end.getDate() - days);
-  return {
-    start: formatDateForCompare(start),
-    end: formatDateForCompare(end),
-  };
-}
-
-function formatDateForCompare(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 function koreanHttpError(status: number) {

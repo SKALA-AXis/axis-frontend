@@ -1,10 +1,6 @@
 import type { CardNewsItem } from '../model/cardNews';
 import { cardNewsPeerLabels } from '../../../shared/content/cardNewsLabels';
-import {
-  type FallbackCardNewsDisplayEntry,
-  cardNewsPresentationDefaults,
-  fallbackCardNewsDisplayEntries,
-} from '../../../shared/mocks/cardNewsPresentation';
+import { cardNewsPresentationDefaults } from '../../../shared/content/cardNewsPresentationDefaults';
 
 export type PeerName = '삼성SDS' | 'LG CNS' | '현대 오토에버' | '포스코 DX';
 export type SectorName = 'AX' | '보안' | '수주' | '인프라' | '섹터' | 'AI' | 'Peer';
@@ -38,12 +34,6 @@ type DisplayEntryItem = CardCatalogItem & {
 };
 
 function buildDisplayEntries(cards: CardNewsItem[]): DisplayEntryItem[] {
-  const fallbackByCardId = new Map<string, FallbackCardNewsDisplayEntry[]>();
-  fallbackCardNewsDisplayEntries.forEach((entry) => {
-    fallbackByCardId.set(entry.cardId, [...(fallbackByCardId.get(entry.cardId) ?? []), entry]);
-  });
-
-  const cardMap = new Map(cards.map((card) => [card.id, card]));
   return cards.flatMap((card) => {
     const apiEntries = (card.displayEntries ?? []).map((entry) => ({
       id: entry.id,
@@ -62,25 +52,6 @@ function buildDisplayEntries(cards: CardNewsItem[]): DisplayEntryItem[] {
 
     if (apiEntries.length > 0) {
       return apiEntries;
-    }
-
-    const fallbackEntries = (fallbackByCardId.get(card.id) ?? []).map((entry) => ({
-      id: entry.id,
-      cardId: card.id,
-      card,
-      title: entry.title,
-      subtitle: entry.title,
-      peer: entry.peerCompany as PeerName,
-      sector: entry.sector as Exclude<SectorName, '섹터' | 'AI' | 'Peer'>,
-      sourceType: entry.sourceType as SourceTypeName,
-      date: entry.displayDate,
-      accentLabel: entry.badgeLabel,
-      coverStyle: entry.coverStyle,
-      previewImageStyle: entry.previewImageStyle,
-    }));
-
-    if (fallbackEntries.length > 0) {
-      return fallbackEntries;
     }
 
     return [

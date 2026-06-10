@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
-  ExternalLink,
   FileText,
   History,
   Link2,
@@ -19,7 +18,6 @@ import { assistantRepository } from '../../../features/assistant/api/assistantRe
 import type {
   AssistantAnswerBlock,
   AssistantConversationSummary,
-  AssistantHandoff,
   AssistantHistoryTurn,
   AssistantReportDraft,
   AssistantSource,
@@ -29,7 +27,6 @@ import { uiText } from '../../../shared/content/uiText';
 type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
-  handoff?: AssistantHandoff | null;
   sources?: AssistantSource[];
   answerBlocks?: AssistantAnswerBlock[];
   reportDraft?: AssistantReportDraft | null;
@@ -45,7 +42,7 @@ type FloatingAiChatProps = {
 const deviceStorageKey = 'axis:assistant-device-id';
 const greetingMessage = `${uiText.dashboard.chatGreeting} `;
 
-export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: FloatingAiChatProps) {
+export function FloatingAiChat({ activeView, scrollToTopControl }: FloatingAiChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isBubbleVisible, setIsBubbleVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -116,7 +113,6 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
         {
           role: 'assistant',
           content: response.reply || response.message?.content || '답변을 생성하지 못했습니다.',
-          handoff: response.handoff ?? null,
           sources: response.sources ?? [],
           answerBlocks: normalizeAnswerBlocks(response.answer_blocks),
           reportDraft: normalizeReportDraft(response.report_draft),
@@ -207,7 +203,6 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
             .map((message) => ({
               role: message.role === 'user' ? 'user' : 'assistant',
               content: message.content,
-              handoff: isHandoff(message.handoff) ? message.handoff : null,
               sources: message.sources ?? [],
               answerBlocks: normalizeAnswerBlocks(message.answer_blocks ?? message.answer_payload?.answer_blocks),
               reportDraft: normalizeReportDraft(message.report_draft ?? message.answer_payload?.report_draft),
@@ -216,11 +211,6 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
     );
     setExpandedEvidenceKeys(new Set());
     setIsHistoryOpen(false);
-  };
-
-  const handleHandoff = (handoff: AssistantHandoff) => {
-    onNavigate(routeToView(handoff.target_route));
-    setIsOpen(false);
   };
 
   const toggleEvidence = (key: string) => {
@@ -369,16 +359,6 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
                             </div>
                           ) : null}
                         </div>
-                      ) : null}
-                      {message.handoff ? (
-                        <button
-                          type="button"
-                          onClick={() => handleHandoff(message.handoff as AssistantHandoff)}
-                          className="mt-3 inline-flex items-center gap-1 rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] px-2 py-1 text-xs font-semibold text-white"
-                        >
-                          <ExternalLink className="size-3" />
-                          {message.handoff.label}
-                        </button>
                       ) : null}
                     </div>
                   </div>
@@ -735,16 +715,4 @@ function viewToRoute(view: string) {
   if (view === 'home') return '/dashboard';
   if (view === 'issues') return '/cards';
   return `/${view}`;
-}
-
-function routeToView(route: string) {
-  if (route === '/mixer') return 'mixer';
-  if (route === '/briefings') return 'briefings';
-  if (route === '/dashboard') return 'home';
-  if (route === '/cards') return 'issues';
-  return route.replace(/^\//, '') || 'home';
-}
-
-function isHandoff(value: unknown): value is AssistantHandoff {
-  return Boolean(value && typeof value === 'object' && 'target_route' in value && 'label' in value);
 }

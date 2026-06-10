@@ -3,7 +3,7 @@
  * - SK Red → Mistral Orange 그라디언트 (시그니처 영역만)
  * - 본문 16px / line-height 1.55~1.6 (한글)
  * - 라운딩: xs 4 / sm 6 / md 8 / lg 12 / xl 16 / xxl 20 / full 9999
- * - chrome 그림자 X (shadow-card / shadow-mockup 만 별도)
+ * - chrome 그림자 X (shadow-card / shadow-elevated 만 별도)
  * - .dark 블록 — W6+ 다크모드용 보존
  */
 
@@ -36,7 +36,7 @@
   --canvas: #FFFFFF;
   --surface: #FAF8F5;
   --surface-cream: #FBF4E4;
-  --surface-code: #1A1A1F;     /* code mockup / TopNav 다크 톤은 보존 */
+  --surface-code: #1A1A1F;     /* code / TopNav 다크 톤은 보존 */
 
   /* ─── Ink (라이트 — dark text on light bg) ───────── */
   --ink: #1A1A1F;
@@ -106,7 +106,7 @@
 
   /* Shadow — 라이트 환경 (Mistral 톤, 미세) */
   --shadow-card: rgba(0, 0, 0, 0.04) 0px 4px 12px;
-  --shadow-mockup: rgba(0, 0, 0, 0.08) 0px 12px 24px -4px;
+  --shadow-elevated: rgba(0, 0, 0, 0.08) 0px 12px 24px -4px;
 
   /* Chart palette — Mistral 무채/시그니처 톤 */
   --chart-1: var(--primary);
@@ -177,7 +177,7 @@
 
   /* shadow 다크용 */
   --shadow-card: rgba(0, 0, 0, 0.4) 0px 4px 16px, inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --shadow-mockup: rgba(0, 0, 0, 0.6) 0px 12px 32px -8px, inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-elevated: rgba(0, 0, 0, 0.6) 0px 12px 32px -8px, inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
   /* shadcn semantic 다크 매핑 — 모두 다크 토큰 참조 */
   --background: var(--canvas);

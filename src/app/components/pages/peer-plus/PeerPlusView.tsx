@@ -9,7 +9,7 @@ import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOvervie
 import type { PeerAnalysisTraceItem, PeerComparisonInsightItem, PeerOverviewRow, PeerSwotInsightItem } from '../../../../features/peers/model/peerOverview';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
-import { mockPeerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
+import { peerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/content/peerPlus';
 import { ExecutiveBadge, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { PageProcessLoading, PageState } from '../../shared/PageState';
@@ -312,7 +312,7 @@ function readStoredPeerPlusFilter(): PeerPlusFilterId {
   if (stored === 'global_industry' || stored === 'all') {
     return stored;
   }
-  if (stored && mockPeerPlusOptions.some((peer) => peer.id === stored)) {
+  if (stored && peerPlusOptions.some((peer) => peer.id === stored)) {
     return stored as PeerPlusPeerId;
   }
   return 'all';
@@ -339,7 +339,7 @@ export function PeerPlusView({
     reload: reloadPeerOverview,
   } = usePeerOverview();
   const { peerPositioning, isLoading: isPeerPositioningLoading, error: peerPositioningError } = usePeerPositioning();
-  const peerOptions = mockPeerPlusOptions;
+  const peerOptions = peerPlusOptions;
   const filterOptions: Array<{ id: PeerPlusFilterId; label: string }> = [{ id: 'all', label: '전체' }, ...peerOptions, globalIndustryFilterOption];
   const [selectedPeerId, setSelectedPeerId] = useState<PeerPlusFilterId>(
     () => externalSelectedPeerId ?? readStoredPeerPlusFilter(),

@@ -42,9 +42,7 @@ import type {
   TodayInsightSource,
   TodayInsightSourceTrace,
 } from '../../../../../features/dashboard/model/dashboard';
-import { env } from '../../../../../shared/config/env';
 import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
-import { homeTodayInsightSignals } from '../../../../../shared/mocks/homeDashboardPresentation';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../../shared/FloatingCardNewsOverlay';
 import { PageProcessLoading, PageState } from '../../../shared/PageState';
@@ -232,33 +230,26 @@ export function HomeDashboardView({
     || todayInsightKind.includes('scheduled_pending')
     || todayInsightMode === 'cache_only';
   const isTodayInsightMockLike = isTodayInsightFixture || isTodayInsightStatusPlaceholder;
+  const displayTodayInsight = isTodayInsightMockLike ? null : todayInsight;
   const todayInsightSignals = useMemo<HomeTodayInsightSignal[]>(
     () => {
-      const liveSections = (todayInsight?.insightSections ?? todayInsight?.insight_sections ?? [])
+      if (isTodayInsightMockLike) {
+        return [];
+      }
+      const liveSections = (displayTodayInsight?.insightSections ?? displayTodayInsight?.insight_sections ?? [])
         .filter((section) => section.summary || section.title)
         .map((section) => normalizeTodayInsightSection(section));
       if (liveSections.length) {
         return liveSections;
       }
-      const liveSignals = todayInsight?.signals?.length
-        ? todayInsight.signals.map((signal) => normalizeTodayInsightSignal(signal))
+      const liveSignals = displayTodayInsight?.signals?.length
+        ? displayTodayInsight.signals.map((signal) => normalizeTodayInsightSignal(signal))
         : [];
-      return liveSignals.length
-        ? liveSignals
-        : env.enableMockData
-          ? homeTodayInsightSignals.map((signal) => normalizeTodayInsightSignal(signal))
-          : [];
+      return liveSignals;
     },
-    [todayInsight],
+    [displayTodayInsight, isTodayInsightMockLike],
   );
-  const usingLocalTodayInsightMock = env.enableMockData && !todayInsightLoading && !todayInsight;
-  const todayInsightStateLabel = usingLocalTodayInsightMock
-    ? '목업입니다.'
-    : isTodayInsightFixture
-      ? '목업입니다.'
-      : isTodayInsightStatusPlaceholder
-        ? '생성 대기'
-        : null;
+  const todayInsightStateLabel = isTodayInsightMockLike ? '생성 대기' : null;
   // 첫 신호 pre-selected — empty state 회피, 진입 즉시 evidence 패널 노출
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
   const selectedSignal = useMemo(
@@ -296,12 +287,12 @@ export function HomeDashboardView({
     }
 
     onUpdateTimeChange?.(pickLatestTimestamp([
-      todayInsight?.generated_at ?? null,
+      displayTodayInsight?.generated_at ?? null,
       ...cards.flatMap((card) => [card.created_at, card.published_date, card.date]),
       ...dashboard.articles.map((article) => article.publishedAt),
       dashboard.dartSummary?.publishedAt ?? null,
     ]));
-  }, [cards, cardsLoading, dashboard, dashboardError, dashboardLoading, onUpdateTimeChange, todayInsight]);
+  }, [cards, cardsLoading, dashboard, dashboardError, dashboardLoading, displayTodayInsight, onUpdateTimeChange]);
 
   if (dashboardLoading || cardsLoading || dashboardError || !dashboard) {
     return (
@@ -334,12 +325,12 @@ export function HomeDashboardView({
   const heroCard = rankedCards[0] ?? latestCards[0];
   const summaryCard = summaryChoices[summaryIndex % Math.max(summaryChoices.length, 1)] ?? heroCard;
   const homeDetailCard = homeDetailCardId ? cards.find((card) => card.id === homeDetailCardId) ?? null : null;
-  const insightComparison = todayInsight?.comparison_facts;
+  const insightComparison = displayTodayInsight?.comparison_facts;
   const insightKeywordTrends = insightComparison?.keyword_trends ?? [];
   const insightHiddenGems = insightComparison?.visibility_gaps ?? [];
   const insightPrimaryLead = insightComparison?.primary_selection?.items?.[0] ?? null;
-  const changeSummary = todayInsight?.change_summary?.length
-    ? todayInsight.change_summary
+  const changeSummary = displayTodayInsight?.change_summary?.length
+    ? displayTodayInsight.change_summary
     : [
         { label: '오늘 감지된 변화', value: `${dashboard.trends.length + cards.length}건` },
         insightKeywordTrends[0]
@@ -353,16 +344,16 @@ export function HomeDashboardView({
   const selectedSourceIdSet = new Set(selectedSignal?.evidence.sourceIds ?? []);
   const selectedSources = selectedSignal?.sources.length
     ? selectedSignal.sources.slice(0, 4)
-    : (todayInsight?.sources ?? [])
+    : (displayTodayInsight?.sources ?? [])
       .filter((source) => selectedSourceIdSet.size === 0 || selectedSourceIdSet.has(source.id))
       .slice(0, 4);
   const selectedActions = selectedSignal?.responseDirection.length
     ? selectedSignal.responseDirection.slice(0, 2)
-    : (todayInsight?.response_direction ?? []).slice(0, 2);
+    : (displayTodayInsight?.response_direction ?? []).slice(0, 2);
   const selectedSourceTrace = selectedSignal?.sourceTrace.length
     ? selectedSignal.sourceTrace.slice(0, 6)
-    : (todayInsight?.sourceTrace ?? todayInsight?.source_trace ?? []).slice(0, 6);
-  const todayInsightTitle = todayInsight?.headline?.trim()
+    : (displayTodayInsight?.sourceTrace ?? displayTodayInsight?.source_trace ?? []).slice(0, 6);
+  const todayInsightTitle = displayTodayInsight?.headline?.trim()
     || todayInsightSignals[0]?.value
     || (todayInsightLoading ? "Today's insight" : "Today's Insight 생성 결과가 없습니다");
   const stockPointByDate = new Map(dashboard.stockPoints.map((point) => [point.date, point]));
@@ -628,9 +619,9 @@ export function HomeDashboardView({
                     className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-1 text-[11px] text-[var(--axis-ink)]"
                   />
                 </label>
-                {todayInsight?.report_date ? (
+                {displayTodayInsight?.report_date ? (
                   <span className="text-[11px] font-semibold text-[var(--axis-muted)]">
-                    저장 리포트 · {formatKoreanDate(todayInsight.report_date)}
+                    저장 리포트 · {formatKoreanDate(displayTodayInsight.report_date)}
                   </span>
                 ) : null}
                 {todayInsightStateLabel ? (
@@ -652,27 +643,27 @@ export function HomeDashboardView({
                 {todayInsightTitle}
               </h2>
               <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
-                {todayInsight?.executive_summary
-                  ? todayInsight.executive_summary
+                {displayTodayInsight?.executive_summary
+                  ? displayTodayInsight.executive_summary
                   : todayInsightSignals.length === 0 && !todayInsightLoading
-                  ? "실제 저장된 Today's Insight가 아직 조회되지 않았습니다. 목업 데이터는 표시하지 않습니다."
+                  ? "실제 저장된 Today's Insight가 아직 조회되지 않았습니다."
                   : heroCard
                   ? getSummaryLines(heroCard)[0]
                   : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.'}
               </p>
-              {isTodayInsightMockLike || usingLocalTodayInsightMock ? (
+              {isTodayInsightMockLike ? (
                 <div className="mt-3 max-w-2xl rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.06)] px-3 py-2 text-xs leading-5 text-[var(--axis-body)]">
-                  실제 Today&apos;s Insight 생성 결과가 아직 없어 목업, 캐시 대기 또는 상태 안내 데이터를 표시하고 있습니다.
+                  실제 Today&apos;s Insight 생성 결과가 아직 없어 저장된 분석 본문을 표시하지 않습니다.
                   출처가 포함된 생성 결과가 저장되면 이 영역은 자동으로 실제 분석 결과로 교체됩니다.
                 </div>
               ) : null}
-              {todayInsight?.executive_implication &&
+              {displayTodayInsight?.executive_implication &&
               !(
                 insightHiddenGems[0]?.narrative_hint &&
-                todayInsight.executive_implication.trim() === insightHiddenGems[0].narrative_hint.trim()
+                displayTodayInsight.executive_implication.trim() === insightHiddenGems[0].narrative_hint.trim()
               ) ? (
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--axis-muted)]">
-                  {todayInsight.executive_implication}
+                  {displayTodayInsight.executive_implication}
                 </p>
               ) : null}
               {insightHiddenGems.length > 0 ? (
@@ -1177,7 +1168,7 @@ export function HomeDashboardView({
             {/* 차트 안내 — heavy 박스가 아니라 1-line footer 캡션 (홈은 입구. 깊은 설명은 차트별 detail 페이지로) */}
             <p className="mt-2 text-[10px] leading-4 text-[var(--axis-muted)]">
               {showStockChart
-                ? `Peer 4사 전일 대비 주가 증감률 · ${dashboard.stockSource?.label ?? 'mock stockPoints fallback'}`
+                ? `Peer 4사 전일 대비 주가 증감률 · ${dashboard.stockSource?.label ?? '실시간 주가 데이터 대기'}`
                 : `키워드 검색지수 일별 전일 대비 지수 차이 · ${keywordTrends?.sourceName ?? 'lazy keyword trend endpoint'}`}
             </p>
           </ChartButton>

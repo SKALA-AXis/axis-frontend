@@ -13,7 +13,6 @@ import { useAdminCards } from '../../../../features/admin-cards/hooks/useAdminCa
 import type { AdminCard } from '../../../../features/admin-cards/model/adminCard';
 import { useAdminUsers } from '../../../../features/admin-users/hooks/useAdminUsers';
 import type { AdminUser, AdminUserStatus } from '../../../../features/admin-users/model/adminUser';
-import { mockAdminPeers } from '../../../../shared/mocks/admin';
 import { TableStateRow } from '../../shared/PageState';
 
 type AdminTab = 'users' | 'peers' | 'cards' | 'audit';
@@ -88,7 +87,7 @@ export function AdminView() {
                 onStatusChange={updateStatus}
               />
             ) : null}
-            {activeTab === 'peers' ? <AdminTable title="모니터링 대상 Peer사" rows={mockAdminPeers} /> : null}
+            {activeTab === 'peers' ? <AdminTable title="모니터링 대상 Peer사" rows={[]} /> : null}
             {activeTab === 'cards' ? (
               <AdminDeletedCardsPanel
                 cards={cards}
@@ -383,7 +382,7 @@ function AdminUsersPanel({
 }
 
 function AdminTable({ title, rows }: { title: string; rows: Array<Record<string, string | number>> }) {
-  const columns = Object.keys(rows[0] ?? {});
+  const columns = Object.keys(rows[0] ?? { id: 'ID', name: '이름', status: '상태' });
 
   return (
     <section>
@@ -403,7 +402,9 @@ function AdminTable({ title, rows }: { title: string; rows: Array<Record<string,
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
+            {rows.length === 0 ? (
+              <TableStateRow colSpan={columns.length} label="표시할 실제 데이터가 없습니다." />
+            ) : rows.map((row, index) => (
               <tr key={String(row.id ?? index)}>
                 {columns.map((column) => (
                   <td key={column}>

@@ -3,7 +3,7 @@ import { bookmarksRepository } from '../../../features/bookmarks/api/bookmarksRe
 import type { AuthUser } from '../../../features/auth/model/auth';
 import type { SearchScope } from '../../../features/search/model/search';
 import type { UserRole } from '../../types/userRole';
-import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../shared/mocks/peerPlus';
+import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../shared/content/peerPlus';
 import { useViewRouting } from '../../../shared/hooks/useViewRouting';
 import type { TextPreference } from '../../../shared/config/textPreferences';
 import {

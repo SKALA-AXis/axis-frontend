@@ -9,7 +9,7 @@ import type { CardNewsItem } from '../../../../features/card-news/model/cardNews
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
 import { httpClient } from '../../../../shared/api/httpClient';
 import { pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
-import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/mocks/keywordGraph';
+import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/content/keywordGraph';
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { Skeleton } from '../../ui/skeleton';

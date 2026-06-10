@@ -17,7 +17,7 @@ export const uiText = {
     addAction: '추가',
     addUrlPlaceholder: 'https://example.com/news/original-source',
     empty: '필터 조건에 맞는 동향이 없습니다.',
-    loadFallback: '동향 데이터를 불러오지 못했습니다. 현재는 mock 또는 수동 추가 데이터 기준으로 표시합니다.',
+    loadFallback: '동향 데이터를 불러오지 못했습니다. 백엔드 연결 상태를 확인해 주세요.',
     loading: '동향 데이터를 불러오는 중입니다.',
     manualTitle: '원문 링크 기반 동향 분석 대기',
     manualPeer: '사용자 추가',

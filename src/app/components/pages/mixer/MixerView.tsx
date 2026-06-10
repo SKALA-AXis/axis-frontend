@@ -14,7 +14,6 @@ import {
   type MixerStageEvent,
 } from '../../../../features/mixer/model/mixer';
 import { mixerRepository } from '../../../../features/mixer/api/mixerRepository';
-import { env } from '../../../../shared/config/env';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -199,29 +198,6 @@ const formatMixerDate = (value?: string | null): string => {
 
 const mixerModeLabel = (mode?: string | null): string => (mode === 'deep' ? '정확 분석' : '빠른 실행');
 
-const mixerHistoryPreviewGroups = [
-  {
-    date: '2026.05.15',
-    entries: [
-      { title: '최근 생성 결과가 쌓이면 이 위치에 배치됩니다.', meta: 'Peer · 키워드 · 선택 카드 수' },
-      { title: '같은 날짜 안에서는 생성 순서대로 아래로 누적됩니다.', meta: '믹서 결과 요약 · 생성 시각' },
-    ],
-  },
-  {
-    date: '2026.05.14',
-    entries: [
-      { title: '날짜 필터를 적용하면 해당 기간 결과만 남도록 연결할 수 있습니다.', meta: '기간 필터 · 검색 조건' },
-      { title: '실제 저장 기능이 붙으면 이 카드에서 상세 결과로 이동하게 됩니다.', meta: '결과 상세 진입' },
-    ],
-  },
-  {
-    date: '2026.05.13',
-    entries: [
-      { title: '현재는 화면 구조만 미리 확인하는 프리뷰 상태입니다.', meta: '프론트 프리뷰 전용' },
-    ],
-  },
-] as const;
-
 export function MixerView({
   bookmarkedIds,
   onToggleBookmark,
@@ -294,17 +270,8 @@ export function MixerView({
       return afterStart && beforeEnd;
     });
   }, [historyEndDate, historyStartDate, recentMixerResults]);
-  const filteredHistoryPreviewGroups = useMemo(() => {
-    if (!env.enableMockData) return [];
-    return mixerHistoryPreviewGroups.filter((group) => {
-      const normalizedDate = group.date.replace(/\./g, '-');
-      const afterStart = !historyStartDate || normalizedDate >= historyStartDate;
-      const beforeEnd = !historyEndDate || normalizedDate <= historyEndDate;
-      return afterStart && beforeEnd;
-    });
-  }, [historyEndDate, historyStartDate]);
   const historyPreviewEntries = useMemo(() => {
-    const actualEntries = recentMixerResults
+    return recentMixerResults
       .map((entry) => ({
         key: entry.id,
         date: formatMixerDate(entry.created_at),
@@ -312,18 +279,7 @@ export function MixerView({
         meta: `${mixerModeLabel(String(entry.analysis_mode || entry.payload?.provenance?.analysis_mode || 'quick'))} · 카드 ${entry.input_card_ids?.length ?? entry.payload?.sources_used?.length ?? 0}장`,
       }))
       .slice(0, 3);
-    if (actualEntries.length > 0) return actualEntries;
-    return filteredHistoryPreviewGroups
-      .flatMap((group) =>
-        group.entries.map((entry, index) => ({
-          key: `${group.date}-${index}`,
-          date: group.date,
-          title: entry.title,
-          meta: entry.meta,
-        })),
-      )
-      .slice(0, 3);
-  }, [filteredHistoryPreviewGroups, recentMixerResults]);
+  }, [recentMixerResults]);
   const canGenerate = selectedCards.length >= 2;
   const selectedPeerRatioData = buildSelectionRatioData(
     selectedCards.map((item) => normalizeMixerPeerLabel(item.peer)),
@@ -431,9 +387,7 @@ export function MixerView({
           <ExecutiveHeader
             eyebrow="Mixer history"
             title="믹서 기록"
-            subtitle={env.enableMockData
-              ? '누적 결과가 많아질 때를 대비해, 메인 믹서 화면과 분리된 기록 페이지에서 날짜 기준으로 스크롤 탐색하고 필터링하는 구조를 먼저 잡아둔 화면입니다.'
-              : '저장된 실제 믹서 결과가 연결되면 이 화면에서 날짜 기준으로 조회합니다. 목업 기록은 표시하지 않습니다.'}
+            subtitle="저장된 실제 믹서 결과를 날짜 기준으로 조회합니다."
             actions={
               <ExecutiveButton variant="secondary" onClick={() => setMode('select')}>
                 믹서로 돌아가기
@@ -521,35 +475,9 @@ export function MixerView({
                       ) : null}
                     </section>
                   ))}
-                  {filteredRecentMixerResults.length === 0 && filteredHistoryPreviewGroups.map((group) => (
-                    <section key={group.date} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
-                      <div className="mb-4 flex items-center justify-between gap-3">
-                        <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-ink)]">{group.date}</h3>
-                        <span className="text-xs font-semibold text-[var(--axis-muted)]">{group.entries.length}개 슬롯</span>
-                      </div>
-                      <div className="grid gap-3">
-                        {group.entries.map((entry, index) => (
-                          <div
-                            key={`${group.date}-${index}`}
-                            className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-4"
-                          >
-                            <div className="flex items-start gap-3">
-                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
-                                {index + 1}
-                              </span>
-                              <div>
-                                <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{entry.title}</p>
-                                <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">{entry.meta}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-                  {filteredRecentMixerResults.length === 0 && filteredHistoryPreviewGroups.length === 0 ? (
+                  {filteredRecentMixerResults.length === 0 ? (
                     <div className="rounded-[var(--axis-radius-lg)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-6 text-sm leading-6 text-[var(--axis-muted)]">
-                      표시할 실제 믹서 기록이 없습니다. 목업 기록은 현재 꺼져 있습니다.
+                      표시할 실제 믹서 기록이 없습니다.
                     </div>
                   ) : null}
                 </div>
@@ -591,8 +519,7 @@ export function MixerView({
       { key: 'hidden_conclusion', label: '숨은 결론', block: result.hidden_conclusion },
     ].filter((step) => step.block && (step.block.finding || step.block.rationale));
     const hasRealReasoning = insightChain.length > 0 || reasoningSteps.length > 0 || reasoningTrail.length > 0;
-    // axis-ai LLM 응답이 비어 있으면(추론 블록·단계 모두 없음) 백엔드 fixture fallback 으로 간주.
-    const isFixtureFallback = llmModel === 'frontend-preview' || llmModel === 'fixture' || !hasRealReasoning;
+    const isNonActualResult = llmModel === 'frontend-preview' || llmModel === 'fixture';
     const headlineInsight = result.insight || result.mix_insight || result.final_one_liner || '믹스 인사이트';
     const actionDetails = result.action_details ?? [];
     const followUpChecks: MixerFollowUpCheck[] = result.follow_up_checks ?? [];
@@ -678,6 +605,28 @@ export function MixerView({
       }))
       .filter((item) => item.card);
     const hasStepView = resultSections.length > 0;
+    if (isNonActualResult || (!hasRealReasoning && !hasStepView && !headlineInsight.trim())) {
+      return (
+        <ExecutivePage className="overflow-visible">
+          <ExecutiveContainer className="pb-12">
+            <ExecutiveHeader
+              eyebrow="Mixer output"
+              title="믹서 결과"
+              subtitle="실제 분석 결과만 표시합니다."
+              actions={
+                <ExecutiveButton variant="secondary" onClick={() => setMode('select')}>
+                  선택으로 돌아가기
+                </ExecutiveButton>
+              }
+            />
+            <div className="axis-panel-flat p-6 text-sm leading-6 text-[var(--axis-muted)]">
+              실제 믹서 분석 결과를 표시할 수 없습니다. axis-ai 생성 결과가 저장되지 않았거나 분석 본문이 비어 있습니다.
+              카드를 다시 선택해 실행해 주세요.
+            </div>
+          </ExecutiveContainer>
+        </ExecutivePage>
+      );
+    }
     return (
       <ExecutivePage className="overflow-visible">
         <ExecutiveContainer className="pb-12">
@@ -687,7 +636,7 @@ export function MixerView({
             subtitle="선택한 카드들을 axis-ai 믹서 에이전트(LLM)가 겹쳐 읽어 하나의 인사이트로 압축한 결과입니다."
             actions={
               <>
-                {env.enableMockData || recentMixerResults.length > 0 ? (
+                {recentMixerResults.length > 0 ? (
                   <ExecutiveButton variant="secondary" onClick={() => setMode('history')}>
                     전체 기록 보기
                   </ExecutiveButton>
@@ -1134,12 +1083,6 @@ export function MixerView({
                   <p className="text-sm font-semibold leading-7 text-[var(--axis-ink)]">
                     선택한 카드 {sourceCardIds.length}장에서 공통 패턴 → 비교 포인트 → 숨은 결론을 차례로 도출해 하나의 믹스 인사이트로 압축한 과정입니다.
                   </p>
-                  {isFixtureFallback ? (
-                    <p className="mt-3 rounded-[var(--axis-radius-sm)] border border-[rgba(220,90,36,0.3)] bg-[rgba(220,90,36,0.08)] px-3 py-2 text-[11px] font-semibold leading-5 text-[var(--axis-accent-strong)]">
-                      현재 axis-ai LLM 추론을 사용할 수 없어 기본 응답으로 대체된 결과입니다. (추론 과정 미제공)
-                    </p>
-                  ) : null}
-
                   {insightChain.length > 0 && reasoningSteps.length === 0 ? (
                     <section className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-3">
                       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">카드 조합 → 인사이트 도출 흐름</p>
@@ -1546,7 +1489,7 @@ export function MixerView({
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-ink)]">최근 생성 결과</h3>
                 <span className="text-xs font-semibold text-[var(--axis-muted)]">
-                  {recentMixerResults.length > 0 ? `${recentMixerResults.length}개 저장` : env.enableMockData ? '3개만 표시' : '저장 결과 없음'}
+                  {recentMixerResults.length > 0 ? `${recentMixerResults.length}개 저장` : '저장 결과 없음'}
                 </span>
               </div>
               {historyPreviewEntries.length > 0 ? (
@@ -1573,10 +1516,10 @@ export function MixerView({
                 </div>
               ) : (
                 <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-4 text-sm leading-6 text-[var(--axis-muted)]">
-                  실제 저장된 믹서 결과가 아직 연결되지 않았습니다. 목업 기록은 표시하지 않습니다.
+                  실제 저장된 믹서 결과가 아직 없습니다.
                 </div>
               )}
-              {env.enableMockData || recentMixerResults.length > 0 ? (
+              {recentMixerResults.length > 0 ? (
                 <div className="mt-4">
                   <ExecutiveButton variant="secondary" onClick={() => setMode('history')}>
                     전체 기록 보기

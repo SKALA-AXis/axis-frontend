@@ -12,14 +12,6 @@ export type AssistantPageContext = {
   filters?: Record<string, unknown>;
 };
 
-export type AssistantHandoff = {
-  type: 'navigate';
-  target_route: string;
-  label: string;
-  handoff_id: string;
-  payload_preview?: Record<string, unknown>;
-};
-
 export type AssistantSource = {
   type: string;
   id: string;
@@ -69,7 +61,6 @@ export type AssistantChatResponse = {
   confidence?: number;
   blocked?: boolean;
   blocked_reason?: string | null;
-  handoff?: AssistantHandoff | null;
   provenance?: Record<string, unknown>;
 };
 
@@ -98,7 +89,6 @@ export type AssistantConversationDetail = {
       answer_blocks?: AssistantAnswerBlock[];
       report_draft?: AssistantReportDraft | null;
     };
-    handoff?: AssistantHandoff | Record<string, never> | null;
     created_at?: string;
   }>;
 };

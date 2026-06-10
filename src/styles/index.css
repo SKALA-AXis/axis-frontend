@@ -493,7 +493,7 @@ html.dark {
   border: 1px solid var(--hairline-soft);
   background: var(--surface-code);
   border-radius: 12px;
-  box-shadow: var(--shadow-mockup);
+  box-shadow: var(--shadow-elevated);
 }
 
 .axis-graph-stage canvas {

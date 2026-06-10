@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { mixerRepository, type MixerAnalyzeInput } from '../api/mixerRepository';
 import type { MixerAnalysisResponse, MixerStageEvent } from '../model/mixer';
-import { env } from '../../../shared/config/env';
 
 interface UseMixerAnalysisResult {
   data: MixerAnalysisResponse | null;
@@ -34,21 +33,9 @@ export function useMixerAnalysis(): UseMixerAnalysisResult {
         setData(result);
         return result;
       } catch (streamErr) {
-        if (!env.enableMockData) {
-          const message = streamErr instanceof Error ? streamErr.message : '믹서 스트리밍 결과를 받지 못했습니다.';
-          setError(message);
-          return null;
-        }
-        // mock 허용 환경에서만 단일 호출 fallback을 사용한다.
-        try {
-          const result = await mixerRepository.analyze(input);
-          setData(result);
-          return result;
-        } catch (err) {
-          const message = err instanceof Error ? err.message : streamErr instanceof Error ? streamErr.message : 'Mixer 분석 실패';
-          setError(message);
-          return null;
-        }
+        const message = streamErr instanceof Error ? streamErr.message : '믹서 스트리밍 결과를 받지 못했습니다.';
+        setError(message);
+        return null;
       } finally {
         setIsLoading(false);
         setStage(null);

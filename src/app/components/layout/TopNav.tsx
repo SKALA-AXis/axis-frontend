@@ -6,7 +6,7 @@ import type { NotificationItem } from '../../../features/notifications/model/not
 import type { SearchScope } from '../../../features/search/model/search';
 import { viewLabels } from '../../../shared/content/navigation';
 import { formatTopNavUpdateTime } from '../../../shared/lib/viewFreshness';
-import type { PeerPlusPeerId } from '../../../shared/mocks/peerPlus';
+import type { PeerPlusPeerId } from '../../../shared/content/peerPlus';
 
 interface TopNavProps {
   activeView: string;
