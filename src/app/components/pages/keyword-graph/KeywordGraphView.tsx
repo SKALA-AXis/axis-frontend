@@ -238,21 +238,6 @@ function resolveCssColor(value: string, fallback: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(variableMatch[1]).trim() || fallback;
 }
 
-function resolveThreeColor(value: string, fallback: string) {
-  const color = resolveCssColor(value, fallback).trim();
-  const rgbaMatch = color.match(/^rgba?\(([^)]+)\)$/i);
-  if (!rgbaMatch) return { color, opacity: 1 };
-
-  const parts = rgbaMatch[1].split(',').map((part) => part.trim());
-  if (parts.length < 3) return { color: fallback, opacity: 1 };
-
-  const alpha = parts[3] === undefined ? 1 : Number.parseFloat(parts[3]);
-  return {
-    color: `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`,
-    opacity: Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1,
-  };
-}
-
 function getGraphNodeDisplayRadius(node: KeywordNode, active = false) {
   const base = node.category === '기업'
     ? node.size / 3.35
@@ -273,6 +258,20 @@ function splitGraphLabel(label: string) {
     return [label.slice(0, midpoint), label.slice(midpoint)];
   }
   return [label];
+}
+
+function graphEdgeMaterialStyle(active: boolean, isDarkMode: boolean) {
+  if (active) {
+    return {
+      color: isDarkMode ? '#E2A079' : '#DC5A24',
+      opacity: 1,
+    };
+  }
+
+  return {
+    color: isDarkMode ? '#FFF1D8' : '#393027',
+    opacity: isDarkMode ? 0.46 : 0.5,
+  };
 }
 
 function getSpherePosition(node: KeywordNode, radius: number, index = 0, totalNodes = 5) {
@@ -376,10 +375,7 @@ function KeywordSphereGraph({
       if (!source || !target) return;
       const active = selectedId === edge.source || selectedId === edge.target;
       const geometry = new THREE.BufferGeometry().setFromPoints([source, target]);
-      const edgeColor = resolveThreeColor(
-        active ? 'var(--axis-graph-active-edge)' : 'var(--axis-graph-edge)',
-        active ? '#DC5A24' : (isDarkMode ? '#FFF1D8' : '#5E5348'),
-      );
+      const edgeColor = graphEdgeMaterialStyle(active, isDarkMode);
       const material = new THREE.LineBasicMaterial({
         color: edgeColor.color,
         transparent: true,
