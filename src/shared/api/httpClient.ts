@@ -38,7 +38,8 @@ class FetchHttpClient implements HttpClient {
     if (accessToken) {
       headers.Authorization = `Bearer ${accessToken}`;
     }
-    if (body !== undefined) {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    if (body !== undefined && !isFormData) {
       headers['Content-Type'] = 'application/json';
     }
 
@@ -48,7 +49,7 @@ class FetchHttpClient implements HttpClient {
         method,
         credentials: 'include',
         headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
       });
     } catch {
       throw new Error('백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하세요.');

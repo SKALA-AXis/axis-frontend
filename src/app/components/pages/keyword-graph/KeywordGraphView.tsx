@@ -238,6 +238,21 @@ function resolveCssColor(value: string, fallback: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(variableMatch[1]).trim() || fallback;
 }
 
+function resolveThreeColor(value: string, fallback: string) {
+  const color = resolveCssColor(value, fallback).trim();
+  const rgbaMatch = color.match(/^rgba?\(([^)]+)\)$/i);
+  if (!rgbaMatch) return { color, opacity: 1 };
+
+  const parts = rgbaMatch[1].split(',').map((part) => part.trim());
+  if (parts.length < 3) return { color: fallback, opacity: 1 };
+
+  const alpha = parts[3] === undefined ? 1 : Number.parseFloat(parts[3]);
+  return {
+    color: `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`,
+    opacity: Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1,
+  };
+}
+
 function getGraphNodeDisplayRadius(node: KeywordNode, active = false) {
   const base = node.category === '기업'
     ? node.size / 3.35
@@ -361,12 +376,14 @@ function KeywordSphereGraph({
       if (!source || !target) return;
       const active = selectedId === edge.source || selectedId === edge.target;
       const geometry = new THREE.BufferGeometry().setFromPoints([source, target]);
+      const edgeColor = resolveThreeColor(
+        active ? 'var(--axis-graph-active-edge)' : 'var(--axis-graph-edge)',
+        active ? '#DC5A24' : (isDarkMode ? '#FFF1D8' : '#5E5348'),
+      );
       const material = new THREE.LineBasicMaterial({
-        color: active
-          ? resolveCssColor('var(--axis-graph-active-edge)', '#DC5A24')
-          : (isDarkMode ? '#FFF1D8' : resolveCssColor('var(--axis-graph-edge)', '#5E5348')),
+        color: edgeColor.color,
         transparent: true,
-        opacity: active ? 1 : (isDarkMode ? 0.82 : 0.78),
+        opacity: edgeColor.opacity,
         depthTest: false,
         depthWrite: false,
       });

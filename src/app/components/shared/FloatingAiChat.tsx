@@ -8,8 +8,11 @@ import {
   Loader2,
   LogOut,
   MessageSquarePlus,
+  Paperclip,
+  Printer,
   Send,
   Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
 import { assistantRepository } from '../../../features/assistant/api/assistantRepository';
@@ -48,6 +51,7 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
   const [isSending, setIsSending] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<AssistantConversationSummary[]>([]);
   const [expandedEvidenceKeys, setExpandedEvidenceKeys] = useState<Set<string>>(new Set());
@@ -68,20 +72,31 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
   }, [deviceId, isOpen]);
 
   const handleSend = async () => {
+    const selectedAttachment = attachment;
     const trimmedQuery = query.trim();
+    const effectiveQuery = trimmedQuery || (selectedAttachment ? '첨부 PDF를 분석해줘' : '');
 
-    if (!trimmedQuery || isSending) {
+    if (!effectiveQuery || isSending) {
       return;
     }
 
     const history = toHistory(messages);
-    setMessages((currentMessages) => [...currentMessages, { role: 'user', content: trimmedQuery }]);
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        role: 'user',
+        content: selectedAttachment
+          ? `${effectiveQuery}\n첨부 PDF: ${selectedAttachment.name}`
+          : effectiveQuery,
+      },
+    ]);
     setQuery('');
+    setAttachment(null);
     setIsSending(true);
 
     try {
-      const response = await assistantRepository.chat({
-        message: trimmedQuery,
+      const chatInput = {
+        message: effectiveQuery,
         conversationId,
         deviceId,
         history,
@@ -91,7 +106,10 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
           visible_item_ids: {},
           filters: {},
         },
-      });
+      };
+      const response = selectedAttachment
+        ? await assistantRepository.chatWithPdf(chatInput, selectedAttachment)
+        : await assistantRepository.chat(chatInput);
       setConversationId(response.conversation_id ?? conversationId);
       setMessages((currentMessages) => [
         ...currentMessages,
@@ -120,6 +138,26 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
     }
   };
 
+  const handleAttachmentChange = (file: File | undefined) => {
+    if (!file) return;
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        { role: 'assistant', content: 'PDF 파일만 첨부할 수 있습니다.' },
+      ]);
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        { role: 'assistant', content: 'PDF 파일은 15MB 이하만 첨부할 수 있습니다.' },
+      ]);
+      return;
+    }
+    setAttachment(file);
+  };
+
   const handleNewChat = async () => {
     setMessages([{ role: 'assistant', content: greetingMessage, isGreeting: true }]);
     setQuery('');
@@ -144,6 +182,19 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
     assistantRepository.listConversations(deviceId)
       .then(setConversations)
       .catch(() => setConversations([]));
+  };
+
+  const handleDeleteConversation = async (nextConversationId: string) => {
+    if (!window.confirm('이 대화 기록을 삭제할까요?')) {
+      return;
+    }
+    await assistantRepository.deleteConversation(nextConversationId, deviceId);
+    setConversations((current) => current.filter((item) => item.conversation_id !== nextConversationId));
+    if (conversationId === nextConversationId) {
+      setConversationId(null);
+      setMessages([{ role: 'assistant', content: greetingMessage, isGreeting: true }]);
+      setExpandedEvidenceKeys(new Set());
+    }
   };
 
   const handleLoadConversation = async (nextConversationId: string) => {
@@ -238,19 +289,31 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
             {isHistoryOpen ? (
               <div className="space-y-2">
                 {conversations.map((conversation) => (
-                  <button
+                  <div
                     key={conversation.conversation_id}
-                    type="button"
-                    onClick={() => handleLoadConversation(conversation.conversation_id)}
-                    className="w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--axis-accent)]"
+                    className="flex items-center gap-2 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-2 py-2 transition-colors hover:border-[var(--axis-accent)]"
                   >
-                    <p className="line-clamp-1 text-sm font-semibold text-[var(--axis-ink)]">
-                      {conversation.title || '새 대화'}
-                    </p>
-                    <p className="text-xs text-[var(--axis-muted)]">
-                      {conversation.message_count ?? 0} messages
-                    </p>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLoadConversation(conversation.conversation_id)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <p className="line-clamp-1 text-sm font-semibold text-[var(--axis-ink)]">
+                        {conversation.title || '새 대화'}
+                      </p>
+                      <p className="text-xs text-[var(--axis-muted)]">
+                        {conversation.message_count ?? 0} messages
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteConversation(conversation.conversation_id)}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-[var(--axis-radius-sm)] text-[var(--axis-muted)] transition-colors hover:bg-[var(--axis-surface-muted)] hover:text-[var(--axis-accent-strong)]"
+                      aria-label="대화 기록 삭제"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
                 ))}
                 {conversations.length === 0 ? (
                   <p className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-3 py-2 text-sm text-[var(--axis-muted)]">
@@ -334,6 +397,23 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
 
           <div className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3">
             <div className="flex items-center gap-2">
+              <label
+                className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] text-[var(--axis-muted)] transition-colors hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                aria-label="PDF 첨부"
+                title="PDF 첨부"
+              >
+                <Paperclip className="size-4" />
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="sr-only"
+                  disabled={isSending}
+                  onChange={(event) => {
+                    handleAttachmentChange(event.currentTarget.files?.[0]);
+                    event.currentTarget.value = '';
+                  }}
+                />
+              </label>
               <input
                 type="text"
                 value={query}
@@ -357,6 +437,21 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
                 {isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
               </button>
             </div>
+            {attachment ? (
+              <div className="mt-2 flex items-center justify-between gap-2 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-1.5">
+                <p className="min-w-0 truncate text-xs font-semibold text-[var(--axis-body)]">
+                  {attachment.name}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAttachment(null)}
+                  className="flex size-6 shrink-0 items-center justify-center rounded-[var(--axis-radius-sm)] text-[var(--axis-muted)] hover:bg-[var(--axis-surface-muted)] hover:text-[var(--axis-ink)]"
+                  aria-label="첨부 PDF 제거"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ) : null}
           </div>
         </section>
       ) : (
@@ -440,9 +535,21 @@ function ReportDraftCard({ reportDraft }: { reportDraft: AssistantReportDraft })
 
   return (
     <div className="mt-2 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.30)] bg-[var(--axis-surface)] p-2.5">
-      <div className="flex items-center gap-1.5">
-        <FileText className="size-3.5 text-[var(--axis-accent)]" />
-        <p className="text-[11px] font-bold text-[var(--axis-accent-strong)]">보고서 초안</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <FileText className="size-3.5 text-[var(--axis-accent)]" />
+          <p className="text-[11px] font-bold text-[var(--axis-accent-strong)]">보고서 초안</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => printReportDraft(reportDraft)}
+          className="inline-flex items-center gap-1 rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] px-1.5 py-1 text-[10px] font-semibold text-[var(--axis-muted)] transition-colors hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+          aria-label="보고서 초안 PDF 저장 또는 출력"
+          title="PDF 저장 또는 출력"
+        >
+          <Printer className="size-3" />
+          PDF 저장/출력
+        </button>
       </div>
       {reportDraft.title ? (
         <p className="mt-1 break-words text-sm font-semibold text-[var(--axis-ink)]">
@@ -467,6 +574,59 @@ function ReportDraftCard({ reportDraft }: { reportDraft: AssistantReportDraft })
       ) : null}
     </div>
   );
+}
+
+function printReportDraft(reportDraft: AssistantReportDraft) {
+  const printWindow = window.open('', '_blank', 'width=900,height=1200');
+  if (!printWindow) {
+    window.alert('인쇄 창을 열지 못했습니다.');
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(buildReportDraftPrintHtml(reportDraft));
+  printWindow.document.close();
+  printWindow.focus();
+  window.setTimeout(() => {
+    printWindow.print();
+  }, 180);
+}
+
+function buildReportDraftPrintHtml(reportDraft: AssistantReportDraft) {
+  const title = reportDraft.title || 'AXIS 보고서 초안';
+  const sections = (reportDraft.sections ?? []).filter((section) => section.title || section.body);
+  return `<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    body { margin: 40px; color: #1f1f24; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    h1 { margin: 0 0 24px; font-size: 28px; line-height: 1.25; }
+    section { border-top: 1px solid #e7ded4; padding: 20px 0; }
+    h2 { margin: 0 0 10px; font-size: 16px; color: #c2411d; }
+    p { margin: 0; white-space: pre-wrap; font-size: 13px; line-height: 1.7; }
+    @media print { body { margin: 24mm; } }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  ${sections.map((section) => `
+    <section>
+      ${section.title ? `<h2>${escapeHtml(section.title)}</h2>` : ''}
+      ${section.body ? `<p>${escapeHtml(section.body)}</p>` : ''}
+    </section>
+  `).join('')}
+</body>
+</html>`;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function EvidenceSourceItem({ source }: { source: AssistantSource }) {
