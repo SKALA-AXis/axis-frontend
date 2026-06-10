@@ -38,11 +38,13 @@ import {
 import { useDashboard, useDashboardKeywordTrends, useTodayInsight } from '../../../../../features/dashboard/hooks/useDashboard';
 import type {
   TodayInsightAction,
-  TodayInsightSignal as ApiTodayInsightSignal,
+  TodayInsightSection,
   TodayInsightSource,
+  TodayInsightSourceTrace,
 } from '../../../../../features/dashboard/model/dashboard';
+import { env } from '../../../../../shared/config/env';
 import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
-import { homeTodayInsightSignals, type TodayInsightSignal as MockTodayInsightSignal } from '../../../../../shared/mocks/homeDashboardPresentation';
+import { homeTodayInsightSignals } from '../../../../../shared/mocks/homeDashboardPresentation';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../../shared/FloatingCardNewsOverlay';
 import { PageProcessLoading, PageState } from '../../../shared/PageState';
@@ -59,6 +61,7 @@ type HomeTodayInsightSignal = {
   id: string;
   label: string;
   value: string;
+  summary: string;
   reasoning: Array<{ stage: string; detail: string }>;
   evidence: {
     grounds: string[];
@@ -66,12 +69,16 @@ type HomeTodayInsightSignal = {
     relatedKeywords: string[];
     sourceIds: string[];
   };
+  responseDirection: TodayInsightAction[];
+  sources: TodayInsightSource[];
+  sourceTrace: TodayInsightSourceTrace[];
 };
 
-function normalizeTodayInsightSignal(signal: MockTodayInsightSignal | ApiTodayInsightSignal | {
+type NormalizableTodayInsightSignal = {
   id?: string;
   label?: string;
   value?: string;
+  summary?: string;
   reasoning?: ReadonlyArray<{ stage?: string; detail?: string }>;
   evidence?: {
     grounds?: ReadonlyArray<string>;
@@ -81,7 +88,9 @@ function normalizeTodayInsightSignal(signal: MockTodayInsightSignal | ApiTodayIn
     source_ids?: ReadonlyArray<string>;
     sourceIds?: ReadonlyArray<string>;
   };
-}): HomeTodayInsightSignal {
+};
+
+function normalizeTodayInsightSignal(signal: NormalizableTodayInsightSignal): HomeTodayInsightSignal {
   const evidence = (signal.evidence ?? {}) as {
     grounds?: ReadonlyArray<string>;
     changes?: ReadonlyArray<string>;
@@ -103,6 +112,39 @@ function normalizeTodayInsightSignal(signal: MockTodayInsightSignal | ApiTodayIn
       relatedKeywords: Array.from(evidence.relatedKeywords ?? evidence.related_keywords ?? []),
       sourceIds: Array.from(evidence.sourceIds ?? evidence.source_ids ?? []),
     },
+    summary: signal.summary ?? signal.value ?? '',
+    responseDirection: [],
+    sources: [],
+    sourceTrace: [],
+  };
+}
+
+function normalizeTodayInsightSection(section: TodayInsightSection): HomeTodayInsightSignal {
+  const evidence: {
+    grounds?: ReadonlyArray<string>;
+    changes?: ReadonlyArray<string>;
+    related_keywords?: ReadonlyArray<string>;
+    relatedKeywords?: ReadonlyArray<string>;
+    source_ids?: ReadonlyArray<string>;
+    sourceIds?: ReadonlyArray<string>;
+  } = section.evidence ?? {};
+  return {
+    id: section.id ?? 'section',
+    label: section.label ?? '주요 신호',
+    value: section.title ?? section.summary ?? '',
+    summary: section.summary ?? section.title ?? '',
+    reasoning: (section.reasoning ?? [])
+      .filter((step) => step.detail)
+      .map((step) => ({ stage: step.stage ?? '판단', detail: step.detail ?? '' })),
+    evidence: {
+      grounds: Array.from(evidence.grounds ?? []),
+      changes: Array.from(evidence.changes ?? []),
+      relatedKeywords: Array.from(evidence.relatedKeywords ?? evidence.related_keywords ?? []),
+      sourceIds: Array.from(evidence.sourceIds ?? evidence.source_ids ?? []),
+    },
+    responseDirection: Array.from(section.responseDirection ?? section.response_direction ?? []),
+    sources: Array.from(section.sources ?? []),
+    sourceTrace: Array.from(section.sourceTrace ?? section.source_trace ?? []),
   };
 }
 
@@ -116,6 +158,18 @@ function actionHorizon(action: TodayInsightAction): string {
 
 function sourceName(source: TodayInsightSource): string {
   return source.source_name ?? source.sourceName ?? source.publisher ?? 'source';
+}
+
+function sourceTraceIssueId(trace: TodayInsightSourceTrace): string {
+  return trace.source_integrated_issue_id ?? trace.sourceIntegratedIssueId ?? '';
+}
+
+function sourceTraceCardId(trace: TodayInsightSourceTrace): string {
+  return trace.source_card_id ?? trace.sourceCardId ?? '';
+}
+
+function isTruthyMeta(value: unknown): boolean {
+  return value === true || value === 'true' || value === 1 || value === '1';
 }
 
 function formatKeywordTrendDelta(delta?: number | null) {
@@ -165,17 +219,46 @@ export function HomeDashboardView({
   const [homeDetailCardId, setHomeDetailCardId] = useState<string | null>(null);
   const [homeDetailSlideIndex, setHomeDetailSlideIndex] = useState(0);
   const [selectedKeywordInsight, setSelectedKeywordInsight] = useState<KeywordSpikeInsight | null>(null);
+  const todayInsightProvenance = todayInsight?.provenance ?? {};
+  const todayInsightMode = String(todayInsightProvenance.mode ?? '');
+  const todayInsightKind = String(todayInsightProvenance.result_kind ?? todayInsightProvenance.resultKind ?? '');
+  const isTodayInsightFixture = isTruthyMeta(todayInsightProvenance.fixture)
+    || isTruthyMeta(todayInsightProvenance.is_fixture)
+    || todayInsightMode.includes('fixture')
+    || todayInsightMode.includes('mock')
+    || todayInsightKind.includes('fixture')
+    || todayInsightKind.includes('mock');
+  const isTodayInsightStatusPlaceholder = isTruthyMeta(todayInsightProvenance.is_status_placeholder)
+    || todayInsightKind.includes('scheduled_pending')
+    || todayInsightMode === 'cache_only';
+  const isTodayInsightMockLike = isTodayInsightFixture || isTodayInsightStatusPlaceholder;
   const todayInsightSignals = useMemo<HomeTodayInsightSignal[]>(
     () => {
+      const liveSections = (todayInsight?.insightSections ?? todayInsight?.insight_sections ?? [])
+        .filter((section) => section.summary || section.title)
+        .map((section) => normalizeTodayInsightSection(section));
+      if (liveSections.length) {
+        return liveSections;
+      }
       const liveSignals = todayInsight?.signals?.length
         ? todayInsight.signals.map((signal) => normalizeTodayInsightSignal(signal))
         : [];
       return liveSignals.length
         ? liveSignals
-        : homeTodayInsightSignals.map((signal) => normalizeTodayInsightSignal(signal));
+        : env.enableMockData
+          ? homeTodayInsightSignals.map((signal) => normalizeTodayInsightSignal(signal))
+          : [];
     },
     [todayInsight],
   );
+  const usingLocalTodayInsightMock = env.enableMockData && !todayInsightLoading && !todayInsight;
+  const todayInsightStateLabel = usingLocalTodayInsightMock
+    ? '목업입니다.'
+    : isTodayInsightFixture
+      ? '목업입니다.'
+      : isTodayInsightStatusPlaceholder
+        ? '생성 대기'
+        : null;
   // 첫 신호 pre-selected — empty state 회피, 진입 즉시 evidence 패널 노출
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
   const selectedSignal = useMemo(
@@ -268,13 +351,20 @@ export function HomeDashboardView({
         { label: '핵심 키워드', value: keywordTrends?.keywordSeries[0]?.name ?? insightPrimaryLead?.title ?? '-' },
       ];
   const selectedSourceIdSet = new Set(selectedSignal?.evidence.sourceIds ?? []);
-  const selectedSources = (todayInsight?.sources ?? [])
-    .filter((source) => selectedSourceIdSet.size === 0 || selectedSourceIdSet.has(source.id))
-    .slice(0, 3);
-  const selectedActions = (todayInsight?.response_direction ?? []).slice(0, 2);
+  const selectedSources = selectedSignal?.sources.length
+    ? selectedSignal.sources.slice(0, 4)
+    : (todayInsight?.sources ?? [])
+      .filter((source) => selectedSourceIdSet.size === 0 || selectedSourceIdSet.has(source.id))
+      .slice(0, 4);
+  const selectedActions = selectedSignal?.responseDirection.length
+    ? selectedSignal.responseDirection.slice(0, 2)
+    : (todayInsight?.response_direction ?? []).slice(0, 2);
+  const selectedSourceTrace = selectedSignal?.sourceTrace.length
+    ? selectedSignal.sourceTrace.slice(0, 6)
+    : (todayInsight?.sourceTrace ?? todayInsight?.source_trace ?? []).slice(0, 6);
   const todayInsightTitle = todayInsight?.headline?.trim()
     || todayInsightSignals[0]?.value
-    || "Today's insight";
+    || (todayInsightLoading ? "Today's insight" : "Today's Insight 생성 결과가 없습니다");
   const stockPointByDate = new Map(dashboard.stockPoints.map((point) => [point.date, point]));
   const rawStockRateChartPoints =
     dashboard.stockRatePoints && dashboard.stockRatePoints.length > 0
@@ -543,13 +633,18 @@ export function HomeDashboardView({
                     저장 리포트 · {formatKoreanDate(todayInsight.report_date)}
                   </span>
                 ) : null}
+                {todayInsightStateLabel ? (
+                  <span className="rounded-full border border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-accent-strong)]">
+                    {todayInsightStateLabel}
+                  </span>
+                ) : null}
                 {todayInsightLoading ? (
                   <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
                     생성 중
                   </span>
                 ) : todayInsightError ? (
                   <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
-                    fallback
+                    조회 실패
                   </span>
                 ) : null}
               </div>
@@ -559,10 +654,18 @@ export function HomeDashboardView({
               <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
                 {todayInsight?.executive_summary
                   ? todayInsight.executive_summary
+                  : todayInsightSignals.length === 0 && !todayInsightLoading
+                  ? "실제 저장된 Today's Insight가 아직 조회되지 않았습니다. 목업 데이터는 표시하지 않습니다."
                   : heroCard
                   ? getSummaryLines(heroCard)[0]
                   : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.'}
               </p>
+              {isTodayInsightMockLike || usingLocalTodayInsightMock ? (
+                <div className="mt-3 max-w-2xl rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.06)] px-3 py-2 text-xs leading-5 text-[var(--axis-body)]">
+                  실제 Today&apos;s Insight 생성 결과가 아직 없어 목업, 캐시 대기 또는 상태 안내 데이터를 표시하고 있습니다.
+                  출처가 포함된 생성 결과가 저장되면 이 영역은 자동으로 실제 분석 결과로 교체됩니다.
+                </div>
+              ) : null}
               {todayInsight?.executive_implication &&
               !(
                 insightHiddenGems[0]?.narrative_hint &&
@@ -628,38 +731,44 @@ export function HomeDashboardView({
               ) : null}
 
               {/* 주요 신호 카드 — 각각 button. click 시 selectedSignalId 갱신 (active 카드 재클릭 = no-op, 다른 카드 클릭 = 즉시 교체). */}
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                {todayInsightSignals.map((signal, signalIndex) => {
-                  const isActive = signal.id === selectedSignalId;
-                  const showHiddenGemBadge =
-                    signalIndex === 0 && insightPrimaryLead?.label === 'low_visibility_definite_event';
-                  return (
-                    <button
-                    key={signal.id}
-                    type="button"
-                    onClick={() => setSelectedSignalId(signal.id)}
-                      aria-pressed={isActive}
-                      className={`rounded-[var(--axis-radius-md)] p-3 text-left transition ${
-                        isActive
-                          ? 'bg-[var(--axis-canvas)] ring-2 ring-[var(--axis-accent)] shadow-[0_10px_28px_-22px_rgba(220,90,36,0.45)]'
-                          : 'bg-[var(--axis-canvas)]/82 hover:bg-[var(--axis-canvas)] hover:ring-1 hover:ring-[var(--axis-hairline)]'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className={`text-[11px] font-semibold ${isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}`}>
-                          {signal.label}
-                        </p>
-                        {showHiddenGemBadge ? (
-                          <span className="rounded-full bg-[rgba(220,90,36,0.12)] px-2 py-0.5 text-[10px] font-bold text-[var(--axis-accent-strong)]">
-                            단건·고임팩트
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{signal.value}</p>
-                    </button>
-                  );
-                })}
-              </div>
+              {todayInsightSignals.length > 0 ? (
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  {todayInsightSignals.map((signal, signalIndex) => {
+                    const isActive = signal.id === selectedSignalId;
+                    const showHiddenGemBadge =
+                      signalIndex === 0 && insightPrimaryLead?.label === 'low_visibility_definite_event';
+                    return (
+                      <button
+                      key={signal.id}
+                      type="button"
+                      onClick={() => setSelectedSignalId(signal.id)}
+                        aria-pressed={isActive}
+                        className={`rounded-[var(--axis-radius-md)] p-3 text-left transition ${
+                          isActive
+                            ? 'bg-[var(--axis-canvas)] ring-2 ring-[var(--axis-accent)] shadow-[0_10px_28px_-22px_rgba(220,90,36,0.45)]'
+                            : 'bg-[var(--axis-canvas)]/82 hover:bg-[var(--axis-canvas)] hover:ring-1 hover:ring-[var(--axis-hairline)]'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className={`text-[11px] font-semibold ${isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}`}>
+                            {signal.label}
+                          </p>
+                          {showHiddenGemBadge ? (
+                            <span className="rounded-full bg-[rgba(220,90,36,0.12)] px-2 py-0.5 text-[10px] font-bold text-[var(--axis-accent-strong)]">
+                              단건·고임팩트
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{signal.value}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-4 text-sm leading-6 text-[var(--axis-muted)]">
+                  실제 Today&apos;s Insight 주요 신호가 아직 없습니다. 오늘자 생성 작업이 완료되면 주요 신호, 관찰 포인트, 대응 방향이 이 영역에 표시됩니다.
+                </div>
+              )}
             </div>
 
             {/* 동적 evidence 패널 — 신호 선택 시에만 등장, 콘텐츠 길이만큼 자연 확장 */}
@@ -670,6 +779,9 @@ export function HomeDashboardView({
                     {selectedSignal.label}
                   </p>
                   <h3 className="mt-1.5 text-[1.08rem] font-semibold leading-7 text-[var(--axis-ink)]">{selectedSignal.value}</h3>
+                  {selectedSignal.summary && selectedSignal.summary !== selectedSignal.value ? (
+                    <p className="mt-1.5 text-sm leading-6 text-[var(--axis-body)]">{selectedSignal.summary}</p>
+                  ) : null}
                 </header>
 
                 {/* AI 추론 과정 — 근거 위쪽. agent 가 어떤 데이터 → 어떤 추론 → 결론에 도달했는지 chain 으로 노출. */}
@@ -780,6 +892,28 @@ export function HomeDashboardView({
                           </div>
                         )
                       ))}
+                    </div>
+                  </section>
+                ) : null}
+
+                {selectedSourceTrace.length > 0 ? (
+                  <section className="mt-4 border-t border-[var(--axis-hairline)] pt-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">출처 추적</p>
+                    <div className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--axis-body)]">
+                      {selectedSourceTrace.map((trace, index) => {
+                        const issueId = sourceTraceIssueId(trace);
+                        const cardId = sourceTraceCardId(trace);
+                        return (
+                          <div key={`${issueId}-${cardId}-${index}`} className="rounded-[var(--axis-radius-sm)] bg-[var(--axis-surface-soft)] px-3 py-2">
+                            <span className="font-semibold text-[var(--axis-ink)]">
+                              {cardId || issueId || trace.title || `trace-${index + 1}`}
+                            </span>
+                            {issueId && cardId ? (
+                              <span className="ml-2 text-[var(--axis-muted)]">통합분석 {issueId}</span>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     </div>
                   </section>
                 ) : null}

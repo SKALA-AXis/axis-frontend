@@ -1,22 +1,36 @@
 import { getAccessToken } from '../../../shared/api/authSession';
 import { httpClient } from '../../../shared/api/httpClient';
 import { env } from '../../../shared/config/env';
-import type { MixerAnalysisResponse, MixerStageEvent } from '../model/mixer';
+import type { MixerAnalysisMode, MixerAnalysisResponse, MixerRecentResult, MixerStageEvent } from '../model/mixer';
 
 export interface MixerAnalyzeInput {
   cardIds: string[];
   ratios?: Record<string, unknown>;
   userContext?: string;
+  analysisMode?: MixerAnalysisMode;
 }
 
 export interface MixerRepository {
   analyze(input: MixerAnalyzeInput): Promise<MixerAnalysisResponse>;
   /** SSE 스트리밍 — 실행 단계(onStage) 실시간 수신 후 최종 결과 반환. */
   analyzeStream(input: MixerAnalyzeInput, onStage: (event: MixerStageEvent) => void): Promise<MixerAnalysisResponse>;
+  recent(limit?: number): Promise<MixerRecentResult[]>;
 }
 
-function buildBody({ cardIds, ratios, userContext }: MixerAnalyzeInput): Record<string, unknown> {
-  const body: Record<string, unknown> = { card_ids: cardIds };
+const MIXER_STREAM_TIMEOUT_MS: Record<MixerAnalysisMode, number> = {
+  quick: 45_000,
+  deep: 150_000,
+};
+
+function normalizeAnalysisMode(mode?: MixerAnalysisMode): MixerAnalysisMode {
+  return mode === 'deep' ? 'deep' : 'quick';
+}
+
+function buildBody({ cardIds, ratios, userContext, analysisMode }: MixerAnalyzeInput): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    card_ids: cardIds,
+    analysis_mode: normalizeAnalysisMode(analysisMode),
+  };
   if (ratios && Object.keys(ratios).length > 0) {
     body.ratios = ratios;
   }
@@ -34,6 +48,14 @@ class HttpMixerRepository implements MixerRepository {
     return httpClient.post<MixerAnalysisResponse>('/api/mixer', buildBody(input));
   }
 
+  async recent(limit = 5): Promise<MixerRecentResult[]> {
+    if (!httpClient) {
+      throw new Error('API client is not configured.');
+    }
+    const response = await httpClient.get<{ items?: MixerRecentResult[] }>(`/api/mixer/recent?limit=${limit}`);
+    return response.items ?? [];
+  }
+
   async analyzeStream(
     input: MixerAnalyzeInput,
     onStage: (event: MixerStageEvent) => void,
@@ -48,6 +70,9 @@ class HttpMixerRepository implements MixerRepository {
       headers.Authorization = `Bearer ${token}`;
     }
 
+    const analysisMode = normalizeAnalysisMode(input.analysisMode);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), MIXER_STREAM_TIMEOUT_MS[analysisMode]);
     let response: Response;
     try {
       response = await fetch(`${baseUrl}/api/mixer/stream`, {
@@ -55,12 +80,22 @@ class HttpMixerRepository implements MixerRepository {
         credentials: 'include',
         headers,
         body: JSON.stringify(buildBody(input)),
+        signal: controller.signal,
       });
-    } catch {
+    } catch (error) {
+      window.clearTimeout(timeoutId);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error(
+          analysisMode === 'quick'
+            ? '빠른 실행이 45초 안에 끝나지 않았습니다. 다시 시도하거나 정확 분석으로 실행해주세요.'
+            : '정확 분석이 150초 안에 끝나지 않았습니다. 선택 카드 수를 줄여 다시 시도해주세요.',
+        );
+      }
       throw new Error('백엔드 서버에 연결할 수 없습니다.');
     }
 
     if (!response.ok || !response.body) {
+      window.clearTimeout(timeoutId);
       throw new Error(response.status === 401 ? '로그인이 필요합니다.' : `믹서 스트리밍 요청 실패 (${response.status})`);
     }
 
@@ -92,20 +127,41 @@ class HttpMixerRepository implements MixerRepository {
       }
     };
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let boundary = buffer.indexOf('\n\n');
-      while (boundary !== -1) {
-        drain(buffer.slice(0, boundary));
-        buffer = buffer.slice(boundary + 2);
-        boundary = buffer.indexOf('\n\n');
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let chunk: ReadableStreamReadResult<Uint8Array>;
+        try {
+          chunk = await reader.read();
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            throw new Error(
+              analysisMode === 'quick'
+                ? '빠른 실행이 45초 안에 끝나지 않았습니다. 다시 시도하거나 정확 분석으로 실행해주세요.'
+                : '정확 분석이 150초 안에 끝나지 않았습니다. 선택 카드 수를 줄여 다시 시도해주세요.',
+            );
+          }
+          throw error;
+        }
+        const { done, value } = chunk;
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let boundary = buffer.indexOf('\n\n');
+        while (boundary !== -1) {
+          drain(buffer.slice(0, boundary));
+          buffer = buffer.slice(boundary + 2);
+          boundary = buffer.indexOf('\n\n');
+        }
+        if (result || errorMessage) {
+          await reader.cancel().catch(() => undefined);
+          break;
+        }
       }
-    }
-    if (buffer.trim()) {
-      drain(buffer);
+      if (buffer.trim() && !result && !errorMessage) {
+        drain(buffer);
+      }
+    } finally {
+      window.clearTimeout(timeoutId);
     }
 
     if (errorMessage) {

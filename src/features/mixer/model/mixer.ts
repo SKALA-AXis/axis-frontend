@@ -11,10 +11,17 @@ export type MixerRadarAxisId =
   | 'regulatory_risk'
   | 'talent_movement';
 
+export type MixerAnalysisMode = 'quick' | 'deep';
+
 export interface MixerRadarAxis {
   axis: MixerRadarAxisId;
   score: number;
   explanation: string;
+  calculation?: string;
+  meaning?: string;
+  support_count?: number;
+  total_count?: number;
+  matched_card_ids?: string[];
 }
 
 export type MixerConnectionLabel = 'cause' | 'effect' | 'similar' | 'contrast' | 'reinforce';
@@ -58,6 +65,40 @@ export interface MixerInsightBlock {
   evidence_card_ids?: string[];
 }
 
+export interface MixerActionDetail {
+  action: string;
+  why?: string;
+  use_case?: string;
+  evidence?: MixerEvidenceRef[];
+  evidence_card_ids?: string[];
+}
+
+export interface MixerFollowUpCheck {
+  question: string;
+  purpose?: string;
+  evidence_refs?: string[];
+}
+
+export interface MixerAnalysisDepth {
+  mode: MixerAnalysisMode;
+  label: string;
+  summary: string;
+  included_steps?: string[];
+  omitted_steps?: string[];
+}
+
+export interface MixerDeepDiveDetail {
+  label: string;
+  text: string;
+  evidence_refs?: string[];
+}
+
+export interface MixerDeepDiveSection {
+  title: string;
+  summary?: string;
+  details?: MixerDeepDiveDetail[];
+}
+
 export type MixerCrossCardPattern =
   | 'convergent_strategy'
   | 'divergent_strategy'
@@ -87,16 +128,36 @@ export interface MixerAnalysisResponse {
   hidden_conclusion?: MixerInsightBlock;
   // 대응 방향 — SK AX 관점 실행 제언 (sk_ax_implication 의 근거 목록).
   recommended_actions?: string[];
+  action_details?: MixerActionDetail[];
   cross_card_findings?: MixerCrossCardFinding[];
   reasoning_trail: MixerReasoningTrailItem[];
   reasoning_steps: MixerCoTStep[];
   langfuse_trace_id?: string | null;
   follow_up_questions: string[];
+  follow_up_checks?: MixerFollowUpCheck[];
+  analysis_depth?: MixerAnalysisDepth;
+  deep_dive_sections?: MixerDeepDiveSection[];
   confidence: number;
   sources_used: string[];
   peer_ids: string[];
   provenance: Record<string, unknown>;
   warning?: string | null;
+}
+
+export interface MixerRecentResult {
+  id: string;
+  mix_id?: string;
+  title?: string;
+  final_one_liner?: string;
+  sk_ax_implication?: string;
+  confidence?: number;
+  peer_ids?: string[];
+  input_card_ids?: string[];
+  input_keywords?: string[];
+  analysis_mode?: MixerAnalysisMode | string;
+  payload?: MixerAnalysisResponse;
+  created_at?: string;
+  updated_at?: string;
 }
 
 /** SSE 실행 단계 이벤트 — axis-ai MixerAnalysisAgent 실 단계 경계. */

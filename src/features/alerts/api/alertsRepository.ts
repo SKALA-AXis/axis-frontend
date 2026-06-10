@@ -1,6 +1,7 @@
 import type { AlertsData } from '../model/alert';
 import { httpClient } from '../../../shared/api/httpClient';
 import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
+import { env } from '../../../shared/config/env';
 import { mockAlertsData } from '../../../shared/mocks/alerts';
 
 export interface AlertsRepository {
@@ -41,4 +42,6 @@ const fallbackAlertsRepository = new MockAlertsRepository();
 
 export const alertsRepository: AlertsRepository = httpClient
   ? new HybridAlertsRepository(new HttpAlertsRepository(), fallbackAlertsRepository)
-  : fallbackAlertsRepository;
+  : env.enableMockData
+    ? fallbackAlertsRepository
+    : new HttpAlertsRepository();

@@ -1,6 +1,7 @@
 import type { RawArticle } from '../model/rawArticle';
 import { httpClient } from '../../../shared/api/httpClient';
 import { resolveWithFallback } from '../../../shared/api/resolveWithFallback';
+import { env } from '../../../shared/config/env';
 import { mockRawArticles } from '../../../shared/mocks/rawArticles';
 
 export interface RawArticlesRepository {
@@ -41,4 +42,6 @@ const fallbackRawArticlesRepository = new MockRawArticlesRepository();
 
 export const rawArticlesRepository: RawArticlesRepository = httpClient
   ? new HybridRawArticlesRepository(new HttpRawArticlesRepository(), fallbackRawArticlesRepository)
-  : fallbackRawArticlesRepository;
+  : env.enableMockData
+    ? fallbackRawArticlesRepository
+    : new HttpRawArticlesRepository();

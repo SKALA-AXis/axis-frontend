@@ -1,12 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bookmark, Box, Check, Filter, Network, Sparkles, X } from 'lucide-react';
 import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { buildMixerCards } from '../../../../features/card-news/mappers/cardNewsPresentation';
 import { useMixerAnalysis } from '../../../../features/mixer/hooks/useMixerAnalysis';
-import { MIXER_RADAR_LABELS, type MixerAnalysisResponse, type MixerCoTStep, type MixerStageEvent } from '../../../../features/mixer/model/mixer';
+import {
+  MIXER_RADAR_LABELS,
+  type MixerAnalysisMode,
+  type MixerAnalysisResponse,
+  type MixerCoTStep,
+  type MixerFollowUpCheck,
+  type MixerRecentResult,
+  type MixerStageEvent,
+} from '../../../../features/mixer/model/mixer';
+import { mixerRepository } from '../../../../features/mixer/api/mixerRepository';
+import { env } from '../../../../shared/config/env';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
-import { mockMixerConfig } from '../../../../shared/mocks/mixer';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { PageProcessLoading, PageState } from '../../shared/PageState';
@@ -21,22 +30,55 @@ const MIXER_RUN_STEPS: { stage: MixerStageEvent['stage']; title: string; descrip
   { stage: 'finalize', title: '추론 정리', description: '추론 흐름과 근거 카드를 정리해 결과로 압축합니다.', icon: <Sparkles size={16} /> },
 ];
 
-function MixerAnalysisOverlay({ stage }: { stage: MixerStageEvent | null }) {
+const MIXER_FILTER_OPTIONS = [
+  { title: 'Peer사', values: ['삼성SDS', 'LG CNS', '현대 오토에버', '포스코 DX'] },
+  { title: '고객사', values: ['공공기관', '금융권', '제조 대기업', '유통/서비스'] },
+  { title: '산업', values: ['공공', '금융', '제조', '클라우드', '보안'] },
+  { title: '키워드', values: ['AX', 'AI 에이전트', '수주', '클라우드', '보안', '스마트팩토리'] },
+] as const;
+
+const MIXER_ANALYSIS_MODE_OPTIONS: {
+  id: MixerAnalysisMode;
+  title: string;
+  description: string;
+  meta: string;
+}[] = [
+  {
+    id: 'quick',
+    title: '빠른 실행',
+    description: '결과를 먼저 보기 위해 핵심 결론과 기본 근거 연결을 빠르게 정리합니다.',
+    meta: '1차 LLM 분석 중심',
+  },
+  {
+    id: 'deep',
+    title: '정확 분석',
+    description: '품질 보강, 믹스 단위 시사점, 실행 조건 검증을 추가해 더 자세히 정리합니다.',
+    meta: '정밀 보강 + 상세 검증',
+  },
+];
+
+function MixerAnalysisProgressPanel({
+  stage,
+  analysisMode,
+}: {
+  stage: MixerStageEvent | null;
+  analysisMode: MixerAnalysisMode;
+}) {
   const loadingSteps = MIXER_RUN_STEPS;
   // stage 미수신(요청 직후) 시 0단계 활성. 수신 시 실제 index 사용.
   const activeStep = stage ? Math.min(Math.max(stage.index, 0), loadingSteps.length - 1) : 0;
   const total = stage?.total ?? loadingSteps.length;
   const activeLabel = stage?.label ?? loadingSteps[activeStep]?.description ?? '';
+  const modeLabel = analysisMode === 'deep' ? '정확 분석' : '빠른 실행';
+  const modeDescription =
+    analysisMode === 'deep'
+      ? '정확 분석은 대응 방향을 추가로 정제하므로 시간이 더 걸릴 수 있습니다.'
+      : '빠른 실행은 결과를 먼저 보여주기 위해 핵심 분석 경로만 사용합니다.';
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-[rgba(250,248,245,0.80)] backdrop-blur-md">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(220,90,36,0.12),transparent_26%),radial-gradient(circle_at_82%_24%,rgba(90,107,87,0.16),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.58),rgba(245,238,228,0.72))]" />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(120,110,96,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(120,110,96,0.08)_1px,transparent_1px)] bg-[size:34px_34px] opacity-55" />
-
-      <div className="absolute inset-0 flex items-center justify-center px-5">
-        <div className="axis-panel-flat mixer-analysis-shell relative w-full max-w-[640px] overflow-hidden rounded-[var(--axis-radius-xl)] px-7 py-7 shadow-[0_36px_90px_-44px_rgba(26,26,31,0.38)]">
-          <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(220,90,36,0.45),transparent)]" />
-          <div className="grid items-center gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+    <article className="mb-5 axis-panel-flat mixer-analysis-shell relative overflow-hidden rounded-[var(--axis-radius-lg)] border-[rgba(220,90,36,0.22)] px-5 py-5 shadow-[0_24px_72px_-48px_rgba(26,26,31,0.38)]">
+      <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(220,90,36,0.45),transparent)]" />
+      <div className="relative grid items-center gap-5 md:grid-cols-[180px_minmax(0,1fr)]">
             <div className="relative mx-auto h-[180px] w-[180px]">
               <div className="mixer-ring mixer-ring-outer" />
               <div className="mixer-ring mixer-ring-middle" />
@@ -66,10 +108,12 @@ function MixerAnalysisOverlay({ stage }: { stage: MixerStageEvent | null }) {
             <div>
               <p className="axis-kicker">Mixer analysis</p>
               <h3 className="mt-2 text-[1.95rem] font-display font-semibold leading-tight tracking-[-0.04em] text-[var(--axis-ink)]">
-                카드뉴스를 연결 가능한 인사이트로 재구성하고 있습니다.
+                {modeLabel}으로 카드뉴스를 연결 가능한 인사이트로 재구성하고 있습니다.
               </h3>
               <p className="mt-3 text-sm leading-6 text-[var(--axis-muted)]">
-                선택한 카드, 산업, 키워드 사이의 반복 문맥을 정리하고 SK AX 관점의 제안 문장으로 압축하는 중입니다.
+                선택한 카드, 산업, 키워드 사이의 반복 문맥을 정리하고 SK AX 관점의 실행 판단으로 압축하는 중입니다.
+                {' '}
+                {modeDescription} 분석 중에도 다른 화면으로 이동해 확인할 수 있습니다.
               </p>
               <div className="mt-5 h-2 overflow-hidden rounded-full bg-[rgba(120,110,96,0.12)]">
                 <div
@@ -122,9 +166,7 @@ function MixerAnalysisOverlay({ stage }: { stage: MixerStageEvent | null }) {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </article>
   );
 }
 
@@ -140,6 +182,22 @@ const provenanceString = (provenance: Record<string, unknown>, key: string): str
   const value = provenance?.[key];
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 };
+
+const sanitizeMixerActionText = (value?: string | null): string => {
+  return (value ?? '')
+    .replace(/^SK AX는 경영진 리뷰 안건을 정보 공유가 아니라 자원 배분 의사결정으로 격상한다\.?\s*/, '')
+    .replace(/^경영진 리뷰 안건을 정보 공유가 아니라 자원 배분 의사결정으로 격상한다\.?\s*/, '')
+    .trim();
+};
+
+const formatMixerDate = (value?: string | null): string => {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
+  return parsed.toISOString().slice(0, 10);
+};
+
+const mixerModeLabel = (mode?: string | null): string => (mode === 'deep' ? '정확 분석' : '빠른 실행');
 
 const mixerHistoryPreviewGroups = [
   {
@@ -184,7 +242,9 @@ export function MixerView({
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [candidatePage, setCandidatePage] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState<MixerAnalysisMode>('quick');
   const [result, setResult] = useState<MixerAnalysisResponse | null>(null);
+  const [recentMixerResults, setRecentMixerResults] = useState<MixerRecentResult[]>([]);
   const [activeResultStep, setActiveResultStep] = useState(0);
   const [showInsightReasoning, setShowInsightReasoning] = useState(false);
   const [mixerDetailCardId, setMixerDetailCardId] = useState<string | null>(null);
@@ -196,6 +256,19 @@ export function MixerView({
     if (isLoading) return;
     onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
   }, [cards, isLoading, onUpdateTimeChange]);
+
+  const loadRecentMixerResults = useCallback(async () => {
+    try {
+      const items = await mixerRepository.recent(10);
+      setRecentMixerResults(items);
+    } catch {
+      setRecentMixerResults([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRecentMixerResults();
+  }, [loadRecentMixerResults]);
 
   const mixerCards = useMemo(() => buildMixerCards(cards), [cards]);
   const visibleCards = mixerCards.filter((item) => {
@@ -213,7 +286,16 @@ export function MixerView({
     return Array.from({ length: windowEnd - candidatePageWindowStart + 1 }, (_, index) => candidatePageWindowStart + index);
   }, [candidatePageWindowStart, totalCandidatePages]);
   const selectedCards = mixerCards.filter((item) => selectedIds.includes(item.id));
+  const filteredRecentMixerResults = useMemo(() => {
+    return recentMixerResults.filter((item) => {
+      const normalizedDate = formatMixerDate(item.created_at);
+      const afterStart = !historyStartDate || !normalizedDate || normalizedDate >= historyStartDate;
+      const beforeEnd = !historyEndDate || !normalizedDate || normalizedDate <= historyEndDate;
+      return afterStart && beforeEnd;
+    });
+  }, [historyEndDate, historyStartDate, recentMixerResults]);
   const filteredHistoryPreviewGroups = useMemo(() => {
+    if (!env.enableMockData) return [];
     return mixerHistoryPreviewGroups.filter((group) => {
       const normalizedDate = group.date.replace(/\./g, '-');
       const afterStart = !historyStartDate || normalizedDate >= historyStartDate;
@@ -222,6 +304,15 @@ export function MixerView({
     });
   }, [historyEndDate, historyStartDate]);
   const historyPreviewEntries = useMemo(() => {
+    const actualEntries = recentMixerResults
+      .map((entry) => ({
+        key: entry.id,
+        date: formatMixerDate(entry.created_at),
+        title: entry.title || entry.payload?.insight || entry.final_one_liner || '믹서 결과',
+        meta: `${mixerModeLabel(String(entry.analysis_mode || entry.payload?.provenance?.analysis_mode || 'quick'))} · 카드 ${entry.input_card_ids?.length ?? entry.payload?.sources_used?.length ?? 0}장`,
+      }))
+      .slice(0, 3);
+    if (actualEntries.length > 0) return actualEntries;
     return filteredHistoryPreviewGroups
       .flatMap((group) =>
         group.entries.map((entry, index) => ({
@@ -232,7 +323,7 @@ export function MixerView({
         })),
       )
       .slice(0, 3);
-  }, [filteredHistoryPreviewGroups]);
+  }, [filteredHistoryPreviewGroups, recentMixerResults]);
   const canGenerate = selectedCards.length >= 2;
   const selectedPeerRatioData = buildSelectionRatioData(
     selectedCards.map((item) => normalizeMixerPeerLabel(item.peer)),
@@ -294,11 +385,12 @@ export function MixerView({
     setIsGenerating(true);
     resetMixer();
     try {
-      const response = await analyzeMixer({ cardIds, userContext });
+      const response = await analyzeMixer({ cardIds, userContext, analysisMode });
       if (response) {
         setResult(response);
         setActiveResultStep(0);
         setShowInsightReasoning(false);
+        await loadRecentMixerResults();
         setMode('result');
       }
     } finally {
@@ -339,7 +431,9 @@ export function MixerView({
           <ExecutiveHeader
             eyebrow="Mixer history"
             title="믹서 기록"
-            subtitle="누적 결과가 많아질 때를 대비해, 메인 믹서 화면과 분리된 기록 페이지에서 날짜 기준으로 스크롤 탐색하고 필터링하는 구조를 먼저 잡아둔 화면입니다. 현재는 프론트 프리뷰만 제공하며 실제 저장은 하지 않습니다."
+            subtitle={env.enableMockData
+              ? '누적 결과가 많아질 때를 대비해, 메인 믹서 화면과 분리된 기록 페이지에서 날짜 기준으로 스크롤 탐색하고 필터링하는 구조를 먼저 잡아둔 화면입니다.'
+              : '저장된 실제 믹서 결과가 연결되면 이 화면에서 날짜 기준으로 조회합니다. 목업 기록은 표시하지 않습니다.'}
             actions={
               <ExecutiveButton variant="secondary" onClick={() => setMode('select')}>
                 믹서로 돌아가기
@@ -385,7 +479,49 @@ export function MixerView({
               </div>
               <div className="mt-4 max-h-[640px] overflow-y-auto pr-1">
                 <div className="grid gap-5">
-                  {filteredHistoryPreviewGroups.map((group) => (
+                  {filteredRecentMixerResults.map((entry) => (
+                    <section key={entry.id} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-semibold text-[var(--axis-ink)]">
+                          {entry.title || entry.payload?.insight || entry.final_one_liner || '믹서 결과'}
+                        </h3>
+                        <span className="shrink-0 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-muted)]">
+                          {formatMixerDate(entry.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-sm leading-6 text-[var(--axis-body)]">
+                        {entry.final_one_liner || entry.payload?.final_one_liner || entry.payload?.mix_insight || '저장된 믹서 결과입니다.'}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <ExecutiveBadge tone="accent">
+                          {mixerModeLabel(String(entry.analysis_mode || entry.payload?.provenance?.analysis_mode || 'quick'))}
+                        </ExecutiveBadge>
+                        <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-muted)]">
+                          카드 {entry.input_card_ids?.length ?? entry.payload?.sources_used?.length ?? 0}장
+                        </span>
+                        {typeof entry.confidence === 'number' ? (
+                          <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1 text-xs font-semibold text-[var(--axis-muted)]">
+                            신뢰도 {toPercent(entry.confidence)}
+                          </span>
+                        ) : null}
+                      </div>
+                      {entry.payload ? (
+                        <div className="mt-4">
+                          <ExecutiveButton
+                            variant="secondary"
+                            onClick={() => {
+                              setResult(entry.payload ?? null);
+                              setActiveResultStep(0);
+                              setMode('result');
+                            }}
+                          >
+                            결과 열기
+                          </ExecutiveButton>
+                        </div>
+                      ) : null}
+                    </section>
+                  ))}
+                  {filteredRecentMixerResults.length === 0 && filteredHistoryPreviewGroups.map((group) => (
                     <section key={group.date} className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-ink)]">{group.date}</h3>
@@ -411,9 +547,9 @@ export function MixerView({
                       </div>
                     </section>
                   ))}
-                  {filteredHistoryPreviewGroups.length === 0 ? (
+                  {filteredRecentMixerResults.length === 0 && filteredHistoryPreviewGroups.length === 0 ? (
                     <div className="rounded-[var(--axis-radius-lg)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-6 text-sm leading-6 text-[var(--axis-muted)]">
-                      선택한 기간 안에 보이도록 설정된 프리뷰 기록이 없습니다. 실제 누적이 연결되면 이 영역에 기간에 맞는 결과만 남도록 표시할 수 있습니다.
+                      표시할 실제 믹서 기록이 없습니다. 목업 기록은 현재 꺼져 있습니다.
                     </div>
                   ) : null}
                 </div>
@@ -443,6 +579,11 @@ export function MixerView({
     const llmModel = provenanceString(provenance, 'llm_model');
     const promptVersion = provenanceString(provenance, 'prompt_version');
     const analysisBasis = provenanceString(provenance, 'analysis_basis');
+    const resultAnalysisMode = provenanceString(provenance, 'analysis_mode');
+    const resultAnalysisModeLabel =
+      resultAnalysisMode === 'deep' ? '정확 분석' : resultAnalysisMode === 'quick' ? '빠른 실행' : null;
+    const analysisDepth = result.analysis_depth;
+    const deepDiveSections = result.deep_dive_sections ?? [];
     // 카드 조합이 인사이트로 이어지는 실 LLM 추론 흐름 (공통 패턴 → 비교 포인트 → 숨은 결론).
     const insightChain = [
       { key: 'common_pattern', label: '공통 패턴', block: result.common_pattern },
@@ -453,20 +594,31 @@ export function MixerView({
     // axis-ai LLM 응답이 비어 있으면(추론 블록·단계 모두 없음) 백엔드 fixture fallback 으로 간주.
     const isFixtureFallback = llmModel === 'frontend-preview' || llmModel === 'fixture' || !hasRealReasoning;
     const headlineInsight = result.insight || result.mix_insight || result.final_one_liner || '믹스 인사이트';
+    const actionDetails = result.action_details ?? [];
+    const followUpChecks: MixerFollowUpCheck[] = result.follow_up_checks ?? [];
+    const followUpItems: MixerFollowUpCheck[] =
+      followUpChecks.length > 0
+        ? followUpChecks
+        : followUpQuestions.map((question) => ({ question, evidence_refs: [] }));
 
     // 탭형 step-view — 공통 패턴 → 비교 포인트 → 숨은 결론 → 대응 방향.
     const blockEvidenceIds = (block?: typeof result.common_pattern): string[] =>
       block?.evidence_card_ids && block.evidence_card_ids.length > 0
         ? block.evidence_card_ids
         : (block?.evidence ?? []).map((item) => item.card_id);
-    const recommendedActions = result.recommended_actions ?? [];
+    const recommendedActions = (result.recommended_actions ?? []).map(sanitizeMixerActionText).filter(Boolean);
     const actionEvidenceIds = Array.from(
       new Set([
         ...blockEvidenceIds(result.common_pattern),
         ...blockEvidenceIds(result.comparison_point),
         ...blockEvidenceIds(result.hidden_conclusion),
+        ...actionDetails.flatMap((item) => item.evidence_card_ids ?? []),
       ]),
     );
+    const actionRationale = actionDetails
+      .map((item) => item.why)
+      .filter((item): item is string => Boolean(item?.trim()))
+      .join(' ');
     const resultSections = [
       {
         key: 'common_pattern',
@@ -495,21 +647,22 @@ export function MixerView({
       {
         key: 'action_direction',
         label: '대응 방향',
-        finding: result.sk_ax_implication ?? recommendedActions[0] ?? '',
-        rationale:
-          recommendedActions.length > 0
-            ? '공통 패턴·비교 포인트·숨은 결론을 종합해 정리한 SK AX 관점의 실행 방향입니다.'
-            : result.sk_ax_implication ?? '',
+        finding: sanitizeMixerActionText(actionDetails[0]?.action) || sanitizeMixerActionText(result.sk_ax_implication) || recommendedActions[0] || '',
+        rationale: actionRationale || result.hidden_conclusion?.rationale || result.comparison_point?.rationale || '',
         evidenceIds: actionEvidenceIds,
         actions: recommendedActions,
       },
     ].filter((section) => section.finding || section.rationale || section.actions.length > 0);
     const safeStep = Math.min(Math.max(activeResultStep, 0), Math.max(resultSections.length - 1, 0));
-    const activeSection = resultSections[safeStep];
     // 근거 카드 텍스트 (블록 evidence 의 text) 매핑.
     const evidenceTextById = new Map<string, string>();
     [result.common_pattern, result.comparison_point, result.hidden_conclusion].forEach((block) => {
       (block?.evidence ?? []).forEach((item) => {
+        if (item.text && !evidenceTextById.has(item.card_id)) evidenceTextById.set(item.card_id, item.text);
+      });
+    });
+    actionDetails.forEach((detail) => {
+      (detail.evidence ?? []).forEach((item) => {
         if (item.text && !evidenceTextById.has(item.card_id)) evidenceTextById.set(item.card_id, item.text);
       });
     });
@@ -534,9 +687,11 @@ export function MixerView({
             subtitle="선택한 카드들을 axis-ai 믹서 에이전트(LLM)가 겹쳐 읽어 하나의 인사이트로 압축한 결과입니다."
             actions={
               <>
-                <ExecutiveButton variant="secondary" onClick={() => setMode('history')}>
-                  전체 기록 보기
-                </ExecutiveButton>
+                {env.enableMockData || recentMixerResults.length > 0 ? (
+                  <ExecutiveButton variant="secondary" onClick={() => setMode('history')}>
+                    전체 기록 보기
+                  </ExecutiveButton>
+                ) : null}
                 <ExecutiveButton variant="secondary" onClick={() => setMode('select')}>
                   선택으로 돌아가기
                 </ExecutiveButton>
@@ -550,7 +705,10 @@ export function MixerView({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <ExecutiveBadge tone="accent">믹스 인사이트</ExecutiveBadge>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[var(--axis-muted)]">카드 {sourceCardIds.length}장 조합 · 신뢰도 {toPercent(result.confidence)}</span>
+                    <span className="text-xs font-semibold text-[var(--axis-muted)]">
+                      카드 {sourceCardIds.length}장 조합 · 신뢰도 {toPercent(result.confidence)}
+                      {resultAnalysisModeLabel ? ` · ${resultAnalysisModeLabel}` : ''}
+                    </span>
                     <button
                       type="button"
                       onClick={() => setShowInsightReasoning(true)}
@@ -577,12 +735,100 @@ export function MixerView({
               </div>
             ) : null}
 
-            {hasStepView && activeSection ? (
+            {analysisDepth ? (
+              <article className="axis-panel-flat p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="axis-kicker">Analysis mode</p>
+                    <h3 className="axis-section-heading mt-1">{analysisDepth.label || resultAnalysisModeLabel || '분석 모드'}</h3>
+                    <p className="mt-2 max-w-4xl text-sm leading-6 text-[var(--axis-body)]">{analysisDepth.summary}</p>
+                  </div>
+                  {analysisDepth.mode === 'deep' ? (
+                    <ExecutiveBadge tone="accent">상세 검증 포함</ExecutiveBadge>
+                  ) : (
+                    <ExecutiveBadge tone="neutral">빠른 1차 판단</ExecutiveBadge>
+                  )}
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {(analysisDepth.included_steps ?? []).length > 0 ? (
+                    <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">포함된 작업</p>
+                      <ul className="mt-2 space-y-1.5 text-sm leading-6 text-[var(--axis-body)]">
+                        {(analysisDepth.included_steps ?? []).map((step) => (
+                          <li key={`included-${step}`} className="flex gap-2">
+                            <Check size={14} className="mt-1 shrink-0 text-[var(--axis-accent-strong)]" />
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {(analysisDepth.omitted_steps ?? []).length > 0 ? (
+                    <div className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">빠른 실행에서 생략</p>
+                      <ul className="mt-2 space-y-1.5 text-sm leading-6 text-[var(--axis-body)]">
+                        {(analysisDepth.omitted_steps ?? []).map((step) => (
+                          <li key={`omitted-${step}`} className="flex gap-2">
+                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--axis-muted)]" />
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              </article>
+            ) : null}
+
+            {deepDiveSections.length > 0 ? (
+              <article className="axis-panel-flat p-5">
+                <p className="axis-kicker">Deep dive</p>
+                <h3 className="axis-section-heading mt-1">정확 분석 상세 검증</h3>
+                <div className="mt-4 grid gap-3">
+                  {deepDiveSections.map((section, sectionIndex) => (
+                    <section key={`deep-${sectionIndex}-${section.title}`} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+                      <h4 className="text-base font-semibold text-[var(--axis-ink)]">{section.title}</h4>
+                      {section.summary ? (
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--axis-body)]">{section.summary}</p>
+                      ) : null}
+                      {(section.details ?? []).length > 0 ? (
+                        <div className="mt-3 grid gap-2">
+                          {(section.details ?? []).map((detail, detailIndex) => (
+                            <div key={`deep-detail-${sectionIndex}-${detailIndex}`} className="rounded-[var(--axis-radius-sm)] bg-[var(--axis-surface-soft)] p-3">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">{detail.label}</p>
+                              {detail.text ? (
+                                <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--axis-body)]">{detail.text}</p>
+                              ) : null}
+                              {detail.evidence_refs && detail.evidence_refs.length > 0 ? (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {detail.evidence_refs.map((cardId) => (
+                                    <button
+                                      key={`deep-ref-${sectionIndex}-${detailIndex}-${cardId}`}
+                                      type="button"
+                                      onClick={() => openMixerCard(cardId)}
+                                      className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--axis-muted)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                                    >
+                                      {peerByCardId.get(cardId) ?? cardId}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </section>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+
+            {hasStepView ? (
               <article className="axis-panel-flat p-5">
                 <p className="axis-kicker">Step view</p>
                 <h3 className="axis-section-heading mt-1">상세 해석 보기</h3>
                 <p className="mt-2 text-sm leading-6 text-[var(--axis-muted)]">
-                  카드 조합이 인사이트로 이어진 해석 흐름 4단계입니다. 단계를 눌러 핵심 문장과 해석 근거를 확인하세요.
+                  카드 조합이 인사이트로 이어진 해석 흐름입니다. 모든 단계를 아래에 펼쳐 두고, 선택한 단계는 강조 표시합니다.
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -610,41 +856,88 @@ export function MixerView({
                   })}
                 </div>
 
-                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 lg:p-5">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
-                      {safeStep + 1}
-                    </span>
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">해석 단계</p>
-                      <h4 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{activeSection.label}</h4>
-                    </div>
-                  </div>
+                <div className="mt-5 grid gap-4">
+                  {resultSections.map((section, sectionIndex) => {
+                    const isActive = sectionIndex === safeStep;
+                    const sectionEvidence = section.evidenceIds
+                      .map((cardId) => ({
+                        cardId,
+                        text: evidenceTextById.get(cardId) ?? '',
+                        card: mixerSourceCardById.get(cardId) ?? null,
+                        peer: peerByCardId.get(cardId) ?? '관련 Peer',
+                      }))
+                      .filter((item) => item.text || item.card);
+                    return (
+                      <section
+                        key={`section-card-${section.key}`}
+                        className={`rounded-[var(--axis-radius-lg)] border p-4 lg:p-5 ${
+                          isActive
+                            ? 'border-[rgba(220,90,36,0.32)] bg-[rgba(220,90,36,0.05)]'
+                            : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)]'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-sm font-bold text-[var(--axis-accent-strong)]">
+                            {sectionIndex + 1}
+                          </span>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">해석 단계</p>
+                            <h4 className="mt-1 text-lg font-semibold text-[var(--axis-ink)]">{section.label}</h4>
+                          </div>
+                        </div>
 
-                  {activeSection.finding ? (
-                    <div className="mt-4">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">핵심 문장</p>
-                      <p className="mt-2 text-[1.15rem] font-semibold leading-8 text-[var(--axis-ink)]">{activeSection.finding}</p>
-                    </div>
-                  ) : null}
+                        {section.finding ? (
+                          <div className="mt-4">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">핵심 문장</p>
+                            <p className="mt-2 whitespace-pre-wrap text-[1.08rem] font-semibold leading-8 text-[var(--axis-ink)]">
+                              {section.finding}
+                            </p>
+                          </div>
+                        ) : null}
 
-                  {activeSection.actions.length > 0 ? (
-                    <ul className="mt-4 space-y-2">
-                      {activeSection.actions.map((action, index) => (
-                        <li key={`action-${index}`} className="flex gap-2 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-sm leading-6 text-[var(--axis-body)]">
-                          <span className="mt-0.5 font-bold text-[var(--axis-accent-strong)]">{index + 1}.</span>
-                          <span>{action}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
+                        {section.actions.length > 0 ? (
+                          <ul className="mt-4 space-y-2">
+                            {section.actions.map((action, index) => (
+                              <li key={`action-${section.key}-${index}`} className="flex gap-2 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-sm leading-6 text-[var(--axis-body)]">
+                                <span className="mt-0.5 font-bold text-[var(--axis-accent-strong)]">{index + 1}.</span>
+                                <span className="whitespace-pre-wrap">{action}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
 
-                  {activeSection.rationale ? (
-                    <div className="mt-5 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">왜 이렇게 해석했는가</p>
-                      <p className="mt-2 text-sm leading-7 text-[var(--axis-body)]">{activeSection.rationale}</p>
-                    </div>
-                  ) : null}
+                        {section.rationale ? (
+                          <div className="mt-5 rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] p-4">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">검증 및 근거</p>
+                            <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[var(--axis-body)]">{section.rationale}</p>
+                          </div>
+                        ) : null}
+
+                        {sectionEvidence.length > 0 ? (
+                          <div className="mt-4 grid gap-2">
+                            {sectionEvidence.map((item) => (
+                              <div key={`${section.key}-${item.cardId}`} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <ExecutiveBadge tone="accent">{item.peer}</ExecutiveBadge>
+                                  <button
+                                    type="button"
+                                    onClick={() => openMixerCard(item.cardId)}
+                                    className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                                  >
+                                    카드 보기
+                                  </button>
+                                </div>
+                                <p className="mt-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{item.card?.title ?? item.cardId}</p>
+                                {item.text ? (
+                                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--axis-body)]">{item.text}</p>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </section>
+                    );
+                  })}
                 </div>
 
                 {sharedEvidence.length > 0 ? (
@@ -696,9 +989,9 @@ export function MixerView({
                               </div>
                               <p className="mt-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{evidence.card?.title}</p>
                               {evidence.text ? (
-                                <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--axis-body)]">{evidence.text}</p>
+                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--axis-body)]">{evidence.text}</p>
                               ) : (
-                                <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--axis-body)]">{evidence.card?.detailDescription}</p>
+                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--axis-body)]">{evidence.card?.detailDescription}</p>
                               )}
                             </div>
                           </div>
@@ -727,17 +1020,42 @@ export function MixerView({
               <article className="axis-panel-flat p-5">
                 <p className="axis-kicker">Signal strength</p>
                 <h3 className="axis-section-heading mt-1">신호 강도</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--axis-muted)]">
+                  각 점수는 선택한 카드 중 해당 조건에 맞는 카드의 exposure 또는 peer 다양성을 0~1 사이로 정규화한 값입니다.
+                </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {radarAxes.map((axis) => {
                     const label = MIXER_RADAR_LABELS.find((item) => item.id === axis.axis)?.label ?? axis.axis;
+                    const score = Math.round(axis.score * 100) / 100;
                     return (
                       <div key={axis.axis} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3">
                         <div className="flex items-center justify-between gap-3">
                           <p className="text-sm font-semibold text-[var(--axis-ink)]">{label}</p>
-                          <span className="text-xs font-bold text-[var(--axis-accent-strong)]">{Math.round(axis.score * 100) / 100}</span>
+                          <span className="text-xs font-bold text-[var(--axis-accent-strong)]">{score} / 1.00</span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(120,110,96,0.12)]">
+                          <div
+                            className="h-full rounded-full bg-[var(--axis-accent)]"
+                            style={{ width: `${Math.max(0, Math.min(score, 1)) * 100}%` }}
+                          />
                         </div>
                         {axis.explanation ? (
                           <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{axis.explanation}</p>
+                        ) : null}
+                        {axis.calculation ? (
+                          <p className="mt-2 text-xs leading-5 text-[var(--axis-muted)]">
+                            <span className="font-semibold text-[var(--axis-ink)]">계산:</span> {axis.calculation}
+                          </p>
+                        ) : null}
+                        {axis.meaning ? (
+                          <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">
+                            <span className="font-semibold text-[var(--axis-ink)]">해석:</span> {axis.meaning}
+                          </p>
+                        ) : null}
+                        {typeof axis.support_count === 'number' || typeof axis.total_count === 'number' ? (
+                          <p className="mt-1 text-xs leading-5 text-[var(--axis-muted)]">
+                            근거 카드 {axis.support_count ?? 0} / {axis.total_count ?? sourceCardIds.length}장
+                          </p>
                         ) : null}
                       </div>
                     );
@@ -746,18 +1064,42 @@ export function MixerView({
               </article>
             ) : null}
 
-            {followUpQuestions.length > 0 ? (
+            {followUpItems.length > 0 ? (
               <article className="axis-panel-flat p-5">
                 <p className="axis-kicker">Follow-up</p>
-                <h3 className="axis-section-heading mt-1">이어서 확인할 질문</h3>
-                <ul className="mt-4 space-y-2">
-                  {followUpQuestions.map((question, index) => (
-                    <li key={`fu-${index}`} className="flex gap-2 text-sm leading-6 text-[var(--axis-body)]">
-                      <span className="mt-0.5 font-bold text-[var(--axis-accent-strong)]">Q.</span>
-                      <span>{question}</span>
-                    </li>
+                <h3 className="axis-section-heading mt-1">다음 확인 포인트</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--axis-muted)]">
+                  답변이 이미 준비된 질문이 아니라, 현재 믹서 결론을 의사결정으로 바꾸기 전에 추가로 검증해야 할 정보 공백입니다.
+                </p>
+                <div className="mt-4 grid gap-3">
+                  {followUpItems.map((check, index) => (
+                    <div key={`fu-${index}`} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3">
+                      <div className="flex gap-2 text-sm leading-6 text-[var(--axis-body)]">
+                        <span className="mt-0.5 font-bold text-[var(--axis-accent-strong)]">Q.</span>
+                        <span className="font-semibold text-[var(--axis-ink)]">{check.question}</span>
+                      </div>
+                      {check.purpose ? (
+                        <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">
+                          <span className="font-semibold text-[var(--axis-ink)]">확인 목적:</span> {check.purpose}
+                        </p>
+                      ) : null}
+                      {check.evidence_refs && check.evidence_refs.length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {check.evidence_refs.map((cardId) => (
+                            <button
+                              key={`follow-${index}-${cardId}`}
+                              type="button"
+                              onClick={() => openMixerCard(cardId)}
+                              className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--axis-muted)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                            >
+                              {peerByCardId.get(cardId) ?? cardId}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </article>
             ) : null}
 
@@ -909,6 +1251,7 @@ export function MixerView({
                   </div>
                   <p className="mt-3 text-[11px] leading-5 text-[var(--axis-muted)]">
                     <span className="font-semibold text-[var(--axis-ink)]">분석 기준:</span> {analysisBasis ?? '믹서 분석'}
+                    {resultAnalysisModeLabel ? ` · 방식 ${resultAnalysisModeLabel}` : ''}
                     {llmModel ? ` · 모델 ${llmModel}` : ''}
                     {promptVersion ? ` · 프롬프트 ${promptVersion}` : ''}
                   </p>
@@ -984,21 +1327,43 @@ export function MixerView({
             <>
               <ExecutiveButton
                 variant={bookmarkedOnly ? 'primary' : 'secondary'}
-                disabled={isGenerating}
                 icon={<Bookmark size={16} fill={bookmarkedOnly ? 'currentColor' : 'none'} />}
                 onClick={() => setBookmarkedOnly((current) => !current)}
               >
                 북마크만
               </ExecutiveButton>
+              <div className="inline-flex rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-1">
+                {MIXER_ANALYSIS_MODE_OPTIONS.map((option) => {
+                  const isSelected = option.id === analysisMode;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      disabled={isGenerating}
+                      onClick={() => setAnalysisMode(option.id)}
+                      className={`h-9 rounded-[7px] px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        isSelected
+                          ? 'bg-[rgba(220,90,36,0.14)] text-[var(--axis-accent-strong)]'
+                          : 'text-[var(--axis-muted)] hover:bg-[var(--axis-surface-soft)] hover:text-[var(--axis-body)]'
+                      }`}
+                      title={option.description}
+                    >
+                      {option.title}
+                    </button>
+                  );
+                })}
+              </div>
               <ExecutiveButton icon={<Sparkles size={16} />} disabled={!canGenerate || isGenerating} onClick={generateMixerResult}>
-                {isGenerating ? '분석 중...' : '믹서 실행'}
+                {isGenerating ? '분석 중...' : analysisMode === 'deep' ? '정확 분석 실행' : '빠른 실행'}
               </ExecutiveButton>
             </>
           }
         />
 
+        {isGenerating ? <MixerAnalysisProgressPanel stage={mixerStage} analysisMode={analysisMode} /> : null}
+
         <section data-guide="mixer-input" className="relative z-0 mb-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
-          {mockMixerConfig.options.map((optionGroup) => {
+          {MIXER_FILTER_OPTIONS.map((optionGroup) => {
             const group =
               optionGroup.title === 'Peer사'
                 ? { ...optionGroup, selected: selectedPeers, setter: setSelectedPeers }
@@ -1180,39 +1545,48 @@ export function MixerView({
             <div className="mt-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-ink)]">최근 생성 결과</h3>
-                <span className="text-xs font-semibold text-[var(--axis-muted)]">3개만 표시</span>
+                <span className="text-xs font-semibold text-[var(--axis-muted)]">
+                  {recentMixerResults.length > 0 ? `${recentMixerResults.length}개 저장` : env.enableMockData ? '3개만 표시' : '저장 결과 없음'}
+                </span>
               </div>
-              <div className="grid gap-3">
-                {historyPreviewEntries.map((entry) => (
-                  <div
-                    key={entry.key}
-                    className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
-                        {entry.date}
-                      </span>
-                      <span className="text-xs font-semibold text-[var(--axis-muted)]">최근 결과</span>
+              {historyPreviewEntries.length > 0 ? (
+                <div className="grid gap-3">
+                  {historyPreviewEntries.map((entry) => (
+                    <div
+                      key={entry.key}
+                      className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
+                          {entry.date}
+                        </span>
+                        <span className="text-xs font-semibold text-[var(--axis-muted)]">최근 결과</span>
+                      </div>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">
+                        {entry.title}
+                      </p>
+                      <p className="mt-2 text-xs text-[var(--axis-muted)]">
+                        {entry.meta}
+                      </p>
                     </div>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">
-                      {entry.title}
-                    </p>
-                    <p className="mt-2 text-xs text-[var(--axis-muted)]">
-                      {entry.meta}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4">
-                <ExecutiveButton variant="secondary" onClick={() => setMode('history')}>
-                  전체 기록 보기
-                </ExecutiveButton>
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-4 text-sm leading-6 text-[var(--axis-muted)]">
+                  실제 저장된 믹서 결과가 아직 연결되지 않았습니다. 목업 기록은 표시하지 않습니다.
+                </div>
+              )}
+              {env.enableMockData || recentMixerResults.length > 0 ? (
+                <div className="mt-4">
+                  <ExecutiveButton variant="secondary" onClick={() => setMode('history')}>
+                    전체 기록 보기
+                  </ExecutiveButton>
+                </div>
+              ) : null}
             </div>
           </aside>
         </section>
       </ExecutiveContainer>
-      {isGenerating ? <MixerAnalysisOverlay stage={mixerStage} /> : null}
     </ExecutivePage>
   );
 }

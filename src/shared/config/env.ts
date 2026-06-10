@@ -15,4 +15,5 @@ function resolveApiBaseUrl() {
 
 export const env = {
   apiBaseUrl: resolveApiBaseUrl(),
+  enableMockData: false,
 };

@@ -359,7 +359,7 @@ function buildCounts(items: SearchResultItem[]) {
 }
 
 function shouldUseMockFallback() {
-  return import.meta.env.DEV || !env.apiBaseUrl;
+  return env.enableMockData;
 }
 
 function normalizeSearchText(value: string) {
