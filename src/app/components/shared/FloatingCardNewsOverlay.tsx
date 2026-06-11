@@ -4,6 +4,12 @@ import { getCardLogoImageClass, isCardLogoUrl } from '../../../features/card-new
 import type { CardNewsItem } from '../../../features/card-news/model/cardNews';
 import { getDisplayDate, getPeerLabel, getSummaryLines } from '../../../features/card-news/mappers/cardNewsExecutive';
 
+type ShareDataWithFiles = ShareData & { files?: File[] };
+type NavigatorWithFileShare = Navigator & {
+  canShare?: (data?: ShareDataWithFiles) => boolean;
+  share?: (data?: ShareDataWithFiles) => Promise<void>;
+};
+
 function compactShareLines(lines: Array<string | null | undefined>) {
   return lines
     .map((line) => String(line ?? '').trim())
@@ -40,10 +46,26 @@ function buildCardNewsShareText(card: CardNewsItem) {
   ]).join('\n\n');
 }
 
+function getShareFileName(card: CardNewsItem) {
+  const safeTitle = card.title
+    .replace(/[\\/:*?"<>|#\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 48);
+  return `${safeTitle || 'card-news'}.txt`;
+}
+
 async function shareCardNews(card: CardNewsItem) {
   const text = buildCardNewsShareText(card);
-  if (navigator.share) {
-    await navigator.share({ title: card.title, text });
+  const sourceUrl = card.sourceUrl && card.sourceUrl !== '#' ? card.sourceUrl : undefined;
+  const fileShareNavigator = navigator as NavigatorWithFileShare;
+  if (fileShareNavigator.share) {
+    const textFile = new File([text], getShareFileName(card), { type: 'text/plain;charset=utf-8' });
+    if (fileShareNavigator.canShare?.({ files: [textFile] })) {
+      await fileShareNavigator.share({ title: card.title, text, files: [textFile] });
+      return '공유를 열었습니다.';
+    }
+    await fileShareNavigator.share(sourceUrl ? { title: card.title, text, url: sourceUrl } : { title: card.title, text });
     return '공유를 열었습니다.';
   }
   await navigator.clipboard.writeText(text);
