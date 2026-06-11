@@ -2816,7 +2816,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 공유 링크 */
+            /** @description 저장된 믹서 결과 기반 공유 payload */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2824,6 +2824,9 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponse"] & {
                         data?: {
+                            status?: string;
+                            result_kind?: string;
+                            mix_id?: string;
                             share_url?: string;
                         };
                     };
@@ -2833,6 +2836,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
             500: components["responses"]["InternalServerError"];
         };
     };

@@ -64,15 +64,15 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
           title="알림 센터"
           subtitle="키워드와 중요 시그널로 생성된 알림을 확인합니다."
           actions={(
-            <>
+            <div data-guide="notifications-actions" className="flex flex-wrap items-center gap-2">
               <ExecutiveBadge tone={unreadCount > 0 ? 'danger' : 'neutral'}>안읽음 {unreadCount}건</ExecutiveBadge>
               <ExecutiveButton variant="secondary" icon={<CheckCheck size={16} />} onClick={() => void markAllRead()}>모두 읽음</ExecutiveButton>
               <ExecutiveButton variant="secondary" icon={<Trash2 size={16} />} onClick={() => void deleteRead()}>읽은 알림 지우기</ExecutiveButton>
-            </>
+            </div>
           )}
         />
 
-        <section className="axis-panel-flat overflow-hidden">
+        <section data-guide="notifications-list" className="axis-panel-flat overflow-hidden">
           {status === 'loading' ? (
             <div className="p-6 text-sm font-semibold text-[var(--axis-muted)]">알림을 불러오는 중입니다.</div>
           ) : null}

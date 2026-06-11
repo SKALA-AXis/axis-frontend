@@ -1,4 +1,4 @@
-import { Bell, Clock3, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Type, X, User } from 'lucide-react';
+import { Bell, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Type, X, User } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -58,13 +58,6 @@ export function SettingsView({
   const email = currentUser?.email || 'axis.user@sk.com';
   const textScaleStep = clampTextScaleStep(textPreference.step);
   const textScaleLabel = `${Math.round((textScaleSteps[textScaleStep] - 1) * 100)}%`;
-  const [notificationSettings, setNotificationSettings] = useState({
-    email: true,
-    inApp: true,
-    msTeams: false,
-    briefingTime: '08:30',
-    eventImmediate: true,
-  });
 
   const tabs: Array<{ id: SettingsTab; label: string; icon: typeof User }> = [
     { id: 'account', label: '회원 정보', icon: User },
@@ -182,7 +175,7 @@ export function SettingsView({
         <ExecutiveHeader
           eyebrow="User settings"
           title="회원 정보"
-          subtitle="프로필, 접속 로그, 알림 채널을 OpenAPI Settings 도메인 구조에 맞춰 관리합니다."
+          subtitle="프로필, 접속 로그, 웹 알림 기준을 관리합니다."
           actions={<ExecutiveButton variant="danger" icon={<LogOut size={16} />} onClick={onLogout}>로그아웃</ExecutiveButton>}
         />
 
@@ -354,7 +347,7 @@ export function SettingsView({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Bell size={17} className="text-[var(--axis-accent)]" />
-                    <h2 className="axis-section-heading">알림 채널·시간</h2>
+                    <h2 className="axis-section-heading">웹 알림 기준</h2>
                   </div>
                 </div>
 
@@ -370,24 +363,6 @@ export function SettingsView({
                     description="수주, 계약, 실적, 투자 등 중요 키워드 감지를 포함합니다."
                     checked={notificationPreferences.importantEnabled}
                     onChange={(checked) => setNotificationPreferences((current) => ({ ...current, importantEnabled: checked }))}
-                  />
-                  <ToggleRow
-                    title="Email"
-                    description="브리핑과 중요 이벤트를 이메일로 수신합니다."
-                    checked={notificationSettings.email}
-                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, email: checked }))}
-                  />
-                  <ToggleRow
-                    title="In-app"
-                    description="AXIS 콘솔 내부 알림을 표시합니다."
-                    checked={notificationSettings.inApp}
-                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, inApp: checked }))}
-                  />
-                  <ToggleRow
-                    title="MS Teams"
-                    description="Teams Webhook 채널로 브리핑을 전달합니다."
-                    checked={notificationSettings.msTeams}
-                    onChange={(checked) => setNotificationSettings((current) => ({ ...current, msTeams: checked }))}
                   />
                 </div>
 
@@ -436,18 +411,6 @@ export function SettingsView({
                   </div>
                 </div>
 
-                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Clock3 size={16} className="text-[var(--axis-accent)]" />
-                    <h3 className="text-heading-5 font-semibold text-[var(--axis-ink)]">브리핑 발송 시간</h3>
-                  </div>
-                  <input
-                    type="time"
-                    value={notificationSettings.briefingTime}
-                    onChange={(event) => setNotificationSettings((current) => ({ ...current, briefingTime: event.target.value }))}
-                    className="h-10 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-body-sm text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
-                  />
-                </div>
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   <ExecutiveButton
                     onClick={() => void saveNotificationPreferences()}
