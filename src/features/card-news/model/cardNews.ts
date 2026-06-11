@@ -159,6 +159,8 @@ export type CardNewsItem = {
   implication?: CardNewsImplication;
   sources?: CardNewsSource[];
   source_count?: number | null;
+  source_raw_article_ids?: number[];
+  sourceRawArticleIds?: number[];
   evidence_chain?: CardNewsEvidenceChain;
   financial_context?: CardNewsFinancialContext | null;
   slides?: CardNewsSlide[];
