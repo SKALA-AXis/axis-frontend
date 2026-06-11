@@ -56,17 +56,34 @@ function getShareFileName(card: CardNewsItem) {
   return `${safeTitle || 'card-news'}.txt`;
 }
 
+function createCardNewsTextFile(text: string, fileName: string) {
+  return new File([text], fileName, { type: 'text/plain' });
+}
+
+async function copyCardNewsShareText(text: string) {
+  try {
+    if (!navigator.clipboard?.writeText) return false;
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function shareCardNews(card: CardNewsItem) {
   const text = buildCardNewsShareText(card);
+  const fileName = getShareFileName(card);
   const fileShareNavigator = navigator as NavigatorWithFileShare;
-  let shareAttempted = false;
   if (fileShareNavigator.share && typeof File !== 'undefined') {
-    const textFile = new File([text], getShareFileName(card), { type: 'text/plain;charset=utf-8' });
-    const payload: ShareDataWithFiles = { title: card.title, files: [textFile] };
-    const canShareTextFile = fileShareNavigator.canShare ? fileShareNavigator.canShare(payload) : true;
+    const textFile = createCardNewsTextFile(text, fileName);
+    const filePayloads: ShareDataWithFiles[] = [
+      { title: card.title, files: [textFile] },
+      { title: card.title, text, files: [textFile] },
+    ];
     try {
-      if (canShareTextFile) {
-        shareAttempted = true;
+      for (const payload of filePayloads) {
+        const canShareTextFile = fileShareNavigator.canShare ? fileShareNavigator.canShare(payload) : true;
+        if (!canShareTextFile) continue;
         await fileShareNavigator.share(payload);
         return '공유를 열었습니다.';
       }
@@ -75,13 +92,31 @@ async function shareCardNews(card: CardNewsItem) {
         return '공유를 취소했습니다.';
       }
       // eslint-disable-next-line no-console
-      console.warn('Card news text file share failed; copied content instead.', error);
+      console.warn('Card news text file share failed; trying text share instead.', error);
     }
   }
-  await navigator.clipboard.writeText(text);
-  return shareAttempted
-    ? 'txt 파일 공유창을 열지 못해 카드뉴스 내용을 복사했습니다.'
-    : '브라우저가 txt 파일 공유를 지원하지 않아 카드뉴스 내용을 복사했습니다.';
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: card.title,
+        text,
+      });
+      return '공유를 열었습니다.';
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return '공유를 취소했습니다.';
+      }
+      // eslint-disable-next-line no-console
+      console.warn('Card news text share failed; falling back to clipboard.', error);
+    }
+  }
+
+  if (await copyCardNewsShareText(text)) {
+    return '공유창을 열 수 없어 카드뉴스 내용을 복사했습니다.';
+  }
+
+  return '공유를 처리하지 못했습니다.';
 }
 
 export { shareCardNews };
