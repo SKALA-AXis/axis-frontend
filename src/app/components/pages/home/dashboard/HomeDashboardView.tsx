@@ -36,12 +36,6 @@ import {
   toDateInputValue,
 } from '../../../../../features/briefings/utils/briefingDate';
 import { useDashboard, useDashboardKeywordTrends, useTodayInsight } from '../../../../../features/dashboard/hooks/useDashboard';
-import type {
-  TodayInsightAction,
-  TodayInsightSection,
-  TodayInsightSource,
-  TodayInsightSourceTrace,
-} from '../../../../../features/dashboard/model/dashboard';
 import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../../shared/FloatingCardNewsOverlay';
@@ -52,6 +46,30 @@ import {
   ChartLegend,
   type KeywordSpikeInsight,
 } from '../../shared/axis';
+import {
+  formatKeywordAxisTick,
+  formatKeywordDelta,
+  formatKeywordRatio,
+  formatStockPrice,
+  formatStockRate,
+  getSymmetricAxisRange,
+  stockLegendItems,
+  withResolvedKeywordSeriesColors,
+} from './dashboardChartUtils';
+import {
+  actionHorizon,
+  actionOwner,
+  formatKeywordTrendDelta,
+  type HomeTodayInsightSignal,
+  insightBulletLabel,
+  isTruthyMeta,
+  normalizeTodayInsightSection,
+  normalizeTodayInsightSignal,
+  sourceName,
+  sourceTraceCardId,
+  sourceTraceIssueId,
+  splitInsightBulletText,
+} from './todayInsightUtils';
 
 type NavigateHandler = (view: string) => void;
 
@@ -67,144 +85,6 @@ type ActiveKeywordPoint = {
   }>;
   insight: KeywordSpikeInsight | null;
 };
-
-type HomeTodayInsightSignal = {
-  id: string;
-  label: string;
-  value: string;
-  summary: string;
-  reasoning: Array<{ stage: string; detail: string }>;
-  evidence: {
-    grounds: string[];
-    changes: string[];
-    relatedKeywords: string[];
-    sourceIds: string[];
-  };
-  responseDirection: TodayInsightAction[];
-  sources: TodayInsightSource[];
-  sourceTrace: TodayInsightSourceTrace[];
-};
-
-type NormalizableTodayInsightSignal = {
-  id?: string;
-  label?: string;
-  value?: string;
-  summary?: string;
-  reasoning?: ReadonlyArray<{ stage?: string; detail?: string }>;
-  evidence?: {
-    grounds?: ReadonlyArray<string>;
-    changes?: ReadonlyArray<string>;
-    related_keywords?: ReadonlyArray<string>;
-    relatedKeywords?: ReadonlyArray<string>;
-    source_ids?: ReadonlyArray<string>;
-    sourceIds?: ReadonlyArray<string>;
-  };
-};
-
-function normalizeTodayInsightSignal(signal: NormalizableTodayInsightSignal): HomeTodayInsightSignal {
-  const evidence = (signal.evidence ?? {}) as {
-    grounds?: ReadonlyArray<string>;
-    changes?: ReadonlyArray<string>;
-    related_keywords?: ReadonlyArray<string>;
-    relatedKeywords?: ReadonlyArray<string>;
-    source_ids?: ReadonlyArray<string>;
-    sourceIds?: ReadonlyArray<string>;
-  };
-  return {
-    id: signal.id ?? 'signal',
-    label: signal.label ?? '주요 신호',
-    value: signal.value ?? '',
-    reasoning: (signal.reasoning ?? [])
-      .filter((step) => step.detail)
-      .map((step) => ({ stage: step.stage ?? '판단', detail: step.detail ?? '' })),
-    evidence: {
-      grounds: Array.from(evidence.grounds ?? []),
-      changes: Array.from(evidence.changes ?? []),
-      relatedKeywords: Array.from(evidence.relatedKeywords ?? evidence.related_keywords ?? []),
-      sourceIds: Array.from(evidence.sourceIds ?? evidence.source_ids ?? []),
-    },
-    summary: signal.summary ?? signal.value ?? '',
-    responseDirection: [],
-    sources: [],
-    sourceTrace: [],
-  };
-}
-
-function normalizeTodayInsightSection(section: TodayInsightSection): HomeTodayInsightSignal {
-  const evidence: {
-    grounds?: ReadonlyArray<string>;
-    changes?: ReadonlyArray<string>;
-    related_keywords?: ReadonlyArray<string>;
-    relatedKeywords?: ReadonlyArray<string>;
-    source_ids?: ReadonlyArray<string>;
-    sourceIds?: ReadonlyArray<string>;
-  } = section.evidence ?? {};
-  return {
-    id: section.id ?? 'section',
-    label: section.label ?? '주요 신호',
-    value: section.title ?? section.summary ?? '',
-    summary: section.summary ?? section.title ?? '',
-    reasoning: (section.reasoning ?? [])
-      .filter((step) => step.detail)
-      .map((step) => ({ stage: step.stage ?? '판단', detail: step.detail ?? '' })),
-    evidence: {
-      grounds: Array.from(evidence.grounds ?? []),
-      changes: Array.from(evidence.changes ?? []),
-      relatedKeywords: Array.from(evidence.relatedKeywords ?? evidence.related_keywords ?? []),
-      sourceIds: Array.from(evidence.sourceIds ?? evidence.source_ids ?? []),
-    },
-    responseDirection: Array.from(section.responseDirection ?? section.response_direction ?? []),
-    sources: Array.from(section.sources ?? []),
-    sourceTrace: Array.from(section.sourceTrace ?? section.source_trace ?? []),
-  };
-}
-
-function actionOwner(action: TodayInsightAction): string {
-  return action.decision_owner ?? action.decisionOwner ?? '';
-}
-
-function actionHorizon(action: TodayInsightAction): string {
-  return action.time_horizon ?? action.timeHorizon ?? '';
-}
-
-function sourceName(source: TodayInsightSource): string {
-  return source.source_name ?? source.sourceName ?? source.publisher ?? 'source';
-}
-
-function sourceTraceIssueId(trace: TodayInsightSourceTrace): string {
-  return trace.source_integrated_issue_id ?? trace.sourceIntegratedIssueId ?? '';
-}
-
-function sourceTraceCardId(trace: TodayInsightSourceTrace): string {
-  return trace.source_card_id ?? trace.sourceCardId ?? '';
-}
-
-function isTruthyMeta(value: unknown): boolean {
-  return value === true || value === 'true' || value === 1 || value === '1';
-}
-
-function formatKeywordTrendDelta(delta?: number | null) {
-  if (typeof delta !== 'number' || Number.isNaN(delta)) {
-    return '-';
-  }
-  return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}pt`;
-}
-
-function splitInsightBulletText(text: string): string[] {
-  const cleaned = text.trim();
-  if (!cleaned) return [];
-  const sentenceMatches = cleaned.match(/[^.!?。]+[.!?。]?/g) ?? [cleaned];
-  return sentenceMatches
-    .map((item) => item.trim().replace(/[.!?。]$/, ''))
-    .filter(Boolean)
-    .slice(0, 3);
-}
-
-function insightBulletLabel(index: number): string {
-  if (index === 0) return '판단 기준';
-  if (index === 1) return '논의 사항';
-  return '추가 확인';
-}
 
 export function HomeDashboardView({
   onNavigate,
@@ -440,79 +320,22 @@ export function HomeDashboardView({
   });
   const keywordSearchPoints = keywordTrends?.keywordSearchPoints ?? [];
   const keywordSeries = keywordTrends?.keywordSeries ?? [];
+  const keywordSeriesForChart = withResolvedKeywordSeriesColors(keywordSeries);
   const keywordSpikeInsights = keywordTrends?.keywordInsights ?? [];
   const activeKeywordInsight = activeKeywordPoint?.insight ?? null;
-  const keywordSeriesKeys = keywordSeries.map((series) => series.key);
-  const keywordAxisAbsMax = keywordSearchPoints.reduce((max, point) => {
-    const pointMax = keywordSeriesKeys.reduce((innerMax, key) => {
-      const value = point[key];
-      if (typeof value !== 'number' || Number.isNaN(value)) {
-        return innerMax;
-      }
-      return Math.max(innerMax, Math.abs(value));
-    }, 0);
-    return Math.max(max, pointMax);
-  }, 0);
-  const keywordAxisRange = Math.max(5, Math.ceil(((keywordAxisAbsMax * 1.15) + 1) / 5) * 5);
-  const formatStockPrice = (value?: number | string | null) => {
-    if (typeof value !== 'number' || Number.isNaN(value)) {
-      return '-';
-    }
-    return `${value.toLocaleString('ko-KR')}원`;
-  };
-  const formatStockRate = (value?: number | string | null) => {
-    if (typeof value !== 'number' || Number.isNaN(value)) {
-      return '-';
-    }
-    return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
-  };
-  const formatKeywordRatio = (value?: number | string | null) => {
-    if (typeof value !== 'number' || Number.isNaN(value)) {
-      return '-';
-    }
-    return value.toFixed(2);
-  };
-  const formatKeywordDelta = (value?: number | string | null, fractionDigits = 2) => {
-    if (typeof value !== 'number' || Number.isNaN(value)) {
-      return '-';
-    }
-    return `${value > 0 ? '+' : ''}${value.toFixed(fractionDigits)}pt`;
-  };
-  const formatKeywordAxisTick = (value: number) => {
-    if (Number.isInteger(value)) {
-      return `${value}pt`;
-    }
-    return `${value.toFixed(1)}pt`;
-  };
-  const stockAxisAbsMax = stockRateChartPoints.reduce((max, point) => {
-    const values = [point.samsungSds, point.lgCns, point.hyundaiAutoever, point.poscoDx];
-    const pointMax = values.reduce<number>((innerMax, value) => {
-      if (typeof value !== 'number' || Number.isNaN(value)) {
-        return innerMax;
-      }
-      return Math.max(innerMax, Math.abs(value));
-    }, 0);
-    return Math.max(max, pointMax);
-  }, 0);
-  const stockAxisRange = Math.max(20, Math.ceil((stockAxisAbsMax + 2) / 5) * 5);
-  const stockLegendItems = [
-    {
-      label: '삼성SDS',
-      color: 'var(--axis-graph-company)',
-    },
-    {
-      label: 'LG CNS',
-      color: 'var(--axis-graph-infra)',
-    },
-    {
-      label: '현대오토에버',
-      color: 'var(--axis-graph-security)',
-    },
-    {
-      label: '포스코DX',
-      color: 'var(--axis-graph-deal)',
-    },
-  ];
+  const keywordSeriesKeys = keywordSeriesForChart.map((series) => series.key);
+  const keywordAxisRange = getSymmetricAxisRange(
+    keywordSearchPoints as Array<Record<string, unknown>>,
+    keywordSeriesKeys,
+    5,
+    { padding: 1, scale: 1.15, step: 5 },
+  );
+  const stockAxisRange = getSymmetricAxisRange(
+    stockRateChartPoints as Array<Record<string, unknown>>,
+    ['samsungSds', 'lgCns', 'hyundaiAutoever', 'poscoDx'],
+    20,
+    { padding: 2, step: 5 },
+  );
   const renderStockTooltip = ({
     active,
     payload,
@@ -535,7 +358,7 @@ export function HomeDashboardView({
     } as const;
 
     return (
-      <div className="min-w-[220px] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur">
+      <div className="min-w-[220px] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-chart-tooltip-bg)] px-3 py-2.5 shadow-sm backdrop-blur">
         <p className="text-[11px] font-semibold text-[var(--axis-muted)]">{label}</p>
         <div className="mt-2 space-y-1.5">
           {payload.map((item) => {
@@ -566,7 +389,7 @@ export function HomeDashboardView({
     displayValue: item.displayValue,
   })) ?? [];
   const showStockChart = interestChartIndex % 2 === 1;
-  const hasKeywordTrendChart = keywordSearchPoints.length > 0 && keywordSeries.length > 0;
+  const hasKeywordTrendChart = keywordSearchPoints.length > 0 && keywordSeriesForChart.length > 0;
   const chartSwitcher = (
     <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
       <button
@@ -993,7 +816,7 @@ export function HomeDashboardView({
                       width={56}
                       tickFormatter={(value: number) => `${value}%`}
                     />
-                    <ReferenceLine y={0} stroke="rgba(26,26,31,0.22)" strokeDasharray="3 3" />
+                    <ReferenceLine y={0} stroke="var(--axis-chart-zero-line)" strokeDasharray="3 3" />
                     <Tooltip
                       content={(props) =>
                         renderStockTooltip(props as {
@@ -1031,7 +854,7 @@ export function HomeDashboardView({
                   </div>
                 </div>
               ) : keywordTrendsError ? (
-                <div className="flex h-full flex-col items-center justify-center rounded-[var(--axis-radius-md)] border border-[rgba(218,30,40,0.18)] bg-[rgba(218,30,40,0.06)] p-4 text-center">
+                <div className="flex h-full flex-col items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-chart-danger-border)] bg-[var(--axis-chart-danger-surface)] p-4 text-center">
                   <p className="text-sm font-semibold text-[var(--axis-danger)]">섹터 관심도 그래프를 불러오지 못했습니다.</p>
                   <p className="mt-2 max-w-[320px] text-xs leading-5 text-[var(--axis-muted)]">{keywordTrendsError}</p>
                   <button
@@ -1052,8 +875,8 @@ export function HomeDashboardView({
                       tick={{ fontSize: 11, fill: 'var(--axis-muted)' }}
                       tickFormatter={formatKeywordAxisTick}
                     />
-                    <ReferenceLine y={0} stroke="rgba(26,26,31,0.22)" strokeDasharray="3 3" />
-                    {keywordSeries.map((series, index) => (
+                    <ReferenceLine y={0} stroke="var(--axis-chart-zero-line)" strokeDasharray="3 3" />
+                    {keywordSeriesForChart.map((series, index) => (
                       <Line
                         key={series.key}
                         type="linear"
@@ -1071,7 +894,7 @@ export function HomeDashboardView({
                           const hoveredPoint: ActiveKeywordPoint = {
                             key: series.key,
                             time,
-                            items: keywordSeries.map((item) => ({
+                            items: keywordSeriesForChart.map((item) => ({
                               key: item.key,
                               name: item.name,
                               color: item.color,
@@ -1123,8 +946,8 @@ export function HomeDashboardView({
                                   cx={cx}
                                   cy={cy}
                                   r={showActive ? 11 : 9}
-                                  fill="rgba(190,255,0,0.18)"
-                                  stroke="#beff00"
+                                  fill="var(--axis-chart-spike-fill)"
+                                  stroke="var(--axis-chart-spike-ring)"
                                   strokeWidth={2.4}
                                 />
                                 <circle
@@ -1132,7 +955,7 @@ export function HomeDashboardView({
                                   cy={cy}
                                   r={showActive ? 5.5 : 4.5}
                                   fill={series.color}
-                                  stroke="rgba(255,255,255,0.98)"
+                                  stroke="var(--axis-chart-point-ring)"
                                   strokeWidth={2.4}
                                 />
                               </g>
@@ -1160,7 +983,7 @@ export function HomeDashboardView({
                                 cy={cy}
                                 r={showPoint ? 4 : 2.5}
                                 fill={series.color}
-                                stroke={showPoint ? 'rgba(255,255,255,0.98)' : series.color}
+                                stroke={showPoint ? 'var(--axis-chart-point-ring)' : series.color}
                                 strokeWidth={showPoint ? 2 : 0}
                               />
                             </g>
@@ -1184,14 +1007,14 @@ export function HomeDashboardView({
               items={
                 showStockChart
                   ? stockLegendItems
-                  : keywordSeries.map((series) => ({
+                  : keywordSeriesForChart.map((series) => ({
                       label: series.name,
                       color: series.color,
                   }))
               }
             />
             {!showStockChart && activeKeywordPoint ? (
-              <div className="mt-3 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.06)] px-3 py-3">
+              <div className="mt-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-chart-accent-border)] bg-[var(--axis-chart-accent-surface)] px-3 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
                     섹터 관심도 날짜별 값
@@ -1217,8 +1040,8 @@ export function HomeDashboardView({
                       key={item.key}
                       className={`rounded-[var(--axis-radius-sm)] border px-2.5 py-2 text-[11px] ${
                         item.key === activeKeywordPoint.key
-                          ? 'border-[rgba(220,90,36,0.36)] bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
-                          : 'border-[rgba(220,90,36,0.14)] bg-[rgba(255,255,255,0.48)] text-[var(--axis-body)]'
+                          ? 'border-[var(--axis-chart-accent-border-strong)] bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
+                          : 'border-[var(--axis-chart-accent-border-soft)] bg-[var(--axis-surface)] text-[var(--axis-body)]'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -1253,7 +1076,7 @@ export function HomeDashboardView({
                           return (
                             <div
                               key={`${label}-${title}-${index}`}
-                              className="rounded-[var(--axis-radius-sm)] border border-[rgba(220,90,36,0.16)] bg-[rgba(255,255,255,0.5)] px-2.5 py-2"
+                              className="rounded-[var(--axis-radius-sm)] border border-[var(--axis-chart-accent-border-soft)] bg-[var(--axis-surface)] px-2.5 py-2"
                             >
                               <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-[var(--axis-muted)]">
                                 <span>{label}</span>
