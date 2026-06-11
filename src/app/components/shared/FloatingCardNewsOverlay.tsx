@@ -42,9 +42,16 @@ function buildCardNewsShareText(card: CardNewsItem) {
 
 async function shareCardNews(card: CardNewsItem) {
   const text = buildCardNewsShareText(card);
+  const sourceUrl = card.sourceUrl && card.sourceUrl !== '#' ? card.sourceUrl : undefined;
   if (navigator.share) {
-    await navigator.share({ title: card.title, text });
-    return '공유를 열었습니다.';
+    try {
+      await navigator.share(sourceUrl ? { title: card.title, text, url: sourceUrl } : { title: card.title, text });
+      return '공유를 열었습니다.';
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return '공유를 취소했습니다.';
+      }
+    }
   }
   await navigator.clipboard.writeText(text);
   return '카드뉴스 내용을 복사했습니다.';
