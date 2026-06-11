@@ -211,7 +211,14 @@ export function FloatingCardNewsOverlay({
   const [shareFeedback, setShareFeedback] = useState('');
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const sourceOptions = getCardSourceOptions(card);
-  const sourceCount = Math.max(card.source_count ?? sourceOptions.length, 1);
+  const sourceCount = Math.max(
+    card.source_count ?? 0,
+    card.source_raw_article_ids?.length ?? 0,
+    card.sourceRawArticleIds?.length ?? 0,
+    card.evidence_chain?.provenance?.raw_article_ids?.length ?? 0,
+    sourceOptions.length,
+    1,
+  );
   const orderedCards = dedupeCardsById(cards.length > 0 ? cards : [card]);
   const currentCardIndex = orderedCards.findIndex((item) => item.id === card.id);
   const previousCard = currentCardIndex > 0 ? orderedCards[currentCardIndex - 1] : null;

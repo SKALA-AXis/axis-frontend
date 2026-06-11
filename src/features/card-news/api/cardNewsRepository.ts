@@ -121,6 +121,15 @@ export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem
       }
     : card.evidence_chain;
   const primarySourceName = resolveSourceName(card.source, card.sourceUrl ?? normalizedSources?.[0]?.url);
+  const sourceRawArticleIds = card.source_raw_article_ids ?? card.sourceRawArticleIds ?? [];
+  const provenanceRawArticleIds = normalizedEvidenceChain?.provenance?.raw_article_ids ?? [];
+  const sourceCountCandidates = [
+    card.source_count,
+    sourceRawArticleIds.length > 0 ? new Set(sourceRawArticleIds).size : null,
+    provenanceRawArticleIds.length > 0 ? new Set(provenanceRawArticleIds).size : null,
+    normalizedSources?.length,
+  ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
+  const sourceCount = sourceCountCandidates.length > 0 ? Math.max(...sourceCountCandidates) : null;
 
   return {
     id: card.id ?? `card-${Math.random().toString(36).slice(2, 10)}`,
@@ -162,7 +171,8 @@ export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem
     trust_score: card.trust_score,
     implication: card.implication,
     sources: normalizedSources,
-    source_count: card.source_count ?? card.sources?.length ?? null,
+    source_count: sourceCount,
+    source_raw_article_ids: sourceRawArticleIds,
     evidence_chain: normalizedEvidenceChain,
     financial_context: card.financial_context ?? null,
     slides: card.slides,
