@@ -134,7 +134,7 @@ export const uiText = {
     keywordsNewsCountLabel: '분석 대상 뉴스',
     keywordsGuide: '키워드를 눌러 연관 문서와 대화형 검색으로 이동',
     openSearch: '탐색 열기',
-    keywordVolumeTitle: '키워드 검색량 추이',
+    keywordVolumeTitle: '섹터 검색 관심도 추이',
     keywordVolumeSubtitle: '시간대별 내부 검색량 기준',
     realtime: '실시간',
     current: '현재',

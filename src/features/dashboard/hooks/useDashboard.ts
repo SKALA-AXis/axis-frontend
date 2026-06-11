@@ -42,7 +42,7 @@ export function useDashboardKeywordTrends(): UseDashboardKeywordTrendsResult {
     error,
     reload,
   } = useAsyncResource<DashboardKeywordTrendsData | null>(load, null, [load], {
-    errorMessage: '키워드 검색지수 그래프를 불러오지 못했습니다.',
+    errorMessage: '섹터 검색 관심도 그래프를 불러오지 못했습니다.',
   });
 
   return { keywordTrends, status, isLoading, error, reload };
