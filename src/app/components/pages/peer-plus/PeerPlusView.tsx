@@ -239,14 +239,14 @@ function KeywordInfoPopover({
                 <div key={`${axisLabel}-${evidence}`} className="space-y-3 px-4 py-3">
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">판단 근거</p>
-                    <p className="mt-1 whitespace-pre-line break-words text-[12px] leading-5 text-[var(--axis-body)]">
+                    <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-[var(--axis-body)]">
                       {parsedEvidence.reasoning || parsedEvidence.evidence || normalizeEvidenceText(evidence)}
                     </p>
                   </div>
                   {parsedEvidence.evidence ? (
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">원문 근거</p>
-                      <p className="mt-1 whitespace-pre-line break-words text-[12px] leading-5 text-[var(--axis-body)]">{parsedEvidence.evidence}</p>
+                      <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-[var(--axis-body)]">{parsedEvidence.evidence}</p>
                     </div>
                   ) : null}
                   {evidenceUrl ? (
@@ -266,7 +266,7 @@ function KeywordInfoPopover({
           ) : (
             <div className="px-4 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">판단 근거</p>
-              <p className="mt-1 text-[12px] leading-5 text-[var(--axis-body)]">{fallbackReason}</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--axis-body)]">{fallbackReason}</p>
             </div>
           )}
         </div>
@@ -288,7 +288,7 @@ function KeywordCell({
     <div className="flex min-w-0 items-start justify-between gap-2">
       {keyword ? (
         <>
-          <span className="min-w-0 flex-1 text-[12px] font-semibold leading-4 text-[var(--axis-ink)]">{keyword}</span>
+          <span className="min-w-0 flex-1 text-[14px] font-semibold leading-5 text-[var(--axis-ink)]">{keyword}</span>
           <KeywordInfoPopover axisLabel={axisLabel} keyword={keyword} row={row} />
         </>
       ) : (
@@ -309,7 +309,7 @@ function trimDecimal(value: number, digits: number) {
 
 function readStoredPeerPlusFilter(): PeerPlusFilterId {
   const stored = window.localStorage.getItem(peerPlusSelectionStorageKey);
-  if (stored === 'global_industry' || stored === 'all') {
+  if (stored === 'global_industry') {
     return stored;
   }
   if (stored && peerPlusOptions.some((peer) => peer.id === stored)) {
@@ -456,34 +456,34 @@ export function PeerPlusView({
   };
   const swotCatalog: Record<'all' | PeerPlusPeerId, PeerSwotInsightItem[]> = {
     all: [
-      { label: 'Strength', body: 'SK AX는 운영 KPI와 실행 관리 프레임을 기준축으로 세우기 좋아 전체 비교에서 관점 중심을 잡을 수 있습니다.' },
-      { label: 'Weakness', body: '전체 모드는 산업별 차이를 압축해 보여주기 때문에 SK AX의 세부 강점이 다소 넓고 추상적으로 보일 수 있습니다.' },
-      { label: 'Opportunity', body: '전체 Peer를 함께 보면 어떤 시장 축에서 메시지 공백이 생기는지 빠르게 포착할 수 있습니다.' },
-      { label: 'Threat', body: '강한 공개 신호를 가진 경쟁사들이 시장 기준선을 먼저 점유하면 SK AX 제안 메시지가 후행처럼 읽힐 수 있습니다.' },
+      { label: 'Strength', factorType: 'internal_controllable', body: '경쟁사 전반은 클라우드, AI, 산업 DX 실행 경험을 내부 역량으로 축적하고 있어 반복 제안과 운영 확장에 유리한 기반이 있습니다.' },
+      { label: 'Weakness', factorType: 'internal_controllable', body: '경쟁사 전반은 대형 구축형 프로젝트의 일정, 인력 투입, 원가 관리가 내부 수익성 변수로 남을 수 있습니다.' },
+      { label: 'Opportunity', factorType: 'external_uncontrollable', body: '생성형 AI, 클라우드 전환, 산업별 자동화 수요 확대는 경쟁사 전반에 외부 성장 기회로 작용할 수 있습니다.' },
+      { label: 'Threat', factorType: 'external_uncontrollable', body: '고객 투자 지연, 기술 표준 변화, 가격·납기 경쟁은 경쟁사 전반이 직접 통제하기 어려운 외부 압박 요인입니다.' },
     ],
     samsung_sds: [
-      { label: 'Strength', body: 'SK AX는 운영 전환 이후 KPI 설계와 실행 관리 체계를 차별 포인트로 밀 수 있습니다.' },
-      { label: 'Weakness', body: '삼성 SDS 대비 대형 레퍼런스와 공개 검증 근거가 약하게 보이면 직접 경쟁에서 밀릴 수 있습니다.' },
-      { label: 'Opportunity', body: '삼성 SDS가 키운 시장 관심을 활용해 SK AX의 운영 중심 후속 대안을 제시할 수 있습니다.' },
-      { label: 'Threat', body: '엔터프라이즈 고객군에서는 삼성 SDS의 기준점 효과가 강하게 작동할 가능성이 큽니다.' },
+      { label: 'Strength', factorType: 'internal_controllable', body: '클라우드 MSP와 엔터프라이즈 IT 운영 경험은 삼성SDS가 내부적으로 통제·확장할 수 있는 실행 역량입니다.' },
+      { label: 'Weakness', factorType: 'internal_controllable', body: '대형 프로젝트 중심 구조는 일정 관리와 인력 투입 부담이 커질 때 내부 원가 관리 제약으로 작용할 수 있습니다.' },
+      { label: 'Opportunity', factorType: 'external_uncontrollable', body: '기업 고객의 생성형 AI와 클라우드 전환 수요 확대는 삼성SDS가 활용할 수 있는 외부 기회입니다.' },
+      { label: 'Threat', factorType: 'external_uncontrollable', body: '클라우드·AI 전환 시장의 경쟁 심화와 납기 압박은 삼성SDS가 직접 통제하기 어려운 외부 위험입니다.' },
     ],
     lg_cns: [
-      { label: 'Strength', body: 'SK AX는 실행 속도와 운영 밀착형 AX 프레임을 더 전면에 내세울 수 있습니다.' },
-      { label: 'Weakness', body: 'LG CNS보다 공공·금융 신뢰 신호가 약하면 안정성 인식에서 불리할 수 있습니다.' },
-      { label: 'Opportunity', body: '안정성을 중시하는 고객에게는 SK AX의 전환 관리와 운영 민첩성을 추가 가치로 제시할 수 있습니다.' },
-      { label: 'Threat', body: '보안·거버넌스 축에서 LG CNS가 기준선을 선점하면 SK AX 메시지가 보조 대안처럼 보일 수 있습니다.' },
+      { label: 'Strength', factorType: 'internal_controllable', body: '금융·공공 IT 서비스와 클라우드 운영 경험은 LG CNS가 내부 역량으로 관리할 수 있는 강점입니다.' },
+      { label: 'Weakness', factorType: 'internal_controllable', body: 'SI·운영 프로젝트 비중이 커질수록 일정과 투입 인력 관리는 LG CNS의 내부 개선 과제로 남을 수 있습니다.' },
+      { label: 'Opportunity', factorType: 'external_uncontrollable', body: '공공·금융권의 클라우드, 보안, AI 전환 수요는 LG CNS에 유리한 외부 성장 기회입니다.' },
+      { label: 'Threat', factorType: 'external_uncontrollable', body: '보안 규제 강화와 대형 IT서비스 입찰 경쟁은 LG CNS가 통제하기 어려운 외부 압박 요인입니다.' },
     ],
     hyundai_autoever: [
-      { label: 'Strength', body: 'SK AX는 제조 외 산업까지 확장 가능한 운영형 AX 서사를 제시할 수 있습니다.' },
-      { label: 'Weakness', body: '현장 밀착성과 제조 특화 이미지는 현대 오토에버 쪽이 더 강하게 읽힐 수 있습니다.' },
-      { label: 'Opportunity', body: '제조 고객에게는 특화 솔루션 위에 운영 관리 프레임까지 덧붙인 대안으로 포지셔닝할 수 있습니다.' },
-      { label: 'Threat', body: '디지털 트윈, 차량 데이터 같은 특화 기술 신호가 강하면 SK AX의 범용 메시지가 흐려질 수 있습니다.' },
+      { label: 'Strength', factorType: 'internal_controllable', body: '차량 SW, 커넥티드카, 그룹 IT 운영 기반은 현대오토에버가 내부적으로 축적한 모빌리티 IT 역량입니다.' },
+      { label: 'Weakness', factorType: 'internal_controllable', body: '모빌리티·그룹사 중심 실행 경험은 산업 확장 시 내부 포트폴리오 다변화 과제로 남을 수 있습니다.' },
+      { label: 'Opportunity', factorType: 'external_uncontrollable', body: '소프트웨어 중심 차량과 스마트모빌리티 투자 확대는 현대오토에버가 활용할 수 있는 외부 기회입니다.' },
+      { label: 'Threat', factorType: 'external_uncontrollable', body: '차량 SW 표준 변화와 완성차 투자 사이클 변동은 현대오토에버가 직접 통제하기 어려운 외부 위험입니다.' },
     ],
     posco_dx: [
-      { label: 'Strength', body: 'SK AX는 산업 자동화 이후 운영 관리 전반까지 연결하는 상위 프레임을 보여줄 수 있습니다.' },
-      { label: 'Weakness', body: '현장 실행감과 인프라-운영 연결성은 포스코 DX 대비 약하게 보일 수 있습니다.' },
-      { label: 'Opportunity', body: '산업 고객에게는 실행성 위에 확장 가능한 운영 체계까지 포함한 대안으로 접근할 수 있습니다.' },
-      { label: 'Threat', body: '대형 프로젝트와 산업 자동화 실적이 부각되면 SK AX가 상대적으로 추상적인 대안으로 읽힐 위험이 있습니다.' },
+      { label: 'Strength', factorType: 'internal_controllable', body: '스마트팩토리, 산업 자동화, 현장 시스템 구축 경험은 포스코DX가 내부적으로 보유한 산업 DX 강점입니다.' },
+      { label: 'Weakness', factorType: 'internal_controllable', body: '산업 현장형 프로젝트의 원가와 일정 관리는 포스코DX가 개선·통제해야 할 내부 수익성 변수입니다.' },
+      { label: 'Opportunity', factorType: 'external_uncontrollable', body: '제조 현장의 AI, 자동화, 데이터 기반 운영 수요 확대는 포스코DX에 외부 성장 기회가 될 수 있습니다.' },
+      { label: 'Threat', factorType: 'external_uncontrollable', body: '제조 투자 사이클 둔화와 산업 자동화 경쟁 심화는 포스코DX가 직접 통제하기 어려운 외부 위험입니다.' },
     ],
   };
   const apiPeerInsightItems = peerOverview?.comparisonInsights?.[selectedPeerAnalysisId];
@@ -672,8 +672,8 @@ export function PeerPlusView({
                 <h2 className="axis-section-heading mt-1">Peer 한눈 비교</h2>
               </div>
             </div>
-            <div className="mt-4 overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)]">
-              <div className="grid grid-cols-6 gap-px bg-[var(--axis-hairline)] text-xs font-semibold text-[var(--axis-muted)]">
+            <div className="mt-4 overflow-x-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)]">
+              <div className="grid min-w-[760px] grid-cols-[0.82fr_0.95fr_0.95fr_0.95fr_1.16fr_1.16fr] gap-px bg-[var(--axis-hairline)] text-xs font-semibold text-[var(--axis-muted)]">
                 {['기업', '매출', '영업이익', '영업이익률', '사업 키워드', '기술 키워드'].map((label) => (
                   <div key={label} className="bg-[var(--axis-surface-soft)] px-3 py-3">{label}</div>
                 ))}
@@ -685,7 +685,7 @@ export function PeerPlusView({
                   return (
                     <div key={row.id} className="contents">
                       <div
-                        className={`px-3 py-3 text-left text-sm font-semibold ${
+                        className={`px-3 py-3 text-left text-[14px] font-semibold ${
                           row.id === 'sk_ax' || row.id === selectedPeer?.id
                             ? 'bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
                             : 'bg-[var(--axis-canvas)] text-[var(--axis-ink)]'
@@ -693,22 +693,22 @@ export function PeerPlusView({
                       >
                         {row.label}
                       </div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-[14px] font-medium text-[var(--axis-body)]">
                         <div>{formatKrwBn(row.revenueKrwBn)}</div>
-                        {formatQoqPercent(row.revenueQoqPct) ? <div className={`mt-1 text-[10px] ${trendToneClass(row.revenueQoqPct)}`}>{formatQoqPercent(row.revenueQoqPct)}</div> : null}
+                        {formatQoqPercent(row.revenueQoqPct) ? <div className={`mt-1 text-[13px] font-semibold ${trendToneClass(row.revenueQoqPct)}`}>{formatQoqPercent(row.revenueQoqPct)}</div> : null}
                       </div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-[14px] font-medium text-[var(--axis-body)]">
                         <div>{formatKrwBn(row.operatingProfitKrwBn)}</div>
-                        {formatQoqPercent(row.operatingProfitQoqPct) ? <div className={`mt-1 text-[10px] ${trendToneClass(row.operatingProfitQoqPct)}`}>{formatQoqPercent(row.operatingProfitQoqPct)}</div> : null}
+                        {formatQoqPercent(row.operatingProfitQoqPct) ? <div className={`mt-1 text-[13px] font-semibold ${trendToneClass(row.operatingProfitQoqPct)}`}>{formatQoqPercent(row.operatingProfitQoqPct)}</div> : null}
                       </div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-[14px] font-medium text-[var(--axis-body)]">
                         <div>{formatPercent(row.operatingMarginPct)}</div>
-                        {formatQoqPctPoint(row.operatingMarginQoqDeltaPctp) ? <div className={`mt-1 text-[10px] ${trendToneClass(row.operatingMarginQoqDeltaPctp)}`}>{formatQoqPctPoint(row.operatingMarginQoqDeltaPctp)}</div> : null}
+                        {formatQoqPctPoint(row.operatingMarginQoqDeltaPctp) ? <div className={`mt-1 text-[13px] font-semibold ${trendToneClass(row.operatingMarginQoqDeltaPctp)}`}>{formatQoqPctPoint(row.operatingMarginQoqDeltaPctp)}</div> : null}
                       </div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-[14px] text-[var(--axis-body)]">
                         <KeywordCell axisLabel="사업 키워드" keyword={businessKeyword} row={row} />
                       </div>
-                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-sm text-[var(--axis-body)]">
+                      <div className="bg-[var(--axis-canvas)] px-3 py-3 text-[14px] text-[var(--axis-body)]">
                         <KeywordCell axisLabel="기술 키워드" keyword={technologyKeyword} row={row} />
                       </div>
                     </div>
@@ -716,7 +716,7 @@ export function PeerPlusView({
                 })}
               </div>
             </div>
-            <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3 text-[11px] leading-5 text-[var(--axis-muted)]">
+            <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3 text-xs leading-5 text-[var(--axis-muted)]">
               <p>기준 분기: {peerOverview?.periodLabel ?? '-'} · {peerOverview?.coverageLabel ?? '공통 분기 미확보'}</p>
               <p className="mt-1">표 안의 작은 `+ / -` 수치는 전분기 대비 증감률이며, 영업이익률은 `%p` 기준으로 표기합니다.</p>
               <p className="mt-1">재무 자료: {peerOverview?.financialSourceLabel ?? '미확인'} · 보조 지표: {peerOverview?.supplementalSourceLabel ?? '미확인'} · 미확보 값은 `-` 로 표기합니다.</p>
@@ -724,7 +724,7 @@ export function PeerPlusView({
           </article>
         </section>
 
-        <section>
+        <section className="mb-5">
           <article data-guide="peer-insight" className="axis-panel-flat min-h-[360px] p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -757,8 +757,8 @@ export function PeerPlusView({
                       className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4"
                     >
                       <div className="mb-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</span>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
+                        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">{item.label}</span>
+                        <p className="mt-2 text-[14px] font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
                       </div>
                     </article>
                   ))}
@@ -783,7 +783,7 @@ export function PeerPlusView({
                   {swotItems.map((item, index) => (
                     <article
                       key={`${item.label}-${item.body}`}
-                      className={`overflow-hidden rounded-[var(--axis-radius-lg)] border p-4 shadow-[0_16px_32px_-28px_rgba(26,26,31,0.24)] ${
+                      className={`overflow-visible rounded-[var(--axis-radius-lg)] border p-4 shadow-[0_16px_32px_-28px_rgba(26,26,31,0.24)] ${
                         item.label === 'Strength'
                           ? 'border-[rgba(220,90,36,0.32)] bg-[linear-gradient(180deg,rgba(220,90,36,0.16),var(--axis-canvas))]'
                           : item.label === 'Weakness'
@@ -810,7 +810,7 @@ export function PeerPlusView({
                           </span>
                           <div className="min-w-0">
                             <p
-                              className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                              className={`text-xs font-semibold uppercase tracking-[0.14em] ${
                                 item.label === 'Strength'
                                   ? 'text-[var(--axis-accent-strong)]'
                                   : item.label === 'Weakness'
@@ -822,7 +822,7 @@ export function PeerPlusView({
                             >
                               {item.label}
                             </p>
-                            <p className="mt-3 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
+                            <p className="mt-3 break-words text-[14px] font-semibold leading-6 text-[var(--axis-ink)]">{item.body}</p>
                           </div>
                         </div>
                       </div>
@@ -835,14 +835,12 @@ export function PeerPlusView({
         </section>
 
         {isAllFilter ? (
-          <section className="mt-5">
-            <div data-guide="peer-positioning">
-              <PositioningPanel
-                positioning={peerPositioning}
-                isLoading={isPeerPositioningLoading}
-                error={peerPositioningError}
-              />
-            </div>
+          <section data-guide="peer-positioning">
+            <PositioningPanel
+              positioning={peerPositioning}
+              isLoading={isPeerPositioningLoading}
+              error={peerPositioningError}
+            />
           </section>
         ) : null}
 
@@ -867,7 +865,7 @@ export function PeerPlusView({
             </header>
             <article className="min-h-0 flex-1 overflow-y-auto p-5">
               <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(90,107,87,0.24)] bg-[rgba(90,107,87,0.08)] p-4">
-                <p className="text-sm font-semibold leading-7 text-[var(--axis-ink)]">{activePeerReasoning.summary}</p>
+                <p className="text-sm font-semibold leading-6 text-[var(--axis-ink)]">{activePeerReasoning.summary}</p>
                 <div className="mt-4 space-y-4">
                   <section className="rounded-[var(--axis-radius-md)] border border-[rgba(90,107,87,0.18)] bg-[var(--axis-canvas)] p-3">
                     <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-success)]">추론 과정</p>

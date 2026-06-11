@@ -740,21 +740,6 @@ export function AuthScreen({
           </p>
         </div>
 
-        <div className="relative grid grid-cols-3 gap-8 border-t pt-8" style={{ borderColor: 'var(--auth-hero-line)' }}>
-          <div>
-            <p className="font-display text-heading-2 text-[var(--auth-hero-ink)] tabular-nums">4+1</p>
-            <p className="mt-1 text-caption text-[var(--auth-hero-muted)]">Peer 사 · 자사</p>
-          </div>
-          <div>
-            <p className="font-display text-heading-2 text-[var(--auth-hero-ink)] tabular-nums">~500</p>
-            <p className="mt-1 text-caption text-[var(--auth-hero-muted)]">일일 수집</p>
-          </div>
-          <div>
-            <p className="font-display text-heading-2 text-[var(--auth-hero-ink)] tabular-nums">08:30</p>
-            <p className="mt-1 text-caption text-[var(--auth-hero-muted)]">평일 브리핑</p>
-          </div>
-        </div>
-
         <div className="absolute bottom-0 left-0 right-0 h-2 bg-sunset-stripe" />
       </aside>
     </div>

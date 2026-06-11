@@ -149,14 +149,20 @@ export function DashboardShell({
     });
   }, []);
 
-  const handleViewChange = (view: string) => {
+  const handleViewChange = (view: string, options?: { preservePeerSelection?: boolean }) => {
     if (view === 'admin' && !isAdmin) {
       setActiveView('home');
       return;
     }
     if (view === 'assignment' || view === 'monitoring') {
+      setPeerPlusSelectedPeer(undefined);
+      window.localStorage.setItem(peerPlusSelectionStorageKey, 'all');
       setActiveView('peerPlus');
       return;
+    }
+    if (view === 'peerPlus' && !options?.preservePeerSelection) {
+      setPeerPlusSelectedPeer(undefined);
+      window.localStorage.setItem(peerPlusSelectionStorageKey, 'all');
     }
     if (view === 'matching' || view === 'rawArticles') {
       setActiveView('mixer');
@@ -189,7 +195,7 @@ export function DashboardShell({
       setCardNewsSearchQuery(options?.query ?? '');
     }
 
-    handleViewChange(target);
+    handleViewChange(target, { preservePeerSelection: Boolean(options?.peerId) });
   };
 
   const homeView = (

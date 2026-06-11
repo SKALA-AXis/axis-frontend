@@ -11,7 +11,7 @@ class HttpPeerOverviewRepository implements PeerOverviewRepository {
       throw new Error('API client is not configured.');
     }
 
-    const payload = await httpClient.get<unknown>('/api/monitoring/overview/peer-table');
+    const payload = await httpClient.get<unknown>(`/api/monitoring/overview/peer-table?_ts=${Date.now()}`);
     return normalizePeerOverviewData(payload);
   }
 }
@@ -173,9 +173,11 @@ function normalizeSwotInsights(value: unknown): Record<string, PeerSwotInsightIt
           body,
         };
         const title = pickString(record, 'title');
+        const factorType = normalizeSwotFactorType(pickString(record, 'factorType', 'factor_type'), label);
         const reasoningSummary = pickString(record, 'reasoningSummary', 'reasoning_summary');
         const evidenceSummary = pickString(record, 'evidenceSummary', 'evidence_summary');
         if (title) normalized.title = title;
+        if (factorType) normalized.factorType = factorType;
         if (reasoningSummary) normalized.reasoningSummary = reasoningSummary;
         if (evidenceSummary) normalized.evidenceSummary = evidenceSummary;
         return normalized;
@@ -191,6 +193,13 @@ function normalizeSwotInsights(value: unknown): Record<string, PeerSwotInsightIt
 
 function isSwotInsightLabel(value: string | null): value is PeerSwotInsightItem['label'] {
   return value === 'Strength' || value === 'Weakness' || value === 'Opportunity' || value === 'Threat';
+}
+
+function normalizeSwotFactorType(value: string | null, label: PeerSwotInsightItem['label']): PeerSwotInsightItem['factorType'] {
+  if (value === 'internal_controllable' || value === 'external_uncontrollable') {
+    return value;
+  }
+  return label === 'Strength' || label === 'Weakness' ? 'internal_controllable' : 'external_uncontrollable';
 }
 
 function normalizeAnalysisTraces(value: unknown): Record<string, PeerAnalysisTraceItem[]> {

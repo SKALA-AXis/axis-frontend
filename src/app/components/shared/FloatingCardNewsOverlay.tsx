@@ -4,14 +4,72 @@ import { getCardLogoImageClass, isCardLogoUrl } from '../../../features/card-new
 import type { CardNewsItem } from '../../../features/card-news/model/cardNews';
 import { getDisplayDate, getPeerLabel, getSummaryLines } from '../../../features/card-news/mappers/cardNewsExecutive';
 
+type ShareDataWithFiles = ShareData & { files?: File[] };
+type NavigatorWithFileShare = Navigator & {
+  canShare?: (data?: ShareDataWithFiles) => boolean;
+  share?: (data?: ShareDataWithFiles) => Promise<void>;
+};
+
+function compactShareLines(lines: Array<string | null | undefined>) {
+  return lines
+    .map((line) => String(line ?? '').trim())
+    .filter((line) => line.length > 0);
+}
+
+function formatShareSection(title: string, lines: string[]) {
+  const body = compactShareLines(lines);
+  if (body.length === 0) {
+    return `**${title}**\n- 내용 없음`;
+  }
+  return [
+    `**${title}**`,
+    ...body.map((line, index) => `${index + 1}. ${line}`),
+  ].join('\n');
+}
+
+function buildCardNewsShareText(card: CardNewsItem) {
+  const sections = [
+    formatShareSection('요약', getSummaryLines(card)),
+    formatShareSection('시사점', card.insights),
+    formatShareSection('대응방안', card.actionItems),
+  ];
+  const meta = compactShareLines([
+    card.date ? `일자: ${card.date}` : '',
+    card.source ? `출처: ${card.source}` : '',
+    card.sourceUrl && card.sourceUrl !== '#' ? `원문: ${card.sourceUrl}` : '',
+  ]);
+
+  return compactShareLines([
+    `# ${card.title}`,
+    meta.join('\n'),
+    sections.join('\n\n'),
+  ]).join('\n\n');
+}
+
+function getShareFileName(card: CardNewsItem) {
+  const safeTitle = card.title
+    .replace(/[\\/:*?"<>|#\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 48);
+  return `${safeTitle || 'card-news'}.txt`;
+}
+
 async function shareCardNews(card: CardNewsItem) {
-  const text = `${card.title}\n${getSummaryLines(card).join('\n')}\n${card.sourceUrl}`;
-  if (navigator.share) {
-    await navigator.share({ title: card.title, text, url: card.sourceUrl });
+  const text = buildCardNewsShareText(card);
+  const sourceUrl = card.sourceUrl && card.sourceUrl !== '#' ? card.sourceUrl : undefined;
+  const fileShareNavigator = navigator as NavigatorWithFileShare;
+  if (fileShareNavigator.share) {
+    const textFile = new File([text], getShareFileName(card), { type: 'text/plain;charset=utf-8' });
+    if (fileShareNavigator.canShare?.({ files: [textFile] })) {
+      await fileShareNavigator.share({ title: card.title, text, files: [textFile] });
+      return '공유를 열었습니다.';
+    }
+    await fileShareNavigator.share(sourceUrl ? { title: card.title, text, url: sourceUrl } : { title: card.title, text });
     return '공유를 열었습니다.';
   }
   await navigator.clipboard.writeText(text);
-  return '카드뉴스 링크를 복사했습니다.';
+  return '카드뉴스 내용을 복사했습니다.';
 }
 
 export { shareCardNews };
