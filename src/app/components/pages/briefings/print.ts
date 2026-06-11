@@ -1,21 +1,17 @@
-import type { BriefingReport } from './types';
-import { mockInsightResult } from '../../../../shared/mocks/insight';
+import type { BriefingFlowStep, BriefingReport } from './types';
 
-type FlowItem = {
-  readonly label: string;
-  readonly headline: string;
-  readonly description: string;
-  readonly details: readonly string[];
-};
-
-function flowLines(items: readonly FlowItem[]): string[] {
+function flowLines(items: readonly BriefingFlowStep[]): string[] {
   return items.map((item, index) => {
     const detailText = item.details.map((detail, detailIndex) => `  - ${detailIndex + 1}. ${detail}`).join('\n');
     return `${index + 1}) ${item.label} — ${item.headline}\n${item.description}\n${detailText}`;
   });
 }
 
-export function buildBriefingReportText(briefing: BriefingReport, focusTitle: string) {
+export function buildBriefingReportText(
+  briefing: BriefingReport,
+  focusTitle: string,
+  flowSteps: readonly BriefingFlowStep[],
+) {
   return [
     `[AXIS ${briefing.label} 브리핑] ${briefing.title}`,
     '',
@@ -26,7 +22,7 @@ export function buildBriefingReportText(briefing: BriefingReport, focusTitle: st
     ...briefing.whatHappenedDigest.map((item, index) => `${index + 1}) ${item}`),
     '',
     '3. 해석 흐름',
-    ...flowLines(mockInsightResult.flowSteps),
+    ...flowLines(flowSteps),
   ].join('\n');
 }
 
@@ -50,7 +46,7 @@ function renderPrintSection(title: string, items: string[]) {
   `;
 }
 
-function renderFlowPrintSection(title: string, items: readonly FlowItem[]) {
+function renderFlowPrintSection(title: string, items: readonly BriefingFlowStep[]) {
   return `
     <section class="report-section">
       <h2>${escapeHtml(title)}</h2>
@@ -83,14 +79,18 @@ function renderFlowPrintSection(title: string, items: readonly FlowItem[]) {
   `;
 }
 
-export function buildBriefingPrintHtml(briefing: BriefingReport, focusTitle: string) {
+export function buildBriefingPrintHtml(
+  briefing: BriefingReport,
+  focusTitle: string,
+  flowSteps: readonly BriefingFlowStep[],
+) {
   return `<!doctype html>
   <html lang="ko">
     <head>
       <meta charset="utf-8" />
       <title>${escapeHtml(briefing.title)}</title>
       <style>
-        @page { size: A4; margin: 18mm; }
+        @page { size: A4; margin: 26mm 24mm; }
         * { box-sizing: border-box; }
         body {
           margin: 0;
@@ -102,7 +102,7 @@ export function buildBriefingPrintHtml(briefing: BriefingReport, focusTitle: str
           min-height: 100vh;
           background: #ffffff;
           border: 1px solid #eadfce;
-          padding: 32px;
+          padding: 44px;
         }
         .kicker {
           color: #dc5a24;
@@ -203,7 +203,7 @@ export function buildBriefingPrintHtml(briefing: BriefingReport, focusTitle: str
         }
         @media print {
           body { background: #ffffff; }
-          .page { border: 0; padding: 0; }
+          .page { border: 0; padding: 8mm 6mm; }
         }
       </style>
     </head>
@@ -213,7 +213,7 @@ export function buildBriefingPrintHtml(briefing: BriefingReport, focusTitle: str
         <h1>${escapeHtml(briefing.title)}</h1>
         <p class="lead">${escapeHtml(briefing.briefingLead)}</p>
         ${renderPrintSection(focusTitle, briefing.whatHappenedDigest)}
-        ${renderFlowPrintSection('해석 흐름', mockInsightResult.flowSteps)}
+        ${renderFlowPrintSection('해석 흐름', flowSteps)}
         <p class="footer">AXIS 브리핑 리포트 · ${escapeHtml(briefing.window)}</p>
       </main>
     </body>

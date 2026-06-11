@@ -17,7 +17,6 @@ import { settingsRepository } from '../../../../features/settings/api/settingsRe
 import type { AccessLogItem } from '../../../../features/settings/model/accessLog';
 import {
   clampTextScaleStep,
-  getAppliedTextScale,
   textScaleSteps,
   type TextPreference,
 } from '../../../../shared/config/textPreferences';
@@ -57,7 +56,8 @@ export function SettingsView({
   const [keywordDraft, setKeywordDraft] = useState('');
   const displayName = currentUser?.name || currentUser?.email?.split('@')[0] || 'AXIS 사용자';
   const email = currentUser?.email || 'axis.user@sk.com';
-  const textScaleLabel = `${Math.round((getAppliedTextScale(textPreference) - 1) * 100)}%`;
+  const textScaleStep = clampTextScaleStep(textPreference.step);
+  const textScaleLabel = `${Math.round((textScaleSteps[textScaleStep] - 1) * 100)}%`;
   const [notificationSettings, setNotificationSettings] = useState({
     email: true,
     inApp: true,
@@ -481,7 +481,7 @@ export function SettingsView({
                     </div>
                     <Switch
                       checked={textPreference.enabled}
-                      onCheckedChange={(checked) => onTextPreferenceChange({ ...textPreference, enabled: checked })}
+                      onCheckedChange={(checked) => onTextPreferenceChange({ ...textPreference, enabled: checked, step: textScaleStep })}
                       aria-label="더 큰 텍스트 사용"
                       className="h-8 w-14 [&_[data-slot=switch-thumb]]:size-6"
                     />
@@ -498,15 +498,15 @@ export function SettingsView({
                 </div>
 
                 <div className={`mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-5 transition ${textPreference.enabled ? '' : 'opacity-55'}`}>
-                  <div className="flex items-center gap-4">
-                    <span className="shrink-0 text-heading-4 leading-none text-[var(--axis-muted)]">가</span>
-                    <div className="relative flex-1">
-                      <div className="pointer-events-none absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--axis-hairline-strong)]" />
-                      <div className="pointer-events-none absolute inset-x-1 top-1/2 flex -translate-y-1/2 justify-between px-1">
+                  <div className="flex items-center gap-[16px] text-[16px]">
+                    <span className="pointer-events-none shrink-0 basis-[2.25em] text-center text-[20px] leading-none text-[var(--axis-muted)]">가</span>
+                    <div className="relative min-w-0 flex-1 px-[12px] py-[12px]">
+                      <div className="pointer-events-none absolute inset-x-[12px] top-1/2 h-px -translate-y-1/2 bg-[var(--axis-hairline-strong)]" />
+                      <div className="pointer-events-none absolute inset-x-[12px] top-1/2 flex -translate-y-1/2 justify-between px-[4px]">
                         {textScaleSteps.map((step, index) => (
                           <span
                             key={`${step}-${index}`}
-                            className={`h-3 w-1 rounded-full ${index <= clampTextScaleStep(textPreference.step) && textPreference.enabled ? 'bg-[var(--axis-accent)]' : 'bg-[var(--axis-hairline-strong)]'}`}
+                            className={`h-[10px] w-[2px] rounded-full ${index <= textScaleStep && textPreference.enabled ? 'bg-[var(--axis-accent)]' : 'bg-[var(--axis-hairline-strong)]'}`}
                           />
                         ))}
                       </div>
@@ -514,17 +514,17 @@ export function SettingsView({
                         min={0}
                         max={textScaleSteps.length - 1}
                         step={1}
-                        value={[textPreference.step]}
+                        value={[textScaleStep]}
                         disabled={!textPreference.enabled}
                         onValueChange={([value]) => {
-                          const nextStep = clampTextScaleStep(value ?? textPreference.step);
+                          const nextStep = clampTextScaleStep(value ?? textScaleStep);
                           onTextPreferenceChange({ ...textPreference, enabled: true, step: nextStep });
                         }}
                         aria-label="텍스트 크기 조절"
                         className="relative z-10"
                       />
                     </div>
-                    <span className="shrink-0 text-[1.9rem] leading-none text-[var(--axis-muted)]">가</span>
+                    <span className="pointer-events-none shrink-0 basis-[2.25em] text-center text-[32px] leading-none text-[var(--axis-muted)]">가</span>
                   </div>
                 </div>
               </section>

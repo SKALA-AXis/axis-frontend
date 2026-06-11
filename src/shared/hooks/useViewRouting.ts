@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { peerPlusSelectionStorageKey } from '../mocks/peerPlus';
+import { peerPlusSelectionStorageKey } from '../content/peerPlus';
 
 const VIEW_TO_PATH: Record<string, string> = {
   home: '/',

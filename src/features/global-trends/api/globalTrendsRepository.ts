@@ -1,6 +1,4 @@
 import { httpClient } from '../../../shared/api/httpClient';
-import { env } from '../../../shared/config/env';
-import { mockGlobalTrendList, mockGlobalTrendsRunResult } from '../../../shared/mocks/globalTrends';
 import type {
   GlobalTrendDataSource,
   GlobalTrendListResponse,
@@ -26,17 +24,6 @@ function withSource<T extends GlobalTrendListResponse>(data: T, source: GlobalTr
 
 function withRunSource<T extends GlobalTrendsRunResult>(data: T, source: GlobalTrendDataSource): T {
   return { ...data, _source: source };
-}
-
-class MockGlobalTrendsRepository implements GlobalTrendsRepository {
-  async list(): Promise<GlobalTrendListResponse> {
-    return withSource(mockGlobalTrendList, 'mock');
-  }
-
-  async run(): Promise<GlobalTrendsRunResult> {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return withRunSource(mockGlobalTrendsRunResult, 'mock');
-  }
 }
 
 class HttpGlobalTrendsRepository implements GlobalTrendsRepository {
@@ -71,39 +58,4 @@ class HttpGlobalTrendsRepository implements GlobalTrendsRepository {
   }
 }
 
-class HybridGlobalTrendsRepository implements GlobalTrendsRepository {
-  constructor(
-    private readonly remoteRepository: GlobalTrendsRepository,
-    private readonly fallbackRepository: GlobalTrendsRepository,
-  ) {}
-
-  async list(params?: GlobalTrendsListParams): Promise<GlobalTrendListResponse> {
-    try {
-      return await this.remoteRepository.list(params);
-    } catch (error) {
-      if (!env.enableMockData) {
-        throw error;
-      }
-      return this.fallbackRepository.list(params);
-    }
-  }
-
-  async run(request?: GlobalTrendsRunRequest): Promise<GlobalTrendsRunResult> {
-    try {
-      return await this.remoteRepository.run(request);
-    } catch (error) {
-      if (!env.enableMockData) {
-        throw error;
-      }
-      return this.fallbackRepository.run(request);
-    }
-  }
-}
-
-const fallbackRepository = new MockGlobalTrendsRepository();
-
-export const globalTrendsRepository: GlobalTrendsRepository = httpClient
-  ? new HybridGlobalTrendsRepository(new HttpGlobalTrendsRepository(), fallbackRepository)
-  : env.enableMockData
-    ? fallbackRepository
-    : new HttpGlobalTrendsRepository();
+export const globalTrendsRepository: GlobalTrendsRepository = new HttpGlobalTrendsRepository();

@@ -4,8 +4,8 @@
  * card.sector / card.category 를 기반으로 deterministic 하게 1장 매핑.
  */
 import type { CardNewsItem } from './model/cardNews';
-import { cardImagePool, type CuratedImage, type ImageCategory } from '../../shared/mocks/cardImagePool';
-export type { CuratedImage } from '../../shared/mocks/cardImagePool';
+import { cardImagePool, type CuratedImage, type ImageCategory } from '../../shared/content/cardImagePool';
+export type { CuratedImage } from '../../shared/content/cardImagePool';
 
 /* card.sector / category 를 image category 로 ───────────── */
 function pickImageCategory(card: CardNewsItem): ImageCategory {

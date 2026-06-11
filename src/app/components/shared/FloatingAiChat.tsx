@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
-  ExternalLink,
   FileText,
   History,
   Link2,
@@ -18,18 +17,18 @@ import {
 import { assistantRepository } from '../../../features/assistant/api/assistantRepository';
 import type {
   AssistantAnswerBlock,
+  AssistantChatResponse,
   AssistantConversationSummary,
-  AssistantHandoff,
   AssistantHistoryTurn,
   AssistantReportDraft,
   AssistantSource,
 } from '../../../features/assistant/model/assistant';
+import { HttpRequestError } from '../../../shared/api/httpClient';
 import { uiText } from '../../../shared/content/uiText';
 
 type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
-  handoff?: AssistantHandoff | null;
   sources?: AssistantSource[];
   answerBlocks?: AssistantAnswerBlock[];
   reportDraft?: AssistantReportDraft | null;
@@ -44,8 +43,20 @@ type FloatingAiChatProps = {
 
 const deviceStorageKey = 'axis:assistant-device-id';
 const greetingMessage = `${uiText.dashboard.chatGreeting} `;
+const genericAssistantErrorMessage = '기능에 문제가 생겼습니다.';
+const assistantErrorCodes = {
+  chatSend: 'ASSISTANT_CHAT_SEND_FAILED',
+  chatEmptyReply: 'ASSISTANT_CHAT_EMPTY_REPLY',
+  pdfChat: 'ASSISTANT_PDF_CHAT_FAILED',
+  conversationList: 'ASSISTANT_CONVERSATION_LIST_FAILED',
+  conversationLoad: 'ASSISTANT_CONVERSATION_LOAD_FAILED',
+  conversationCreate: 'ASSISTANT_CONVERSATION_CREATE_FAILED',
+  conversationEnd: 'ASSISTANT_CONVERSATION_END_FAILED',
+  conversationDelete: 'ASSISTANT_CONVERSATION_DELETE_FAILED',
+  pdfExport: 'ASSISTANT_PDF_EXPORT_FAILED',
+} as const;
 
-export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: FloatingAiChatProps) {
+export function FloatingAiChat({ activeView, scrollToTopControl }: FloatingAiChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isBubbleVisible, setIsBubbleVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -54,6 +65,8 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
   const [attachment, setAttachment] = useState<File | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<AssistantConversationSummary[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const [expandedEvidenceKeys, setExpandedEvidenceKeys] = useState<Set<string>>(new Set());
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -66,10 +79,19 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
 
   useEffect(() => {
     if (!isOpen) return;
-    assistantRepository.listConversations(deviceId)
-      .then(setConversations)
-      .catch(() => setConversations([]));
+    void refreshConversations();
   }, [deviceId, isOpen]);
+
+  const refreshConversations = async () => {
+    try {
+      const nextConversations = await assistantRepository.listConversations(deviceId);
+      setConversations(nextConversations);
+      setHistoryError(null);
+    } catch (error) {
+      setConversations([]);
+      setHistoryError(formatAssistantError(assistantErrorCodes.conversationList, error));
+    }
+  };
 
   const handleSend = async () => {
     const selectedAttachment = attachment;
@@ -111,26 +133,30 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
         ? await assistantRepository.chatWithPdf(chatInput, selectedAttachment)
         : await assistantRepository.chat(chatInput);
       setConversationId(response.conversation_id ?? conversationId);
+      const responseErrorCode = getAssistantResponseErrorCode(response);
+      const responseContent = responseErrorCode
+        ? formatAssistantError(responseErrorCode)
+        : response.reply || response.message?.content || formatAssistantError(assistantErrorCodes.chatEmptyReply);
       setMessages((currentMessages) => [
         ...currentMessages,
         {
           role: 'assistant',
-          content: response.reply || response.message?.content || '답변을 생성하지 못했습니다.',
-          handoff: response.handoff ?? null,
-          sources: response.sources ?? [],
-          answerBlocks: normalizeAnswerBlocks(response.answer_blocks),
-          reportDraft: normalizeReportDraft(response.report_draft),
+          content: responseContent,
+          sources: responseErrorCode ? [] : response.sources ?? [],
+          answerBlocks: responseErrorCode ? [] : normalizeAnswerBlocks(response.answer_blocks),
+          reportDraft: responseErrorCode ? null : normalizeReportDraft(response.report_draft),
         },
       ]);
-      assistantRepository.listConversations(deviceId)
-        .then(setConversations)
-        .catch(() => undefined);
+      void refreshConversations();
     } catch (error) {
       setMessages((currentMessages) => [
         ...currentMessages,
         {
           role: 'assistant',
-          content: error instanceof Error ? error.message : '챗봇 요청에 실패했습니다.',
+          content: formatAssistantError(
+            selectedAttachment ? assistantErrorCodes.pdfChat : assistantErrorCodes.chatSend,
+            error,
+          ),
         },
       ]);
     } finally {
@@ -166,61 +192,84 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
     try {
       const response = await assistantRepository.createConversation(deviceId);
       setConversationId(response.conversation_id);
-    } catch {
+      setHistoryError(null);
+    } catch (error) {
       setConversationId(null);
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        { role: 'assistant', content: formatAssistantError(assistantErrorCodes.conversationCreate, error) },
+      ]);
     }
   };
 
   const handleEndChat = async () => {
-    if (conversationId) {
-      await assistantRepository.endConversation(conversationId, deviceId).catch(() => undefined);
+    try {
+      if (conversationId) {
+        await assistantRepository.endConversation(conversationId, deviceId);
+      }
+      setConversationId(null);
+      setMessages([{ role: 'assistant', content: greetingMessage, isGreeting: true }]);
+      setIsHistoryOpen(true);
+      setExpandedEvidenceKeys(new Set());
+      void refreshConversations();
+    } catch (error) {
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        { role: 'assistant', content: formatAssistantError(assistantErrorCodes.conversationEnd, error) },
+      ]);
     }
-    setConversationId(null);
-    setMessages([{ role: 'assistant', content: greetingMessage, isGreeting: true }]);
-    setIsHistoryOpen(true);
-    setExpandedEvidenceKeys(new Set());
-    assistantRepository.listConversations(deviceId)
-      .then(setConversations)
-      .catch(() => setConversations([]));
   };
 
   const handleDeleteConversation = async (nextConversationId: string) => {
     if (!window.confirm('이 대화 기록을 삭제할까요?')) {
       return;
     }
-    await assistantRepository.deleteConversation(nextConversationId, deviceId);
-    setConversations((current) => current.filter((item) => item.conversation_id !== nextConversationId));
-    if (conversationId === nextConversationId) {
-      setConversationId(null);
-      setMessages([{ role: 'assistant', content: greetingMessage, isGreeting: true }]);
-      setExpandedEvidenceKeys(new Set());
+    setDeletingConversationId(nextConversationId);
+    try {
+      const result = await assistantRepository.deleteConversation(nextConversationId, deviceId);
+      if (!result.deleted) {
+        throw new HttpRequestError('대화 삭제에 실패했습니다.', {
+          code: result.error_code || 'ASSISTANT_CONVERSATION_DELETE_REJECTED',
+        });
+      }
+      setConversations((current) => current.filter((item) => item.conversation_id !== nextConversationId));
+      setHistoryError(null);
+      if (conversationId === nextConversationId) {
+        setConversationId(null);
+        setMessages([{ role: 'assistant', content: greetingMessage, isGreeting: true }]);
+        setExpandedEvidenceKeys(new Set());
+      }
+      void refreshConversations();
+    } catch (error) {
+      setHistoryError(formatAssistantError(assistantErrorCodes.conversationDelete, error));
+    } finally {
+      setDeletingConversationId(null);
     }
   };
 
   const handleLoadConversation = async (nextConversationId: string) => {
-    const detail = await assistantRepository.getConversation(nextConversationId, deviceId);
-    setConversationId(nextConversationId);
-    setMessages(
-      detail.messages.length > 0
-        ? detail.messages
-            .filter((message) => message.role === 'user' || message.role === 'assistant')
-            .map((message) => ({
-              role: message.role === 'user' ? 'user' : 'assistant',
-              content: message.content,
-              handoff: isHandoff(message.handoff) ? message.handoff : null,
-              sources: message.sources ?? [],
-              answerBlocks: normalizeAnswerBlocks(message.answer_blocks ?? message.answer_payload?.answer_blocks),
-              reportDraft: normalizeReportDraft(message.report_draft ?? message.answer_payload?.report_draft),
-            }))
-        : [{ role: 'assistant', content: greetingMessage, isGreeting: true }],
-    );
-    setExpandedEvidenceKeys(new Set());
-    setIsHistoryOpen(false);
-  };
-
-  const handleHandoff = (handoff: AssistantHandoff) => {
-    onNavigate(routeToView(handoff.target_route));
-    setIsOpen(false);
+    try {
+      const detail = await assistantRepository.getConversation(nextConversationId, deviceId);
+      setConversationId(nextConversationId);
+      setMessages(
+        detail.messages.length > 0
+          ? detail.messages
+              .filter((message) => message.role === 'user' || message.role === 'assistant')
+              .map((message) => ({
+                role: message.role === 'user' ? 'user' : 'assistant',
+                content: message.content,
+                sources: message.sources ?? [],
+                answerBlocks: normalizeAnswerBlocks(message.answer_blocks ?? message.answer_payload?.answer_blocks),
+                reportDraft: normalizeReportDraft(message.report_draft ?? message.answer_payload?.report_draft),
+              }))
+          : [{ role: 'assistant', content: greetingMessage, isGreeting: true }],
+      );
+      setExpandedEvidenceKeys(new Set());
+      setHistoryError(null);
+      setIsHistoryOpen(false);
+    } catch (error) {
+      setHistoryError(formatAssistantError(assistantErrorCodes.conversationLoad, error));
+    }
   };
 
   const toggleEvidence = (key: string) => {
@@ -238,15 +287,15 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
   return (
     <div className="fixed bottom-20 right-4 z-[90] flex flex-col items-end gap-3 md:bottom-5 md:right-6">
       {isOpen ? (
-        <section className="mb-2 flex h-[420px] w-[330px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-[0_24px_80px_-42px_rgba(0,0,0,0.62)]">
+        <section className="mb-2 flex h-[420px] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-[0_24px_80px_-42px_rgba(0,0,0,0.62)]">
           <div className="flex items-center justify-between border-b border-[var(--axis-hairline)] px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-navy)]">
                 <Sparkles className="size-4 text-white" />
               </div>
-              <div>
-                <h2 className="text-sm font-bold text-[var(--axis-ink)]">{uiText.dashboard.chatTitle}</h2>
-                <p className="text-xs text-[var(--axis-muted)]">{uiText.dashboard.chatSubtitle}</p>
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-bold text-[var(--axis-ink)]">{uiText.dashboard.chatTitle}</h2>
+                <p className="truncate text-xs text-[var(--axis-muted)]">{uiText.dashboard.chatSubtitle}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -288,6 +337,11 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
           <div className="flex-1 space-y-3 overflow-y-auto bg-[var(--axis-canvas)] px-4 py-4">
             {isHistoryOpen ? (
               <div className="space-y-2">
+                {historyError ? (
+                  <p className="whitespace-pre-wrap rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.30)] bg-[var(--axis-surface)] px-3 py-2 text-xs leading-5 text-[var(--axis-accent-strong)]">
+                    {historyError}
+                  </p>
+                ) : null}
                 {conversations.map((conversation) => (
                   <div
                     key={conversation.conversation_id}
@@ -308,10 +362,13 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
                     <button
                       type="button"
                       onClick={() => void handleDeleteConversation(conversation.conversation_id)}
-                      className="flex size-8 shrink-0 items-center justify-center rounded-[var(--axis-radius-sm)] text-[var(--axis-muted)] transition-colors hover:bg-[var(--axis-surface-muted)] hover:text-[var(--axis-accent-strong)]"
+                      disabled={deletingConversationId === conversation.conversation_id}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-[var(--axis-radius-sm)] text-[var(--axis-muted)] transition-colors hover:bg-[var(--axis-surface-muted)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="대화 기록 삭제"
                     >
-                      <Trash2 className="size-3.5" />
+                      {deletingConversationId === conversation.conversation_id
+                        ? <Loader2 className="size-3.5 animate-spin" />
+                        : <Trash2 className="size-3.5" />}
                     </button>
                   </div>
                 ))}
@@ -343,7 +400,15 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
                         <AnswerBlocks blocks={message.answerBlocks} />
                       ) : null}
                       {message.reportDraft ? (
-                        <ReportDraftCard reportDraft={message.reportDraft} />
+                        <ReportDraftCard
+                          reportDraft={message.reportDraft}
+                          onExportFailure={() => {
+                            setMessages((currentMessages) => [
+                              ...currentMessages,
+                              { role: 'assistant', content: formatAssistantError(assistantErrorCodes.pdfExport) },
+                            ]);
+                          }}
+                        />
                       ) : null}
                       {message.sources && message.sources.length > 0 ? (
                         <div className="mt-2">
@@ -369,16 +434,6 @@ export function FloatingAiChat({ activeView, onNavigate, scrollToTopControl }: F
                             </div>
                           ) : null}
                         </div>
-                      ) : null}
-                      {message.handoff ? (
-                        <button
-                          type="button"
-                          onClick={() => handleHandoff(message.handoff as AssistantHandoff)}
-                          className="mt-3 inline-flex items-center gap-1 rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] px-2 py-1 text-xs font-semibold text-white"
-                        >
-                          <ExternalLink className="size-3" />
-                          {message.handoff.label}
-                        </button>
                       ) : null}
                     </div>
                   </div>
@@ -527,10 +582,17 @@ function AnswerBlocks({ blocks }: { blocks: AssistantAnswerBlock[] }) {
   );
 }
 
-function ReportDraftCard({ reportDraft }: { reportDraft: AssistantReportDraft }) {
+function ReportDraftCard({
+  reportDraft,
+  onExportFailure,
+}: {
+  reportDraft: AssistantReportDraft;
+  onExportFailure?: () => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const sections = (reportDraft.sections ?? [])
     .filter((section) => section.title || section.body)
-    .slice(0, 4);
+    .slice(0, 6);
   if (!reportDraft.title && sections.length === 0) return null;
 
   return (
@@ -542,7 +604,11 @@ function ReportDraftCard({ reportDraft }: { reportDraft: AssistantReportDraft })
         </div>
         <button
           type="button"
-          onClick={() => printReportDraft(reportDraft)}
+          onClick={() => {
+            if (!printReportDraft(reportDraft)) {
+              onExportFailure?.();
+            }
+          }}
           className="inline-flex items-center gap-1 rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] px-1.5 py-1 text-[10px] font-semibold text-[var(--axis-muted)] transition-colors hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
           aria-label="보고서 초안 PDF 저장 또는 출력"
           title="PDF 저장 또는 출력"
@@ -564,13 +630,28 @@ function ReportDraftCard({ reportDraft }: { reportDraft: AssistantReportDraft })
                 <h3 className="text-[11px] font-bold text-[var(--axis-ink)]">{section.title}</h3>
               ) : null}
               {section.body ? (
-                <p className="mt-0.5 whitespace-pre-wrap break-words text-[11px] leading-4 text-[var(--axis-body)]">
+                <p
+                  className={`mt-0.5 whitespace-pre-wrap break-words text-[11px] leading-4 text-[var(--axis-body)] ${
+                    isExpanded ? '' : 'line-clamp-2'
+                  }`}
+                >
                   {section.body}
                 </p>
               ) : null}
             </section>
           ))}
         </div>
+      ) : null}
+      {sections.some((section) => Boolean(section.body && section.body.length > 90)) ? (
+        <button
+          type="button"
+          onClick={() => setIsExpanded((current) => !current)}
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--axis-accent-strong)] transition-colors hover:text-[var(--axis-accent)]"
+          aria-expanded={isExpanded}
+        >
+          <span>{isExpanded ? '접기' : '자세히 보기'}</span>
+          <ChevronDown className={`size-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+        </button>
       ) : null}
     </div>
   );
@@ -579,8 +660,7 @@ function ReportDraftCard({ reportDraft }: { reportDraft: AssistantReportDraft })
 function printReportDraft(reportDraft: AssistantReportDraft) {
   const printWindow = window.open('', '_blank', 'width=900,height=1200');
   if (!printWindow) {
-    window.alert('인쇄 창을 열지 못했습니다.');
-    return;
+    return false;
   }
   printWindow.document.open();
   printWindow.document.write(buildReportDraftPrintHtml(reportDraft));
@@ -589,35 +669,179 @@ function printReportDraft(reportDraft: AssistantReportDraft) {
   window.setTimeout(() => {
     printWindow.print();
   }, 180);
+  return true;
 }
 
 function buildReportDraftPrintHtml(reportDraft: AssistantReportDraft) {
   const title = reportDraft.title || 'AXIS 보고서 초안';
   const sections = (reportDraft.sections ?? []).filter((section) => section.title || section.body);
+  const printableSections = sections.filter((section) => !/목차|구성/.test(section.title ?? ''));
+  const summarySection = printableSections[0] ?? sections[0];
+  const generatedAt = new Date().toLocaleString('ko-KR');
   return `<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
   <style>
-    body { margin: 40px; color: #1f1f24; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    h1 { margin: 0 0 24px; font-size: 28px; line-height: 1.25; }
-    section { border-top: 1px solid #e7ded4; padding: 20px 0; }
-    h2 { margin: 0 0 10px; font-size: 16px; color: #c2411d; }
-    p { margin: 0; white-space: pre-wrap; font-size: 13px; line-height: 1.7; }
-    @media print { body { margin: 24mm; } }
+    @page { size: A4; margin: 16mm 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #1f1f24;
+      background: #f4f1ed;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      padding: 20mm 18mm 18mm;
+      background: #fffdfb;
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: #c2411d;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      color: #1f1f24;
+      font-size: 25px;
+      line-height: 1.25;
+    }
+    .meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid #e7ded4;
+      color: #6f6a66;
+      font-size: 11px;
+    }
+    .overview {
+      display: grid;
+      grid-template-columns: 0.9fr 1.4fr;
+      gap: 14px;
+      margin: 18px 0 16px;
+    }
+    .panel {
+      border: 1px solid #e7ded4;
+      background: #fff8f2;
+      padding: 12px;
+      page-break-inside: avoid;
+    }
+    .panel h2,
+    .section h2 {
+      margin: 0 0 8px;
+      color: #c2411d;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .toc {
+      margin: 0;
+      padding-left: 18px;
+      color: #3f3b38;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+    .summary {
+      margin: 0;
+      white-space: pre-wrap;
+      color: #33302e;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+    .section {
+      border-top: 1px solid #e7ded4;
+      padding: 13px 0 12px;
+      page-break-inside: avoid;
+    }
+    .section-number {
+      display: inline-block;
+      min-width: 24px;
+      margin-right: 6px;
+      color: #8f8176;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .section-body {
+      margin: 0;
+      white-space: pre-wrap;
+      color: #292725;
+      font-size: 12.5px;
+      line-height: 1.62;
+    }
+    .footer {
+      margin-top: 18px;
+      border-top: 1px solid #e7ded4;
+      padding-top: 9px;
+      color: #8f8176;
+      font-size: 10px;
+    }
+    @media print {
+      body { background: #fff; }
+      .page {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>${escapeHtml(title)}</h1>
-  ${sections.map((section) => `
-    <section>
-      ${section.title ? `<h2>${escapeHtml(section.title)}</h2>` : ''}
-      ${section.body ? `<p>${escapeHtml(section.body)}</p>` : ''}
-    </section>
-  `).join('')}
+  <article class="page">
+    <header>
+      <p class="eyebrow">AXIS Report Draft</p>
+      <h1>${escapeHtml(title)}</h1>
+      <div class="meta">
+        <span>생성 시각: ${escapeHtml(generatedAt)}</span>
+        <span>본문 섹션: ${printableSections.length}개</span>
+        <span>출처: AXIS 챗봇 응답</span>
+      </div>
+    </header>
+    <div class="overview">
+      <section class="panel">
+        <h2>목차</h2>
+        ${reportTocHtml(printableSections)}
+      </section>
+      <section class="panel">
+        <h2>요약</h2>
+        <p class="summary">${escapeHtml(summarySection?.body || '보고서 요약을 생성하지 못했습니다.')}</p>
+      </section>
+    </div>
+    <main>
+      ${printableSections.map((section, index) => reportSectionHtml(section, index)).join('')}
+    </main>
+    <footer class="footer">본 문서는 AXIS 챗봇이 생성한 보고서 초안입니다. 외부 공유 전 원문 근거와 수치를 확인하세요.</footer>
+  </article>
 </body>
 </html>`;
+}
+
+function reportTocHtml(sections: Array<{ title?: string; body?: string }>) {
+  if (sections.length === 0) {
+    return '<p class="summary">목차를 생성하지 못했습니다.</p>';
+  }
+  return `
+    <ol class="toc">
+      ${sections.map((section) => `<li>${escapeHtml(section.title || '본문')}</li>`).join('')}
+    </ol>
+  `;
+}
+
+function reportSectionHtml(section: { title?: string; body?: string }, index: number) {
+  return `
+    <section class="section">
+      <h2><span class="section-number">${String(index + 1).padStart(2, '0')}</span>${escapeHtml(section.title || '본문')}</h2>
+      <p class="section-body">${escapeHtml(section.body || '')}</p>
+    </section>
+  `;
 }
 
 function escapeHtml(value: string) {
@@ -668,6 +892,44 @@ function EvidenceSourceItem({ source }: { source: AssistantSource }) {
       </div>
     </div>
   );
+}
+
+function getAssistantResponseErrorCode(response: AssistantChatResponse) {
+  if (typeof response.error_code === 'string' && response.error_code.trim()) {
+    return response.error_code.trim();
+  }
+  const provenanceCode = response.provenance?.error_code;
+  if (typeof provenanceCode === 'string' && provenanceCode.trim()) {
+    return provenanceCode.trim();
+  }
+  if (response.blocked && response.intent === 'assistant_error') {
+    return 'ASSISTANT_CHAT_RESPONSE_ERROR';
+  }
+  return null;
+}
+
+function formatAssistantError(code: string, error?: unknown) {
+  const upstreamCode = extractErrorCode(error);
+  const parts = [`${genericAssistantErrorMessage}`, `에러코드: ${code}`];
+  if (upstreamCode && upstreamCode !== code) {
+    parts.push(`서버 에러코드: ${upstreamCode}`);
+  }
+  return parts.join('\n');
+}
+
+function extractErrorCode(error?: unknown) {
+  if (!error || typeof error !== 'object') return '';
+  if (error instanceof HttpRequestError && error.code) {
+    return error.code;
+  }
+  const maybeError = error as { code?: unknown; error_code?: unknown };
+  if (typeof maybeError.error_code === 'string' && maybeError.error_code.trim()) {
+    return maybeError.error_code.trim();
+  }
+  if (typeof maybeError.code === 'string' && maybeError.code.trim()) {
+    return maybeError.code.trim();
+  }
+  return '';
 }
 
 function toHistory(messages: ChatMessage[]): AssistantHistoryTurn[] {
@@ -735,16 +997,4 @@ function viewToRoute(view: string) {
   if (view === 'home') return '/dashboard';
   if (view === 'issues') return '/cards';
   return `/${view}`;
-}
-
-function routeToView(route: string) {
-  if (route === '/mixer') return 'mixer';
-  if (route === '/briefings') return 'briefings';
-  if (route === '/dashboard') return 'home';
-  if (route === '/cards') return 'issues';
-  return route.replace(/^\//, '') || 'home';
-}
-
-function isHandoff(value: unknown): value is AssistantHandoff {
-  return Boolean(value && typeof value === 'object' && 'target_route' in value && 'label' in value);
 }

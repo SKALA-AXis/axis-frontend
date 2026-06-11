@@ -42,7 +42,6 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
   const headline = topItems[0]?.summary ?? '';
   const headlineImplication = topItems[0]?.sk_ax_implication ?? null;
   const headlineConfidence = topItems[0]?.confidence;
-  const isMockData = listData?._source === 'mock';
 
   useEffect(() => {
     const latest = topItems[0]?.updated_at ?? topItems[0]?.created_at ?? listData?.latest_trend_date ?? null;
@@ -88,12 +87,6 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
             새로고침
           </ExecutiveButton>
         </header>
-
-        {isMockData ? (
-          <div className="rounded-[var(--axis-radius-md)] border border-[rgba(59,130,246,0.28)] bg-[rgba(59,130,246,0.08)] px-4 py-3 text-sm text-[var(--axis-ink)]">
-            샘플 데이터입니다. 백엔드 API 연결 및 로그인 후 실제 `global_industry_trends` 분석 결과가 표시됩니다.
-          </div>
-        ) : null}
 
         {listData?.warning ? (
           <div className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.24)] bg-[rgba(220,90,36,0.08)] px-4 py-3 text-sm text-[var(--axis-accent-strong)]">

@@ -9,6 +9,18 @@ export interface HttpClient {
   delete<T>(path: string): Promise<T>;
 }
 
+export class HttpRequestError extends Error {
+  readonly code?: string;
+  readonly status?: number;
+
+  constructor(message: string, options: { code?: string; status?: number } = {}) {
+    super(formatApiErrorMessage(message, options.code));
+    this.name = 'HttpRequestError';
+    this.code = options.code;
+    this.status = options.status;
+  }
+}
+
 class FetchHttpClient implements HttpClient {
   constructor(private readonly baseUrl: string) {}
 
@@ -52,15 +64,31 @@ class FetchHttpClient implements HttpClient {
         body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
       });
     } catch {
-      throw new Error('백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하세요.');
+      throw new HttpRequestError('호출에 실패했다', {
+        code: 'NETWORK_REQUEST_FAILED',
+      });
     }
 
     const payload = await parseJsonResponse(response);
+    if (isApiErrorResponse(payload)) {
+      throw new HttpRequestError(payload.error.message, {
+        code: payload.error.code ?? `HTTP_${response.status}`,
+        status: response.status,
+      });
+    }
     if (!response.ok) {
-      const message = isApiErrorResponse(payload) ? payload.error.message : koreanHttpError(response.status);
-      throw new Error(message);
+      throw new HttpRequestError(koreanHttpError(response.status), {
+        code: `HTTP_${response.status}`,
+        status: response.status,
+      });
     }
     if (isApiResponse(payload)) {
+      if (!payload.success) {
+        throw new HttpRequestError('호출에 실패했다', {
+          code: 'API_RESPONSE_FAILED',
+          status: response.status,
+        });
+      }
       return payload.data as T;
     }
 
@@ -81,7 +109,7 @@ function isApiResponse(value: unknown): value is { success: boolean; data: unkno
   return typeof maybeResponse.success === 'boolean' && 'data' in maybeResponse && typeof maybeResponse.timestamp === 'string';
 }
 
-function isApiErrorResponse(value: unknown): value is { success: boolean; error: { message: string }; timestamp: string } {
+function isApiErrorResponse(value: unknown): value is { success: boolean; error: { code?: string; message: string }; timestamp: string } {
   if (!value || typeof value !== 'object') {
     return false;
   }
@@ -96,7 +124,11 @@ async function parseJsonResponse(response: Response): Promise<unknown> {
   if (!text.trim()) {
     return response.ok
       ? { success: true, data: undefined, timestamp: new Date().toISOString() }
-      : { success: false, error: { message: koreanHttpError(response.status) }, timestamp: new Date().toISOString() };
+      : {
+          success: false,
+          error: { code: `HTTP_${response.status}`, message: koreanHttpError(response.status) },
+          timestamp: new Date().toISOString(),
+        };
   }
 
   try {
@@ -104,10 +136,18 @@ async function parseJsonResponse(response: Response): Promise<unknown> {
   } catch {
     return {
       success: false,
-      error: { message: response.ok ? '서버 응답 형식이 올바르지 않습니다.' : koreanHttpError(response.status) },
+      error: {
+        code: response.ok ? 'INVALID_JSON_RESPONSE' : `HTTP_${response.status}`,
+        message: response.ok ? '서버 응답 형식이 올바르지 않습니다.' : koreanHttpError(response.status),
+      },
       timestamp: new Date().toISOString(),
     };
   }
+}
+
+export function formatApiErrorMessage(message: string, code?: string | null) {
+  const safeMessage = message?.trim() || '호출에 실패했다';
+  return code ? `${safeMessage} (에러코드: ${code})` : safeMessage;
 }
 
 function koreanHttpError(status: number) {

@@ -24,6 +24,13 @@ export type KeywordSpikeInsight = {
   valueLabel: string;
   reason: string;
   skAxPoint: string;
+  causeFactors?: Array<{
+    rank?: number;
+    keyword?: string;
+    title?: string;
+    description?: string;
+    evidenceCount?: number;
+  }>;
   evidence?: Array<Record<string, unknown>>;
 };
 
