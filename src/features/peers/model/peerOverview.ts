@@ -32,6 +32,7 @@ export interface PeerSwotInsightItem {
   label: 'Strength' | 'Weakness' | 'Opportunity' | 'Threat';
   body: string;
   title?: string;
+  factorType?: 'internal_controllable' | 'external_uncontrollable';
   reasoningSummary?: string;
   evidenceSummary?: string;
 }
