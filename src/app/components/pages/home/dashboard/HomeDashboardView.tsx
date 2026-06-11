@@ -177,6 +177,22 @@ function formatKeywordTrendDelta(delta?: number | null) {
   return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}pt`;
 }
 
+function splitInsightBulletText(text: string): string[] {
+  const cleaned = text.trim();
+  if (!cleaned) return [];
+  const sentenceMatches = cleaned.match(/[^.!?。]+[.!?。]?/g) ?? [cleaned];
+  return sentenceMatches
+    .map((item) => item.trim().replace(/[.!?。]$/, ''))
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function insightBulletLabel(index: number): string {
+  if (index === 0) return '판단 기준';
+  if (index === 1) return '논의 사항';
+  return '추가 확인';
+}
+
 export function HomeDashboardView({
   onNavigate,
   bookmarkedIds = [],
@@ -327,7 +343,6 @@ export function HomeDashboardView({
   const homeDetailCard = homeDetailCardId ? cards.find((card) => card.id === homeDetailCardId) ?? null : null;
   const insightComparison = displayTodayInsight?.comparison_facts;
   const insightKeywordTrends = insightComparison?.keyword_trends ?? [];
-  const insightHiddenGems = insightComparison?.visibility_gaps ?? [];
   const insightPrimaryLead = insightComparison?.primary_selection?.items?.[0] ?? null;
   const changeSummary = displayTodayInsight?.change_summary?.length
     ? displayTodayInsight.change_summary
@@ -355,7 +370,18 @@ export function HomeDashboardView({
     : (displayTodayInsight?.sourceTrace ?? displayTodayInsight?.source_trace ?? []).slice(0, 6);
   const todayInsightTitle = displayTodayInsight?.headline?.trim()
     || todayInsightSignals[0]?.value
+    || (todayInsightError ? '호출에 실패했다' : '')
     || (todayInsightLoading ? "Today's insight" : "Today's Insight 생성 결과가 없습니다");
+  const todayInsightSubtitle = displayTodayInsight?.executive_implication?.trim()
+    || displayTodayInsight?.executive_summary?.trim()
+    || (todayInsightError ? todayInsightError : '')
+    || (todayInsightSignals.length === 0 && !todayInsightLoading
+      ? "실제 저장된 Today's Insight가 아직 조회되지 않았습니다."
+      : '')
+    || (heroCard
+      ? getSummaryLines(heroCard)[0]
+      : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.');
+  const todayInsightSubtitleBullets = splitInsightBulletText(todayInsightSubtitle);
   const stockPointByDate = new Map(dashboard.stockPoints.map((point) => [point.date, point]));
   const rawStockRateChartPoints =
     dashboard.stockRatePoints && dashboard.stockRatePoints.length > 0
@@ -635,50 +661,36 @@ export function HomeDashboardView({
                   </span>
                 ) : todayInsightError ? (
                   <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
-                    조회 실패
+                    호출 실패
                   </span>
                 ) : null}
               </div>
               <h2 className="mt-2 max-w-3xl text-[clamp(2rem,3.1vw,3.7rem)] font-display leading-[1.08] text-ink">
                 {todayInsightTitle}
               </h2>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
-                {displayTodayInsight?.executive_summary
-                  ? displayTodayInsight.executive_summary
-                  : todayInsightSignals.length === 0 && !todayInsightLoading
-                  ? "실제 저장된 Today's Insight가 아직 조회되지 않았습니다."
-                  : heroCard
-                  ? getSummaryLines(heroCard)[0]
-                  : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.'}
-              </p>
+              {todayInsightSubtitleBullets.length > 1 ? (
+                <ul className="mt-3 max-w-2xl space-y-2">
+                  {todayInsightSubtitleBullets.map((line, index) => (
+                    <li
+                      key={`${insightBulletLabel(index)}-${line}`}
+                      className="grid grid-cols-[76px_minmax(0,1fr)] gap-3 text-sm leading-6 text-[var(--axis-body)] sm:text-base sm:leading-7"
+                    >
+                      <span className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--axis-accent-strong)]">
+                        {insightBulletLabel(index)}
+                      </span>
+                      <span className="min-w-0 break-keep">{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
+                  {todayInsightSubtitleBullets[0] ?? todayInsightSubtitle}
+                </p>
+              )}
               {isTodayInsightMockLike ? (
                 <div className="mt-3 max-w-2xl rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.06)] px-3 py-2 text-xs leading-5 text-[var(--axis-body)]">
                   실제 Today&apos;s Insight 생성 결과가 아직 없어 저장된 분석 본문을 표시하지 않습니다.
                   출처가 포함된 생성 결과가 저장되면 이 영역은 자동으로 실제 분석 결과로 교체됩니다.
-                </div>
-              ) : null}
-              {displayTodayInsight?.executive_implication &&
-              !(
-                insightHiddenGems[0]?.narrative_hint &&
-                displayTodayInsight.executive_implication.trim() === insightHiddenGems[0].narrative_hint.trim()
-              ) ? (
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--axis-muted)]">
-                  {displayTodayInsight.executive_implication}
-                </p>
-              ) : null}
-              {insightHiddenGems.length > 0 ? (
-                <div className="mt-3 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.06)] px-3 py-2.5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--axis-accent-strong)]">
-                    단건·고임팩트
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-[var(--axis-ink)]">
-                    {insightHiddenGems[0].title}
-                  </p>
-                  {insightHiddenGems[0].narrative_hint ? (
-                    <p className="mt-1 text-xs leading-5 text-[var(--axis-body)]">
-                      {insightHiddenGems[0].narrative_hint}
-                    </p>
-                  ) : null}
                 </div>
               ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
@@ -730,9 +742,9 @@ export function HomeDashboardView({
                       signalIndex === 0 && insightPrimaryLead?.label === 'low_visibility_definite_event';
                     return (
                       <button
-                      key={signal.id}
-                      type="button"
-                      onClick={() => setSelectedSignalId(signal.id)}
+                        key={signal.id}
+                        type="button"
+                        onClick={() => setSelectedSignalId(signal.id)}
                         aria-pressed={isActive}
                         className={`rounded-[var(--axis-radius-md)] p-3 text-left transition ${
                           isActive
@@ -769,7 +781,6 @@ export function HomeDashboardView({
                   <p className="text-[11px] font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">
                     {selectedSignal.label}
                   </p>
-                  <h3 className="mt-1.5 text-[1.08rem] font-semibold leading-7 text-[var(--axis-ink)]">{selectedSignal.value}</h3>
                   {selectedSignal.summary && selectedSignal.summary !== selectedSignal.value ? (
                     <p className="mt-1.5 text-sm leading-6 text-[var(--axis-body)]">{selectedSignal.summary}</p>
                   ) : null}

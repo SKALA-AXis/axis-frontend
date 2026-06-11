@@ -4,6 +4,9 @@ import { CalendarDays, Share2, Sparkles, TrendingUp, X } from 'lucide-react';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
+import { useGeneratedBriefing } from '../../../../features/briefings/hooks/useGeneratedBriefing';
+import type { BriefingViewModel } from '../../../../features/briefings/mappers/briefingGenerateMapper';
+import { toBriefingAnchorDate } from '../../../../features/briefings/utils/briefingDate';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import {
   ExecutiveBadge,
@@ -17,7 +20,6 @@ import { useContentViewMode } from '../../../../shared/hooks/useContentViewMode'
 import { buildBriefingPrintHtml, buildBriefingReportText } from './print';
 import type { BriefingFlowStep, BriefingPeriod, BriefingReport } from './types';
 import {
-  buildBriefing,
   buildBriefingRange,
   getBriefingFocusTitle,
   getWeekOptions,
@@ -61,50 +63,25 @@ function normalizeBriefingText(text: string) {
   return text.replace(/(^|\s)\d+\.\s*/g, '$1').replace(/\s+/g, ' ').trim();
 }
 
-function compactFlowDetails(lines: Array<string | null | undefined>, limit = 4) {
-  return lines
-    .map((line) => normalizeBriefingText(line ?? ''))
-    .filter(Boolean)
-    .slice(0, limit);
-}
-
-function buildBriefingFlowSteps(briefing: BriefingReport, focusTitle: string): BriefingFlowStep[] {
-  const firstSignal = briefing.signalCards[0];
-  const secondSignal = briefing.signalCards[1] ?? firstSignal;
-  const firstMeaning = briefing.meaning[0];
-  const firstBenchmark = briefing.benchmark[0];
-  return [
-    {
-      id: 'observe',
-      label: '관찰',
-      headline: firstSignal?.title ?? briefing.headline,
-      description: `${briefing.label} 브리핑에서 ${briefing.selectedCards.length}건의 실제 카드뉴스를 우선 검토했습니다.`,
-      details: compactFlowDetails(
-        briefing.signalCards.map((item) => `${item.label}: ${item.reason || item.summary}`),
-      ),
-    },
-    {
-      id: 'compare',
-      label: '비교',
-      headline: secondSignal?.title ?? `${focusTitle} 비교`,
-      description: '기간 내 카드뉴스를 Peer사, 산업, 이벤트 성격 기준으로 비교해 중복 신호와 차이를 분리했습니다.',
-      details: compactFlowDetails(briefing.whatHappenedDigest),
-    },
-    {
-      id: 'meaning',
-      label: '시사',
-      headline: firstMeaning?.title ?? '카드뉴스 묶음에서 확인된 시사점',
-      description: firstMeaning?.reason ?? '실제 카드뉴스 근거가 충분히 쌓이면 시사점이 보강됩니다.',
-      details: compactFlowDetails(briefing.meaning.map((item) => `${item.title} ${item.reason}`)),
-    },
-    {
-      id: 'response',
-      label: '대응',
-      headline: firstBenchmark?.title ?? '다음 판단 기준',
-      description: firstBenchmark?.reason ?? '후속 카드뉴스가 수집되면 대응 기준을 다시 점검합니다.',
-      details: compactFlowDetails(briefing.benchmark.map((item) => `${item.title} ${item.reason}`)),
-    },
-  ].filter((step) => step.headline || step.description || step.details.length > 0);
+function adaptGeneratedBriefing(briefing: BriefingViewModel): BriefingReport {
+  return {
+    label: briefing.label,
+    title: briefing.title,
+    window: briefing.window,
+    count: briefing.count,
+    selectedCards: briefing.selectedCards,
+    peers: briefing.peers,
+    headline: briefing.headline,
+    briefingLead: briefing.briefingLead,
+    briefingSummaryLine: briefing.briefingSummaryLine,
+    whatHappenedDigest: briefing.whatHappenedDigest,
+    signalCards: briefing.signalCards,
+    meaning: briefing.meaning,
+    benchmark: [
+      ...briefing.benchmark,
+      ...briefing.response.map((item) => ({ title: item, reason: '' })),
+    ],
+  };
 }
 
 export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTimeChange }: BriefingsViewProps) {
@@ -129,28 +106,41 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     () => buildBriefingRange(period, dailyDate, weeklyMonth, weeklyIndex, monthlyMonth),
     [dailyDate, monthlyMonth, period, weeklyIndex, weeklyMonth],
   );
+  const briefingAnchorDate = useMemo(
+    () => toBriefingAnchorDate(period, dailyDate, weeklyMonth, weeklyIndex, monthlyMonth),
+    [dailyDate, monthlyMonth, period, weeklyIndex, weeklyMonth],
+  );
+  const {
+    briefing: generatedBriefing,
+    isGenerating,
+    error: generatedBriefingError,
+    reload: reloadGeneratedBriefing,
+  } = useGeneratedBriefing(period, briefingAnchorDate, rankedCards, briefingRange);
 
   useEffect(() => {
     if (isLoading) return;
     onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
   }, [cards, isLoading, onUpdateTimeChange]);
-  const briefing = useMemo(() => buildBriefing(period, rankedCards, briefingRange), [period, rankedCards, briefingRange]);
+  const briefing = useMemo(
+    () => (generatedBriefing ? adaptGeneratedBriefing(generatedBriefing) : null),
+    [generatedBriefing],
+  );
   const briefingFocusTitle = useMemo(() => getBriefingFocusTitle(period), [period]);
   const briefingLeadText = useMemo(
-    () => stripLeadingRangeLabel(briefing.briefingLead, briefingRange.leadLabel),
-    [briefing.briefingLead, briefingRange.leadLabel],
+    () => stripLeadingRangeLabel(briefing?.briefingLead ?? '', briefingRange.leadLabel),
+    [briefing?.briefingLead, briefingRange.leadLabel],
   );
   const briefingOverviewLines = useMemo(
-    () => [briefingLeadText, briefing.briefingSummaryLine].map((line) => normalizeBriefingText(line)).filter(Boolean),
-    [briefing.briefingSummaryLine, briefingLeadText],
+    () => [briefingLeadText, briefing?.briefingSummaryLine].map((line) => normalizeBriefingText(line ?? '')).filter(Boolean),
+    [briefing?.briefingSummaryLine, briefingLeadText],
   );
   const briefingFlowSteps = useMemo(
-    () => buildBriefingFlowSteps(briefing, briefingFocusTitle),
-    [briefing, briefingFocusTitle],
+    () => generatedBriefing?.flowSteps ?? [],
+    [generatedBriefing?.flowSteps],
   );
-  const activeFlowStep = briefingFlowSteps[activeInsightStep] ?? briefingFlowSteps[0];
+  const activeFlowStep = briefingFlowSteps[activeInsightStep] ?? briefingFlowSteps[0] ?? null;
   const reportText = useMemo(
-    () => buildBriefingReportText(briefing, briefingFocusTitle, briefingFlowSteps),
+    () => (briefing ? buildBriefingReportText(briefing, briefingFocusTitle, briefingFlowSteps) : ''),
     [briefing, briefingFlowSteps, briefingFocusTitle],
   );
 
@@ -162,11 +152,13 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
 
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
   const isVisualMode = contentViewMode === 'visual';
-  const evidenceCards = briefing.selectedCards
+  const evidenceCards = briefing
+    ? briefing.selectedCards
     .filter((card) => briefing.signalCards.some((signal) => signal.relatedCardIds.includes(card.id)))
-    .slice(0, 6);
+    .slice(0, 6)
+    : [];
   const getSupportingCards = (startIndex: number, count = 3) => {
-    if (briefing.selectedCards.length === 0) return [] as CardNewsItem[];
+    if (!briefing || briefing.selectedCards.length === 0) return [] as CardNewsItem[];
     return Array.from({ length: Math.min(count, briefing.selectedCards.length) }, (_, offset) => briefing.selectedCards[(startIndex + offset) % briefing.selectedCards.length])
       .filter((card, index, self) => self.findIndex((item) => item.id === card.id) === index);
   };
@@ -179,7 +171,8 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
       ].filter(Boolean)),
     ).slice(0, 6)
   );
-  const briefingReasoningSections = useMemo<Record<'focus', BriefingReasoningModal>>(() => {
+  const briefingReasoningSections = useMemo<Partial<Record<'focus', BriefingReasoningModal>>>(() => {
+    if (!briefing) return {};
     const focusEvidenceCards = briefing.signalCards.flatMap((item, index) => {
       const relatedCards = briefing.selectedCards
         .filter((card) => item.relatedCardIds.includes(card.id))
@@ -212,7 +205,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
         evidenceCards: focusEvidenceCards,
       },
     };
-  }, [briefing.label, briefing.selectedCards, briefing.signalCards, briefingFlowSteps, briefingFocusTitle]);
+  }, [briefing, briefingFlowSteps, briefingFocusTitle]);
   const activeBriefingReasoning = activeBriefingReasoningId ? briefingReasoningSections[activeBriefingReasoningId] : null;
 
   const handleShareBriefing = async () => {
@@ -221,6 +214,10 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   };
 
   const handleCopyBriefing = async () => {
+    if (!reportText) {
+      setShareFeedback('공유할 브리핑 내용이 없습니다.');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(reportText);
       setShareFeedback('공유용 브리핑 내용을 클립보드에 복사했습니다.');
@@ -230,6 +227,10 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   };
 
   const handleNativeShareBriefing = async () => {
+    if (!briefing || !reportText) {
+      setShareFeedback('공유할 브리핑 내용이 없습니다.');
+      return;
+    }
     try {
       if (!navigator.share) {
         await handleCopyBriefing();
@@ -243,6 +244,10 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   };
 
   const handlePrintBriefing = () => {
+    if (!briefing) {
+      setShareFeedback('인쇄할 브리핑 내용이 없습니다.');
+      return;
+    }
     const printWindow = window.open('', '_blank', 'width=900,height=1200');
     if (!printWindow) {
       setShareFeedback('인쇄 창을 열지 못했습니다.');
@@ -258,26 +263,44 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     }, 180);
   };
 
-  if (isLoading || error) {
+  const pageError = error ?? generatedBriefingError;
+  const isPageLoading = isLoading || isGenerating;
+  const hasBriefingContent = Boolean(
+    briefing && (
+      briefing.briefingLead ||
+      briefing.whatHappenedDigest.length > 0 ||
+      briefing.signalCards.length > 0 ||
+      briefingFlowSteps.length > 0 ||
+      briefing.selectedCards.length > 0
+    ),
+  );
+  const handleReload = () => {
+    void reload();
+    reloadGeneratedBriefing();
+  };
+
+  if (isPageLoading || pageError || !briefing || !hasBriefingContent) {
     return (
       <PageState
-        loading={isLoading}
-        error={error}
-        loadingLabel="브리핑을 불러오는 중입니다."
+        loading={isPageLoading}
+        error={pageError}
+        empty={!isPageLoading && !pageError && (!briefing || !hasBriefingContent)}
+        loadingLabel="브리핑을 생성하는 중입니다."
+        emptyLabel={generatedBriefing?.errorMessage ?? '기간 조건에 맞는 브리핑 데이터가 없습니다.'}
         loadingFallback={(
           <PageProcessLoading
             eyebrow="Briefing"
-            title="브리핑 재료를 불러오는 중"
-            description="카드뉴스 신호를 기간별 브리핑 섹션으로 묶고, 공유와 출력에 필요한 본문 구조를 준비합니다."
+            title="브리핑을 생성하는 중"
+            description="선택한 기간의 카드뉴스와 분석 근거를 브리핑 생성 API로 정리합니다."
             steps={[
-              { label: '카드뉴스 요청', detail: '/api/cards 응답 대기' },
-              { label: '기간별 분류', detail: '오늘, 주간, 월간 브리핑 후보 정리' },
-              { label: '본문 구성', detail: '요약, 근거 카드, 출력용 문서 구조 준비' },
+              { label: '카드뉴스 요청', detail: '/api/cards 응답 확인' },
+              { label: '브리핑 생성', detail: '/api/briefings/generate 응답 대기' },
+              { label: '본문 구성', detail: '생성 결과를 공유·출력 화면 구조로 변환' },
             ]}
-            meta={['source: card news briefing material', 'endpoint: /api/cards']}
+            meta={['source: generated briefing', 'endpoint: /api/briefings/generate']}
           />
         )}
-        onRetry={reload}
+        onRetry={handleReload}
       >
         {null}
       </PageState>
@@ -465,7 +488,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                   </div>
                 </section>
 
-                {/* 핵심 판단 — 4단계 flow narrative (관찰→패턴→시사→핵심). 헤드라인 summary 는 lead 와 중복이라 제거. */}
+                {activeFlowStep ? (
                 <section data-guide="insight-flow" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
                   <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -529,6 +552,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                     </article>
                   </div>
                 </section>
+                ) : null}
               </>
             ) : (
               <>
@@ -569,7 +593,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                   </div>
                 </section>
 
-                {/* 핵심 판단 — flowSteps 컴팩트 (텍스트 모드). summary/focusQuestion 은 lead 와 중복이라 제거. */}
+                {activeFlowStep ? (
                 <section data-guide="insight-flow" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.26)]">
                   <div className="border-b border-[var(--axis-hairline)] bg-[rgba(220,90,36,0.08)] px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -618,6 +642,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                     </div>
                   </div>
                 </section>
+                ) : null}
               </>
             )}
           </main>
@@ -683,8 +708,8 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                 <X size={17} />
               </button>
             </header>
-            <article className="min-h-0 flex-1 overflow-y-auto bg-[var(--axis-surface)] p-6">
-              <div className="rounded-[10px] border border-[#E8DED0] bg-[#FFFFFF] p-6">
+            <article className="min-h-0 flex-1 overflow-y-auto bg-[var(--axis-surface)] p-6 sm:p-8">
+              <div className="rounded-[10px] border border-[#E8DED0] bg-[#FFFFFF] p-7 sm:p-9">
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#DC5A24]">AXIS {briefing.label} briefing</p>
                 <h1 className="mt-2 text-2xl font-semibold leading-tight text-[#1A1A1F]">{briefing.title}</h1>
                 <p className="mt-4 text-base font-semibold leading-7 text-[#2D2D33]">{briefing.briefingLead}</p>

@@ -90,7 +90,7 @@ export function buildBriefingPrintHtml(
       <meta charset="utf-8" />
       <title>${escapeHtml(briefing.title)}</title>
       <style>
-        @page { size: A4; margin: 18mm; }
+        @page { size: A4; margin: 26mm 24mm; }
         * { box-sizing: border-box; }
         body {
           margin: 0;
@@ -102,7 +102,7 @@ export function buildBriefingPrintHtml(
           min-height: 100vh;
           background: #ffffff;
           border: 1px solid #eadfce;
-          padding: 32px;
+          padding: 44px;
         }
         .kicker {
           color: #dc5a24;
@@ -203,7 +203,7 @@ export function buildBriefingPrintHtml(
         }
         @media print {
           body { background: #ffffff; }
-          .page { border: 0; padding: 0; }
+          .page { border: 0; padding: 8mm 6mm; }
         }
       </style>
     </head>

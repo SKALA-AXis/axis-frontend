@@ -61,6 +61,7 @@ export type AssistantChatResponse = {
   confidence?: number;
   blocked?: boolean;
   blocked_reason?: string | null;
+  error_code?: string | null;
   provenance?: Record<string, unknown>;
 };
 

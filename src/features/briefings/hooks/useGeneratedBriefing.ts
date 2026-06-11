@@ -24,10 +24,6 @@ export function useGeneratedBriefing(
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (fallbackCards.length === 0) {
-      setBriefing(null);
-      return;
-    }
     setIsGenerating(true);
     setError(null);
     try {
