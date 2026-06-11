@@ -19,6 +19,8 @@ export interface MixerRadarAxis {
   explanation: string;
   calculation?: string;
   meaning?: string;
+  prompted_interpretation?: string;
+  analysis_prompt?: string;
   support_count?: number;
   total_count?: number;
   matched_card_ids?: string[];
@@ -75,6 +77,7 @@ export interface MixerActionDetail {
 
 export interface MixerFollowUpCheck {
   question: string;
+  answer?: string;
   purpose?: string;
   evidence_refs?: string[];
 }

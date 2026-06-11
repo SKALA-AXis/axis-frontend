@@ -3,7 +3,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, Search, SlidersHori
 import { searchRepository } from '../../../../features/search/api/searchRepository';
 import type { SearchPeriod, SearchResponse, SearchResultItem, SearchScope } from '../../../../features/search/model/search';
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
-import type { PeerPlusPeerId } from '../../../../shared/mocks/peerPlus';
+import type { PeerPlusPeerId } from '../../../../shared/content/peerPlus';
 
 const scopeOptions: Array<{ value: SearchScope; label: string }> = [
   { value: 'ALL', label: '전체' },

@@ -23,6 +23,14 @@ export type BriefingInsightItem = {
   reason: string;
 };
 
+export type BriefingFlowStep = {
+  id: string;
+  label: string;
+  headline: string;
+  description: string;
+  details: string[];
+};
+
 export type BriefingReport = {
   label: string;
   title: string;

@@ -1,16 +1,8 @@
 import type { Issue } from '../../../entities/issue/model';
 import { httpClient } from '../../../shared/api/httpClient';
-import { env } from '../../../shared/config/env';
-import { mockIssues } from '../../../shared/mocks/issues';
 
 export interface IssuesRepository {
   list(): Promise<Issue[]>;
-}
-
-class MockIssuesRepository implements IssuesRepository {
-  async list(): Promise<Issue[]> {
-    return Promise.resolve(mockIssues);
-  }
 }
 
 class HttpIssuesRepository implements IssuesRepository {
@@ -23,8 +15,4 @@ class HttpIssuesRepository implements IssuesRepository {
   }
 }
 
-export const issuesRepository: IssuesRepository = httpClient
-  ? new HttpIssuesRepository()
-  : env.enableMockData
-    ? new MockIssuesRepository()
-    : new HttpIssuesRepository();
+export const issuesRepository: IssuesRepository = new HttpIssuesRepository();

@@ -31,7 +31,7 @@ export interface GlobalForecastRow {
   recommended_response?: string;
 }
 
-export type GlobalTrendDataSource = 'live' | 'mock';
+export type GlobalTrendDataSource = 'live';
 
 export interface GlobalTrendItem {
   id: string;

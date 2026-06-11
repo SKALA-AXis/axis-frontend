@@ -1,5 +1,5 @@
 import { getAccessToken } from '../../../shared/api/authSession';
-import { httpClient } from '../../../shared/api/httpClient';
+import { HttpRequestError, httpClient } from '../../../shared/api/httpClient';
 import { env } from '../../../shared/config/env';
 import type { MixerAnalysisMode, MixerAnalysisResponse, MixerRecentResult, MixerStageEvent } from '../model/mixer';
 
@@ -85,18 +85,22 @@ class HttpMixerRepository implements MixerRepository {
     } catch (error) {
       window.clearTimeout(timeoutId);
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new Error(
+        throw new HttpRequestError(
           analysisMode === 'quick'
-            ? '빠른 실행이 45초 안에 끝나지 않았습니다. 다시 시도하거나 정확 분석으로 실행해주세요.'
-            : '정확 분석이 150초 안에 끝나지 않았습니다. 선택 카드 수를 줄여 다시 시도해주세요.',
+            ? '호출에 실패했다'
+            : '호출에 실패했다',
+          { code: analysisMode === 'quick' ? 'MIXER_STREAM_TIMEOUT_45S' : 'MIXER_STREAM_TIMEOUT_150S' },
         );
       }
-      throw new Error('백엔드 서버에 연결할 수 없습니다.');
+      throw new HttpRequestError('호출에 실패했다', { code: 'MIXER_STREAM_NETWORK_FAILED' });
     }
 
     if (!response.ok || !response.body) {
       window.clearTimeout(timeoutId);
-      throw new Error(response.status === 401 ? '로그인이 필요합니다.' : `믹서 스트리밍 요청 실패 (${response.status})`);
+      throw new HttpRequestError(
+        response.status === 401 ? '로그인이 필요합니다.' : '호출에 실패했다',
+        { code: `MIXER_STREAM_HTTP_${response.status}`, status: response.status },
+      );
     }
 
     const reader = response.body.getReader();
@@ -104,6 +108,7 @@ class HttpMixerRepository implements MixerRepository {
     let buffer = '';
     let result: MixerAnalysisResponse | null = null;
     let errorMessage: string | null = null;
+    let errorCode: string | null = null;
 
     const drain = (rawEvent: string) => {
       const data = rawEvent
@@ -112,7 +117,7 @@ class HttpMixerRepository implements MixerRepository {
         .map((line) => line.slice(5).trim())
         .join('');
       if (!data) return;
-      let payload: { type?: string; data?: MixerAnalysisResponse; message?: string };
+      let payload: { type?: string; data?: MixerAnalysisResponse; message?: string; error_code?: string };
       try {
         payload = JSON.parse(data);
       } catch {
@@ -124,6 +129,7 @@ class HttpMixerRepository implements MixerRepository {
         result = payload.data;
       } else if (payload.type === 'error') {
         errorMessage = payload.message ?? '믹서 분석 실패';
+        errorCode = payload.error_code ?? 'MIXER_STREAM_FAILED';
       }
     };
 
@@ -135,10 +141,11 @@ class HttpMixerRepository implements MixerRepository {
           chunk = await reader.read();
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
-            throw new Error(
+            throw new HttpRequestError(
               analysisMode === 'quick'
-                ? '빠른 실행이 45초 안에 끝나지 않았습니다. 다시 시도하거나 정확 분석으로 실행해주세요.'
-                : '정확 분석이 150초 안에 끝나지 않았습니다. 선택 카드 수를 줄여 다시 시도해주세요.',
+                ? '호출에 실패했다'
+                : '호출에 실패했다',
+              { code: analysisMode === 'quick' ? 'MIXER_STREAM_TIMEOUT_45S' : 'MIXER_STREAM_TIMEOUT_150S' },
             );
           }
           throw error;
@@ -165,10 +172,10 @@ class HttpMixerRepository implements MixerRepository {
     }
 
     if (errorMessage) {
-      throw new Error(errorMessage);
+      throw new HttpRequestError(errorMessage, { code: errorCode ?? 'MIXER_STREAM_FAILED' });
     }
     if (!result) {
-      throw new Error('믹서 스트리밍 결과를 받지 못했습니다.');
+      throw new HttpRequestError('호출에 실패했다', { code: 'MIXER_STREAM_EMPTY_RESPONSE' });
     }
     return result;
   }
