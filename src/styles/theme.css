@@ -121,6 +121,17 @@
   --axis-graph-deal: #6B6B73;
   --axis-graph-edge: rgba(57, 48, 39, 0.54);
   --axis-graph-active-edge: #DC5A24;
+  --axis-chart-zero-line: rgba(26, 26, 31, 0.28);
+  --axis-chart-tooltip-bg: rgba(255, 255, 255, 0.96);
+  --axis-chart-point-ring: rgba(255, 255, 255, 0.98);
+  --axis-chart-spike-fill: rgba(190, 255, 0, 0.18);
+  --axis-chart-spike-ring: #BEFF00;
+  --axis-chart-accent-surface: rgba(220, 90, 36, 0.06);
+  --axis-chart-accent-border: rgba(220, 90, 36, 0.22);
+  --axis-chart-accent-border-soft: rgba(220, 90, 36, 0.14);
+  --axis-chart-accent-border-strong: rgba(220, 90, 36, 0.36);
+  --axis-chart-danger-surface: rgba(184, 69, 26, 0.06);
+  --axis-chart-danger-border: rgba(184, 69, 26, 0.18);
 
   /* ─── 자체 axis-* alias (호출 코드 보존 — designing 브랜치 호환) ───── */
   --axis-navy:           var(--ink);
@@ -215,13 +226,24 @@
   --chart-3: var(--reference);
   --chart-4: var(--notable);
   --chart-5: var(--steel);
-  --axis-graph-company: #D8D1C4;
-  --axis-graph-ax: #D48362;
-  --axis-graph-security: #8FA58C;
-  --axis-graph-infra: #C69A64;
-  --axis-graph-deal: #9B98A3;
-  --axis-graph-edge: rgba(255, 241, 216, 0.46);
-  --axis-graph-active-edge: #E2A079;
+  --axis-graph-company: #F4EEE2;
+  --axis-graph-ax: #FF8A5C;
+  --axis-graph-security: #9FD79E;
+  --axis-graph-infra: #F2B35F;
+  --axis-graph-deal: #C9C5D6;
+  --axis-graph-edge: rgba(255, 241, 216, 0.28);
+  --axis-graph-active-edge: #FFB08A;
+  --axis-chart-zero-line: rgba(255, 241, 216, 0.58);
+  --axis-chart-tooltip-bg: rgba(31, 34, 43, 0.96);
+  --axis-chart-point-ring: rgba(255, 241, 216, 0.96);
+  --axis-chart-spike-fill: rgba(216, 255, 112, 0.2);
+  --axis-chart-spike-ring: #D8FF70;
+  --axis-chart-accent-surface: rgba(255, 106, 61, 0.12);
+  --axis-chart-accent-border: rgba(255, 106, 61, 0.28);
+  --axis-chart-accent-border-soft: rgba(255, 106, 61, 0.18);
+  --axis-chart-accent-border-strong: rgba(255, 106, 61, 0.42);
+  --axis-chart-danger-surface: rgba(255, 107, 71, 0.12);
+  --axis-chart-danger-border: rgba(255, 107, 71, 0.26);
   --axis-navy: var(--surface-code);
 }
 
