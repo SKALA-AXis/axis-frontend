@@ -4,7 +4,7 @@ import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../executive
 import { Skeleton } from '../ui/skeleton';
 
 type PageStateVariant = 'page' | 'panel' | 'inline';
-type PageSkeletonVariant = 'dashboard' | 'cards' | 'workspace' | 'analysis' | 'briefing';
+export type PageSkeletonVariant = 'dashboard' | 'cards' | 'workspace' | 'analysis' | 'briefing';
 
 interface PageStateProps {
   children: ReactNode;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { bookmarksRepository } from '../../../features/bookmarks/api/bookmarksRepository';
 import type { AuthUser } from '../../../features/auth/model/auth';
 import type { SearchScope } from '../../../features/search/model/search';
@@ -6,27 +6,56 @@ import type { UserRole } from '../../types/userRole';
 import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../shared/content/peerPlus';
 import { useViewRouting } from '../../../shared/hooks/useViewRouting';
 import type { TextPreference } from '../../../shared/config/textPreferences';
-import {
-  AdminView,
-  BriefingsView,
-  CardNewsWorkspaceView,
-  HomeDashboardView,
-  KeywordGraphView,
-  MixerView,
-  NotificationsView,
-  PeerPlusView,
-  RawArticlesView,
-  SearchResultsView,
-  SettingsView,
-} from '../pages';
+import { PageSkeleton, type PageSkeletonVariant } from '../shared/PageState';
+import { ViewErrorBoundary } from '../shared/ViewErrorBoundary';
 import { FloatingAiChat } from '../shared/FloatingAiChat';
 import { InAppGuideOverlay } from '../shared/InAppGuideOverlay';
 import { ScrollToTopButton } from '../shared/ScrollToTopButton';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 
+// 뷰는 라우트 단위 코드 스플리팅 대상 — 배럴(../pages) 대신 파일 경로로 직접 lazy import 해야
+// 한 뷰 진입 시 다른 뷰 청크가 딸려오지 않는다.
+const AdminView = lazy(() => import('../pages/admin/AdminView').then((m) => ({ default: m.AdminView })));
+const BriefingsView = lazy(() => import('../pages/briefings/BriefingsView').then((m) => ({ default: m.BriefingsView })));
+const CardNewsWorkspaceView = lazy(() =>
+  import('../pages/card-news-workspace/CardNewsWorkspaceView').then((m) => ({ default: m.CardNewsWorkspaceView })),
+);
+const HomeDashboardView = lazy(() =>
+  import('../pages/home/dashboard/HomeDashboardView').then((m) => ({ default: m.HomeDashboardView })),
+);
+const KeywordGraphView = lazy(() =>
+  import('../pages/keyword-graph/KeywordGraphView').then((m) => ({ default: m.KeywordGraphView })),
+);
+const MixerView = lazy(() => import('../pages/mixer/MixerView').then((m) => ({ default: m.MixerView })));
+const NotificationsView = lazy(() =>
+  import('../pages/notifications/NotificationsView').then((m) => ({ default: m.NotificationsView })),
+);
+const PeerPlusView = lazy(() => import('../pages/peer-plus/PeerPlusView').then((m) => ({ default: m.PeerPlusView })));
+const RawArticlesView = lazy(() =>
+  import('../pages/raw-articles/RawArticlesView').then((m) => ({ default: m.RawArticlesView })),
+);
+const SearchResultsView = lazy(() =>
+  import('../pages/search/SearchResultsView').then((m) => ({ default: m.SearchResultsView })),
+);
+const SettingsView = lazy(() => import('../pages/settings/SettingsView').then((m) => ({ default: m.SettingsView })));
+
 type ThemeMode = 'light' | 'dark';
 type ViewFreshnessMap = Partial<Record<string, string | null>>;
+
+const viewSkeletonVariants: Record<string, PageSkeletonVariant> = {
+  home: 'dashboard',
+  peerPlus: 'analysis',
+  issues: 'cards',
+  mixer: 'workspace',
+  keywordGraph: 'analysis',
+  briefings: 'briefing',
+  notifications: 'cards',
+  search: 'cards',
+  rawArticles: 'cards',
+  settings: 'workspace',
+  admin: 'workspace',
+};
 
 const bookmarksStorageKey = 'axis:bookmarked-cards';
 const themeStorageKey = 'axis:theme-mode';
@@ -307,7 +336,12 @@ export function DashboardShell({
           onThemeToggle={() => setThemeMode((mode) => (mode === 'dark' ? 'light' : 'dark'))}
         />
         <main ref={mainScrollRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 text-body-md md:pb-0">
-          {renderView()}
+          {/* key=activeView: 한 뷰에서 에러가 나도 다른 뷰로 이동하면 boundary 가 초기화되도록 */}
+          <ViewErrorBoundary key={activeView}>
+            <Suspense fallback={<PageSkeleton variant={viewSkeletonVariants[activeView] ?? 'dashboard'} />}>
+              {renderView()}
+            </Suspense>
+          </ViewErrorBoundary>
         </main>
       </div>
 

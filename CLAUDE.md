@@ -71,7 +71,8 @@ confidence < 0.6 이면 "⚠️ 근거 불충분" 표시.
 ## 환경 변수
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8080   # .env (커밋 금지)
+VITE_API_BASE_URL=   # .env (커밋 금지). 기본은 빈 값 — dev 는 vite proxy, prod 는 nginx 가 /api 처리.
+                     # 값을 넣으면 프록시를 우회해 빌드에 절대 URL 이 박힘 (로컬 빌드 산출물 검증 시 함정)
 ```
 
 ## 절대 하지 말 것

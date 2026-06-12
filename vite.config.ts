@@ -10,6 +10,17 @@ type ProxyErrorResponse = {
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        // react 코어를 별도 청크로 고정 — 앱 코드만 바뀌는 배포에서 vendor 청크 해시가
+        // 유지되어 브라우저 캐시(nginx /assets/ immutable)가 살아있게 한다.
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': {
