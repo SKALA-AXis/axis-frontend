@@ -105,7 +105,9 @@ export function PageState({
 }
 
 export function PageProcessLoading({
-  steps,
+  eyebrow,
+  title,
+  description,
 }: PageProcessLoadingProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -117,13 +119,15 @@ export function PageProcessLoading({
     return () => window.clearInterval(intervalId);
   }, []);
 
-  const activeIndex = Math.min(steps.length - 1, Math.floor(elapsedSeconds / 2));
-  const progress = Math.max(12, Math.min(92, 18 + elapsedSeconds * 9 + activeIndex * 8));
+  const elapsedLabel =
+    elapsedSeconds < 60
+      ? `${elapsedSeconds}초`
+      : `${Math.floor(elapsedSeconds / 60)}분 ${String(elapsedSeconds % 60).padStart(2, '0')}초`;
 
   return (
     <ExecutivePage>
       <ExecutiveContainer className="flex min-h-[calc(100dvh-7rem)] items-center justify-center py-10">
-        <div className="w-full max-w-[320px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-7 text-center shadow-[0_24px_70px_-42px_rgba(0,0,0,0.28)]">
+        <div className="w-full max-w-[420px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-7 text-center shadow-[0_24px_70px_-42px_rgba(0,0,0,0.28)]">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.08)]">
             <div className="relative h-11 w-7 animate-[spin_1.8s_ease-in-out_infinite]">
               <div className="absolute inset-x-0 top-0 mx-auto h-5 w-6 rounded-b-full border-2 border-[var(--axis-accent)] border-t-0" />
@@ -132,16 +136,22 @@ export function PageProcessLoading({
             </div>
           </div>
 
-          <div className="mt-6 flex items-end justify-center gap-1">
-            <span className="text-4xl font-semibold tabular-nums text-[var(--axis-ink)]">{Math.round(progress)}</span>
-            <span className="mb-1 text-sm font-semibold text-[var(--axis-muted)]">%</span>
+          <p className="mt-6 axis-kicker">{eyebrow}</p>
+          <h2 className="mt-2 text-xl font-semibold leading-7 text-[var(--axis-ink)]">{title}</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--axis-muted)]">{description}</p>
+
+          <div className="mt-5 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">실제 경과 시간</p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums text-[var(--axis-ink)]">{elapsedLabel}</p>
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--axis-surface-muted)]">
-            <div
-              className="h-full rounded-full bg-[var(--axis-accent)] transition-[width] duration-500"
-              style={{ width: `${progress}%` }}
-            />
+
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--axis-surface-muted)]">
+            <div className="h-full w-full origin-left animate-pulse rounded-full bg-[linear-gradient(90deg,rgba(220,90,36,0.22),var(--axis-accent),rgba(220,90,36,0.22))]" />
           </div>
+
+          <p className="mt-4 text-xs font-semibold leading-5 text-[var(--axis-muted)]">
+            데이터가 준비되는 즉시 화면이 전환됩니다.
+          </p>
         </div>
       </ExecutiveContainer>
     </ExecutivePage>

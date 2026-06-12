@@ -88,13 +88,6 @@ export function formatStockRate(value?: number | string | null) {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
 
-export function formatKeywordRatio(value?: number | string | null) {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '-';
-  }
-  return value.toFixed(2);
-}
-
 export function formatKeywordDelta(value?: number | string | null, fractionDigits = 2) {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return '-';
