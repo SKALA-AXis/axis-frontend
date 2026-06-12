@@ -59,6 +59,7 @@ export interface GlobalTrendItem {
   peer_alignment?: PeerAlignmentRow[];
   impact_matrix?: ImpactMatrixCell[];
   forecasts?: GlobalForecastRow[];
+  final_one_liner?: string;
   evidence_source_links?: GlobalTrendEvidenceLink[];
   leading_companies?: string[];
   intensity?: string | null;
