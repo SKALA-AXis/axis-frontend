@@ -211,6 +211,14 @@ export function FloatingCardNewsOverlay({
   const [shareFeedback, setShareFeedback] = useState('');
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const sourceOptions = getCardSourceOptions(card);
+  const sourceCount = Math.max(
+    card.source_count ?? 0,
+    card.source_raw_article_ids?.length ?? 0,
+    card.sourceRawArticleIds?.length ?? 0,
+    card.evidence_chain?.provenance?.raw_article_ids?.length ?? 0,
+    sourceOptions.length,
+    1,
+  );
   const orderedCards = dedupeCardsById(cards.length > 0 ? cards : [card]);
   const currentCardIndex = orderedCards.findIndex((item) => item.id === card.id);
   const previousCard = currentCardIndex > 0 ? orderedCards[currentCardIndex - 1] : null;
@@ -278,7 +286,7 @@ export function FloatingCardNewsOverlay({
                   <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold text-white/76">
                     <span className="inline-flex items-center gap-1.5 rounded-sm border border-white/18 bg-white/10 px-2.5 py-1">
                       <Newspaper size={13} />
-                      원문 {Math.max(sourceOptions.length, 1)}건
+                      원문 {sourceCount}건
                     </span>
                     <span className="rounded-sm border border-white/18 bg-white/10 px-2.5 py-1">{slides.length}개 관점</span>
                   </div>
