@@ -60,6 +60,7 @@ export interface GlobalTrendItem {
   impact_matrix?: ImpactMatrixCell[];
   forecasts?: GlobalForecastRow[];
   final_one_liner?: string;
+  overall_summary?: string;
   evidence_source_links?: GlobalTrendEvidenceLink[];
   leading_companies?: string[];
   intensity?: string | null;
