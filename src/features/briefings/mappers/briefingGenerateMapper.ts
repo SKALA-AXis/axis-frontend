@@ -69,6 +69,14 @@ type GeneratedBriefingPayload = {
   status?: string;
   error_message?: string;
   title?: string;
+  sections?: Array<{
+    title?: string;
+    summary?: string;
+    bullets?: unknown[];
+    items?: Array<{ headline?: string; title?: string; source?: string; description?: string }>;
+    related_card_ids?: unknown[];
+  }>;
+  flowSteps?: Array<Partial<GeneratedBriefingFlowStep>>;
   briefing_lead?: string;
   executive_summary?: string;
   key_summary?: string;
@@ -236,6 +244,9 @@ function mapSignalCards(payload: GeneratedBriefingPayload, selectedCards: CardNe
 }
 
 function mapFlowSteps(payload: GeneratedBriefingPayload): GeneratedBriefingFlowStep[] {
+  const direct = mapReportFlowSteps(payload.flowSteps);
+  if (direct.length > 0) return direct;
+
   return (payload.interpretation_flow?.steps ?? [])
     .map((step, index) => {
       const label = firstString(step.label, `Step ${index + 1}`);
@@ -253,6 +264,41 @@ function mapFlowSteps(payload: GeneratedBriefingPayload): GeneratedBriefingFlowS
       };
     })
     .filter((item): item is GeneratedBriefingFlowStep => Boolean(item));
+}
+
+function mapSectionFallbackSignals(payload: GeneratedBriefingPayload, selectedCards: CardNewsItem[]): BriefingSignalCard[] {
+  return (payload.sections ?? [])
+    .map((section, index) => {
+      const bullets = asList(section.bullets, 4);
+      const itemTexts = (section.items ?? []).map(textFromUnknown).filter(Boolean);
+      const title = firstString(section.title, `핵심 신호 ${index + 1}`);
+      const summary = firstString(section.summary, bullets[0], itemTexts[0]);
+      const reason = firstString(bullets[1], itemTexts[1], summary);
+      if (!title && !summary && !reason) return null;
+      return {
+        label: title || `핵심 신호 ${index + 1}`,
+        title: firstString(bullets[0], itemTexts[0], section.summary, title),
+        summary,
+        reason,
+        relatedCardIds: Array.isArray(section.related_card_ids)
+          ? section.related_card_ids.map(String).filter(Boolean)
+          : selectedCards.map((card) => card.id),
+      };
+    })
+    .filter((item): item is BriefingSignalCard => Boolean(item))
+    .slice(0, 3);
+}
+
+function sectionDigest(payload: GeneratedBriefingPayload): string[] {
+  return (payload.sections ?? [])
+    .flatMap((section) => [
+      section.summary,
+      ...asList(section.bullets, 4),
+      ...(section.items ?? []).map(textFromUnknown),
+    ])
+    .map((item) => firstString(item))
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 export function mapGeneratedBriefingToView(
@@ -299,6 +345,7 @@ export function mapGeneratedBriefingToView(
   const historicalSignals = asList(comparison.historical_signals, 4);
   const immediateTrends = payload.immediate_trends ?? basis.immediate_trends ?? [];
   const watchTrends = payload.watch_trends ?? basis.watch_trends ?? [];
+  const sectionLines = sectionDigest(payload);
 
   const whatHappenedDigest = [
     firstString(payload.briefing_lead, payload.executive_summary),
@@ -306,6 +353,7 @@ export function mapGeneratedBriefingToView(
     firstString(comparison.rationale),
     ...historicalSignals,
     ...asList(payload.evidence_summary, 3),
+    ...sectionLines,
   ].filter(Boolean);
 
   const meaning = [
@@ -326,6 +374,9 @@ export function mapGeneratedBriefingToView(
 
   const benchmark = asList(payload.evidence_summary, 3).map((item) => ({ title: item, reason: '' }));
   const signalCards = mapSignalCards(payload, selectedCards);
+  const fallbackSignalCards = signalCards.length > 0
+    ? signalCards
+    : mapSectionFallbackSignals(payload, selectedCards);
   const flowSteps = mapFlowSteps(payload);
 
   const whatHappened = selectedCards.slice(0, period === 'daily' ? 4 : 6).map((card) => {
@@ -347,11 +398,11 @@ export function mapGeneratedBriefingToView(
     window: range.window,
     selectedCards,
     peers,
-    headline: firstString(payload.key_summary, signalCards[0]?.title, whatHappenedDigest[0]),
+    headline: firstString(payload.key_summary, fallbackSignalCards[0]?.title, whatHappenedDigest[0]),
     briefingLead: firstString(payload.briefing_lead, payload.executive_summary, whatHappenedDigest[0]),
     briefingSummaryLine: firstString(payload.key_summary, whatHappenedDigest[1]),
     whatHappenedDigest,
-    signalCards,
+    signalCards: fallbackSignalCards,
     flowSteps,
     whatHappened,
     meaning,

@@ -3867,6 +3867,8 @@ export interface operations {
         parameters: {
             query: {
                 briefing_type: components["schemas"]["BriefingTypeEnum"];
+                /** @description 기간 포함 여부를 판단할 기준일입니다. daily는 해당 일자, weekly는 선택 주에 포함된 날짜 또는 주 종료일, monthly는 해당 월의 임의 일자를 사용합니다. */
+                anchor_date?: string;
                 /** @description 일간 브리핑 기준일 */
                 date?: string;
                 /** @description 주간/월간 브리핑 기준 월(`YYYY-MM`) */
