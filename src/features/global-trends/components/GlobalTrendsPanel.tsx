@@ -71,7 +71,9 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           <p className="mt-4 max-w-6xl text-[2.25rem] font-display font-semibold leading-[1.3] text-[var(--axis-ink)]">
             {trendBrief.headline}
           </p>
-          <p className="mt-4 max-w-6xl text-xl leading-[1.55] text-[var(--axis-body)]">{trendBrief.supporting}</p>
+          {trendBrief.supporting ? (
+            <p className="mt-4 max-w-6xl text-xl leading-[1.55] text-[var(--axis-body)]">{trendBrief.supporting}</p>
+          ) : null}
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
@@ -191,6 +193,7 @@ function EvidenceDetails({ item }: { item: EvidenceGroup }) {
 
 function buildTrendBrief(items: GlobalTrendItem[]) {
   const agentHeadline = items.find((item) => item.final_one_liner?.trim())?.final_one_liner?.trim();
+  const agentSupporting = items.find((item) => item.overall_summary?.trim())?.overall_summary?.trim();
   const categories = new Set(items.map((item) => item.keyword_category).filter(Boolean));
   const keywords = new Set(items.map((item) => item.keyword.toLowerCase()));
   const axes: string[] = [];
@@ -209,11 +212,7 @@ function buildTrendBrief(items: GlobalTrendItem[]) {
   const headline =
     agentHeadline ??
     `글로벌 피어사들은 AI를 별도 기능이 아니라 ${selectedAxes.join(', ')}의 기본 레이어로 확장하고 있습니다.`;
-  const topKeywords = items.slice(0, 3).map((item) => trendTitle(item));
-  const supporting =
-    topKeywords.length > 0
-      ? `${topKeywords.join(', ')} 신호가 함께 나타나며 기업 AI의 관심이 구축보다 실제 운영과 적용으로 이동하고 있습니다.`
-      : '기업 AI의 관심이 구축보다 실제 운영과 적용으로 이동하고 있습니다.';
+  const supporting = agentSupporting ?? '';
 
   return { headline, supporting };
 }
