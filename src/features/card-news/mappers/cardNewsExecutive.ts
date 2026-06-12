@@ -75,7 +75,15 @@ export function getPotentialImpact(card: CardNewsItem) {
 }
 
 export function getSourceCount(card: CardNewsItem) {
-  return card.source_count ?? card.sources?.length ?? card.evidence_chain?.source_links?.length ?? 1;
+  const candidates = [
+    card.source_count,
+    card.source_raw_article_ids?.length,
+    card.sourceRawArticleIds?.length,
+    card.evidence_chain?.provenance?.raw_article_ids?.length,
+    card.sources?.length,
+    card.evidence_chain?.source_links?.length,
+  ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
+  return candidates.length > 0 ? Math.max(...candidates) : 1;
 }
 
 export function getFinancialNarrative(card: CardNewsItem) {
