@@ -12,6 +12,7 @@ import {
   deriveMentionDelta,
   formatPercent,
   formatTrendDelta,
+  peerLabel,
   rankTrendItems,
   rankTrendShifts,
   trendTitle,
@@ -35,7 +36,7 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
   const evidenceGroups = useMemo(() => buildEvidenceGroups(topItems), [topItems]);
   const trendBrief = useMemo(() => buildTrendBrief(topItems), [topItems]);
   const headlineEvidence = useMemo(() => buildHeadlineEvidence(topItems), [topItems]);
-  const skAxAlignment = useMemo(() => buildSkAxAlignmentSummary(topItems), [topItems]);
+  const domesticPeerMoves = useMemo(() => buildDomesticPeerMoves(topItems), [topItems]);
 
   useEffect(() => {
     const latest = topItems[0]?.updated_at ?? topItems[0]?.created_at ?? listData?.latest_trend_date ?? null;
@@ -101,24 +102,30 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           ) : null}
         </section>
 
-        {skAxAlignment.total > 0 ? (
-          <section className="axis-panel-flat flex flex-wrap items-center gap-4 p-5">
-            <div className="min-w-0">
-              <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">SK AX 방향 정합</p>
-              <p className="mt-1 text-xl font-display font-semibold leading-snug text-[var(--axis-ink)]">
-                핵심 트렌드 {skAxAlignment.total}건 중 {skAxAlignment.counts.aligned}건을 SK AX가 함께 가고 있습니다
-              </p>
-              <p className="mt-1 text-caption text-[var(--axis-muted)]">✨ AI 정렬 판정(AI 초안) 집계 기준입니다.</p>
+        {domesticPeerMoves.length > 0 ? (
+          <section className="axis-panel-flat p-5">
+            <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">핵심 트렌드 대응 — SK AX · 국내 Peer</p>
+            <div className="mt-4 divide-y divide-[var(--axis-hairline)] border-t border-[var(--axis-hairline)]">
+              {domesticPeerMoves.map((peer) => (
+                <div key={peer.peerId} className="grid min-h-12 grid-cols-[104px_minmax(0,1fr)] items-start gap-3 py-3">
+                  <strong className="pt-0.5 text-sm font-bold text-[var(--axis-ink)]">{peer.label}</strong>
+                  <div className="min-w-0 space-y-1.5">
+                    {peer.moves.map((move) => (
+                      <div key={`${peer.peerId}-${move.trend}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-6 text-[var(--axis-body)]">
+                        <ExecutiveBadge tone={ALIGNMENT_META[move.alignment]?.tone ?? 'neutral'}>
+                          {ALIGNMENT_META[move.alignment]?.label ?? move.alignment}
+                        </ExecutiveBadge>
+                        <span className="min-w-0">
+                          <span className="font-semibold text-[var(--axis-ink)]">{move.trend}</span>
+                          {move.note ? <> — {move.note}</> : null}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="ml-auto flex flex-wrap gap-1.5">
-              {Object.entries(ALIGNMENT_META).map(([type, meta]) =>
-                skAxAlignment.counts[type] > 0 ? (
-                  <ExecutiveBadge key={type} tone={meta.tone}>
-                    {meta.label} {skAxAlignment.counts[type]}
-                  </ExecutiveBadge>
-                ) : null,
-              )}
-            </div>
+            <p className="mt-3 text-caption text-[var(--axis-muted)]">✨ 트렌드별 AI 정렬 판정·전략 노트(AI 초안) 기반입니다.</p>
           </section>
         ) : null}
 
@@ -139,13 +146,12 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">트렌드 모멘텀</p>
-                <h3 className="mt-1 text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">떠오르는 신호</h3>
               </div>
               <LineChart className="shrink-0 text-[var(--axis-success)]" size={22} />
             </div>
             <div className="mt-4 divide-y divide-[var(--axis-hairline)] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]">
               {shiftItems.length === 0 ? (
-                <p className="p-4 text-sm text-[var(--axis-muted)]">떠오르는 신호가 없습니다.</p>
+                <p className="p-4 text-sm text-[var(--axis-muted)]">표시할 변화 신호가 없습니다.</p>
               ) : (
                 shiftItems.slice(0, 5).map((item: GlobalTrendItem) => <TrendShiftRow key={item.id} item={item} />)
               )}
@@ -375,14 +381,19 @@ function buildHeadlineEvidence(items: GlobalTrendItem[]) {
   return links;
 }
 
-function buildSkAxAlignmentSummary(items: GlobalTrendItem[]) {
-  const counts: Record<string, number> = { aligned: 0, lagging: 0, missing: 0, diverging: 0 };
-  let total = 0;
-  for (const item of items) {
-    const row = item.peer_alignment?.find((peer) => peer.peer_id === 'sk_ax');
-    if (!row || counts[row.alignment_type] == null) continue;
-    counts[row.alignment_type] += 1;
-    total += 1;
-  }
-  return { counts, total };
+const DOMESTIC_PEER_ORDER = ['sk_ax', 'samsung_sds', 'lg_cns', 'hyundai_autoever', 'posco_dx'];
+const MAX_MOVES_PER_PEER = 2;
+
+/** 핵심 트렌드별 peer_alignment 에서 SK AX·국내 Peer 가 진행 중인 관련 사업을 추출 */
+function buildDomesticPeerMoves(items: GlobalTrendItem[]) {
+  return DOMESTIC_PEER_ORDER.map((peerId) => {
+    const moves: { trend: string; note?: string; alignment: string }[] = [];
+    for (const item of items) {
+      if (moves.length >= MAX_MOVES_PER_PEER) break;
+      const row = item.peer_alignment?.find((peer) => peer.peer_id === peerId);
+      if (!row) continue;
+      moves.push({ trend: trendTitle(item), note: row.strategic_note, alignment: row.alignment_type });
+    }
+    return { peerId, label: peerLabel(peerId), moves };
+  }).filter((peer) => peer.moves.length > 0);
 }
