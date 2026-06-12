@@ -27,7 +27,7 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
   const { data: listData, isLoading, error, reload } = useGlobalTrendsList(30);
 
   const topItems = useMemo(() => rankTrendItems(listData?.items ?? []), [listData?.items]);
-  const shiftItems = useMemo(() => rankTrendShifts(listData?.items ?? []), [listData?.items]);
+  const shiftItems = useMemo(() => rankRisingTrendShifts(listData?.items ?? []), [listData?.items]);
   const peerMovements = useMemo(() => buildPeerMovements(topItems), [topItems]);
   const evidenceGroups = useMemo(() => buildEvidenceGroups(topItems), [topItems]);
   const trendBrief = useMemo(() => buildTrendBrief(topItems), [topItems]);
@@ -54,13 +54,6 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
         onRetry={reload}
         variant="panel"
       >
-        <div className="flex justify-end">
-          <ExecutiveButton variant="secondary" onClick={() => reload()} disabled={isLoading}>
-            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
-            새로고침
-          </ExecutiveButton>
-        </div>
-
         {listData?.warning ? (
           <div className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.24)] bg-[rgba(220,90,36,0.08)] px-4 py-3 text-sm text-[var(--axis-accent-strong)]">
             {listData.warning}
@@ -68,7 +61,13 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
         ) : null}
 
         <section className="axis-panel-flat p-5">
-          <p className="axis-kicker">최신 트렌드</p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="axis-kicker">최신 트렌드</p>
+            <ExecutiveButton variant="secondary" onClick={() => reload()} disabled={isLoading}>
+              <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+              새로고침
+            </ExecutiveButton>
+          </div>
           <p className="mt-4 max-w-5xl text-[2rem] font-display font-semibold leading-[1.32] text-[var(--axis-ink)]">
             {trendBrief.headline}
           </p>
@@ -92,13 +91,13 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="axis-kicker">변화 신호</p>
-                <h3 className="axis-section-heading mt-1">이전 분석 대비 강해진 흐름</h3>
+                <h3 className="axis-section-heading mt-1">새롭게 힘을 받는 신호</h3>
               </div>
               <LineChart className="shrink-0 text-[var(--axis-success)]" size={22} />
             </div>
             <div className="mt-4 divide-y divide-[var(--axis-hairline)] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]">
               {shiftItems.length === 0 ? (
-                <p className="p-4 text-sm text-[var(--axis-muted)]">변화율 데이터가 없습니다.</p>
+                <p className="p-4 text-sm text-[var(--axis-muted)]">새롭게 강해진 신호가 없습니다.</p>
               ) : (
                 shiftItems.slice(0, 5).map((item: GlobalTrendItem) => <TrendShiftRow key={item.id} item={item} />)
               )}
@@ -120,6 +119,10 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
       </PageState>
     </div>
   );
+}
+
+function rankRisingTrendShifts(items: GlobalTrendItem[]) {
+  return rankTrendShifts(items).filter((item) => (item.frequency_delta_pct ?? 0) > 0);
 }
 
 function TrendShiftRow({ item }: { item: GlobalTrendItem }) {
