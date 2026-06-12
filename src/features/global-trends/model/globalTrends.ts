@@ -31,6 +31,13 @@ export interface GlobalForecastRow {
   recommended_response?: string;
 }
 
+export interface GlobalTrendEvidenceLink {
+  title?: string;
+  url?: string;
+  source_name?: string;
+  published_at?: string;
+}
+
 export type GlobalTrendDataSource = 'live';
 
 export interface GlobalTrendItem {
@@ -52,6 +59,7 @@ export interface GlobalTrendItem {
   peer_alignment?: PeerAlignmentRow[];
   impact_matrix?: ImpactMatrixCell[];
   forecasts?: GlobalForecastRow[];
+  evidence_source_links?: GlobalTrendEvidenceLink[];
   leading_companies?: string[];
   intensity?: string | null;
   frequency_delta_pct?: number | null;
