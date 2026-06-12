@@ -941,11 +941,11 @@ export function MixerView({
       sanitizeMixerActionText(result.sk_ax_implication),
       actionRationale,
     );
-    const resultHeroSections = [
-      { label: '문제 분석 결과', summary: problemAnalysisSummary },
-      { label: '시사점', summary: implicationSummary },
-      { label: '대응방향', summary: responseDirectionSummary },
-    ];
+    const resultHeroSummaries = [
+      problemAnalysisSummary,
+      implicationSummary,
+      responseDirectionSummary,
+    ].filter(Boolean);
     const resultSections = [
       {
         key: 'problem_analysis',
@@ -1059,24 +1059,14 @@ export function MixerView({
                 </button>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-3">
-                {resultHeroSections.map((section, index) => (
-                  <article
-                    key={`result-hero-${section.label}`}
-                    className="flex min-h-[190px] flex-col justify-between rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.18)] bg-[var(--axis-surface-soft)] p-5 shadow-[0_18px_48px_-38px_rgba(26,26,31,0.42)] lg:min-h-[330px] lg:p-6"
+              <div className="max-w-6xl space-y-7 lg:space-y-9">
+                {resultHeroSummaries.map((summary, index) => (
+                  <h1
+                    key={`result-hero-summary-${index}`}
+                    className="line-clamp-2 font-display text-[2rem] font-semibold leading-[1.14] text-[var(--axis-ink)] md:text-[2.45rem] lg:text-[3rem]"
                   >
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">
-                        0{index + 1}
-                      </p>
-                      <h2 className="mt-3 text-[2.15rem] font-display font-semibold leading-[1.05] text-[var(--axis-ink)] lg:text-[2.7rem]">
-                        {section.label}
-                      </h2>
-                    </div>
-                    <p className="mt-8 line-clamp-2 text-base font-semibold leading-7 text-[var(--axis-body)] lg:text-lg lg:leading-8">
-                      <HighlightedMixerText text={section.summary} />
-                    </p>
-                  </article>
+                    <HighlightedMixerText text={summary} />
+                  </h1>
                 ))}
               </div>
             </section>
