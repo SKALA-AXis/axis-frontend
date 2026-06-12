@@ -15,11 +15,10 @@ import { useAdminUsers } from '../../../../features/admin-users/hooks/useAdminUs
 import type { AdminUser, AdminUserStatus } from '../../../../features/admin-users/model/adminUser';
 import { TableStateRow } from '../../shared/PageState';
 
-type AdminTab = 'users' | 'peers' | 'cards' | 'audit';
+type AdminTab = 'users' | 'cards' | 'audit';
 
 const tabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
   { id: 'users', label: '사용자', icon: Users },
-  { id: 'peers', label: 'Peer사', icon: Users },
   { id: 'cards', label: '카드뉴스 관리', icon: Newspaper },
   { id: 'audit', label: '감사 로그', icon: History },
 ];
@@ -52,7 +51,7 @@ export function AdminView() {
 
         <section className="mt-5 grid gap-5 xl:grid-cols-[15rem_minmax(0,1fr)]">
           <aside className="axis-panel-flat h-fit p-3">
-            <nav className="flex gap-2 overflow-x-auto xl:flex-col">
+            <nav data-guide="admin-tabs" className="flex gap-2 overflow-x-auto xl:flex-col">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -87,7 +86,6 @@ export function AdminView() {
                 onStatusChange={updateStatus}
               />
             ) : null}
-            {activeTab === 'peers' ? <AdminTable title="모니터링 대상 Peer사" rows={[]} /> : null}
             {activeTab === 'cards' ? (
               <AdminDeletedCardsPanel
                 cards={cards}
@@ -204,7 +202,7 @@ function AdminUsersPanel({
   };
 
   return (
-    <section>
+    <section data-guide="admin-users">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="axis-kicker">User management</p>
@@ -381,49 +379,6 @@ function AdminUsersPanel({
   );
 }
 
-function AdminTable({ title, rows }: { title: string; rows: Array<Record<string, string | number>> }) {
-  const columns = Object.keys(rows[0] ?? { id: 'ID', name: '이름', status: '상태' });
-
-  return (
-    <section>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <p className="axis-kicker">Operations</p>
-          <h2 className="axis-section-heading mt-1">{title}</h2>
-        </div>
-      </div>
-      <div className="overflow-x-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-white">
-        <table className="axis-data-table">
-          <thead>
-            <tr>
-              {columns.map((column) => (
-                <th key={column}>{column}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <TableStateRow colSpan={columns.length} label="표시할 실제 데이터가 없습니다." />
-            ) : rows.map((row, index) => (
-              <tr key={String(row.id ?? index)}>
-                {columns.map((column) => (
-                  <td key={column}>
-                    {column === 'status' ? (
-                      <ExecutiveBadge tone={row[column] === 'active' ? 'success' : 'warning'}>{row[column]}</ExecutiveBadge>
-                    ) : (
-                      row[column]
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
 function AdminDeletedCardsPanel({
   cards,
   isLoading,
@@ -464,7 +419,7 @@ function AdminDeletedCardsPanel({
   };
 
   return (
-    <section>
+    <section data-guide="admin-cards">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="axis-kicker">Card news management</p>
@@ -550,7 +505,7 @@ function AdminAuditLogsPanel({
   onReload: () => void;
 }) {
   return (
-    <section>
+    <section data-guide="admin-audit">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="axis-kicker">Audit trail</p>
