@@ -408,6 +408,8 @@ const sanitizeMixerActionText = (value?: string | null): string => {
 
 const sanitizeMixerDisplayText = (value?: string | null): string => {
   const cleaned = (value ?? '')
+    .replace(/^각 이슈는\s+/, '')
+    .replace(/^핵심 신호는\s*/, '')
     .replace(/\bevent_type\b/gi, '이벤트 유형')
     .replace(/\bexposure_score\b/gi, '노출 점수')
     .replace(/\bnew_biz\b/gi, '신사업')
@@ -994,9 +996,9 @@ export function MixerView({
           />
 
           <section data-guide="mixer-result" className="space-y-5">
-            <article data-guide="mixer-result-headline" className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.18)]">
-              <div className="border-l-4 border-[var(--axis-accent)] px-5 py-5 lg:px-6">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+            <article data-guide="mixer-result-headline" className="border-b border-[var(--axis-hairline)] pb-6">
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <ExecutiveBadge tone="accent">믹스 인사이트</ExecutiveBadge>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-[var(--axis-muted)]">
@@ -1013,29 +1015,33 @@ export function MixerView({
                     </button>
                   </div>
                 </div>
-                <div className="mt-4 grid gap-3">
-                  <div className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.18)] bg-[rgba(220,90,36,0.06)] px-4 py-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">핵심 인사이트</p>
-                    <h2 className="mt-2 text-[clamp(22px,2vw,32px)] font-display font-semibold leading-snug text-[var(--axis-ink)]">
+                <div className="mt-5 grid gap-4">
+                  <div>
+                    <p className="axis-kicker text-[var(--axis-accent-strong)]">핵심 인사이트</p>
+                    <h2 className="mt-2 max-w-5xl text-[clamp(24px,2.2vw,34px)] font-display font-semibold leading-snug text-[var(--axis-ink)]">
                       <HighlightedMixerText text={headlineInsight} />
                     </h2>
                   </div>
                   {finalOneLiner && finalOneLiner !== headlineInsight ? (
-                    <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-3">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">요약 판단</p>
-                      <p className="mt-2 text-[clamp(16px,1.2vw,19px)] font-semibold leading-7 text-[var(--axis-ink)]">
+                    <div className="max-w-4xl">
+                      <p className="axis-kicker">요약 판단</p>
+                      <p className="mt-2 text-[clamp(16px,1.2vw,20px)] font-semibold leading-7 text-[var(--axis-ink)]">
                         <HighlightedMixerText text={finalOneLiner} />
                       </p>
                     </div>
                   ) : null}
-                  {recommendedActions.slice(0, 2).map((action, index) => (
-                    <div key={`headline-action-${index}`} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-3">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">대응 방향 {index + 1}</p>
-                      <p className="mt-2 text-[clamp(16px,1.2vw,19px)] font-semibold leading-7 text-[var(--axis-ink)]">
-                        <HighlightedMixerText text={action} />
-                      </p>
+                  {recommendedActions.length > 0 ? (
+                    <div className="grid max-w-4xl gap-4">
+                      {recommendedActions.slice(0, 2).map((action, index) => (
+                        <div key={`headline-action-${index}`} className="border-l-2 border-[var(--axis-hairline)] pl-4">
+                          <p className="axis-kicker">대응 방향 {index + 1}</p>
+                          <p className="mt-2 text-[clamp(15px,1vw,18px)] font-semibold leading-7 text-[var(--axis-ink)]">
+                            <HighlightedMixerText text={action} />
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : null}
                 </div>
               </div>
             </article>
@@ -1164,8 +1170,8 @@ export function MixerView({
               </article>
             ) : bulletSignals.length > 0 ? (
               <article className="axis-panel-flat p-5">
-                <p className="axis-kicker">Key signals</p>
-                <h3 className="axis-section-heading mt-1">핵심 신호</h3>
+                <p className="axis-kicker">Key takeaways</p>
+                <h3 className="axis-section-heading mt-1">주요 판단</h3>
                 <ul className="mt-4 space-y-2">
                   {bulletSignals.map((signal, index) => (
                     <li key={`signal-${index}`} className="flex gap-2 text-sm leading-6 text-[var(--axis-body)]">
