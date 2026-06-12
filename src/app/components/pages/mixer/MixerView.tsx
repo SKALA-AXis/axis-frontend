@@ -471,6 +471,17 @@ const sanitizeMixerActionText = (value?: string | null): string => {
     .trim();
 };
 
+const firstMixerText = (...values: Array<string | null | undefined>): string => {
+  return values.map((value) => (value ?? '').trim()).find(Boolean) ?? '';
+};
+
+const joinMixerText = (...values: Array<string | null | undefined>): string => {
+  return values
+    .map((value) => (value ?? '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join(' ');
+};
+
 const formatMixerDate = (value?: string | null): string => {
   if (!value) return '';
   const parsed = new Date(value);
@@ -869,7 +880,7 @@ export function MixerView({
       })
       .join(' ');
 
-    // 탭형 step-view — 공통 패턴 → 비교 포인트 → 숨은 결론 → 대응 방향.
+    // 탭형 step-view — 문제 분석 결과 → 시사점 → 대응방향.
     const blockEvidenceIds = (block?: typeof result.common_pattern): string[] =>
       block?.evidence_card_ids && block.evidence_card_ids.length > 0
         ? block.evidence_card_ids
@@ -887,36 +898,76 @@ export function MixerView({
       .map((item) => item.why)
       .filter((item): item is string => Boolean(item?.trim()))
       .join(' ');
+    const problemEvidenceIds = Array.from(
+      new Set([
+        ...blockEvidenceIds(result.common_pattern),
+        ...blockEvidenceIds(result.comparison_point),
+      ]),
+    );
+    const implicationEvidenceIds = Array.from(
+      new Set([
+        ...blockEvidenceIds(result.hidden_conclusion),
+        ...blockEvidenceIds(result.comparison_point),
+      ]),
+    );
+    const problemAnalysisSummary = firstMixerText(
+      headlineInsight,
+      result.common_pattern?.finding,
+      result.comparison_point?.finding,
+    );
+    const implicationSummary = firstMixerText(
+      result.hidden_conclusion?.finding,
+      result.final_one_liner && result.final_one_liner !== headlineInsight ? result.final_one_liner : '',
+      result.comparison_point?.finding,
+      headlineInsight,
+    );
+    const responseDirectionSummary = firstMixerText(
+      recommendedActions[0],
+      sanitizeMixerActionText(actionDetails[0]?.action),
+      sanitizeMixerActionText(result.sk_ax_implication),
+      '대응방향이 생성되지 않았습니다.',
+    );
+    const problemAnalysisDetail = joinMixerText(
+      result.common_pattern?.finding ? `공통 패턴: ${result.common_pattern.finding}` : '',
+      result.common_pattern?.rationale,
+      result.comparison_point?.finding ? `비교 포인트: ${result.comparison_point.finding}` : '',
+      result.comparison_point?.rationale,
+    );
+    const implicationDetail = joinMixerText(
+      result.hidden_conclusion?.rationale,
+      result.final_one_liner && result.final_one_liner !== headlineInsight ? result.final_one_liner : '',
+    );
+    const responseDirectionDetail = joinMixerText(
+      sanitizeMixerActionText(result.sk_ax_implication),
+      actionRationale,
+    );
+    const resultHeroSections = [
+      { label: '문제 분석 결과', summary: problemAnalysisSummary },
+      { label: '시사점', summary: implicationSummary },
+      { label: '대응방향', summary: responseDirectionSummary },
+    ];
     const resultSections = [
       {
-        key: 'common_pattern',
-        label: '공통 패턴',
-        finding: result.common_pattern?.finding ?? '',
-        rationale: result.common_pattern?.rationale ?? '',
-        evidenceIds: blockEvidenceIds(result.common_pattern),
+        key: 'problem_analysis',
+        label: '문제 분석 결과',
+        finding: problemAnalysisSummary,
+        rationale: problemAnalysisDetail,
+        evidenceIds: problemEvidenceIds,
         actions: [] as string[],
       },
       {
-        key: 'comparison_point',
-        label: '비교 포인트',
-        finding: result.comparison_point?.finding ?? '',
-        rationale: result.comparison_point?.rationale ?? '',
-        evidenceIds: blockEvidenceIds(result.comparison_point),
-        actions: [] as string[],
-      },
-      {
-        key: 'hidden_conclusion',
-        label: '숨은 결론',
-        finding: result.hidden_conclusion?.finding ?? '',
-        rationale: result.hidden_conclusion?.rationale ?? '',
-        evidenceIds: blockEvidenceIds(result.hidden_conclusion),
+        key: 'implication',
+        label: '시사점',
+        finding: implicationSummary,
+        rationale: implicationDetail || result.hidden_conclusion?.rationale || result.comparison_point?.rationale || '',
+        evidenceIds: implicationEvidenceIds,
         actions: [] as string[],
       },
       {
         key: 'action_direction',
-        label: '대응 방향',
-        finding: sanitizeMixerActionText(actionDetails[0]?.action) || sanitizeMixerActionText(result.sk_ax_implication) || recommendedActions[0] || '',
-        rationale: actionRationale || result.hidden_conclusion?.rationale || result.comparison_point?.rationale || '',
+        label: '대응방향',
+        finding: responseDirectionSummary,
+        rationale: responseDirectionDetail || result.hidden_conclusion?.rationale || result.comparison_point?.rationale || '',
         evidenceIds: actionEvidenceIds,
         actions: recommendedActions,
       },
@@ -973,65 +1024,62 @@ export function MixerView({
     return (
       <ExecutivePage className="overflow-visible">
         <ExecutiveContainer className="pb-12">
-          <ExecutiveHeader
-            eyebrow="Mixer output"
-            title="믹서 결과"
-            subtitle="선택한 카드들을 axis-ai 믹서 에이전트(LLM)가 겹쳐 읽어 하나의 인사이트로 압축한 결과입니다."
-            actions={
-              <>
-                {recentMixerResults.length > 0 ? (
-                  <ExecutiveButton variant="secondary" onClick={() => setMode('history')}>
-                    전체 기록 보기
-                  </ExecutiveButton>
-                ) : null}
-                <ExecutiveButton variant="secondary" onClick={() => setMode('select')}>
-                  선택으로 돌아가기
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="axis-kicker">Mixer output</p>
+              <p className="mt-1 text-xs font-semibold text-[var(--axis-muted)]">
+                카드 {sourceCardIds.length}장 조합 · 신뢰도 {toPercent(result.confidence)}
+                {resultAnalysisModeLabel ? ` · ${resultAnalysisModeLabel}` : ''}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {recentMixerResults.length > 0 ? (
+                <ExecutiveButton variant="secondary" onClick={() => setMode('history')}>
+                  전체 기록 보기
                 </ExecutiveButton>
-              </>
-            }
-          />
+              ) : null}
+              <ExecutiveButton variant="secondary" onClick={() => setMode('select')}>
+                선택으로 돌아가기
+              </ExecutiveButton>
+            </div>
+          </div>
 
-          <section data-guide="mixer-result" className="space-y-5">
-            <article className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.18)]">
-              <div className="border-l-4 border-[var(--axis-accent)] px-5 py-5 lg:px-6">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <ExecutiveBadge tone="accent">믹스 인사이트</ExecutiveBadge>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[var(--axis-muted)]">
-                      카드 {sourceCardIds.length}장 조합 · 신뢰도 {toPercent(result.confidence)}
-                      {resultAnalysisModeLabel ? ` · ${resultAnalysisModeLabel}` : ''}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowInsightReasoning(true)}
-                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[11px] font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
-                      aria-label="믹스 인사이트 추론 과정 보기"
-                      title="이 인사이트가 어떻게 도출됐는지 보기"
-                    >
-                      !
-                    </button>
-                  </div>
-                </div>
-                <h2 className="mt-4 max-w-5xl text-[1.9rem] font-display font-semibold leading-[1.2] tracking-[-0.04em] text-[var(--axis-ink)] lg:text-[2.3rem]">
-                  {headlineInsight}
-                </h2>
-                {result.final_one_liner && result.final_one_liner !== headlineInsight ? (
-                  <p className="mt-3 max-w-4xl text-base font-medium leading-7 text-[var(--axis-body)]">{result.final_one_liner}</p>
-                ) : null}
-                {recommendedActions.length > 0 ? (
-                  <div className="mt-4 grid gap-2 lg:grid-cols-2">
-                    {recommendedActions.slice(0, 2).map((action, index) => (
-                      <div key={`headline-action-${index}`} className="rounded-[var(--axis-radius-md)] bg-[rgba(220,90,36,0.07)] px-3 py-3">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
-                          대응 방향 {index + 1}
-                        </p>
-                        <p className="mt-1 text-sm font-semibold leading-6 text-[var(--axis-ink)]">{action}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
+          <section className="space-y-8">
+            <section data-guide="mixer-result" className="flex min-h-[calc(100vh-190px)] flex-col justify-center py-2 lg:py-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <ExecutiveBadge tone="accent">믹스 인사이트</ExecutiveBadge>
+                <button
+                  type="button"
+                  onClick={() => setShowInsightReasoning(true)}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-xs font-bold text-[var(--axis-accent-strong)] transition hover:border-[var(--axis-accent)] hover:bg-[rgba(220,90,36,0.08)]"
+                  aria-label="믹스 인사이트 추론 과정 보기"
+                  title="이 인사이트가 어떻게 도출됐는지 보기"
+                >
+                  !
+                </button>
               </div>
-            </article>
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                {resultHeroSections.map((section, index) => (
+                  <article
+                    key={`result-hero-${section.label}`}
+                    className="flex min-h-[190px] flex-col justify-between rounded-[var(--axis-radius-lg)] border border-[rgba(220,90,36,0.18)] bg-[var(--axis-surface-soft)] p-5 shadow-[0_18px_48px_-38px_rgba(26,26,31,0.42)] lg:min-h-[330px] lg:p-6"
+                  >
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">
+                        0{index + 1}
+                      </p>
+                      <h2 className="mt-3 text-[2.15rem] font-display font-semibold leading-[1.05] text-[var(--axis-ink)] lg:text-[2.7rem]">
+                        {section.label}
+                      </h2>
+                    </div>
+                    <p className="mt-8 line-clamp-2 text-base font-semibold leading-7 text-[var(--axis-body)] lg:text-lg lg:leading-8">
+                      <HighlightedMixerText text={section.summary} />
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </section>
 
             {result.warning ? (
               <div className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.3)] bg-[rgba(220,90,36,0.08)] px-4 py-3 text-sm leading-6 text-[var(--axis-accent-strong)]">
@@ -1039,12 +1087,20 @@ export function MixerView({
               </div>
             ) : null}
 
+            <section id="mixer-detail-analysis" className="space-y-5">
+              <div>
+                <p className="axis-kicker">Detailed interpretation</p>
+                <h2 className="mt-1 text-[1.55rem] font-display font-semibold leading-tight text-[var(--axis-ink)]">
+                  상세 해석 및 설명
+                </h2>
+              </div>
+
             {hasStepView ? (
               <article className="axis-panel-flat p-5">
                 <p className="axis-kicker">Step view</p>
-                <h3 className="axis-section-heading mt-1">상세 해석 보기</h3>
+                <h3 className="axis-section-heading mt-1">문제 분석 결과 · 시사점 · 대응방향</h3>
                 <p className="mt-2 text-sm leading-6 text-[var(--axis-muted)]">
-                  카드 조합이 인사이트로 이어진 해석 흐름입니다. 항목을 선택하면 아래 내용이 해당 단계로 교체됩니다.
+                  핵심 요약을 근거, 실행 방향, 참조 카드와 함께 확장한 상세 본문입니다.
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -1545,6 +1601,7 @@ export function MixerView({
                 </div>
               </article>
             ) : null}
+            </section>
 
           </section>
         </ExecutiveContainer>
