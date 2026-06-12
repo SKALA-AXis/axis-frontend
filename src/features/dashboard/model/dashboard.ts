@@ -176,6 +176,8 @@ export interface TodayInsightSource {
   source_name?: string;
   sourceName?: string;
   publisher?: string;
+  related_companies?: string[];
+  relatedCompanies?: string[];
   url?: string;
   published_at?: string | null;
   publishedAt?: string | null;
