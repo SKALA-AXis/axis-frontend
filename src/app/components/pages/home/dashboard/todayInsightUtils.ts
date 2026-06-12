@@ -51,13 +51,13 @@ export function normalizeTodayInsightSignal(signal: NormalizableTodayInsightSign
   const evidence = (signal.evidence ?? {}) as NormalizedEvidence;
   return {
     id: signal.id ?? 'signal',
-    label: signal.label ?? '주요 신호',
-    value: signal.value ?? '',
+    label: displayTodayInsightLabel(signal.label ?? '관찰 포인트'),
+    value: sanitizePublicInsightText(signal.value ?? ''),
     reasoning: (signal.reasoning ?? [])
       .filter((step) => step.detail)
-      .map((step) => ({ stage: step.stage ?? '판단', detail: step.detail ?? '' })),
+      .map((step) => ({ stage: step.stage ?? '판단', detail: sanitizePublicInsightText(step.detail ?? '') })),
     evidence: normalizeEvidence(evidence),
-    summary: signal.summary ?? signal.value ?? '',
+    summary: sanitizePublicInsightText(signal.summary ?? signal.value ?? ''),
     responseDirection: [],
     sources: [],
     sourceTrace: [],
@@ -68,12 +68,12 @@ export function normalizeTodayInsightSection(section: TodayInsightSection): Home
   const evidence = (section.evidence ?? {}) as NormalizedEvidence;
   return {
     id: section.id ?? 'section',
-    label: section.label ?? '주요 신호',
-    value: section.title ?? section.summary ?? '',
-    summary: section.summary ?? section.title ?? '',
+    label: displayTodayInsightLabel(section.label ?? '관찰 포인트'),
+    value: sanitizePublicInsightText(section.title ?? section.summary ?? ''),
+    summary: sanitizePublicInsightText(section.summary ?? section.title ?? ''),
     reasoning: (section.reasoning ?? [])
       .filter((step) => step.detail)
-      .map((step) => ({ stage: step.stage ?? '판단', detail: step.detail ?? '' })),
+      .map((step) => ({ stage: step.stage ?? '판단', detail: sanitizePublicInsightText(step.detail ?? '') })),
     evidence: normalizeEvidence(evidence),
     responseDirection: Array.from(section.responseDirection ?? section.response_direction ?? []),
     sources: Array.from(section.sources ?? []),
@@ -83,11 +83,57 @@ export function normalizeTodayInsightSection(section: TodayInsightSection): Home
 
 function normalizeEvidence(evidence: NormalizedEvidence) {
   return {
-    grounds: Array.from(evidence.grounds ?? []),
-    changes: Array.from(evidence.changes ?? []),
-    relatedKeywords: Array.from(evidence.relatedKeywords ?? evidence.related_keywords ?? []),
+    grounds: sanitizeInsightList(evidence.grounds ?? []),
+    changes: sanitizeInsightList(evidence.changes ?? []),
+    relatedKeywords: sanitizeInsightList(evidence.relatedKeywords ?? evidence.related_keywords ?? []),
     sourceIds: Array.from(evidence.sourceIds ?? evidence.source_ids ?? []),
   };
+}
+
+function sanitizeInsightList(values: ReadonlyArray<string>): string[] {
+  return Array.from(values)
+    .map(sanitizePublicInsightText)
+    .filter(Boolean);
+}
+
+function sanitizePublicInsightText(value: string): string {
+  let text = String(value ?? '').trim();
+  if (!text) return '';
+  if (/^(google|meta|unknown|other)\s+카드\/이슈\b/i.test(text)) return '';
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\blow_visibility_definite_event\b/g, '노출은 낮지만 내용이 확인된 이벤트'],
+    [/\bhigh_salience_visible\b/g, '보도 확산이 큰 이벤트'],
+    [/\bgeneral_update\b/g, '일반 업데이트'],
+    [/\bevent_type_mix_shift\b/g, '이벤트 유형 변화'],
+    [/\bpeer_activity_delta\b/g, 'Peer 활동 변화'],
+    [/\bbaseline\b/g, '최근 평균'],
+    [/\btoday_pct\b/g, '오늘 비중'],
+    [/\bbaseline_pct\b/g, '최근 평균 비중'],
+    [/\bdelta_pp\b/g, '변화폭'],
+    [/\bratio_delta\b/g, '검색 증감폭'],
+    [/\blatest_ratio\b/g, '최근 검색값'],
+    [/\bsource_raw_article_ids?\b/g, '원문 근거'],
+    [/\bsource_integrated_issue_id\b/g, '통합 이슈 근거'],
+    [/\bsource_card_id\b/g, '카드뉴스 근거'],
+    [/\bsource_ids?\b/g, '근거'],
+    [/\braw_ids?\b/g, '원문 근거'],
+    [/\bintegrated_issues?\b/g, '통합 이슈'],
+    [/\btoday_insight_reports?\b/g, '저장 리포트'],
+    [/\braw_articles?\b/g, '원문 기사'],
+    [/\bcard_news\b/g, '카드뉴스'],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    text = text.replace(pattern, replacement);
+  }
+
+  text = text.replace(/\b(?:IC|CN|raw)-[A-Za-z0-9_.:-]+\b/g, '근거');
+  text = text.replace(/\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g, '근거');
+  text = text.replace(/\b[a-z]+_[a-z0-9_]+\b/g, '');
+  text = text.replace(/\s{2,}/g, ' ').replace(/\s+([,.%)]|건|개|로|으로|입니다)/g, '$1').trim();
+
+  return text;
 }
 
 export function actionOwner(action: TodayInsightAction): string {
@@ -99,7 +145,25 @@ export function actionHorizon(action: TodayInsightAction): string {
 }
 
 export function sourceName(source: TodayInsightSource): string {
-  return source.source_name ?? source.sourceName ?? source.publisher ?? 'source';
+  return source.source_name ?? source.sourceName ?? source.publisher ?? '출처';
+}
+
+export function sourceRelatedCompanies(source: TodayInsightSource): string[] {
+  return Array.from(source.related_companies ?? source.relatedCompanies ?? []);
+}
+
+export function displayTodayInsightLabel(label: string): string {
+  return label === '종합 결과' ? '관찰 포인트' : label;
+}
+
+export function splitReadableInsightText(text: string): string[] {
+  const cleaned = text.trim();
+  if (!cleaned) return [];
+  const sentences = cleaned.match(/[^.!?。]+[.!?。]?/g) ?? [cleaned];
+  return sentences
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .slice(0, 3);
 }
 
 export function sourceTraceIssueId(trace: TodayInsightSourceTrace): string {

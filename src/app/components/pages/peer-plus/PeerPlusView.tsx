@@ -68,15 +68,25 @@ function normalizeEvidenceText(text: string) {
   return text.replace(/\s+/g, ' ').trim();
 }
 
+const internalEvidenceMarkerPattern = /\b(?:raw_article_business_signals|raw_articles|peer_llm_analysis_snapshots|peer_companies|business_area|signal_type|raw_article_id|source_signal_ids|source_raw_article_ids|evidence_refs|evidence_id|signal_id|profile_context|input_snapshot|output_payload|top_keyword_evidence|top_keyword_reason|peer_id)\b|signal:\d+/gi;
+
+function toPublicEvidenceText(text: string) {
+  return normalizeEvidenceText(
+    text
+      .replace(internalEvidenceMarkerPattern, '공개 근거')
+      .replace(/(공개 근거[와과, ]*){2,}/g, '공개 근거 '),
+  ).replace(/^[,;\s]+|[,;\s]+$/g, '');
+}
+
 function buildEvidenceReason(source: string, interpretation: string) {
-  const cleanInterpretation = normalizeEvidenceText(interpretation);
+  const cleanInterpretation = toPublicEvidenceText(interpretation);
   if (cleanInterpretation) return cleanInterpretation;
 
-  return normalizeEvidenceText(source);
+  return toPublicEvidenceText(source);
 }
 
 function stripEvidenceStageLabels(text: string) {
-  return normalizeEvidenceText(text.replace(/(?:진행 내용|근거 확인|후보 정제|최종 판단):/g, ' '));
+  return toPublicEvidenceText(text.replace(/(?:진행 내용|근거 확인|후보 정제|최종 판단):/g, ' '));
 }
 
 function sanitizeObjectivePeerFlowText(text: string) {
@@ -133,7 +143,7 @@ function parseTopKeywordEvidence(evidence: string) {
       context: `${contextPart.trim()} 기준`,
       activity: activityPart.trim(),
       reasoning: stripEvidenceStageLabels(reasoningSource),
-      evidence: normalizeEvidenceText(cleanSourceText),
+      evidence: toPublicEvidenceText(cleanSourceText),
     };
   }
 
@@ -146,7 +156,7 @@ function parseTopKeywordEvidence(evidence: string) {
       context: `${contextPart.trim()} 기준`,
       activity: keywordPart.trim(),
       reasoning: '',
-      evidence: reason || normalizeEvidenceText(rest),
+      evidence: toPublicEvidenceText(reason || rest),
     };
   }
 
@@ -161,8 +171,8 @@ function parseTopKeywordEvidence(evidence: string) {
     return {
       context: `${contextPart.trim()} 활동`,
       activity: activityPart.trim(),
-      reasoning: normalizeEvidenceText(interpretationPart),
-      evidence: normalizeEvidenceText(cleanSourcePart),
+      reasoning: toPublicEvidenceText(interpretationPart),
+      evidence: toPublicEvidenceText(cleanSourcePart),
     };
   }
 
@@ -176,8 +186,8 @@ function parseTopKeywordEvidence(evidence: string) {
   return {
     context: contextPart.trim(),
     activity: '',
-    reasoning: normalizeEvidenceText(interpretationPart),
-    evidence: normalizeEvidenceText(sourcePart.split('. 원문 위치: ')[0]),
+    reasoning: toPublicEvidenceText(interpretationPart),
+    evidence: toPublicEvidenceText(sourcePart.split('. 원문 위치: ')[0]),
   };
 }
 
@@ -195,10 +205,10 @@ function splitTopKeyword(topKeyword: string | null | undefined) {
 
 function buildAxisFallbackReason(axisLabel: '사업 키워드' | '기술 키워드', keyword: string, row: Pick<PeerOverviewRow, 'label' | 'topKeywordReason'>) {
   if (axisLabel === '사업 키워드') {
-    return `${row.label}의 최근 사업 방향으로 '${keyword}'를 표시합니다. 다만 현재 응답에는 이 사업 키워드만을 위한 분리 근거가 없어, 백엔드가 제공한 공통 설명 대신 사업 축 기준으로만 안내합니다. ${row.topKeywordReason ?? ''}`.trim();
+    return toPublicEvidenceText(`${row.label}의 최근 사업 방향으로 '${keyword}'를 표시합니다. 현재 응답에는 이 사업 키워드만을 위한 분리 근거가 부족해 공개 원문 요약 기준으로 안내합니다. ${row.topKeywordReason ?? ''}`);
   }
 
-  return `${row.label}의 최근 기술 방향으로 '${keyword}'를 표시합니다. 다만 현재 응답에는 이 기술 키워드만을 위한 분리 근거가 없어, 백엔드가 제공한 공통 설명 대신 기술 축 기준으로만 안내합니다. ${row.topKeywordReason ?? ''}`.trim();
+  return toPublicEvidenceText(`${row.label}의 최근 기술 방향으로 '${keyword}'를 표시합니다. 현재 응답에는 이 기술 키워드만을 위한 분리 근거가 부족해 공개 원문 요약 기준으로 안내합니다. ${row.topKeywordReason ?? ''}`);
 }
 
 function KeywordInfoPopover({
@@ -229,24 +239,26 @@ function KeywordInfoPopover({
           <Info size={12} strokeWidth={2.2} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="max-h-[min(420px,var(--radix-popover-content-available-height))] w-[340px] overflow-y-auto border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-0 text-[var(--axis-body)] shadow-xl">
+      <PopoverContent align="end" sideOffset={8} className="max-h-[min(70vh,var(--radix-popover-content-available-height))] w-[min(92vw,520px)] overflow-y-auto border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-0 text-[var(--axis-body)] shadow-xl">
         <div className="divide-y divide-[var(--axis-hairline)]">
           {evidenceItems.length > 0 ? (
-            evidenceItems.map(({ evidence, evidenceUrl }) => {
+            evidenceItems.map(({ evidence, evidenceUrl }, evidenceIndex) => {
               const parsedEvidence = parseTopKeywordEvidence(evidence);
+              const reasoningText = toPublicEvidenceText(parsedEvidence.reasoning || parsedEvidence.evidence || evidence);
+              const sourceText = toPublicEvidenceText(parsedEvidence.evidence);
 
               return (
-                <div key={`${axisLabel}-${evidence}`} className="space-y-3 px-4 py-3">
+                <div key={`${axisLabel}-${evidenceIndex}-${evidence}`} className="space-y-3 px-4 py-3">
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">판단 근거</p>
-                    <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-[var(--axis-body)]">
-                      {parsedEvidence.reasoning || parsedEvidence.evidence || normalizeEvidenceText(evidence)}
+                    <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-[var(--axis-body)] [overflow-wrap:anywhere]">
+                      {reasoningText}
                     </p>
                   </div>
-                  {parsedEvidence.evidence ? (
+                  {sourceText ? (
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">원문 근거</p>
-                      <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-[var(--axis-body)]">{parsedEvidence.evidence}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">확인 내용</p>
+                      <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-[var(--axis-body)] [overflow-wrap:anywhere]">{sourceText}</p>
                     </div>
                   ) : null}
                   {evidenceUrl ? (
@@ -266,7 +278,7 @@ function KeywordInfoPopover({
           ) : (
             <div className="px-4 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">판단 근거</p>
-              <p className="mt-1 text-xs leading-5 text-[var(--axis-body)]">{fallbackReason}</p>
+              <p className="mt-1 break-words text-xs leading-5 text-[var(--axis-body)] [overflow-wrap:anywhere]">{fallbackReason}</p>
             </div>
           )}
         </div>
@@ -599,7 +611,9 @@ export function PeerPlusView({
               ))}
             </div>
           </section>
-          <GlobalTrendsPanel embedded onUpdateTimeChange={onUpdateTimeChange} />
+          <div data-guide="peer-global-trends">
+            <GlobalTrendsPanel embedded onUpdateTimeChange={onUpdateTimeChange} />
+          </div>
         </ExecutiveContainer>
       </ExecutivePage>
     );

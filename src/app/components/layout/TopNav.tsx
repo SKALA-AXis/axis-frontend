@@ -233,7 +233,7 @@ export function TopNav({
       {/* ─── 우측: 크롤링 업데이트 + 액션 ───────────────────────────── */}
       <div className="relative flex min-w-fit shrink-0 items-center justify-end gap-1">
         {/* 마지막 크롤링 업데이트 */}
-        <div data-guide="topnav-notifications" className="mr-1 hidden items-center gap-2 rounded-md border border-hairline bg-cream-soft px-2.5 py-1.5 xl:flex">
+        <div data-guide="topnav-update" className="mr-1 hidden items-center gap-2 rounded-md border border-hairline bg-cream-soft px-2.5 py-1.5 xl:flex">
           <span className="text-caption-bold uppercase tracking-[0.08em] text-charcoal">
             업데이트
           </span>
@@ -244,7 +244,7 @@ export function TopNav({
 
         {/* 알림 */}
         <button
-          data-guide="topnav-notifications"
+          data-guide="topnav-alerts"
           type="button"
           onClick={() => {
             onNotificationsClick?.();

@@ -40,7 +40,10 @@ export function pickLatestTimestamp(candidates: TimestampCandidate[]): string | 
 export function pickLatestCardTimestamp(
   cards: Array<{ created_at?: string | null; published_date?: string | null; date?: string | null }>,
 ): string | null {
-  return pickLatestTimestamp(cards.flatMap((card) => [card.created_at, card.published_date, card.date]));
+  return (
+    pickLatestTimestamp(cards.flatMap((card) => [card.published_date, card.date])) ??
+    pickLatestTimestamp(cards.map((card) => card.created_at))
+  );
 }
 
 export function formatTopNavUpdateTime(value: string | null | undefined): string {
