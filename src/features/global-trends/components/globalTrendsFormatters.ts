@@ -55,6 +55,30 @@ export function formatTrendDelta(value?: number | null) {
   return `이전 기간 대비 언급 ${sign}${Math.round(value)}%`;
 }
 
+export type MentionDelta =
+  | { kind: 'new'; current: number }
+  | { kind: 'flat'; current: number }
+  | { kind: 'changed'; previous: number; current: number; diff: number };
+
+/**
+ * %(frequency_delta_pct)를 건수 변화로 환원 — 이전 건수는 API 에 없어 역산.
+ * 반올림 오차 ±1건 가능. -100% 이하(이전 건수 역산 불가)는 null 로 폴백.
+ */
+export function deriveMentionDelta(
+  mentionCount?: number | null,
+  deltaPct?: number | null,
+): MentionDelta | null {
+  if (mentionCount == null || deltaPct == null || Number.isNaN(deltaPct)) return null;
+  if (deltaPct === 0) return { kind: 'flat', current: mentionCount };
+  const ratio = 1 + deltaPct / 100;
+  if (ratio <= 0) return null;
+  const previous = Math.round(mentionCount / ratio);
+  if (previous <= 0) return { kind: 'new', current: mentionCount };
+  const diff = mentionCount - previous;
+  if (diff === 0) return { kind: 'flat', current: mentionCount };
+  return { kind: 'changed', previous, current: mentionCount, diff };
+}
+
 export function trendTitle(item: Pick<GlobalTrendItem, 'title' | 'keyword'>) {
   return item.title ?? item.keyword.replace(/_/g, ' ');
 }
