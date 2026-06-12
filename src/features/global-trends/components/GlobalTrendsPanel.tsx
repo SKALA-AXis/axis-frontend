@@ -62,26 +62,26 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
 
         <section className="axis-panel-flat p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <p className="axis-kicker">최신 트렌드</p>
+            <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">최신 트렌드</p>
             <ExecutiveButton variant="secondary" onClick={() => reload()} disabled={isLoading}>
               <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
               새로고침
             </ExecutiveButton>
           </div>
-          <p className="mt-4 max-w-5xl text-[2rem] font-display font-semibold leading-[1.32] text-[var(--axis-ink)]">
+          <p className="mt-4 max-w-6xl text-[2.25rem] font-display font-semibold leading-[1.3] text-[var(--axis-ink)]">
             {trendBrief.headline}
           </p>
-          <p className="mt-3 max-w-6xl text-lg leading-[1.55] text-[var(--axis-body)]">{trendBrief.supporting}</p>
+          <p className="mt-4 max-w-6xl text-xl leading-[1.55] text-[var(--axis-body)]">{trendBrief.supporting}</p>
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <section className="axis-panel-flat bg-[var(--axis-surface-soft)] p-5">
-            <p className="axis-kicker">피어사별 최신 움직임</p>
+            <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">피어사별 최신 움직임</p>
             <div className="mt-4 divide-y divide-[var(--axis-hairline)] border-t border-[var(--axis-hairline)]">
               {peerMovements.map((movement) => (
                 <div key={movement.companyId} className="grid min-h-12 grid-cols-[104px_minmax(0,1fr)] items-center gap-3 py-3">
-                  <strong className="text-caption-bold text-[var(--axis-ink)]">{movement.company}</strong>
-                  <span className="text-sm leading-6 text-[var(--axis-body)]">{movement.summary}</span>
+                  <strong className="text-sm font-bold text-[var(--axis-ink)]">{movement.company}</strong>
+                  <span className="text-[15px] leading-6 text-[var(--axis-body)]">{movement.summary}</span>
                 </div>
               ))}
             </div>
@@ -90,8 +90,8 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           <section className="axis-panel-flat p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="axis-kicker">변화 신호</p>
-                <h3 className="axis-section-heading mt-1">새롭게 힘을 받는 신호</h3>
+                <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">변화 신호</p>
+                <h3 className="mt-1 text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">새롭게 힘을 받는 신호</h3>
               </div>
               <LineChart className="shrink-0 text-[var(--axis-success)]" size={22} />
             </div>
@@ -106,8 +106,8 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
         </section>
 
         <section className="axis-panel-flat p-5">
-          <p className="axis-kicker">근거 뉴스</p>
-          <h3 className="axis-section-heading mt-1">클릭하면 원문 기사와 판단 근거를 확인</h3>
+          <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">근거 뉴스</p>
+          <h3 className="mt-1 text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">클릭하면 원문 기사와 판단 근거를 확인</h3>
           <div className="mt-4 grid gap-3 xl:grid-cols-3">
             {evidenceGroups.length === 0 ? (
               <p className="text-sm text-[var(--axis-muted)]">연결된 원문 링크가 없습니다.</p>
@@ -131,8 +131,8 @@ function TrendShiftRow({ item }: { item: GlobalTrendItem }) {
       <span className="w-20 shrink-0 text-right">
         <DeltaStat value={item.frequency_delta_pct} />
       </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--axis-ink)]">{trendTitle(item)}</span>
-      <span className="hidden text-xs text-[var(--axis-muted)] sm:inline">언급 {item.mention_count ?? 0}건</span>
+      <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--axis-ink)]">{trendTitle(item)}</span>
+      <span className="hidden text-[13px] text-[var(--axis-muted)] sm:inline">언급 {item.mention_count ?? 0}건</span>
       <ExecutiveBadge tone="neutral">{categoryLabel(item.keyword_category)}</ExecutiveBadge>
     </div>
   );
@@ -190,6 +190,7 @@ function EvidenceDetails({ item }: { item: EvidenceGroup }) {
 }
 
 function buildTrendBrief(items: GlobalTrendItem[]) {
+  const agentHeadline = items.find((item) => item.final_one_liner?.trim())?.final_one_liner?.trim();
   const categories = new Set(items.map((item) => item.keyword_category).filter(Boolean));
   const keywords = new Set(items.map((item) => item.keyword.toLowerCase()));
   const axes: string[] = [];
@@ -205,7 +206,9 @@ function buildTrendBrief(items: GlobalTrendItem[]) {
   }
 
   const selectedAxes = axes.length > 0 ? axes : ['제품 경험', 'AI 인프라 운영', '산업 적용'];
-  const headline = `글로벌 피어사들은 AI를 별도 기능이 아니라 ${selectedAxes.join(', ')}의 기본 레이어로 확장하고 있습니다.`;
+  const headline =
+    agentHeadline ??
+    `글로벌 피어사들은 AI를 별도 기능이 아니라 ${selectedAxes.join(', ')}의 기본 레이어로 확장하고 있습니다.`;
   const topKeywords = items.slice(0, 3).map((item) => trendTitle(item));
   const supporting =
     topKeywords.length > 0
