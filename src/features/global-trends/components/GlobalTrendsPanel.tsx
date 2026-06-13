@@ -5,10 +5,14 @@ import { PageState } from '../../../app/components/shared/PageState';
 import { useGlobalTrendsList } from '../hooks/useGlobalTrendsList';
 import type { GlobalTrendEvidenceLink, GlobalTrendItem } from '../model/globalTrends';
 import {
+  ALIGNMENT_META,
   categoryLabel,
   companyLabel,
   deltaTone,
+  deriveMentionDelta,
   formatPercent,
+  formatTrendDelta,
+  peerLabel,
   rankTrendItems,
   rankTrendShifts,
   trendTitle,
@@ -31,6 +35,8 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
   const peerMovements = useMemo(() => buildPeerMovements(topItems), [topItems]);
   const evidenceGroups = useMemo(() => buildEvidenceGroups(topItems), [topItems]);
   const trendBrief = useMemo(() => buildTrendBrief(topItems), [topItems]);
+  const headlineEvidence = useMemo(() => buildHeadlineEvidence(topItems), [topItems]);
+  const domesticPeerMoves = useMemo(() => buildDomesticPeerMoves(topItems), [topItems]);
 
   useEffect(() => {
     const latest = topItems[0]?.updated_at ?? topItems[0]?.created_at ?? listData?.latest_trend_date ?? null;
@@ -74,7 +80,54 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           {trendBrief.supporting ? (
             <p className="mt-4 max-w-6xl text-xl leading-[1.55] text-[var(--axis-body)]">{trendBrief.supporting}</p>
           ) : null}
+          {headlineEvidence.length > 0 ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="text-caption-bold text-[var(--axis-muted)]">예시</span>
+              {headlineEvidence.map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex max-w-[420px] items-center gap-1.5 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-1.5 text-caption-bold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                >
+                  <span className="min-w-0 truncate">
+                    {link.source ? `${link.source} · ` : ''}
+                    {link.title}
+                  </span>
+                  <ExternalLink size={12} className="shrink-0" />
+                </a>
+              ))}
+            </div>
+          ) : null}
         </section>
+
+        {domesticPeerMoves.length > 0 ? (
+          <section className="axis-panel-flat p-5">
+            <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">핵심 트렌드 대응 — SK AX · 국내 Peer</p>
+            <div className="mt-4 divide-y divide-[var(--axis-hairline)] border-t border-[var(--axis-hairline)]">
+              {domesticPeerMoves.map((peer) => (
+                <div key={peer.peerId} className="grid min-h-12 grid-cols-[104px_minmax(0,1fr)] items-start gap-3 py-3">
+                  <strong className="pt-0.5 text-sm font-bold text-[var(--axis-ink)]">{peer.label}</strong>
+                  <div className="min-w-0 space-y-1.5">
+                    {peer.moves.map((move) => (
+                      <div key={`${peer.peerId}-${move.trend}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-6 text-[var(--axis-body)]">
+                        <ExecutiveBadge tone={ALIGNMENT_META[move.alignment]?.tone ?? 'neutral'}>
+                          {ALIGNMENT_META[move.alignment]?.label ?? move.alignment}
+                        </ExecutiveBadge>
+                        <span className="min-w-0">
+                          <span className="font-semibold text-[var(--axis-ink)]">{move.trend}</span>
+                          {move.note ? <> — {move.note}</> : null}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-caption text-[var(--axis-muted)]">✨ 트렌드별 AI 정렬 판정·전략 노트(AI 초안) 기반입니다.</p>
+          </section>
+        ) : null}
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <section className="axis-panel-flat bg-[var(--axis-surface-soft)] p-5">
@@ -92,14 +145,13 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           <section className="axis-panel-flat p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">변화 신호</p>
-                <h3 className="mt-1 text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">새롭게 힘을 받는 신호</h3>
+                <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">트렌드 모멘텀</p>
               </div>
               <LineChart className="shrink-0 text-[var(--axis-success)]" size={22} />
             </div>
             <div className="mt-4 divide-y divide-[var(--axis-hairline)] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]">
               {shiftItems.length === 0 ? (
-                <p className="p-4 text-sm text-[var(--axis-muted)]">새롭게 강해진 신호가 없습니다.</p>
+                <p className="p-4 text-sm text-[var(--axis-muted)]">표시할 변화 신호가 없습니다.</p>
               ) : (
                 shiftItems.slice(0, 5).map((item: GlobalTrendItem) => <TrendShiftRow key={item.id} item={item} />)
               )}
@@ -128,24 +180,53 @@ function rankRisingTrendShifts(items: GlobalTrendItem[]) {
 }
 
 function TrendShiftRow({ item }: { item: GlobalTrendItem }) {
+  const delta = deriveMentionDelta(item.mention_count, item.frequency_delta_pct);
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-      <span className="w-20 shrink-0 text-right">
-        <DeltaStat value={item.frequency_delta_pct} />
+      <span className="w-20 shrink-0 text-right" title={formatTrendDelta(item.frequency_delta_pct)}>
+        <DeltaStat delta={delta} pct={item.frequency_delta_pct} />
       </span>
       <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--axis-ink)]">{trendTitle(item)}</span>
-      <span className="hidden text-[13px] text-[var(--axis-muted)] sm:inline">언급 {item.mention_count ?? 0}건</span>
+      <span className="hidden text-[13px] text-[var(--axis-muted)] sm:inline">
+        {delta?.kind === 'changed'
+          ? `${delta.previous}건 → ${delta.current}건`
+          : `언급 ${item.mention_count ?? 0}건`}
+      </span>
       <ExecutiveBadge tone="neutral">{categoryLabel(item.keyword_category)}</ExecutiveBadge>
     </div>
   );
 }
 
-function DeltaStat({ value }: { value?: number | null }) {
-  const tone = deltaTone(value);
-  if (tone === 'flat') {
+/** 언급 건수 변화 우선 표기 — 역산 불가(delta null)일 때만 % 폴백 */
+function DeltaStat({ delta, pct }: { delta: ReturnType<typeof deriveMentionDelta>; pct?: number | null }) {
+  if (delta?.kind === 'new') {
+    return (
+      <span
+        className="inline-flex items-center rounded-full bg-[rgba(220,90,36,0.12)] px-2 py-0.5 text-[11px] font-black tracking-wide text-[var(--axis-accent-strong)]"
+        title="이번 분석에서 처음 포착된 키워드"
+      >
+        NEW
+      </span>
+    );
+  }
+  if (delta?.kind === 'changed') {
+    const isUp = delta.diff > 0;
+    return (
+      <span
+        className={`inline-flex items-center gap-1 text-xs font-bold ${
+          isUp ? 'text-[var(--axis-success)]' : 'text-[var(--axis-danger)]'
+        }`}
+      >
+        {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+        {isUp ? '+' : '−'}
+        {Math.abs(delta.diff)}건
+      </span>
+    );
+  }
+  if (delta?.kind === 'flat' || deltaTone(pct) === 'flat') {
     return <span className="inline-flex items-center gap-1 text-xs font-bold text-[var(--axis-muted)]">유지</span>;
   }
-  const isUp = tone === 'up';
+  const isUp = deltaTone(pct) === 'up';
   return (
     <span
       className={`inline-flex items-center gap-1 text-xs font-bold ${
@@ -153,7 +234,7 @@ function DeltaStat({ value }: { value?: number | null }) {
       }`}
     >
       {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-      {formatPercent(value)}
+      {formatPercent(pct)}
     </span>
   );
 }
@@ -284,4 +365,35 @@ function formatEvidenceSources(links?: GlobalTrendEvidenceLink[]) {
 
 function hasAny(values: Set<string>, targets: string[]) {
   return targets.some((target) => values.has(target));
+}
+
+/** 최신 트렌드 헤드라인 아래 붙일 대표 근거 1~2건 — 영향도 상위 트렌드의 원문 링크에서 추출 */
+function buildHeadlineEvidence(items: GlobalTrendItem[]) {
+  const links: { source?: string; title: string; url: string }[] = [];
+  for (const item of items) {
+    for (const link of item.evidence_source_links ?? []) {
+      if (!link.url || !link.title) continue;
+      if (links.some((seen) => seen.url === link.url)) continue;
+      links.push({ source: link.source_name, title: link.title, url: link.url });
+      if (links.length >= 2) return links;
+    }
+  }
+  return links;
+}
+
+const DOMESTIC_PEER_ORDER = ['sk_ax', 'samsung_sds', 'lg_cns', 'hyundai_autoever', 'posco_dx'];
+const MAX_MOVES_PER_PEER = 2;
+
+/** 핵심 트렌드별 peer_alignment 에서 SK AX·국내 Peer 가 진행 중인 관련 사업을 추출 */
+function buildDomesticPeerMoves(items: GlobalTrendItem[]) {
+  return DOMESTIC_PEER_ORDER.map((peerId) => {
+    const moves: { trend: string; note?: string; alignment: string }[] = [];
+    for (const item of items) {
+      if (moves.length >= MAX_MOVES_PER_PEER) break;
+      const row = item.peer_alignment?.find((peer) => peer.peer_id === peerId);
+      if (!row) continue;
+      moves.push({ trend: trendTitle(item), note: row.strategic_note, alignment: row.alignment_type });
+    }
+    return { peerId, label: peerLabel(peerId), moves };
+  }).filter((peer) => peer.moves.length > 0);
 }
