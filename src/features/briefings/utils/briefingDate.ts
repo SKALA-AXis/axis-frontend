@@ -9,7 +9,10 @@ export type BriefingRange = {
 };
 
 export function toDateInputValue(date = new Date()): string {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function toMonthInputValue(date = new Date()): string {
@@ -57,6 +60,52 @@ export function getWeekOptions(monthValue: string) {
   });
 }
 
+export function getWeekStartDateValue(monthValue: string, weekIndex: number): string {
+  const [rawYear, rawMonth] = monthValue.split('-').map(Number);
+  const fallback = new Date();
+  const year = rawYear || fallback.getFullYear();
+  const month = rawMonth || fallback.getMonth() + 1;
+  const safeWeekIndex = Math.max(1, Math.min(5, Number.isFinite(weekIndex) ? weekIndex : 1));
+  const startDay = (safeWeekIndex - 1) * 7 + 1;
+  return `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+}
+
+export function getWeekEndDateValue(monthValue: string, weekIndex: number): string {
+  const [rawYear, rawMonth] = monthValue.split('-').map(Number);
+  const fallback = new Date();
+  const year = rawYear || fallback.getFullYear();
+  const month = rawMonth || fallback.getMonth() + 1;
+  const lastDate = new Date(year, month, 0).getDate();
+  const safeWeekIndex = Math.max(1, Math.min(5, Number.isFinite(weekIndex) ? weekIndex : 1));
+  const endDay = Math.min(lastDate, safeWeekIndex * 7);
+  return `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+}
+
+export function getWeekAnchorDateValue(
+  monthValue: string,
+  weekIndex: number,
+  todayValue = toDateInputValue(),
+): string {
+  const startDate = getWeekStartDateValue(monthValue, weekIndex);
+  const endDate = getWeekEndDateValue(monthValue, weekIndex);
+  if (monthValue === todayValue.slice(0, 7) && startDate <= todayValue && todayValue <= endDate) {
+    return todayValue;
+  }
+  return endDate;
+}
+
+export function getMonthAnchorDateValue(monthValue: string, todayValue = toDateInputValue()): string {
+  const [rawYear, rawMonth] = monthValue.split('-').map(Number);
+  const fallback = new Date();
+  const year = rawYear || fallback.getFullYear();
+  const month = rawMonth || fallback.getMonth() + 1;
+  if (monthValue === todayValue.slice(0, 7)) {
+    return todayValue;
+  }
+  const lastDate = new Date(year, month, 0).getDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
+}
+
 export function buildBriefingRange(
   period: BriefingPeriod,
   dailyDate: string,
@@ -100,7 +149,7 @@ export function buildBriefingRange(
   };
 }
 
-/** axis-ai briefing/generate anchor_date (daily=일자, weekly=주말, monthly=월초). */
+/** axis-ai briefing/generate anchor_date (daily=일자, weekly/monthly=선택 기간의 누적 종료일). */
 export function toBriefingAnchorDate(
   period: BriefingPeriod,
   dailyDate: string,
@@ -112,18 +161,7 @@ export function toBriefingAnchorDate(
     return dailyDate;
   }
   if (period === 'monthly') {
-    return `${monthlyMonth}-01`;
+    return getMonthAnchorDateValue(monthlyMonth);
   }
-  const weekOptions = getWeekOptions(weeklyMonth);
-  const selectedWeek = weekOptions.find((item) => item.value === weekIndex) ?? weekOptions[0];
-  if (selectedWeek?.range) {
-    const endPart = selectedWeek.range.split('-')[1]?.trim();
-    if (endPart) {
-      const [year, month, day] = endPart.split('.').map((part) => Number(part));
-      if (year && month && day) {
-        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      }
-    }
-  }
-  return toDateInputValue();
+  return getWeekAnchorDateValue(weeklyMonth, weekIndex);
 }

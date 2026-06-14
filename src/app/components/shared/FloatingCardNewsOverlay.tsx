@@ -410,7 +410,7 @@ export function FloatingCardNewsOverlay({
                             {line.main}
                           </p>
                           {line.detail ? (
-                            <p className="mt-2 text-[15px] font-medium leading-7 text-[var(--axis-muted)]">
+                            <p className="mt-2 text-sm font-medium leading-6 text-[var(--axis-muted)]">
                               {line.detail}
                             </p>
                           ) : null}

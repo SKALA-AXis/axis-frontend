@@ -47,6 +47,8 @@ function normalizePeerPositioningData(payload: unknown): PeerPositioningData {
     referenceGrowthPct: pickNumber(record, 'referenceGrowthPct', 'reference_growth_pct')
       ?? pickNumber(nestedData ?? {}, 'referenceGrowthPct', 'reference_growth_pct')
       ?? 5,
+    dataUpdatedAt: pickString(record, 'dataUpdatedAt', 'data_updated_at')
+      ?? pickString(nestedData ?? {}, 'dataUpdatedAt', 'data_updated_at'),
     points: candidatePoints.map(normalizePeerPositioningPoint),
   };
 }
