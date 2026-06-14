@@ -8,7 +8,7 @@ import { usePeerPositioning } from '../../../../features/peers/hooks/usePeerPosi
 import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOverview';
 import type { PeerAnalysisTraceItem, PeerComparisonInsightItem, PeerOverviewRow, PeerSwotInsightItem } from '../../../../features/peers/model/peerOverview';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
-import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
+import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
 import { peerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/content/peerPlus';
 import { ExecutiveBadge, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -369,8 +369,20 @@ export function PeerPlusView({
 
   useEffect(() => {
     if (isLoading || isPeerOverviewLoading || isPeerPositioningLoading) return;
-    onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
-  }, [cards, isLoading, isPeerOverviewLoading, isPeerPositioningLoading, onUpdateTimeChange]);
+    onUpdateTimeChange?.(pickLatestTimestamp([
+      pickLatestCardTimestamp(cards),
+      peerOverview?.dataUpdatedAt,
+      peerPositioning?.dataUpdatedAt,
+    ]));
+  }, [
+    cards,
+    isLoading,
+    isPeerOverviewLoading,
+    isPeerPositioningLoading,
+    onUpdateTimeChange,
+    peerOverview?.dataUpdatedAt,
+    peerPositioning?.dataUpdatedAt,
+  ]);
 
   const isAllFilter = selectedPeerId === 'all';
   const isGlobalIndustry = selectedPeerId === 'global_industry';

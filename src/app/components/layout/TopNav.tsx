@@ -11,6 +11,7 @@ import type { PeerPlusPeerId } from '../../../shared/content/peerPlus';
 interface TopNavProps {
   activeView: string;
   currentViewUpdatedAt?: string | null;
+  showUpdateTime?: boolean;
   currentUser?: AuthUser | null;
   onSearchClick?: () => void;
   onNotificationsClick?: () => void;
@@ -44,7 +45,6 @@ function formatNotificationTime(value: string) {
 }
 
 function notificationTone(item: NotificationItem) {
-  if (item.severity === 'IMPORTANT') return '중요';
   if (item.matchedKeywords.length > 0) return item.matchedKeywords[0];
   return '알림';
 }
@@ -52,6 +52,7 @@ function notificationTone(item: NotificationItem) {
 export function TopNav({
   activeView,
   currentViewUpdatedAt,
+  showUpdateTime = false,
   currentUser,
   onSearchClick,
   onNotificationsClick,
@@ -154,6 +155,7 @@ export function TopNav({
     }
     onSearchClick?.();
     onSearchNavigate?.('search', { query: normalizedQuery, scope: searchScope });
+    setQuery('');
   };
 
   return (
@@ -232,14 +234,21 @@ export function TopNav({
       {/* ─── 우측: 크롤링 업데이트 + 액션 ───────────────────────────── */}
       <div className="relative flex min-w-fit shrink-0 items-center justify-end gap-1">
         {/* 마지막 크롤링 업데이트 */}
-        <div data-guide="topnav-update" className="mr-1 hidden items-center gap-2 rounded-md border border-hairline bg-cream-soft px-2.5 py-1.5 xl:flex">
-          <span className="text-caption-bold uppercase tracking-[0.08em] text-charcoal">
-            업데이트
-          </span>
-          <span className="text-stone/40">·</span>
-          <span className="font-mono text-sm text-charcoal tabular-nums">{lastCrawlUpdate}</span>
-          <span className="font-mono text-[11px] text-stone tabular-nums tracking-wider">KST</span>
-        </div>
+        {showUpdateTime ? (
+          <div
+            data-guide="topnav-update"
+            className="mr-1 hidden min-w-[184px] items-center gap-2 rounded-md border border-hairline bg-cream-soft px-2.5 py-1.5 xl:flex"
+          >
+            <span className="text-caption-bold uppercase tracking-[0.08em] text-charcoal">
+              업데이트
+            </span>
+            <span className="text-stone/40">·</span>
+            <span className={`font-mono text-sm tabular-nums ${lastCrawlUpdate ? 'text-charcoal' : 'text-stone/50'}`}>
+              {lastCrawlUpdate ?? '--.-- --:--'}
+            </span>
+            <span className="font-mono text-[11px] text-stone tabular-nums tracking-wider">KST</span>
+          </div>
+        ) : null}
 
         {/* 알림 */}
         <button

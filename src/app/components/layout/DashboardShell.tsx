@@ -42,6 +42,7 @@ const SettingsView = lazy(() => import('../pages/settings/SettingsView').then((m
 
 type ThemeMode = 'light' | 'dark';
 type ViewFreshnessMap = Partial<Record<string, string | null>>;
+type ViewUpdateStore = Record<string, string>;
 
 const viewSkeletonVariants: Record<string, PageSkeletonVariant> = {
   home: 'dashboard',
@@ -57,8 +58,42 @@ const viewSkeletonVariants: Record<string, PageSkeletonVariant> = {
   admin: 'workspace',
 };
 
+const updateTimeViews = new Set(['home', 'peerPlus', 'issues', 'mixer', 'keywordGraph', 'briefings']);
+
 const bookmarksStorageKey = 'axis:bookmarked-cards';
 const themeStorageKey = 'axis:theme-mode';
+const viewUpdateStorageKey = 'axis:view-data-updated-at:v2';
+
+function readViewUpdateStore(): ViewUpdateStore {
+  const stored = window.localStorage.getItem(viewUpdateStorageKey);
+  if (!stored) return {};
+  try {
+    const parsed = JSON.parse(stored) as unknown;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).flatMap(([view, value]) => {
+        return typeof value === 'string' ? [[view, value]] : [];
+      }),
+    );
+  } catch {
+    window.localStorage.removeItem(viewUpdateStorageKey);
+    return {};
+  }
+}
+
+function writeViewUpdateStore(store: ViewUpdateStore) {
+  window.localStorage.setItem(viewUpdateStorageKey, JSON.stringify(store));
+}
+
+function observedUpdateMapFromStore(store: ViewUpdateStore): ViewFreshnessMap {
+  return { ...store };
+}
+
+function normalizeUpdateTimestamp(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+}
 
 type DashboardShellProps = {
   onLogout: () => void | Promise<void>;
@@ -80,7 +115,7 @@ export function DashboardShell({
   const [activeView, setActiveView] = useViewRouting('home');
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
-  const [viewFreshness, setViewFreshness] = useState<ViewFreshnessMap>({});
+  const [viewFreshness, setViewFreshness] = useState<ViewFreshnessMap>(() => observedUpdateMapFromStore(readViewUpdateStore()));
   const [peerPlusSelectedPeer, setPeerPlusSelectedPeer] = useState<PeerPlusPeerId | undefined>(undefined);
   const [cardNewsSearchQuery, setCardNewsSearchQuery] = useState('');
   const [globalSearchRequest, setGlobalSearchRequest] = useState<{ query: string; scope: SearchScope; requestKey: number }>({
@@ -170,11 +205,32 @@ export function DashboardShell({
 
   const handleViewFreshnessChange = useCallback((view: string, updatedAt: string | null) => {
     setViewFreshness((current) => {
-      if (current[view] === updatedAt) {
+      const normalizedUpdatedAt = normalizeUpdateTimestamp(updatedAt);
+      if (!normalizedUpdatedAt) {
         return current;
       }
 
-      return { ...current, [view]: updatedAt };
+      const store = readViewUpdateStore();
+      const previousUpdatedAt = normalizeUpdateTimestamp(store[view]);
+      const effectiveUpdatedAt = previousUpdatedAt && Date.parse(previousUpdatedAt) > Date.parse(normalizedUpdatedAt)
+        ? previousUpdatedAt
+        : normalizedUpdatedAt;
+      if (previousUpdatedAt === effectiveUpdatedAt) {
+        if (store[view] !== effectiveUpdatedAt) {
+          store[view] = effectiveUpdatedAt;
+          writeViewUpdateStore(store);
+        }
+        return current[view] === effectiveUpdatedAt ? current : { ...current, [view]: effectiveUpdatedAt };
+      }
+
+      store[view] = effectiveUpdatedAt;
+      writeViewUpdateStore(store);
+
+      if (current[view] === effectiveUpdatedAt) {
+        return current;
+      }
+
+      return { ...current, [view]: effectiveUpdatedAt };
     });
   }, []);
 
@@ -319,6 +375,7 @@ export function DashboardShell({
       <TopNav
         activeView={activeView}
         currentViewUpdatedAt={viewFreshness[activeView] ?? null}
+        showUpdateTime={updateTimeViews.has(activeView)}
         currentUser={currentUser}
         onLogoClick={() => handleViewChange('home')}
         onNotificationSelect={handleViewChange}

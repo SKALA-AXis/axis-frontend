@@ -8,7 +8,7 @@ import { getDisplayDate, getPeerLabel } from '../../../../features/card-news/map
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
 import { httpClient } from '../../../../shared/api/httpClient';
-import { pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
+import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/content/keywordGraph';
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -836,12 +836,8 @@ export function KeywordGraphView({
 
   useEffect(() => {
     if (dashboardLoading || cardsLoading) return;
-    onUpdateTimeChange?.(pickLatestTimestamp([
-      ...cards.flatMap((card) => [card.created_at, card.published_date, card.date]),
-      ...dashboard?.articles.map((article) => article.publishedAt) ?? [],
-      dashboard?.dartSummary?.publishedAt ?? null,
-    ]));
-  }, [cards, cardsLoading, dashboard?.articles, dashboard?.dartSummary?.publishedAt, dashboardLoading, onUpdateTimeChange]);
+    onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
+  }, [cards, cardsLoading, dashboardLoading, onUpdateTimeChange]);
 
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return undefined;

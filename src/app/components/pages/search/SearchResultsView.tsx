@@ -90,6 +90,18 @@ function formatResultDate(value: string) {
   }).replace(/\.$/, '');
 }
 
+function toLocalDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function clampDateInputValue(value: string, maxValue: string) {
+  if (!value) return '';
+  return value > maxValue ? maxValue : value;
+}
+
 function getCountLabel(response: SearchResponse | null, type: SearchResultItem['type'], fallback: number) {
   const count = response?.counts?.[type];
   return typeof count === 'number' ? count : fallback;
@@ -114,9 +126,6 @@ function SearchLoadingState({ sections }: { sections: typeof sectionConfig }) {
         </span>
         <div className="min-w-0">
           <p className="text-sm font-bold text-[var(--axis-ink)]">검색 결과를 정리하는 중입니다.</p>
-          <p className="mt-0.5 text-xs font-semibold text-[var(--axis-muted)]">
-            브리핑과 관련 콘텐츠를 범위별로 확인하고 있습니다.
-          </p>
         </div>
       </div>
 
@@ -143,6 +152,7 @@ function SearchLoadingState({ sections }: { sections: typeof sectionConfig }) {
 
 export function SearchResultsView({ initialQuery, initialScope, requestKey, onNavigate }: SearchResultsViewProps) {
   const pageSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const todayDateValue = useMemo(() => toLocalDateInputValue(), []);
   const [query, setQuery] = useState(initialQuery);
   const [scope, setScope] = useState<SearchScope>(initialScope);
   const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
@@ -337,7 +347,12 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
                 <input
                   type="date"
                   value={filters.startDate}
-                  onChange={(event) => setFilters((current) => ({ ...current, period: 'custom', startDate: event.target.value }))}
+                  max={todayDateValue}
+                  onChange={(event) => setFilters((current) => ({
+                    ...current,
+                    period: 'custom',
+                    startDate: clampDateInputValue(event.target.value, todayDateValue),
+                  }))}
                   className="h-10 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
                 />
               </label>
@@ -349,7 +364,12 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
                 <input
                   type="date"
                   value={filters.endDate}
-                  onChange={(event) => setFilters((current) => ({ ...current, period: 'custom', endDate: event.target.value }))}
+                  max={todayDateValue}
+                  onChange={(event) => setFilters((current) => ({
+                    ...current,
+                    period: 'custom',
+                    endDate: clampDateInputValue(event.target.value, todayDateValue),
+                  }))}
                   className="h-10 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
                 />
               </label>

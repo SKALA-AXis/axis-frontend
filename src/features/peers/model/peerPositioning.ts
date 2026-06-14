@@ -23,5 +23,6 @@ export interface PeerPositioningData {
   yAxisLabel: string;
   referenceRevenueKrwBn: number;
   referenceGrowthPct: number;
+  dataUpdatedAt?: string | null;
   points: PeerPositioningPoint[];
 }
