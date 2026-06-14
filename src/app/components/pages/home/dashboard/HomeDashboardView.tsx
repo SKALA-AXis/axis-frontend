@@ -123,6 +123,9 @@ export function HomeDashboardView({
   const todayInsightProvenance = todayInsight?.provenance ?? {};
   const todayInsightMode = String(todayInsightProvenance.mode ?? '');
   const todayInsightKind = String(todayInsightProvenance.result_kind ?? todayInsightProvenance.resultKind ?? '');
+  const todayInsightReportDate = String(todayInsight?.report_date ?? '').slice(0, 10);
+  const isTodayInsightStale = Boolean(todayInsightReportDate && todayInsightReportDate !== insightAnchorDate)
+    || isTruthyMeta(todayInsightProvenance.latest_fallback);
   const isTodayInsightFixture = isTruthyMeta(todayInsightProvenance.fixture)
     || isTruthyMeta(todayInsightProvenance.is_fixture)
     || todayInsightMode.includes('fixture')
@@ -131,7 +134,9 @@ export function HomeDashboardView({
     || todayInsightKind.includes('mock');
   const isTodayInsightStatusPlaceholder = isTruthyMeta(todayInsightProvenance.is_status_placeholder)
     || todayInsightKind.includes('scheduled_pending')
+    || todayInsightKind.includes('no_current_signals')
     || todayInsightMode === 'cache_only';
+  const isTodayInsightNoCurrentSignals = todayInsightKind.includes('no_current_signals');
   const isTodayInsightMockLike = isTodayInsightFixture || isTodayInsightStatusPlaceholder;
   const displayTodayInsight = isTodayInsightMockLike ? null : todayInsight;
   const todayInsightSignals = useMemo<HomeTodayInsightSignal[]>(
@@ -152,7 +157,18 @@ export function HomeDashboardView({
     },
     [displayTodayInsight, isTodayInsightMockLike],
   );
-  const todayInsightStateLabel = isTodayInsightMockLike ? '생성 대기' : null;
+  const todayInsightStateLabel = isTodayInsightStatusPlaceholder
+    ? (isTodayInsightNoCurrentSignals ? '신규 신호 없음' : '오늘 리포트 없음')
+    : isTodayInsightMockLike
+      ? '생성 대기'
+      : null;
+  const todayInsightStatusLine = isTodayInsightStatusPlaceholder
+    ? isTodayInsightNoCurrentSignals
+      ? `${insightAnchorDate} 기준 새롭게 업데이트할 주요 동향이 없습니다.`
+      : `${insightAnchorDate} 기준 저장된 Today's Insight가 아직 없습니다.`
+    : isTodayInsightStale
+      ? `${insightAnchorDate} 기준 새롭게 업데이트할 주요 동향이 없어 최신 리포트를 보여줍니다.`
+      : '';
   // 첫 신호 pre-selected — empty state 회피, 진입 즉시 evidence 패널 노출
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
   const selectedSignal = useMemo(
@@ -413,6 +429,11 @@ export function HomeDashboardView({
                     {todayInsightStateLabel}
                   </span>
                 ) : null}
+                {todayInsightStatusLine ? (
+                  <span className="max-w-full break-keep text-sm font-semibold leading-6 text-[var(--axis-muted)]">
+                    {todayInsightStatusLine}
+                  </span>
+                ) : null}
                 {todayInsightLoading ? (
                   <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
                     생성 중
@@ -463,11 +484,6 @@ export function HomeDashboardView({
                   ) : null}
                 </section>
               ) : null}
-              {isTodayInsightMockLike ? (
-                <div className="mt-3 max-w-2xl rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.06)] px-3 py-2 text-xs leading-5 text-[var(--axis-body)]">
-                  저장된 분석 결과가 준비되면 이 영역은 자동으로 실제 Today&apos;s Insight로 교체됩니다.
-                </div>
-              ) : null}
               {mainInsightSignals.length === 0 && todayInsightSubtitleBullets.length > 0 ? (
                 <div className="mt-5 grid max-w-5xl gap-3">
                   {todayInsightSubtitleBullets.slice(0, 2).map((line, index) => (
@@ -491,43 +507,45 @@ export function HomeDashboardView({
               ) : null}
             </div>
 
-            <section className="mt-0 pt-3">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">세부 내용 선택</p>
-                {todayInsightSignals.length > 3 ? (
-                  <span className="text-[11px] font-semibold text-[var(--axis-muted)]">+{todayInsightSignals.length - 3}</span>
-                ) : null}
-              </div>
-              {todayInsightSignals.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {todayInsightSignals.slice(0, 6).map((signal, index) => {
-                    const isActive = signal.id === selectedSignalId;
-                    return (
-                      <button
-                        key={signal.id}
-                        type="button"
-                        onClick={() => setSelectedSignalId(signal.id)}
-                        aria-pressed={isActive}
-                        className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-left text-xs font-semibold transition ${
-                          isActive
-                            ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.06)]'
-                            : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)]'
-                        }`}
-                      >
-                        <span className={isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}>
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                        <span className="truncate text-[var(--axis-ink)]">{signal.label}</span>
-                      </button>
-                    );
-                  })}
+            {!isTodayInsightMockLike ? (
+              <section className="mt-0 pt-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">세부 내용 선택</p>
+                  {todayInsightSignals.length > 3 ? (
+                    <span className="text-[11px] font-semibold text-[var(--axis-muted)]">+{todayInsightSignals.length - 3}</span>
+                  ) : null}
                 </div>
-              ) : (
-                <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-4 text-sm leading-6 text-[var(--axis-muted)]">
-                  실제 Today&apos;s Insight 섹션이 아직 없습니다.
-                </div>
-              )}
-            </section>
+                {todayInsightSignals.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {todayInsightSignals.slice(0, 6).map((signal, index) => {
+                      const isActive = signal.id === selectedSignalId;
+                      return (
+                        <button
+                          key={signal.id}
+                          type="button"
+                          onClick={() => setSelectedSignalId(signal.id)}
+                          aria-pressed={isActive}
+                          className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-left text-xs font-semibold transition ${
+                            isActive
+                              ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.06)]'
+                              : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)]'
+                          }`}
+                        >
+                          <span className={isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}>
+                            {String(index + 1).padStart(2, '0')}
+                          </span>
+                          <span className="truncate text-[var(--axis-ink)]">{signal.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-4 text-sm leading-6 text-[var(--axis-muted)]">
+                    실제 Today&apos;s Insight 섹션이 아직 없습니다.
+                  </div>
+                )}
+              </section>
+            ) : null}
 
             {/* 동적 상세 패널 — 선택한 섹션의 근거와 출처를 콘텐츠 길이만큼 자연 확장 */}
             {selectedSignal ? (

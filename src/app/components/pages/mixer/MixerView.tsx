@@ -3,6 +3,7 @@ import { Bookmark, Box, Check, Filter, Network, Sparkles, X } from 'lucide-react
 import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { buildMixerCards } from '../../../../features/card-news/mappers/cardNewsPresentation';
+import { getLatestFirst } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { useMixerAnalysis } from '../../../../features/mixer/hooks/useMixerAnalysis';
 import {
   MIXER_RADAR_LABELS,
@@ -531,7 +532,7 @@ export function MixerView({
     void loadRecentMixerResults();
   }, [loadRecentMixerResults]);
 
-  const mixerCards = useMemo(() => buildMixerCards(cards), [cards]);
+  const mixerCards = useMemo(() => buildMixerCards(getLatestFirst(cards)), [cards]);
   const peerFilterOptions = useMemo(
     () => buildMixerFilterOptions(mixerCards.map((item) => item.peer)),
     [mixerCards],

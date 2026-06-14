@@ -32,6 +32,10 @@ type KeywordGraphLoadStage = 'requesting' | 'normalizing' | 'rendering';
 
 const graphCategories = ['AX', '보안', '인프라', '수주'] as const;
 const allGraphCategories = ['기업', ...graphCategories] as const;
+const keywordSphereLightEdgeColor = '#2B241E';
+const keywordSphereLightActiveEdgeColor = '#DC5A24';
+const keywordSphereDarkEdgeColor = '#FFF1D8';
+const keywordSphereDarkActiveEdgeColor = '#FFB08A';
 const emptySelectedNode: KeywordNode = {
   id: 'sk-axis',
   label: 'SK AX',
@@ -241,21 +245,6 @@ function resolveCssColor(value: string, fallback: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(variableMatch[1]).trim() || fallback;
 }
 
-function resolveThreeColor(value: string, fallback: string) {
-  const color = resolveCssColor(value, fallback).trim();
-  const rgbaMatch = color.match(/^rgba?\(([^)]+)\)$/i);
-  if (!rgbaMatch) return { color, opacity: 1 };
-
-  const parts = rgbaMatch[1].split(',').map((part) => part.trim());
-  if (parts.length < 3) return { color: fallback, opacity: 1 };
-
-  const alpha = parts[3] === undefined ? 1 : Number.parseFloat(parts[3]);
-  return {
-    color: `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`,
-    opacity: Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1,
-  };
-}
-
 function getGraphNodeDisplayRadius(node: KeywordNode, active = false) {
   const base = node.category === '기업'
     ? node.size / 3.35
@@ -379,20 +368,12 @@ function KeywordSphereGraph({
       if (!source || !target) return;
       const active = selectedId === edge.source || selectedId === edge.target;
       const geometry = new THREE.BufferGeometry().setFromPoints([source, target]);
-      const edgeColor = resolveThreeColor(
-        active ? 'var(--axis-graph-active-edge)' : 'var(--axis-graph-edge)',
-        active ? '#DC5A24' : (isDarkMode ? '#FFF1D8' : '#5E5348'),
-      );
-      // 라이트 모드 비활성 엣지는 얇은 1px WebGL 라인 안티앨리어싱으로 cream 배경에
-      // 묻혀 안 보임 → opacity 하한 상향(다크 모드는 원래 잘 보이므로 그대로).
-      let edgeOpacity = edgeColor.opacity;
-      if (!active && !isDarkMode) {
-        edgeOpacity = Math.max(edgeOpacity, 0.82);
-      }
       const material = new THREE.LineBasicMaterial({
-        color: edgeColor.color,
+        color: isDarkMode
+          ? active ? keywordSphereDarkActiveEdgeColor : keywordSphereDarkEdgeColor
+          : active ? keywordSphereLightActiveEdgeColor : keywordSphereLightEdgeColor,
         transparent: true,
-        opacity: edgeOpacity,
+        opacity: active ? 0.96 : isDarkMode ? 0.58 : 0.84,
         depthTest: false,
         depthWrite: false,
       });
@@ -877,6 +858,10 @@ export function KeywordGraphView({
 
   const selectGraphNode = (nodeId: string) => {
     setSelectedId(nodeId);
+    if (nodeId === 'sk-axis') {
+      setKeywordOverlayOpen(false);
+      return;
+    }
     setKeywordOverlayOpen(true);
   };
   const handleGraphWheel = (event: ReactWheelEvent<HTMLElement>) => {

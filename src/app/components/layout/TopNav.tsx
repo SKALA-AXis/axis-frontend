@@ -26,7 +26,6 @@ const searchScopeOptions: Array<{ value: SearchScope; label: string }> = [
   { value: 'BRIEFING', label: '브리핑' },
   { value: 'PEER_PLUS', label: 'Peer+' },
   { value: 'CARD_NEWS', label: '카드뉴스' },
-  { value: 'KEYWORD_GRAPH', label: '키워드 그래프' },
 ];
 
 function formatNotificationTime(value: string) {
