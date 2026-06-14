@@ -383,10 +383,16 @@ function KeywordSphereGraph({
         active ? 'var(--axis-graph-active-edge)' : 'var(--axis-graph-edge)',
         active ? '#DC5A24' : (isDarkMode ? '#FFF1D8' : '#5E5348'),
       );
+      // 라이트 모드 비활성 엣지는 얇은 1px WebGL 라인 안티앨리어싱으로 cream 배경에
+      // 묻혀 안 보임 → opacity 하한 상향(다크 모드는 원래 잘 보이므로 그대로).
+      let edgeOpacity = edgeColor.opacity;
+      if (!active && !isDarkMode) {
+        edgeOpacity = Math.max(edgeOpacity, 0.82);
+      }
       const material = new THREE.LineBasicMaterial({
         color: edgeColor.color,
         transparent: true,
-        opacity: edgeColor.opacity,
+        opacity: edgeOpacity,
         depthTest: false,
         depthWrite: false,
       });
