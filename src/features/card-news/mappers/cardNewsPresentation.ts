@@ -109,8 +109,11 @@ export function buildCardCatalog(cards: CardNewsItem[]): CardCatalogItem[] {
 }
 
 export function buildMixerCards(cards: CardNewsItem[]): MixerCardItem[] {
-  return buildDisplayEntries(cards).map((entry) => ({
-    id: entry.id,
+  const uniqueEntries = Array.from(
+    new Map(buildDisplayEntries(cards).map((entry) => [entry.card.id, entry])).values(),
+  );
+  return uniqueEntries.map((entry) => ({
+    id: entry.card.id,
     card: entry.card,
     peer: entry.peer,
     sourceType: entry.sourceType,

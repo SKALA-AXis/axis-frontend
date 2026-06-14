@@ -12,7 +12,7 @@ type ApiResponse<T> = {
 type RawSearchItem = Record<string, unknown>;
 type SearchResultType = Exclude<SearchScope, 'ALL'>;
 
-const allSearchScopes: SearchResultType[] = ['BRIEFING', 'PEER_PLUS', 'CARD_NEWS', 'KEYWORD_GRAPH'];
+const allSearchScopes: SearchResultType[] = ['BRIEFING', 'PEER_PLUS', 'CARD_NEWS'];
 
 class SearchRepository {
   private readonly baseUrl = env.apiBaseUrl;
@@ -71,18 +71,16 @@ function normalizeSearchResponse(raw: RawSearchItem | undefined, request: Search
       .map((item) => toSearchResultItem(item)),
     ...legacyCards(raw).map(toLegacyCardResultItem),
     ...legacyPeers(raw).map(toLegacyPeerResultItem),
-    ...legacyKeywords(raw).map(toLegacyKeywordResultItem),
   ]
-    .filter((item) => requestedScopes(request).includes(item.type))
-    .slice(0, request.limit ?? 12);
+    .filter((item) => requestedScopes(request).includes(item.type));
   const counts = buildCounts(items);
 
   return {
     query: stringValue(raw?.query) || request.query,
     items,
-    counts: isRecord(raw?.counts) ? numericRecord(raw.counts) : counts,
-    total: typeof raw?.total === 'number' ? raw.total : items.length,
-    hasMore: raw?.hasMore === true || items.length >= (request.limit ?? 12),
+    counts,
+    total: items.length,
+    hasMore: raw?.hasMore === true && items.length >= (request.limit ?? 12),
   };
 }
 
@@ -133,22 +131,6 @@ function toLegacyPeerResultItem(raw: RawSearchItem): SearchResultItem {
   };
 }
 
-function toLegacyKeywordResultItem(raw: RawSearchItem): SearchResultItem {
-  const text = stringValue(raw.text);
-  return {
-    id: text,
-    type: 'KEYWORD_GRAPH',
-    title: text,
-    snippet: stringValue(raw.type) || '키워드 그래프에서 관계 노드를 확인합니다.',
-    badge: '키워드 그래프',
-    target: 'keywordGraph',
-    targetId: text,
-    date: '',
-    score: numberValue(raw.score) || 60,
-    metadata: { source: 'api_legacy' },
-  };
-}
-
 async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
   const text = await response.text();
   if (!text.trim()) {
@@ -170,14 +152,16 @@ async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> 
 
 function normalizeType(value: unknown): Exclude<SearchScope, 'ALL'> {
   const type = stringValue(value);
-  if (type === 'BRIEFING' || type === 'CARD_NEWS' || type === 'KEYWORD_GRAPH' || type === 'PEER_PLUS') {
+  if (type === 'BRIEFING' || type === 'CARD_NEWS' || type === 'PEER_PLUS') {
     return type;
   }
   return 'CARD_NEWS';
 }
 
 function requestedScopes(request: SearchRequest): SearchResultType[] {
-  return request.scope === 'ALL' ? allSearchScopes : [request.scope];
+  return request.scope === 'ALL' || !allSearchScopes.includes(request.scope as SearchResultType)
+    ? allSearchScopes
+    : [request.scope as SearchResultType];
 }
 
 function legacyCards(raw: RawSearchItem | undefined): RawSearchItem[] {
@@ -186,10 +170,6 @@ function legacyCards(raw: RawSearchItem | undefined): RawSearchItem[] {
 
 function legacyPeers(raw: RawSearchItem | undefined): RawSearchItem[] {
   return arrayValue(raw?.peers).filter(isRecord);
-}
-
-function legacyKeywords(raw: RawSearchItem | undefined): RawSearchItem[] {
-  return arrayValue(raw?.keywords).filter(isRecord);
 }
 
 function arrayValue(value: unknown): unknown[] {
@@ -204,10 +184,6 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-}
-
-function numericRecord(value: Record<string, unknown>) {
-  return Object.fromEntries(Object.entries(value).map(([key, raw]) => [key, numberValue(raw)]));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
