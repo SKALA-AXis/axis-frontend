@@ -52,5 +52,6 @@ export interface PeerOverviewData {
   comparisonInsights: Record<string, PeerComparisonInsightItem[]>;
   swotInsights: Record<string, PeerSwotInsightItem[]>;
   analysisTraces: Record<string, PeerAnalysisTraceItem[]>;
+  dataUpdatedAt?: string | null;
   rows: PeerOverviewRow[];
 }

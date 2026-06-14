@@ -40,17 +40,14 @@ export function pickLatestTimestamp(candidates: TimestampCandidate[]): string | 
 export function pickLatestCardTimestamp(
   cards: Array<{ created_at?: string | null; published_date?: string | null; date?: string | null }>,
 ): string | null {
-  return (
-    pickLatestTimestamp(cards.flatMap((card) => [card.published_date, card.date])) ??
-    pickLatestTimestamp(cards.map((card) => card.created_at))
-  );
+  return pickLatestTimestamp(cards.map((card) => card.created_at));
 }
 
-export function formatTopNavUpdateTime(value: string | null | undefined): string {
-  if (!value) return '기준 없음';
+export function formatTopNavUpdateTime(value: string | null | undefined): string | null {
+  if (!value) return null;
 
   const parsed = parseTimestamp(value);
-  if (parsed == null) return '기준 없음';
+  if (parsed == null) return null;
 
   const date = new Date(parsed);
   const dateLabel = date.toLocaleDateString('ko-KR', {

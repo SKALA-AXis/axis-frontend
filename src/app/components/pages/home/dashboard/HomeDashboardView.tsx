@@ -9,7 +9,7 @@
  *   - 좌측 Today insight 박스 안 정적 SVG 제거
  *   - 첫번째 ChartButton 을 designing 의 풍부한 keyword/Stock 차트로 (keywordSeries 동적 + spike insight 인터랙션)
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, LineChart as LineChartIcon, X } from 'lucide-react';
 import {
@@ -32,7 +32,7 @@ import {
 } from '../../../../../features/card-news/mappers/cardNewsExecutive';
 import { toDateInputValue } from '../../../../../features/briefings/utils/briefingDate';
 import { useDashboard, useDashboardKeywordTrends, useTodayInsight } from '../../../../../features/dashboard/hooks/useDashboard';
-import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
+import { pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../../shared/FloatingCardNewsOverlay';
 import { PageProcessLoading, PageState } from '../../../shared/PageState';
@@ -110,6 +110,7 @@ export function HomeDashboardView({
     reload: reloadTodayInsight,
   } = useTodayInsight(insightAnchorDate);
   const { cards, isLoading: cardsLoading, reload: reloadCards } = useCardNews();
+  const todayDateValue = useMemo(() => toDateInputValue(), []);
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const latestCards = useMemo(() => getLatestFirst(cards), [cards]);
@@ -120,6 +121,9 @@ export function HomeDashboardView({
   const [homeDetailSlideIndex, setHomeDetailSlideIndex] = useState(0);
   const [activeKeywordPoint, setActiveKeywordPoint] = useState<ActiveKeywordPoint | null>(null);
   const [isKeywordPointPinned, setIsKeywordPointPinned] = useState(false);
+  const [isInsightDateSettling, setIsInsightDateSettling] = useState(false);
+  const insightDateLoadingSeenRef = useRef(false);
+  const homeUpdateTimestampRef = useRef<string | null>(null);
   const todayInsightProvenance = todayInsight?.provenance ?? {};
   const todayInsightMode = String(todayInsightProvenance.mode ?? '');
   const todayInsightKind = String(todayInsightProvenance.result_kind ?? todayInsightProvenance.resultKind ?? '');
@@ -169,6 +173,38 @@ export function HomeDashboardView({
     : isTodayInsightStale
       ? `${insightAnchorDate} 기준 새롭게 업데이트할 주요 동향이 없어 최신 리포트를 보여줍니다.`
       : '';
+  const [todayInsightNotice, setTodayInsightNotice] = useState<{
+    anchorDate: string;
+    label: string | null;
+    line: string;
+  } | null>(null);
+  const visibleTodayInsightNotice = todayInsightNotice?.anchorDate === insightAnchorDate
+    ? todayInsightNotice
+    : null;
+
+  useEffect(() => {
+    if (!isInsightDateSettling) return;
+
+    if (todayInsightLoading) {
+      insightDateLoadingSeenRef.current = true;
+      return;
+    }
+
+    if (insightDateLoadingSeenRef.current || todayInsightError) {
+      insightDateLoadingSeenRef.current = false;
+      setIsInsightDateSettling(false);
+    }
+  }, [isInsightDateSettling, todayInsightError, todayInsightLoading]);
+
+  useLayoutEffect(() => {
+    if (todayInsightLoading || isInsightDateSettling) return;
+
+    setTodayInsightNotice({
+      anchorDate: insightAnchorDate,
+      label: todayInsightStateLabel,
+      line: todayInsightStatusLine,
+    });
+  }, [insightAnchorDate, isInsightDateSettling, todayInsightLoading, todayInsightStateLabel, todayInsightStatusLine]);
   // 첫 신호 pre-selected — empty state 회피, 진입 즉시 evidence 패널 노출
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
   const selectedSignal = useMemo(
@@ -198,20 +234,37 @@ export function HomeDashboardView({
   }, [summaryChoices.length]);
 
   useEffect(() => {
-    if (dashboardLoading || cardsLoading) return;
+    if (dashboardLoading || cardsLoading || keywordTrendsLoading || todayInsightLoading) return;
 
     if (dashboardError || !dashboard) {
-      onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
       return;
     }
 
-    onUpdateTimeChange?.(pickLatestTimestamp([
-      displayTodayInsight?.generated_at ?? null,
-      ...cards.flatMap((card) => [card.created_at, card.published_date, card.date]),
-      ...dashboard.articles.map((article) => article.publishedAt),
-      dashboard.dartSummary?.publishedAt ?? null,
-    ]));
-  }, [cards, cardsLoading, dashboard, dashboardError, dashboardLoading, displayTodayInsight, onUpdateTimeChange]);
+    const latestUpdate = pickLatestTimestamp([
+      displayTodayInsight?.data_updated_at ?? todayInsight?.data_updated_at ?? '',
+      keywordTrends?.dataUpdatedAt ?? '',
+      ...cards.map((card) => card.created_at ?? ''),
+    ]);
+
+    if (!latestUpdate || homeUpdateTimestampRef.current === latestUpdate) {
+      return;
+    }
+
+    homeUpdateTimestampRef.current = latestUpdate;
+    onUpdateTimeChange?.(latestUpdate);
+  }, [
+    cards,
+    cardsLoading,
+    dashboard,
+    dashboardError,
+    dashboardLoading,
+    displayTodayInsight?.data_updated_at,
+    keywordTrends?.dataUpdatedAt,
+    keywordTrendsLoading,
+    onUpdateTimeChange,
+    todayInsight?.data_updated_at,
+    todayInsightLoading,
+  ]);
 
   if (dashboardLoading || cardsLoading || dashboardError || !dashboard) {
     return (
@@ -420,29 +473,30 @@ export function HomeDashboardView({
                   <input
                     type="date"
                     value={insightAnchorDate}
-                    onChange={(event) => setInsightAnchorDate(event.target.value)}
+                    max={todayDateValue}
+                    onChange={(event) => {
+                      const nextDate = event.target.value > todayDateValue ? todayDateValue : event.target.value;
+                      if (nextDate && nextDate !== insightAnchorDate) {
+                        insightDateLoadingSeenRef.current = false;
+                        setIsInsightDateSettling(true);
+                      }
+                      setInsightAnchorDate(nextDate);
+                    }}
                     className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-base font-semibold text-[var(--axis-ink)]"
                   />
                 </label>
-                {todayInsightStateLabel ? (
-                  <span className="rounded-full border border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-accent-strong)]">
-                    {todayInsightStateLabel}
-                  </span>
-                ) : null}
-                {todayInsightStatusLine ? (
-                  <span className="max-w-full break-keep text-sm font-semibold leading-6 text-[var(--axis-muted)]">
-                    {todayInsightStatusLine}
-                  </span>
-                ) : null}
-                {todayInsightLoading ? (
-                  <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
-                    생성 중
-                  </span>
-                ) : todayInsightError ? (
-                  <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
-                    호출 실패
-                  </span>
-                ) : null}
+                <span className="flex min-h-[1.625rem] min-w-0 flex-1 flex-wrap items-center gap-2">
+                  {visibleTodayInsightNotice?.label ? (
+                    <span className="rounded-full border border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-accent-strong)]">
+                      {visibleTodayInsightNotice.label}
+                    </span>
+                  ) : null}
+                  {visibleTodayInsightNotice?.line ? (
+                    <span className="max-w-full break-keep text-sm font-semibold leading-6 text-[var(--axis-muted)]">
+                      {visibleTodayInsightNotice.line}
+                    </span>
+                  ) : null}
+                </span>
               </div>
               {todayInsightTitle || mainInsightSignals.length > 0 ? (
                 <section className="mt-6 max-w-5xl">

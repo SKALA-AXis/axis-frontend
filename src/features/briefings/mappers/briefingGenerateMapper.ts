@@ -41,6 +41,9 @@ export interface BriefingViewModel {
   count: number;
   title: string;
   window: string;
+  dateFrom?: string;
+  dateTo?: string;
+  reportDate?: string;
   selectedCards: CardNewsItem[];
   peers: string[];
   headline: string;
@@ -68,6 +71,9 @@ type GeneratedBriefingPayload = {
   };
   status?: string;
   error_message?: string;
+  date_from?: unknown;
+  date_to?: unknown;
+  report_date?: unknown;
   title?: string;
   sections?: Array<{
     title?: string;
@@ -115,7 +121,14 @@ function asList(value: unknown, limit = 6): string[] {
 }
 
 function compactString(value: unknown): string {
-  return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/\.{3,}|…|⋯/g, ' ')
+    .replace(/선택된 카드들?/g, '이번 기간 근거')
+    .replace(/피어 프로필/g, '경쟁사 기존 사업 정보')
+    .replace(/프로필/g, '기존 사업 정보')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function firstString(...values: unknown[]): string {
@@ -316,6 +329,9 @@ export function mapGeneratedBriefingToView(
       count: typeof report.count === 'number' ? report.count : periodMeta[period].count,
       title: firstString(report.title, range.title),
       window: firstString(report.window, range.window),
+      dateFrom: firstString(payload.date_from),
+      dateTo: firstString(payload.date_to),
+      reportDate: firstString(payload.report_date, payload.date_to),
       selectedCards,
       peers: Array.isArray(report.peers) ? report.peers.map(String).filter(Boolean) : [],
       headline: firstString(report.headline),
@@ -396,6 +412,9 @@ export function mapGeneratedBriefingToView(
     ...meta,
     title: payload.title ?? range.title,
     window: range.window,
+    dateFrom: firstString(payload.date_from),
+    dateTo: firstString(payload.date_to),
+    reportDate: firstString(payload.report_date, payload.date_to),
     selectedCards,
     peers,
     headline: firstString(payload.key_summary, fallbackSignalCards[0]?.title, whatHappenedDigest[0]),

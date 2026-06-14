@@ -420,6 +420,7 @@ const sanitizeMixerDisplayText = (value?: string | null): string => {
     .replace(/\b[A-Z]{2,}-\d{2,}\b/g, '선택 카드')
     .replace(/\s{2,}/g, ' ')
     .replace(/\s+([,.!?。])/g, '$1')
+    .replace(/^[\s,;:·ㆍ.。!?]+/g, '')
     .trim();
   return dedupeMixerSentences(cleaned);
 };
@@ -513,6 +514,7 @@ export function MixerView({
   const [mixerDetailSlideIndex, setMixerDetailSlideIndex] = useState(0);
   const [historyStartDate, setHistoryStartDate] = useState(() => formatLocalDateInputValue());
   const [historyEndDate, setHistoryEndDate] = useState(() => formatLocalDateInputValue());
+  const todayDateValue = useMemo(() => formatLocalDateInputValue(), []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -743,7 +745,8 @@ export function MixerView({
                   <input
                     type="date"
                     value={historyStartDate}
-                    onChange={(event) => setHistoryStartDate(event.target.value)}
+                    max={todayDateValue}
+                    onChange={(event) => setHistoryStartDate(event.target.value > todayDateValue ? todayDateValue : event.target.value)}
                     className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-3 text-sm font-semibold text-[var(--axis-ink)] outline-none transition focus:border-[var(--axis-accent)]"
                   />
                 </label>
@@ -752,7 +755,8 @@ export function MixerView({
                   <input
                     type="date"
                     value={historyEndDate}
-                    onChange={(event) => setHistoryEndDate(event.target.value)}
+                    max={todayDateValue}
+                    onChange={(event) => setHistoryEndDate(event.target.value > todayDateValue ? todayDateValue : event.target.value)}
                     className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-3 text-sm font-semibold text-[var(--axis-ink)] outline-none transition focus:border-[var(--axis-accent)]"
                   />
                 </label>

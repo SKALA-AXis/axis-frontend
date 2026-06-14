@@ -91,16 +91,13 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
                 item.read ? 'bg-[var(--axis-surface)]' : 'bg-[rgba(220,90,36,0.07)]'
               }`}
             >
-              <span className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                item.severity === 'IMPORTANT' ? 'bg-[rgba(218,30,40,0.10)] text-[var(--axis-danger)]' : 'bg-[rgba(220,90,36,0.12)] text-[var(--axis-accent-strong)]'
-              }`}>
+              <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] text-[var(--axis-accent-strong)]">
                 <Bell size={16} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-bold text-[var(--axis-ink)]">{item.title}</span>
                   <ExecutiveBadge tone={item.read ? 'neutral' : 'danger'}>{item.read ? '읽음' : '안읽음'}</ExecutiveBadge>
-                  {item.severity === 'IMPORTANT' ? <ExecutiveBadge tone="warning">중요</ExecutiveBadge> : null}
                 </span>
                 <span className="mt-2 block text-sm leading-6 text-[var(--axis-body)]">{item.message}</span>
                 <span className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[var(--axis-muted)]">

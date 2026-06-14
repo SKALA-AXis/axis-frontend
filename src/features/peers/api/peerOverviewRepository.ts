@@ -52,6 +52,8 @@ function normalizePeerOverviewData(payload: unknown): PeerOverviewData {
     analysisTraces: normalizeAnalysisTraces(
       record.analysisTraces ?? (record.data as Record<string, unknown> | undefined)?.analysisTraces
     ),
+    dataUpdatedAt: pickString(record, 'dataUpdatedAt', 'data_updated_at')
+      ?? pickString((record.data as Record<string, unknown> | undefined) ?? {}, 'dataUpdatedAt', 'data_updated_at'),
     rows: candidateRows.map(normalizePeerOverviewRow),
   };
 }

@@ -295,7 +295,7 @@ export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem
     is_bookmarked: card.is_bookmarked ?? false,
     bookmark_count: card.bookmark_count ?? 0,
     share_count: card.share_count ?? 0,
-    created_at: card.created_at ?? new Date().toISOString(),
+    created_at: card.created_at,
   };
 }
 
