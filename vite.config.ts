@@ -15,8 +15,12 @@ export default defineConfig({
       output: {
         // react 코어를 별도 청크로 고정 — 앱 코드만 바뀌는 배포에서 vendor 청크 해시가
         // 유지되어 브라우저 캐시(nginx /assets/ immutable)가 살아있게 한다.
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
+        // 함수 형태로 작성: vite 8(rolldown)은 객체형 manualChunks 를 거부하고
+        // 함수만 허용. vite 6(rollup)도 함수형을 지원하므로 둘 다 호환.
+        manualChunks: (id) => {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+            return 'react-vendor';
+          }
         },
       },
     },
