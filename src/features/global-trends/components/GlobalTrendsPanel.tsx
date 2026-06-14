@@ -102,26 +102,31 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           ) : null}
         </section>
 
-        {domesticPeerMoves.length > 0 ? (
+        {domesticPeerMoves.some((peer) => peer.moves.length > 0) ? (
           <section className="axis-panel-flat p-5">
             <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">핵심 트렌드 대응 — SK AX · 국내 Peer</p>
+            <p className="mt-1 text-caption text-[var(--axis-muted)]">각 피어가 실제로 대응한 트렌드만 표시합니다.</p>
             <div className="mt-4 divide-y divide-[var(--axis-hairline)] border-t border-[var(--axis-hairline)]">
               {domesticPeerMoves.map((peer) => (
                 <div key={peer.peerId} className="grid min-h-12 grid-cols-[104px_minmax(0,1fr)] items-start gap-3 py-3">
                   <strong className="pt-0.5 text-sm font-bold text-[var(--axis-ink)]">{peer.label}</strong>
-                  <div className="min-w-0 space-y-1.5">
-                    {peer.moves.map((move) => (
-                      <div key={`${peer.peerId}-${move.trend}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-6 text-[var(--axis-body)]">
-                        <ExecutiveBadge tone={ALIGNMENT_META[move.alignment]?.tone ?? 'neutral'}>
-                          {ALIGNMENT_META[move.alignment]?.label ?? move.alignment}
-                        </ExecutiveBadge>
-                        <span className="min-w-0">
-                          <span className="font-semibold text-[var(--axis-ink)]">{move.trend}</span>
-                          {move.note ? <> — {move.note}</> : null}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  {peer.moves.length > 0 ? (
+                    <div className="min-w-0 space-y-1.5">
+                      {peer.moves.map((move) => (
+                        <div key={`${peer.peerId}-${move.trend}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-6 text-[var(--axis-body)]">
+                          <ExecutiveBadge tone={ALIGNMENT_META[move.alignment]?.tone ?? 'neutral'}>
+                            {ALIGNMENT_META[move.alignment]?.label ?? move.alignment}
+                          </ExecutiveBadge>
+                          <span className="min-w-0">
+                            <span className="font-semibold text-[var(--axis-ink)]">{move.trend}</span>
+                            {move.note ? <> — {move.note}</> : null}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="pt-0.5 text-[15px] leading-6 text-[var(--axis-muted)]">핵심 트렌드 관련 공개 동향 미확인</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -131,7 +136,7 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <section className="axis-panel-flat bg-[var(--axis-surface-soft)] p-5">
-            <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">피어사별 최신 움직임</p>
+            <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">글로벌 피어사별 최신 움직임</p>
             <div className="mt-4 divide-y divide-[var(--axis-hairline)] border-t border-[var(--axis-hairline)]">
               {peerMovements.map((movement) => (
                 <div key={movement.companyId} className="grid min-h-12 grid-cols-[104px_minmax(0,1fr)] items-center gap-3 py-3">
@@ -382,18 +387,22 @@ function buildHeadlineEvidence(items: GlobalTrendItem[]) {
 }
 
 const DOMESTIC_PEER_ORDER = ['sk_ax', 'samsung_sds', 'lg_cns', 'hyundai_autoever', 'posco_dx'];
-const MAX_MOVES_PER_PEER = 2;
+const MAX_MOVES_PER_PEER = 3;
 
-/** 핵심 트렌드별 peer_alignment 에서 SK AX·국내 Peer 가 진행 중인 관련 사업을 추출 */
+/**
+ * 각 피어가 "실제로 대응한" 트렌드만 추출 — alignment_type 이 missing 이 아닌 행만.
+ * 영향도 순(items 가 이미 정렬됨)으로 피어마다 다른 트렌드가 자연히 노출된다.
+ * 대응 흔적이 없는 피어는 moves 가 비고, 화면에선 한 줄로 압축 표시.
+ */
 function buildDomesticPeerMoves(items: GlobalTrendItem[]) {
   return DOMESTIC_PEER_ORDER.map((peerId) => {
     const moves: { trend: string; note?: string; alignment: string }[] = [];
     for (const item of items) {
       if (moves.length >= MAX_MOVES_PER_PEER) break;
       const row = item.peer_alignment?.find((peer) => peer.peer_id === peerId);
-      if (!row) continue;
+      if (!row || row.alignment_type === 'missing') continue;
       moves.push({ trend: trendTitle(item), note: row.strategic_note, alignment: row.alignment_type });
     }
     return { peerId, label: peerLabel(peerId), moves };
-  }).filter((peer) => peer.moves.length > 0);
+  });
 }
