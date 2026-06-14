@@ -168,20 +168,61 @@ function mergeMixerFilterOptions(options: MixerFilterOption[], limit?: number) {
   return typeof limit === 'number' ? sorted.slice(0, limit) : sorted;
 }
 
+const MIXER_INCOMPLETE_ENDINGS = [
+  '가',
+  '이',
+  '은',
+  '는',
+  '을',
+  '를',
+  '와',
+  '과',
+  '로',
+  '으로',
+  '에',
+  '에서',
+  '에게',
+  '까지',
+  '보다',
+  '처럼',
+  '같은',
+  '위한',
+  '통해',
+  '대해',
+  '하며',
+  '하고',
+  '하거나',
+  '또는',
+  '및',
+];
+
+function mixerSentenceBase(value: string) {
+  return value.replace(/["'“”‘’]+/g, '').trim().replace(/[.!?。]+$/g, '').trim();
+}
+
+function isCompleteMixerSentence(value: string) {
+  const base = mixerSentenceBase(value);
+  if (!base) return false;
+  if (MIXER_INCOMPLETE_ENDINGS.some((ending) => base.endsWith(ending))) return false;
+  if (base.length <= 12 && !/(습니다|합니다|됩니다|입니다|니다|요|다)$/.test(base)) return false;
+  return /(습니다|합니다|됩니다|입니다|니다|요|다)$/.test(base);
+}
+
 function splitMixerReadableText(text: string, maxItems = 3) {
-  const normalized = sanitizeMixerDisplayText(text).replace(/\s+/g, ' ').trim();
+  const normalized = sanitizeMixerDisplayText(text)
+    .replace(/…|\.{2,}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!normalized) return [];
-  const sentenceMatches = normalized.match(/[^.!?。]+[.!?。]?/g) ?? [normalized];
-  const clauses = sentenceMatches.flatMap((sentence) => {
-    const trimmed = sentence.trim();
-    if (trimmed.length <= 110) return [trimmed];
-    return trimmed
-      .split(/,\s*|;\s*| · /)
-      .map((item) => item.trim())
-      .filter(Boolean);
-  });
-  const uniqueClauses = uniqueMixerTexts(clauses);
-  return maxItems > 0 ? uniqueClauses : uniqueClauses;
+  const sentenceMatches = normalized.match(/[^.!?。]+[.!?。]+/g) ?? [];
+  const sentences = sentenceMatches
+    .map((sentence) => sentence.trim())
+    .filter(isCompleteMixerSentence);
+  if (sentences.length === 0 && isCompleteMixerSentence(normalized)) {
+    sentences.push(normalized);
+  }
+  const uniqueSentences = uniqueMixerTexts(sentences);
+  return maxItems > 0 ? uniqueSentences.slice(0, maxItems) : uniqueSentences;
 }
 
 function HighlightedMixerText({ text }: { text: string }) {
@@ -332,7 +373,7 @@ function MixerAnalysisProgressPanel({
               <p className="mt-3 text-sm leading-6 text-[var(--axis-muted)]">
                 선택한 카드, Peer, 주제 사이의 반복 문맥을 정리하고 SK AX 관점의 실행 판단으로 압축하는 중입니다.
                 {' '}
-                {modeDescription} 분석 중에도 다른 화면으로 이동해 확인할 수 있습니다.
+                {modeDescription}
               </p>
               <div className="mt-5 h-2 overflow-hidden rounded-full bg-[rgba(120,110,96,0.12)]">
                 <div
