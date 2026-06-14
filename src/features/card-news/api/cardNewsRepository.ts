@@ -1,6 +1,6 @@
 import { httpClient } from '../../../shared/api/httpClient';
 import { getFallbackCardLogo } from '../cardLogoFallback';
-import type { CardNewsItem } from '../model/cardNews';
+import type { CardNewsDisplaySection, CardNewsItem, CardNewsStructuredTextItem } from '../model/cardNews';
 
 export interface CardNewsRepository {
   list(): Promise<CardNewsItem[]>;
@@ -78,7 +78,99 @@ function resolveSourceName(sourceName?: string, url?: string) {
   }
 }
 
+type RawCardNewsItem = Partial<CardNewsItem> & {
+  insight_details?: unknown;
+  action_details?: unknown;
+  display_sections?: unknown;
+};
+
+function normalizeStructuredTextItems(value: unknown): CardNewsStructuredTextItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        return splitMainDetailText(item);
+      }
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const record = item as Record<string, unknown>;
+      const main = firstNonEmptyString(
+        typeof record.main === 'string' ? record.main : undefined,
+        typeof record.sentence === 'string' ? record.sentence : undefined,
+      );
+      const detail = firstNonEmptyString(
+        typeof record.detail === 'string' ? record.detail : undefined,
+        typeof record.evidence_sentence === 'string' ? record.evidence_sentence : undefined,
+      );
+      return main ? { main: stripDisplayLabels(main), detail: detail ? stripDisplayLabels(detail) : '' } : null;
+    })
+    .filter((item): item is CardNewsStructuredTextItem => Boolean(item?.main));
+}
+
+function splitMainDetailText(value: string): CardNewsStructuredTextItem {
+  const compact = value.replace(/\s+/g, ' ').trim();
+  const withoutHeading = stripDisplayLabels(compact);
+  const [main = '', detail = ''] = withoutHeading.split(/\s*근거\s*\/?\s*설명\s*[:：]\s*/);
+  return {
+    main: stripDisplayLabels(main),
+    detail: stripDisplayLabels(detail),
+  };
+}
+
+function stripDisplayLabels(value: string) {
+  return value
+    .replace(/^핵심\s*(?:시사점|대응|방안)\s*[:：]\s*/i, '')
+    .replace(/^근거\s*\/?\s*설명\s*[:：]\s*/i, '')
+    .trim();
+}
+
+function firstStructuredItems(...values: unknown[]) {
+  for (const value of values) {
+    const items = normalizeStructuredTextItems(value);
+    if (items.length > 0) {
+      return items;
+    }
+  }
+  return [];
+}
+
+function normalizeDisplaySections(value: unknown): CardNewsDisplaySection[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const sections: CardNewsDisplaySection[] = [];
+  value.forEach((section) => {
+    if (!section || typeof section !== 'object') {
+      return;
+    }
+    const record = section as Record<string, unknown>;
+    const type = typeof record.type === 'string' ? record.type : undefined;
+    if (!type) {
+      return;
+    }
+    const structuredItems = normalizeStructuredTextItems(record.structured_items);
+    const items = Array.isArray(record.items)
+      ? record.items.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [];
+    sections.push({ type, structured_items: structuredItems, items });
+  });
+  return sections;
+}
+
+function structuredItemsFromDisplaySections(value: unknown, sectionType: 'insight' | 'action') {
+  return normalizeDisplaySections(value)
+    .filter((section) => section.type === sectionType)
+    .flatMap((section) => {
+      const structured = normalizeStructuredTextItems(section.structured_items);
+      return structured.length > 0 ? structured : normalizeStructuredTextItems(section.items);
+    });
+}
+
 export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem {
+  const rawCard = card as RawCardNewsItem;
   const primarySlide = card.slides?.find((slide) => slide.order === 1) ?? card.slides?.[0];
   const derivedSummary = card.summary_lines?.length
     ? card.summary_lines
@@ -130,6 +222,24 @@ export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem
     normalizedSources?.length,
   ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
   const sourceCount = sourceCountCandidates.length > 0 ? Math.max(...sourceCountCandidates) : null;
+  const insightDetails = firstStructuredItems(
+    card.insightDetails,
+    rawCard.insight_details,
+    structuredItemsFromDisplaySections(card.display_sections ?? rawCard.display_sections, 'insight'),
+    card.implication?.key_implication_blocks,
+    card.implication?.key_implication_items,
+    card.insights,
+  );
+  const actionDetails = firstStructuredItems(
+    card.actionDetails,
+    rawCard.action_details,
+    structuredItemsFromDisplaySections(card.display_sections ?? rawCard.display_sections, 'action'),
+    card.implication?.response_direction_blocks,
+    card.implication?.suggested_action_items,
+    card.implication?.skax_checkpoint_blocks,
+    card.actionItems,
+    card.implication?.suggested_actions,
+  );
 
   return {
     id: card.id ?? `card-${Math.random().toString(36).slice(2, 10)}`,
@@ -153,6 +263,8 @@ export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem
     detailDescription: card.detailDescription ?? card.implication?.why_important ?? '',
     detailPoints: card.detailPoints?.length ? card.detailPoints : [],
     actionItems: card.actionItems?.length ? card.actionItems : card.implication?.suggested_actions ?? [],
+    insightDetails,
+    actionDetails,
     mediaAssets: card.mediaAssets,
     textFields: card.textFields,
     valueFields: card.valueFields,
@@ -176,6 +288,7 @@ export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem
     evidence_chain: normalizedEvidenceChain,
     financial_context: card.financial_context ?? null,
     slides: card.slides,
+    display_sections: card.display_sections,
     display: card.display,
     validation_pass: card.validation_pass ?? null,
     is_human_reviewed: card.is_human_reviewed ?? false,
