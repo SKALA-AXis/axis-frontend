@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Bookmark, ChevronLeft, ChevronRight, ExternalLink, Newspaper, Share2, X } from 'lucide-react';
-import { getCardLogoImageClass, isCardLogoUrl } from '../../../features/card-news/cardLogoFallback';
+import { getCardLogoImageClass, getFallbackCardLogo, isCardLogoUrl } from '../../../features/card-news/cardLogoFallback';
 import type { CardNewsItem, CardNewsStructuredTextItem } from '../../../features/card-news/model/cardNews';
 import { getDisplayDate, getPeerLabel, getSummaryLines } from '../../../features/card-news/mappers/cardNewsExecutive';
 
@@ -94,6 +94,16 @@ function getShareFileName(card: CardNewsItem) {
 
 function createCardNewsTextFile(text: string, fileName: string) {
   return new File([text], fileName, { type: 'text/plain' });
+}
+
+function replaceBrokenCardImage(image: HTMLImageElement, card: CardNewsItem, size: 'hero' | 'related') {
+  const fallbackLogo = getFallbackCardLogo(card);
+  if (!fallbackLogo || image.getAttribute('src') === fallbackLogo.url) {
+    return;
+  }
+  image.src = fallbackLogo.url;
+  image.alt = fallbackLogo.alt;
+  image.className = getCardLogoImageClass(fallbackLogo.url, size) ?? image.className;
 }
 
 async function copyCardNewsShareText(text: string) {
@@ -311,7 +321,12 @@ export function FloatingCardNewsOverlay({
           <div className="min-h-[360px] border-b border-[var(--axis-hairline)] bg-[#081324] md:min-h-0 md:border-b-0 md:border-r">
             <div className="relative h-full min-h-[360px] w-full overflow-hidden bg-[#081324] md:min-h-0">
               {slideImage ? (
-                <img src={slideImage} alt={slideImageAlt} className={slideImageClass} />
+                <img
+                  src={slideImage}
+                  alt={slideImageAlt}
+                  className={slideImageClass}
+                  onError={(event) => replaceBrokenCardImage(event.currentTarget, card, 'hero')}
+                />
               ) : null}
               <div className="absolute inset-0 bg-gradient-to-b from-black/22 via-[#081324]/40 to-black/90" />
               <div className="relative flex h-full min-h-[360px] flex-col justify-between p-4 text-white md:min-h-0">
@@ -513,6 +528,7 @@ export function FloatingCardNewsOverlay({
                 className={isCardLogoUrl(previousCard.coverImageUrl)
                   ? `${getCardLogoImageClass(previousCard.coverImageUrl, 'related')} blur-[1px]`
                   : 'absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]'}
+                onError={(event) => replaceBrokenCardImage(event.currentTarget, previousCard, 'related')}
               />
             ) : null}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
@@ -542,6 +558,7 @@ export function FloatingCardNewsOverlay({
                 className={isCardLogoUrl(nextCard.coverImageUrl)
                   ? `${getCardLogoImageClass(nextCard.coverImageUrl, 'related')} blur-[1px]`
                   : 'absolute inset-0 h-full w-full object-cover opacity-50 blur-[1px]'}
+                onError={(event) => replaceBrokenCardImage(event.currentTarget, nextCard, 'related')}
               />
             ) : null}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />

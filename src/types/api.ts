@@ -2603,12 +2603,17 @@ export interface components {
         /** @description FR-043 개인별 접속 로그 */
         AccessLog: {
             id?: number;
-            /** @enum {string} */
-            action?: "login" | "logout" | "view" | "download" | "share";
-            ip_address?: string;
-            user_agent?: string;
+            /** @example LOGIN_SUCCESS */
+            action?: string;
+            success?: boolean;
+            /** @description 국가 또는 네트워크 위치 표시명
+             * @example 사내/내부망
+             */
+            country?: string;
+            ipAddress?: string;
+            userAgent?: string;
             /** Format: date-time */
-            created_at?: string;
+            occurredAt?: string;
         };
         /** @description 관리자용 전체 감사 로그 */
         AuditLog: {
@@ -6272,7 +6277,14 @@ export interface operations {
     getMyAccessLogs: {
         parameters: {
             query?: {
-                limit?: number;
+                /** @description 0부터 시작하는 페이지 번호
+                 * @default 0
+                 */
+                page?: number;
+                /** @description 페이지당 로그 수
+                 * @default 5
+                 */
+                size?: number;
             };
             header?: never;
             path?: never;
@@ -6289,6 +6301,16 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponse"] & {
                         data?: {
                             items?: components["schemas"]["AccessLog"][];
+                            /** @example 0 */
+                            page?: number;
+                            /** @example 5 */
+                            size?: number;
+                            /** Format: int64
+                             * @example 27
+                             */
+                            total?: number;
+                            /** @example 6 */
+                            totalPages?: number;
                         };
                     };
                 };
