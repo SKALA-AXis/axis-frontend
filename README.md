@@ -8,61 +8,42 @@ AXIS 서비스의 React 대시보드입니다. 전략기획 담당자가 매일 
 
 ## 기술 스택
 
-| 항목 | 내용 |
+| 항목 | 내용 (2026-06-12 실측) |
 |---|---|
 | 언어 | TypeScript 5.x |
 | 프레임워크 | React 18.x |
 | 빌드 | Vite |
-| 라우팅 | React Router v6 |
-| 서버 상태 | TanStack Query (React Query) v5 |
-| 전역 상태 | Zustand |
-| HTTP | axios |
-| 스타일 | Tailwind CSS |
-| UI 컴포넌트 | shadcn/ui |
-| 타입 자동 생성 | openapi-typescript |
-| 린트·포맷 | ESLint + Prettier |
-| 테스트 | Vitest + React Testing Library |
+| 라우팅 | 커스텀 라우팅 (`src/app/App.tsx` — react-router 미사용) |
+| 서버 상태 | fetch 기반 `shared/api/httpClient` + 도메인별 Repository + 커스텀 훅 (react-query 미사용) |
+| 전역 상태 | 로컬 state + 커스텀 훅 (zustand 미사용) |
+| 스타일 | Tailwind CSS + Radix UI (shadcn/ui 계열) |
+| 타입 자동 생성 | openapi-typescript (`src/types/api.ts`) |
+| 린트 | ESLint |
+| 테스트 | 미도입 (`npm run test` = placeholder) — 도입 계획: axis-infra structure-tasks/axis-frontend.md 2-F4 |
 
 ---
 
-## 프로젝트 구조
+## 프로젝트 구조 (2026-06-12 실측)
 
 ```
 src/
-├── main.tsx                진입점 (ReactDOM.render)
-├── App.tsx                 라우팅 루트 컴포넌트
-├── index.css               전역 Tailwind 스타일
-├── vite-env.d.ts           Vite 환경변수 타입 선언
-├── types/
-│   └── api.ts              openapi.yaml에서 자동 생성 — 수동 수정 금지
-├── api/
-│   ├── client.ts           axios 인스턴스 (JWT 인터셉터 포함)
-│   ├── issueCards.ts       이슈 카드 API 함수
-│   ├── search.ts           검색 API 함수
-│   └── peers.ts            Peer사 API 함수
-├── pages/
-│   ├── BriefingPage.tsx    오늘의 브리핑 (메인 화면)
-│   ├── SearchPage.tsx      AI 대화형 검색
-│   ├── PeerMonitorPage.tsx Peer사 모니터링 타임라인
-│   └── SettingsPage.tsx    알림 설정
-├── components/
-│   ├── IssueCard/          이슈 카드, 상세, 중요도 배지, 이벤트 태그
-│   ├── Search/             검색바, 결과, Citation 칩
-│   ├── WeakSignal/         약한 신호 섹션, 강도 배지
-│   ├── Layout/             Sidebar, Header, Layout
-│   └── common/             LoadingSpinner, ErrorBoundary, EmptyState
-├── hooks/
-│   ├── useIssueCards.ts
-│   ├── useSearch.ts
-│   └── useWeakSignals.ts
-├── store/
-│   └── index.ts            Zustand 전역 UI 상태
-└── utils/
-    ├── formatDate.ts
-    └── importanceColor.ts
+├── main.tsx                 진입점
+├── app/                     화면 셸
+│   ├── App.tsx              커스텀 라우팅 루트
+│   ├── components/          pages/(화면별) · layout/ · ui/ · auth/ · executive/ · shared/
+│   ├── hooks/ · types/
+├── features/                도메인 단위 (18개): briefings, dashboard, mixer, peers,
+│   │                        global-trends, assistant, auth, settings, admin-* …
+│   │                        각 도메인 = api/<도메인>Repository.ts + 컴포넌트·훅
+├── entities/                도메인 모델 (issue)
+├── shared/                  공용 계층 — api/httpClient.ts(공용 HTTP), config, hooks, lib
+├── types/api.ts             openapi.yaml 자동 생성 — 수동 수정 금지
+├── styles/ · docs/ · imports/
 ```
 
----
+> ⚠️ **이중 구조 주의**: 화면 정의가 `app/components/pages/`와 `features/`에 병존한다.
+> 정본 수렴 방향은 팀 결정 대기 (axis-infra `structure-tasks/axis-frontend.md` 2-F1).
+> 신규 API 호출은 반드시 `features/<도메인>/api/*Repository.ts` 경유 — `httpClient` 직접 호출 금지.
 
 ## 로컬 개발 세팅
 
@@ -123,7 +104,7 @@ npm run dev          # 개발 서버 (포트 3000)
 npm run build        # 프로덕션 빌드
 npm run type-check   # tsc --noEmit
 npm run lint         # ESLint
-npm run test         # Vitest
+npm run test         # ⚠️ placeholder (테스트 미도입 — 'No tests yet')
 npm run preview      # 빌드 결과 미리보기
 ```
 
@@ -163,8 +144,8 @@ npm run build
 - 컴포넌트 파일명: `PascalCase.tsx` / 유틸·훅 파일명: `camelCase.ts`
 - Props 타입: `interface`로 정의, `Props` 접미사 사용 (예: `IssueCardProps`)
 - API 타입: `src/types/api.ts`에서만 import — 직접 타입 선언 금지
-- 스타일: Tailwind CSS만 사용 — 인라인 `style={{}}` 금지
-- 서버 상태 → React Query / 전역 UI 상태 → Zustand
+- API 호출: 도메인 `*Repository.ts` 경유 — `shared/api/httpClient` 직접 호출 금지
+- 스타일: Tailwind CSS 우선 — 인라인 `style={{}}` 신규 추가 금지 (기존 잔존분은 점진 치환)
 - AI 생성 콘텐츠에는 반드시 `✨ AI 초안` 레이블 표시
 
 ---

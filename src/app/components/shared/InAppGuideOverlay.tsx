@@ -1,6 +1,14 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
-import { commonGuideSteps, guideTargetByAnchor, viewGuideMap, type ProductGuideStep } from '../../../shared/content/productGuide';
+import {
+  commonGuideSteps,
+  guideTargetByAnchor,
+  mixerHistoryGuideSteps,
+  mixerResultGuideSteps,
+  peerPlusGlobalGuideSteps,
+  viewGuideMap,
+  type ProductGuideStep,
+} from '../../../shared/content/productGuide';
 import { viewLabels } from '../../../shared/content/navigation';
 
 type GuideLayout = {
@@ -14,6 +22,33 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function isGuideTargetVisible(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  const style = window.getComputedStyle(element);
+
+  return rect.width > 0 &&
+    rect.height > 0 &&
+    style.display !== 'none' &&
+    style.visibility !== 'hidden' &&
+    style.opacity !== '0';
+}
+
+function getGuideTargetElement(targetKey: string) {
+  return Array.from(document.querySelectorAll<HTMLElement>(`[data-guide="${targetKey}"]`))
+    .find(isGuideTargetVisible) ?? null;
+}
+
+function isPeerPlusGlobalGuideActive(activeView: string) {
+  return activeView === 'peerPlus' && Boolean(getGuideTargetElement('peer-global-trends'));
+}
+
+function getMixerGuideSteps(activeView: string) {
+  if (activeView !== 'mixer') return null;
+  if (getGuideTargetElement('mixer-result')) return mixerResultGuideSteps;
+  if (getGuideTargetElement('mixer-history-filter')) return mixerHistoryGuideSteps;
+  return null;
+}
+
 function createGuideLayout(rect: DOMRect): GuideLayout {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
@@ -24,6 +59,25 @@ function createGuideLayout(rect: DOMRect): GuideLayout {
   const estimatedPanelHeight = Math.min(560, viewportHeight - margin * 2);
   const targetCenterX = rect.left + rect.width / 2;
   const targetCenterY = rect.top + rect.height / 2;
+
+  if (rect.top < 96) {
+    const top = clamp(rect.bottom + gap, margin, Math.max(margin, viewportHeight - estimatedPanelHeight - margin));
+    return {
+      panelStyle: {
+        left: clamp(targetCenterX - panelWidth / 2, margin, viewportWidth - panelWidth - margin),
+        top,
+        width: panelWidth,
+      },
+      highlightStyle: {
+        left: clamp(rect.left - 8, 8, viewportWidth - 16),
+        top: clamp(rect.top - 8, 8, viewportHeight - 16),
+        width: Math.max(24, Math.min(rect.width + 16, viewportWidth - Math.max(16, rect.left))),
+        height: Math.max(24, Math.min(rect.height + 16, viewportHeight - Math.max(16, rect.top))),
+      },
+      arrowStyle: { left: clamp(targetCenterX - clamp(targetCenterX - panelWidth / 2, margin, viewportWidth - panelWidth - margin) - 10, 26, panelWidth - 34) },
+      arrowClass: '-top-2 border-l border-t',
+    };
+  }
 
   let left = rect.right + gap;
   let top = targetCenterY - estimatedPanelHeight / 2;
@@ -71,15 +125,6 @@ function createGuideLayout(rect: DOMRect): GuideLayout {
   };
 }
 
-function resolveGuideSteps(baseSteps: ProductGuideStep[]) {
-  const visibleSteps = baseSteps.filter((step) => {
-    const targetKey = guideTargetByAnchor[step.anchor];
-    return !targetKey || Boolean(document.querySelector(`[data-guide="${targetKey}"]`));
-  });
-
-  return visibleSteps.length > 0 ? visibleSteps : baseSteps;
-}
-
 function scrollGuideTargetIntoView(targetElement: HTMLElement) {
   const rect = targetElement.getBoundingClientRect();
   const verticalMargin = 96;
@@ -95,7 +140,7 @@ function scrollGuideTargetIntoView(targetElement: HTMLElement) {
   targetElement.scrollIntoView({
     block: 'center',
     inline: 'nearest',
-    behavior: 'smooth',
+    behavior: 'auto',
   });
 }
 
@@ -114,7 +159,13 @@ export function InAppGuideOverlay({
   activeView,
   onClose,
 }: InAppGuideOverlayProps) {
-  const viewSpecificSteps = viewGuideMap[activeView] ?? [];
+  const viewSpecificSteps = useMemo(
+    () => {
+      if (isPeerPlusGlobalGuideActive(activeView)) return peerPlusGlobalGuideSteps;
+      return getMixerGuideSteps(activeView) ?? viewGuideMap[activeView] ?? [];
+    },
+    [activeView],
+  );
   const baseSteps = useMemo(
     () => (activeView === 'home'
       ? [...viewSpecificSteps, ...commonGuideSteps.slice(1)]
@@ -124,7 +175,7 @@ export function InAppGuideOverlay({
   const [stepIndex, setStepIndex] = useState(0);
   const [guideLayout, setGuideLayout] = useState<GuideLayout>({});
   const panelRef = useRef<HTMLElement | null>(null);
-  const steps = useMemo(() => resolveGuideSteps(baseSteps), [baseSteps]);
+  const steps = baseSteps;
   const safeStepIndex = Math.min(stepIndex, Math.max(0, steps.length - 1));
   const step = steps[safeStepIndex] ?? steps[0];
   const isLast = safeStepIndex === steps.length - 1;
@@ -138,11 +189,6 @@ export function InAppGuideOverlay({
   };
 
   useEffect(() => {
-    if (steps.length === 0) {
-      handleGuideClose();
-      return;
-    }
-
     const frameId = window.requestAnimationFrame(() => {
       setStepIndex(0);
     });
@@ -151,7 +197,10 @@ export function InAppGuideOverlay({
   }, [activeView]);
 
   useEffect(() => {
-    if (steps.length === 0) return;
+    if (steps.length === 0) {
+      handleGuideClose();
+      return;
+    }
     if (stepIndex !== safeStepIndex) {
       setStepIndex(safeStepIndex);
     }
@@ -167,7 +216,7 @@ export function InAppGuideOverlay({
         return;
       }
 
-      const targetElement = document.querySelector<HTMLElement>(`[data-guide="${targetKey}"]`);
+      const targetElement = getGuideTargetElement(targetKey);
       if (!targetElement) {
         setGuideLayout({});
         return;
@@ -196,23 +245,29 @@ export function InAppGuideOverlay({
 
     broadcastGuideStep(activeView, step.anchor, step);
 
-    let timeoutId: number | undefined;
+    const timeoutIds: number[] = [];
     const frameId = window.requestAnimationFrame(() => {
-      const targetElement = document.querySelector<HTMLElement>(`[data-guide="${targetKey}"]`);
+      const targetElement = getGuideTargetElement(targetKey);
       if (!targetElement) return;
 
       scrollGuideTargetIntoView(targetElement);
-      timeoutId = window.setTimeout(() => {
-        const refreshedTarget = document.querySelector<HTMLElement>(`[data-guide="${targetKey}"]`);
+
+      const refreshLayout = () => {
+        const refreshedTarget = getGuideTargetElement(targetKey);
         if (!refreshedTarget) return;
         setGuideLayout(createGuideLayout(refreshedTarget.getBoundingClientRect()));
-      }, 220);
+      };
+
+      refreshLayout();
+      [80, 180, 320].forEach((delay) => {
+        timeoutIds.push(window.setTimeout(refreshLayout, delay));
+      });
     });
 
     return () => {
       broadcastGuideStep(activeView, null);
       window.cancelAnimationFrame(frameId);
-      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
     };
   }, [activeView, safeStepIndex, step]);
 
@@ -268,16 +323,17 @@ export function InAppGuideOverlay({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] bg-[rgba(10,14,22,0.38)] backdrop-blur-[1px]">
+    <div className="pointer-events-none fixed inset-0 z-[120]">
+      <div className="pointer-events-auto absolute inset-0 bg-[rgba(10,14,22,0.38)] backdrop-blur-[1px]" />
       <div
-        className={`pointer-events-none absolute rounded-[18px] border-2 border-[var(--axis-accent)] bg-[rgba(220,90,36,0.08)] shadow-[0_0_0_9999px_rgba(10,14,22,0.28)] ${
+        className={`pointer-events-none absolute z-10 rounded-[18px] border-2 border-[var(--axis-accent)] bg-[rgba(220,90,36,0.08)] shadow-[0_0_0_9999px_rgba(10,14,22,0.28)] ${
           hasDynamicHighlight ? '' : `hidden lg:block ${step.highlight}`
         }`}
         style={guideLayout.highlightStyle}
       />
       <section
         ref={panelRef}
-        className={`absolute max-h-[calc(100vh-32px)] w-[min(420px,calc(100vw-32px))] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-6 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.58)] transition-all duration-300 ${
+        className={`pointer-events-auto absolute z-20 max-h-[calc(100vh-32px)] w-[min(420px,calc(100vw-32px))] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-6 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.58)] transition-all duration-300 ${
           hasDynamicPanel ? '' : step.position
         }`}
         style={guideLayout.panelStyle}
@@ -349,7 +405,7 @@ export function InAppGuideOverlay({
                   handleGuideClose();
                   return;
                 }
-                setStepIndex((index) => index + 1);
+                setStepIndex((index) => Math.min(steps.length - 1, index + 1));
               }}
               className="inline-flex h-10 items-center gap-1 rounded-[var(--axis-radius-md)] bg-[var(--axis-accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--axis-accent-strong)]"
             >

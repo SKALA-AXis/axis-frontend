@@ -58,7 +58,23 @@ export type CardNewsImplication = {
   potential_impact?: string;
   follow_up_questions?: string[];
   suggested_actions?: string[];
+  key_implication_blocks?: CardNewsStructuredTextItem[];
+  key_implication_items?: CardNewsStructuredTextItem[];
+  response_direction_blocks?: CardNewsStructuredTextItem[];
+  suggested_action_items?: CardNewsStructuredTextItem[];
+  skax_checkpoint_blocks?: CardNewsStructuredTextItem[];
   confidence?: number;
+};
+
+export type CardNewsStructuredTextItem = {
+  main: string;
+  detail?: string;
+};
+
+export type CardNewsDisplaySection = {
+  type?: 'summary' | 'insight' | 'action' | string;
+  items?: string[];
+  structured_items?: CardNewsStructuredTextItem[];
 };
 
 export type CardNewsEvidenceChain = {
@@ -139,6 +155,8 @@ export type CardNewsItem = {
   detailDescription: string;
   detailPoints: string[];
   actionItems: string[];
+  insightDetails?: CardNewsStructuredTextItem[];
+  actionDetails?: CardNewsStructuredTextItem[];
   mediaAssets?: CardNewsMediaAsset[];
   textFields?: CardNewsTextField[];
   valueFields?: CardNewsValueField[];
@@ -164,6 +182,7 @@ export type CardNewsItem = {
   evidence_chain?: CardNewsEvidenceChain;
   financial_context?: CardNewsFinancialContext | null;
   slides?: CardNewsSlide[];
+  display_sections?: CardNewsDisplaySection[];
   display?: CardNewsDisplayMeta;
   validation_pass?: boolean | null;
   is_human_reviewed?: boolean;

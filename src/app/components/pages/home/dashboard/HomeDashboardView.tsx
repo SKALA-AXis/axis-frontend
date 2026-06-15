@@ -9,9 +9,9 @@
  *   - 좌측 Today insight 박스 안 정적 SVG 제거
  *   - 첫번째 ChartButton 을 designing 의 풍부한 keyword/Stock 차트로 (keywordSeries 동적 + spike insight 인터랙션)
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, LineChart as LineChartIcon, Sparkles, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LineChart as LineChartIcon, X } from 'lucide-react';
 import {
   CartesianGrid,
   Line,
@@ -29,14 +29,10 @@ import {
   getExecutiveRank,
   getLatestFirst,
   getPeerLabel,
-  getSummaryLines,
 } from '../../../../../features/card-news/mappers/cardNewsExecutive';
-import {
-  formatKoreanDate,
-  toDateInputValue,
-} from '../../../../../features/briefings/utils/briefingDate';
+import { toDateInputValue } from '../../../../../features/briefings/utils/briefingDate';
 import { useDashboard, useDashboardKeywordTrends, useTodayInsight } from '../../../../../features/dashboard/hooks/useDashboard';
-import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
+import { pickLatestTimestamp } from '../../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveContainer, ExecutivePage } from '../../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../../shared/FloatingCardNewsOverlay';
 import { PageProcessLoading, PageState } from '../../../shared/PageState';
@@ -49,7 +45,6 @@ import {
 import {
   formatKeywordAxisTick,
   formatKeywordDelta,
-  formatKeywordRatio,
   formatStockPrice,
   formatStockRate,
   getSymmetricAxisRange,
@@ -59,16 +54,15 @@ import {
 import {
   actionHorizon,
   actionOwner,
-  formatKeywordTrendDelta,
   type HomeTodayInsightSignal,
   insightBulletLabel,
   isTruthyMeta,
   normalizeTodayInsightSection,
   normalizeTodayInsightSignal,
   sourceName,
-  sourceTraceCardId,
-  sourceTraceIssueId,
+  sourceRelatedCompanies,
   splitInsightBulletText,
+  splitReadableInsightText,
 } from './todayInsightUtils';
 
 type NavigateHandler = (view: string) => void;
@@ -80,7 +74,6 @@ type ActiveKeywordPoint = {
     key: string;
     name: string;
     color: string;
-    ratioLabel: string;
     deltaLabel: string;
   }>;
   insight: KeywordSpikeInsight | null;
@@ -117,6 +110,7 @@ export function HomeDashboardView({
     reload: reloadTodayInsight,
   } = useTodayInsight(insightAnchorDate);
   const { cards, isLoading: cardsLoading, reload: reloadCards } = useCardNews();
+  const todayDateValue = useMemo(() => toDateInputValue(), []);
 
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const latestCards = useMemo(() => getLatestFirst(cards), [cards]);
@@ -127,9 +121,15 @@ export function HomeDashboardView({
   const [homeDetailSlideIndex, setHomeDetailSlideIndex] = useState(0);
   const [activeKeywordPoint, setActiveKeywordPoint] = useState<ActiveKeywordPoint | null>(null);
   const [isKeywordPointPinned, setIsKeywordPointPinned] = useState(false);
+  const [isInsightDateSettling, setIsInsightDateSettling] = useState(false);
+  const insightDateLoadingSeenRef = useRef(false);
+  const homeUpdateTimestampRef = useRef<string | null>(null);
   const todayInsightProvenance = todayInsight?.provenance ?? {};
   const todayInsightMode = String(todayInsightProvenance.mode ?? '');
   const todayInsightKind = String(todayInsightProvenance.result_kind ?? todayInsightProvenance.resultKind ?? '');
+  const todayInsightReportDate = String(todayInsight?.report_date ?? '').slice(0, 10);
+  const isTodayInsightStale = Boolean(todayInsightReportDate && todayInsightReportDate !== insightAnchorDate)
+    || isTruthyMeta(todayInsightProvenance.latest_fallback);
   const isTodayInsightFixture = isTruthyMeta(todayInsightProvenance.fixture)
     || isTruthyMeta(todayInsightProvenance.is_fixture)
     || todayInsightMode.includes('fixture')
@@ -138,7 +138,9 @@ export function HomeDashboardView({
     || todayInsightKind.includes('mock');
   const isTodayInsightStatusPlaceholder = isTruthyMeta(todayInsightProvenance.is_status_placeholder)
     || todayInsightKind.includes('scheduled_pending')
+    || todayInsightKind.includes('no_current_signals')
     || todayInsightMode === 'cache_only';
+  const isTodayInsightNoCurrentSignals = todayInsightKind.includes('no_current_signals');
   const isTodayInsightMockLike = isTodayInsightFixture || isTodayInsightStatusPlaceholder;
   const displayTodayInsight = isTodayInsightMockLike ? null : todayInsight;
   const todayInsightSignals = useMemo<HomeTodayInsightSignal[]>(
@@ -159,7 +161,50 @@ export function HomeDashboardView({
     },
     [displayTodayInsight, isTodayInsightMockLike],
   );
-  const todayInsightStateLabel = isTodayInsightMockLike ? '생성 대기' : null;
+  const todayInsightStateLabel = isTodayInsightStatusPlaceholder
+    ? (isTodayInsightNoCurrentSignals ? '신규 신호 없음' : '오늘 리포트 없음')
+    : isTodayInsightMockLike
+      ? '생성 대기'
+      : null;
+  const todayInsightStatusLine = isTodayInsightStatusPlaceholder
+    ? isTodayInsightNoCurrentSignals
+      ? `${insightAnchorDate} 기준 새롭게 업데이트할 주요 동향이 없습니다.`
+      : `${insightAnchorDate} 기준 저장된 Today's Insight가 아직 없습니다.`
+    : isTodayInsightStale
+      ? `${insightAnchorDate} 기준 새롭게 업데이트할 주요 동향이 없어 최신 리포트를 보여줍니다.`
+      : '';
+  const [todayInsightNotice, setTodayInsightNotice] = useState<{
+    anchorDate: string;
+    label: string | null;
+    line: string;
+  } | null>(null);
+  const visibleTodayInsightNotice = todayInsightNotice?.anchorDate === insightAnchorDate
+    ? todayInsightNotice
+    : null;
+
+  useEffect(() => {
+    if (!isInsightDateSettling) return;
+
+    if (todayInsightLoading) {
+      insightDateLoadingSeenRef.current = true;
+      return;
+    }
+
+    if (insightDateLoadingSeenRef.current || todayInsightError) {
+      insightDateLoadingSeenRef.current = false;
+      setIsInsightDateSettling(false);
+    }
+  }, [isInsightDateSettling, todayInsightError, todayInsightLoading]);
+
+  useLayoutEffect(() => {
+    if (todayInsightLoading || isInsightDateSettling) return;
+
+    setTodayInsightNotice({
+      anchorDate: insightAnchorDate,
+      label: todayInsightStateLabel,
+      line: todayInsightStatusLine,
+    });
+  }, [insightAnchorDate, isInsightDateSettling, todayInsightLoading, todayInsightStateLabel, todayInsightStatusLine]);
   // 첫 신호 pre-selected — empty state 회피, 진입 즉시 evidence 패널 노출
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
   const selectedSignal = useMemo(
@@ -189,20 +234,37 @@ export function HomeDashboardView({
   }, [summaryChoices.length]);
 
   useEffect(() => {
-    if (dashboardLoading || cardsLoading) return;
+    if (dashboardLoading || cardsLoading || keywordTrendsLoading || todayInsightLoading) return;
 
     if (dashboardError || !dashboard) {
-      onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
       return;
     }
 
-    onUpdateTimeChange?.(pickLatestTimestamp([
-      displayTodayInsight?.generated_at ?? null,
-      ...cards.flatMap((card) => [card.created_at, card.published_date, card.date]),
-      ...dashboard.articles.map((article) => article.publishedAt),
-      dashboard.dartSummary?.publishedAt ?? null,
-    ]));
-  }, [cards, cardsLoading, dashboard, dashboardError, dashboardLoading, displayTodayInsight, onUpdateTimeChange]);
+    const latestUpdate = pickLatestTimestamp([
+      displayTodayInsight?.data_updated_at ?? todayInsight?.data_updated_at ?? '',
+      keywordTrends?.dataUpdatedAt ?? '',
+      ...cards.map((card) => card.created_at ?? ''),
+    ]);
+
+    if (!latestUpdate || homeUpdateTimestampRef.current === latestUpdate) {
+      return;
+    }
+
+    homeUpdateTimestampRef.current = latestUpdate;
+    onUpdateTimeChange?.(latestUpdate);
+  }, [
+    cards,
+    cardsLoading,
+    dashboard,
+    dashboardError,
+    dashboardLoading,
+    displayTodayInsight?.data_updated_at,
+    keywordTrends?.dataUpdatedAt,
+    keywordTrendsLoading,
+    onUpdateTimeChange,
+    todayInsight?.data_updated_at,
+    todayInsightLoading,
+  ]);
 
   if (dashboardLoading || cardsLoading || dashboardError || !dashboard) {
     return (
@@ -235,47 +297,34 @@ export function HomeDashboardView({
   const heroCard = rankedCards[0] ?? latestCards[0];
   const summaryCard = summaryChoices[summaryIndex % Math.max(summaryChoices.length, 1)] ?? heroCard;
   const homeDetailCard = homeDetailCardId ? cards.find((card) => card.id === homeDetailCardId) ?? null : null;
-  const insightComparison = displayTodayInsight?.comparison_facts;
-  const insightKeywordTrends = insightComparison?.keyword_trends ?? [];
-  const insightPrimaryLead = insightComparison?.primary_selection?.items?.[0] ?? null;
-  const changeSummary = displayTodayInsight?.change_summary?.length
-    ? displayTodayInsight.change_summary
-    : [
-        { label: '오늘 감지된 변화', value: `${dashboard.trends.length + cards.length}건` },
-        insightKeywordTrends[0]
-          ? {
-              label: '섹터 관심도 변화',
-              value: `${insightKeywordTrends[0].group_name} ${formatKeywordTrendDelta(insightKeywordTrends[0].ratio_delta)}`,
-            }
-          : { label: '비교 기준', value: '최근 60일' },
-        { label: '주요 관심 섹터', value: keywordTrends?.keywordSeries[0]?.name ?? insightPrimaryLead?.title ?? '-' },
-      ];
-  const selectedSourceIdSet = new Set(selectedSignal?.evidence.sourceIds ?? []);
-  const selectedSources = selectedSignal?.sources.length
-    ? selectedSignal.sources.slice(0, 4)
-    : (displayTodayInsight?.sources ?? [])
-      .filter((source) => selectedSourceIdSet.size === 0 || selectedSourceIdSet.has(source.id))
-      .slice(0, 4);
   const selectedActions = selectedSignal?.responseDirection.length
     ? selectedSignal.responseDirection.slice(0, 2)
     : (displayTodayInsight?.response_direction ?? []).slice(0, 2);
-  const selectedSourceTrace = selectedSignal?.sourceTrace.length
-    ? selectedSignal.sourceTrace.slice(0, 6)
-    : (displayTodayInsight?.sourceTrace ?? displayTodayInsight?.source_trace ?? []).slice(0, 6);
+  const selectedSourceIdSet = new Set(selectedSignal?.evidence.sourceIds ?? []);
+  const selectedSources = [
+    ...(selectedSignal?.sources ?? []),
+    ...(displayTodayInsight?.sources ?? []).filter(
+      (source) => selectedSourceIdSet.size === 0 || selectedSourceIdSet.has(source.id) || Boolean(source.url),
+    ),
+  ]
+    .filter((source, index, sources) => {
+      const key = source.url || source.id || source.title || String(index);
+      return sources.findIndex((candidate) => (candidate.url || candidate.id || candidate.title) === key) === index;
+    })
+    .sort((a, b) => Number(Boolean(b.url)) - Number(Boolean(a.url)))
+    .slice(0, 4);
   const todayInsightTitle = displayTodayInsight?.headline?.trim()
     || todayInsightSignals[0]?.value
     || (todayInsightError ? '호출에 실패했다' : '')
-    || (todayInsightLoading ? "Today's insight" : "Today's Insight 생성 결과가 없습니다");
+    || (todayInsightLoading ? "Today's insight" : '');
   const todayInsightSubtitle = displayTodayInsight?.executive_implication?.trim()
     || displayTodayInsight?.executive_summary?.trim()
     || (todayInsightError ? todayInsightError : '')
-    || (todayInsightSignals.length === 0 && !todayInsightLoading
-      ? "실제 저장된 Today's Insight가 아직 조회되지 않았습니다."
-      : '')
-    || (heroCard
-      ? getSummaryLines(heroCard)[0]
-      : 'Peer사의 실적, AX 투자, 카드뉴스 노출 신호를 과거 흐름과 비교해 우선순위를 정리합니다.');
+    || '';
   const todayInsightSubtitleBullets = splitInsightBulletText(todayInsightSubtitle);
+  const mainInsightSignals = todayInsightSignals
+    .filter((signal) => signal.value.trim() || signal.summary.trim())
+    .slice(0, 3);
   const stockPointByDate = new Map(dashboard.stockPoints.map((point) => [point.date, point]));
   const rawStockRateChartPoints =
     dashboard.stockRatePoints && dashboard.stockRatePoints.length > 0
@@ -414,151 +463,145 @@ export function HomeDashboardView({
     <ExecutivePage>
       <ExecutiveContainer className="pb-10 pt-3">
         <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]">
-          {/* 좌측 — Today's Insight 영역. 박스 styling 제거하고 페이지 배경과 융합.
-              주요 신호 카드 click → 하단 evidence 패널 toggle (동적 크기). 외부 nav 연결 없음. */}
+          {/* 좌측 — Today's Insight 영역. 상단 요약 섹션과 하단 상세 필터를 분리. */}
           <div data-guide="home-insight" className="relative flex flex-col gap-5 p-1">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="axis-kicker">Today&apos;s insight</p>
-                <label className="flex items-center gap-2 text-[11px] font-semibold text-[var(--axis-muted)]">
+            <div className="min-w-0 xl:flex xl:min-h-[calc(100vh-340px)] xl:flex-col">
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="axis-kicker text-sm">Today&apos;s insight</p>
+                <label className="flex items-center gap-2 text-sm font-semibold text-[var(--axis-muted)]">
                   <span className="hidden sm:inline">기준일</span>
                   <input
                     type="date"
                     value={insightAnchorDate}
-                    onChange={(event) => setInsightAnchorDate(event.target.value)}
-                    className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-1 text-[11px] text-[var(--axis-ink)]"
+                    max={todayDateValue}
+                    onChange={(event) => {
+                      const nextDate = event.target.value > todayDateValue ? todayDateValue : event.target.value;
+                      if (nextDate && nextDate !== insightAnchorDate) {
+                        insightDateLoadingSeenRef.current = false;
+                        setIsInsightDateSettling(true);
+                      }
+                      setInsightAnchorDate(nextDate);
+                    }}
+                    className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-2 text-base font-semibold text-[var(--axis-ink)]"
                   />
                 </label>
-                {displayTodayInsight?.report_date ? (
-                  <span className="text-[11px] font-semibold text-[var(--axis-muted)]">
-                    저장 리포트 · {formatKoreanDate(displayTodayInsight.report_date)}
-                  </span>
-                ) : null}
-                {todayInsightStateLabel ? (
-                  <span className="rounded-full border border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-accent-strong)]">
-                    {todayInsightStateLabel}
-                  </span>
-                ) : null}
-                {todayInsightLoading ? (
-                  <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
-                    생성 중
-                  </span>
-                ) : todayInsightError ? (
-                  <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
-                    호출 실패
-                  </span>
-                ) : null}
+                <span className="flex min-h-[1.625rem] min-w-0 flex-1 flex-wrap items-center gap-2">
+                  {visibleTodayInsightNotice?.label ? (
+                    <span className="rounded-full border border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-accent-strong)]">
+                      {visibleTodayInsightNotice.label}
+                    </span>
+                  ) : null}
+                  {visibleTodayInsightNotice?.line ? (
+                    <span className="max-w-full break-keep text-sm font-semibold leading-6 text-[var(--axis-muted)]">
+                      {visibleTodayInsightNotice.line}
+                    </span>
+                  ) : null}
+                </span>
               </div>
-              <h2 className="mt-2 max-w-3xl text-[clamp(2rem,3.1vw,3.7rem)] font-display leading-[1.08] text-ink">
-                {todayInsightTitle}
-              </h2>
-              {todayInsightSubtitleBullets.length > 1 ? (
-                <ul className="mt-3 max-w-2xl space-y-2">
-                  {todayInsightSubtitleBullets.map((line, index) => (
-                    <li
-                      key={`${insightBulletLabel(index)}-${line}`}
-                      className="grid grid-cols-[76px_minmax(0,1fr)] gap-3 text-sm leading-6 text-[var(--axis-body)] sm:text-base sm:leading-7"
-                    >
-                      <span className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--axis-accent-strong)]">
-                        {insightBulletLabel(index)}
-                      </span>
-                      <span className="min-w-0 break-keep">{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--axis-body)]">
-                  {todayInsightSubtitleBullets[0] ?? todayInsightSubtitle}
-                </p>
-              )}
-              {isTodayInsightMockLike ? (
-                <div className="mt-3 max-w-2xl rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.06)] px-3 py-2 text-xs leading-5 text-[var(--axis-body)]">
-                  실제 Today&apos;s Insight 생성 결과가 아직 없어 저장된 분석 본문을 표시하지 않습니다.
-                  출처가 포함된 생성 결과가 저장되면 이 영역은 자동으로 실제 분석 결과로 교체됩니다.
-                </div>
-              ) : null}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {changeSummary.map((item, index) => (
-                  <span
-                    key={item.label}
-                    className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs text-[var(--axis-muted)]"
-                  >
-                    <span>{item.label}</span>
-                    <strong
-                      className={`text-sm ${
-                        index === 1 ? 'text-[var(--axis-success)]' : 'text-[var(--axis-accent-strong)]'
-                      }`}
-                    >
-                      {item.value}
-                    </strong>
-                  </span>
-                ))}
-              </div>
-              {insightKeywordTrends.length > 0 ? (
-                <div className="mt-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-2.5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--axis-muted)]">
-                    시장 관심 맥락 (섹터 관심도)
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {insightKeywordTrends.slice(0, 4).map((trend) => (
-                      <span
-                        key={`${trend.group_name}-${trend.latest_period ?? trend.latest_ratio}`}
-                        className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs text-[var(--axis-body)]"
-                      >
-                        <span className="font-semibold text-[var(--axis-ink)]">{trend.group_name}</span>
-                        <span className="text-[var(--axis-muted)]">관심도 {trend.latest_ratio ?? '-'}</span>
-                        <strong className="text-[var(--axis-success)]">{formatKeywordTrendDelta(trend.ratio_delta)}</strong>
-                      </span>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-[11px] leading-5 text-[var(--axis-muted)]">
-                    네이버 DataLab 관련 키워드 묶음 기준 상대 지수 — 특정 뉴스와 직접 연결하지 않습니다.
-                  </p>
-                </div>
-              ) : null}
-
-              {/* 주요 신호 카드 — 각각 button. click 시 selectedSignalId 갱신 (active 카드 재클릭 = no-op, 다른 카드 클릭 = 즉시 교체). */}
-              {todayInsightSignals.length > 0 ? (
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                  {todayInsightSignals.map((signal, signalIndex) => {
-                    const isActive = signal.id === selectedSignalId;
-                    const showHiddenGemBadge =
-                      signalIndex === 0 && insightPrimaryLead?.label === 'low_visibility_definite_event';
-                    return (
-                      <button
-                        key={signal.id}
-                        type="button"
-                        onClick={() => setSelectedSignalId(signal.id)}
-                        aria-pressed={isActive}
-                        className={`rounded-[var(--axis-radius-md)] p-3 text-left transition ${
-                          isActive
-                            ? 'bg-[var(--axis-canvas)] ring-2 ring-[var(--axis-accent)] shadow-[0_10px_28px_-22px_rgba(220,90,36,0.45)]'
-                            : 'bg-[var(--axis-canvas)]/82 hover:bg-[var(--axis-canvas)] hover:ring-1 hover:ring-[var(--axis-hairline)]'
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className={`text-[11px] font-semibold ${isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}`}>
-                            {signal.label}
-                          </p>
-                          {showHiddenGemBadge ? (
-                            <span className="rounded-full bg-[rgba(220,90,36,0.12)] px-2 py-0.5 text-[10px] font-bold text-[var(--axis-accent-strong)]">
-                              단건·고임팩트
+              {todayInsightTitle || mainInsightSignals.length > 0 ? (
+                <section className="mt-6 max-w-5xl">
+                  {todayInsightTitle ? (
+                    <div className="max-w-4xl">
+                      <h2 className="break-keep text-[clamp(2.05rem,2.65vw,3.35rem)] font-display leading-[1.12] text-ink">
+                        {todayInsightTitle}
+                      </h2>
+                    </div>
+                  ) : null}
+                  {mainInsightSignals.length > 0 ? (
+                    <div className={`${todayInsightTitle ? 'mt-14' : ''} border-y border-[var(--axis-hairline)]`}>
+                      {mainInsightSignals.map((signal, index) => (
+                        <article
+                          key={signal.id}
+                          className="grid gap-4 border-t border-[var(--axis-hairline)] py-5 first:border-t-0 md:grid-cols-[172px_minmax(0,1fr)] md:gap-6"
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="mt-0.5 font-mono text-xs font-bold text-[var(--axis-muted)]">
+                              {String(index + 1).padStart(2, '0')}
                             </span>
-                          ) : null}
-                        </div>
-                        <p className="mt-1 text-base font-semibold leading-6 text-[var(--axis-ink)]">{signal.value}</p>
-                      </button>
-                    );
-                  })}
+                            <p className="text-sm font-black tracking-[0.02em] text-[var(--axis-accent-strong)]">
+                              {signal.label}
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            {splitReadableInsightText(signal.value || signal.summary).map((line) => (
+                              <p
+                                key={line}
+                                className="break-keep text-[clamp(1.08rem,1.22vw,1.42rem)] font-semibold leading-[1.58] text-[var(--axis-ink)]"
+                              >
+                                {line}
+                              </p>
+                            ))}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+              {mainInsightSignals.length === 0 && todayInsightSubtitleBullets.length > 0 ? (
+                <div className="mt-5 grid max-w-5xl gap-3">
+                  {todayInsightSubtitleBullets.slice(0, 2).map((line, index) => (
+                    <article
+                      key={`${insightBulletLabel(index)}-${line}`}
+                      className="grid gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-3.5 shadow-[0_10px_30px_-28px_rgba(0,0,0,0.35)] sm:grid-cols-[104px_minmax(0,1fr)] sm:gap-5"
+                    >
+                      <p className="inline-flex h-7 w-fit items-center rounded-full bg-[rgba(220,90,36,0.08)] px-3 text-xs font-bold text-[var(--axis-accent-strong)]">
+                        {insightBulletLabel(index)}
+                      </p>
+                      <p className="break-keep text-base font-medium leading-8 text-[var(--axis-ink)]">
+                        {line}
+                      </p>
+                    </article>
+                  ))}
                 </div>
-              ) : (
-                <div className="mt-4 rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-4 text-sm leading-6 text-[var(--axis-muted)]">
-                  실제 Today&apos;s Insight 주요 신호가 아직 없습니다. 오늘자 생성 작업이 완료되면 주요 신호, 관찰 포인트, 대응 방향이 이 영역에 표시됩니다.
-                </div>
-              )}
+              ) : mainInsightSignals.length === 0 && todayInsightSubtitle ? (
+                <p className="mt-5 max-w-3xl text-base leading-7 text-[var(--axis-body)]">
+                  {todayInsightSubtitle}
+                </p>
+              ) : null}
             </div>
 
-            {/* 동적 evidence 패널 — 신호 선택 시에만 등장, 콘텐츠 길이만큼 자연 확장 */}
+            {!isTodayInsightMockLike ? (
+              <section className="mt-0 pt-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">세부 내용 선택</p>
+                  {todayInsightSignals.length > 3 ? (
+                    <span className="text-[11px] font-semibold text-[var(--axis-muted)]">+{todayInsightSignals.length - 3}</span>
+                  ) : null}
+                </div>
+                {todayInsightSignals.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {todayInsightSignals.slice(0, 6).map((signal, index) => {
+                      const isActive = signal.id === selectedSignalId;
+                      return (
+                        <button
+                          key={signal.id}
+                          type="button"
+                          onClick={() => setSelectedSignalId(signal.id)}
+                          aria-pressed={isActive}
+                          className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-left text-xs font-semibold transition ${
+                            isActive
+                              ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.06)]'
+                              : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)]'
+                          }`}
+                        >
+                          <span className={isActive ? 'text-[var(--axis-accent-strong)]' : 'text-[var(--axis-muted)]'}>
+                            {String(index + 1).padStart(2, '0')}
+                          </span>
+                          <span className="truncate text-[var(--axis-ink)]">{signal.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-4 text-sm leading-6 text-[var(--axis-muted)]">
+                    실제 Today&apos;s Insight 섹션이 아직 없습니다.
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            {/* 동적 상세 패널 — 선택한 섹션의 근거와 출처를 콘텐츠 길이만큼 자연 확장 */}
             {selectedSignal ? (
               <article className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-5 shadow-[0_14px_36px_-30px_rgba(0,0,0,0.35)]">
                 <header>
@@ -570,30 +613,27 @@ export function HomeDashboardView({
                   ) : null}
                 </header>
 
-                {/* AI 추론 과정 — 근거 위쪽. agent 가 어떤 데이터 → 어떤 추론 → 결론에 도달했는지 chain 으로 노출. */}
-                <section className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.18)] bg-[rgba(220,90,36,0.05)] p-4">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-[var(--axis-accent-strong)]" />
-                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">AI 추론 과정</p>
-                  </div>
-                  <ol className="mt-2.5 space-y-2">
-                    {selectedSignal.reasoning.map((step, idx) => (
-                      <li key={step.stage} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 text-sm leading-6">
-                        <span className="flex h-6 w-8 items-center justify-center rounded bg-[var(--axis-canvas)] text-[11px] font-black text-[var(--axis-accent-strong)]">
-                          0{idx + 1}
-                        </span>
-                        <span className="text-[var(--axis-body)]">
-                          <span className="font-semibold text-[var(--axis-ink)]">{step.stage}</span>
-                          <span className="mx-1.5 text-[var(--axis-muted)]">—</span>
-                          <span>{step.detail}</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </section>
+                {selectedSignal.reasoning.length > 0 ? (
+                  <section className="mt-4 rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.18)] bg-[rgba(220,90,36,0.05)] p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-accent-strong)]">판단</p>
+                    <ol className="mt-2.5 space-y-2">
+                      {selectedSignal.reasoning.map((step, idx) => (
+                        <li key={`${step.stage}-${idx}`} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 text-sm leading-6">
+                          <span className="flex h-6 w-8 items-center justify-center rounded bg-[var(--axis-canvas)] text-[11px] font-black text-[var(--axis-accent-strong)]">
+                            0{idx + 1}
+                          </span>
+                          <span className="text-[var(--axis-body)]">
+                            <span className="font-semibold text-[var(--axis-ink)]">{step.stage}</span>
+                            <span className="mx-1.5 text-[var(--axis-muted)]">·</span>
+                            <span>{step.detail}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                ) : null}
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {/* 근거 */}
                   <section>
                     <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">근거</p>
                     <ul className="mt-2 space-y-1.5">
@@ -606,9 +646,8 @@ export function HomeDashboardView({
                     </ul>
                   </section>
 
-                  {/* 달라진 점 */}
                   <section>
-                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">달라진 점</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">변화</p>
                     <ul className="mt-2 space-y-1.5">
                       {selectedSignal.evidence.changes.map((c) => (
                         <li key={c} className="grid grid-cols-[14px_minmax(0,1fr)] gap-2 text-sm leading-6 text-[var(--axis-body)]">
@@ -620,10 +659,9 @@ export function HomeDashboardView({
                   </section>
                 </div>
 
-                {/* 관련 키워드 */}
                 {selectedSignal.evidence.relatedKeywords.length > 0 ? (
                   <section className="mt-4 border-t border-[var(--axis-hairline)] pt-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">관련 키워드</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">키워드</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {selectedSignal.evidence.relatedKeywords.map((k) => (
                         <span
@@ -639,7 +677,7 @@ export function HomeDashboardView({
 
                 {selectedActions.length > 0 ? (
                   <section className="mt-4 border-t border-[var(--axis-hairline)] pt-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">대응방향</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">대응</p>
                     <div className="mt-2 grid gap-2">
                       {selectedActions.map((action) => (
                         <div key={action.action} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2.5">
@@ -659,44 +697,43 @@ export function HomeDashboardView({
                   <section className="mt-4 border-t border-[var(--axis-hairline)] pt-3">
                     <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">출처</p>
                     <div className="mt-2 grid gap-2">
-                      {selectedSources.map((source) => (
-                        source.url ? (
+                      {selectedSources.map((source, index) => {
+                        const sourceLabel = sourceName(source);
+                        const relatedCompanies = sourceRelatedCompanies(source);
+                        const publishedAt = source.published_at ?? source.publishedAt ?? '';
+                        const sourceTitle = source.title || sourceLabel || `출처 ${index + 1}`;
+                        const sourceMeta = [
+                          sourceLabel,
+                          relatedCompanies.length ? `관련 기업 ${relatedCompanies.join(', ')}` : '',
+                          publishedAt,
+                          source.url ? '원문 링크' : '',
+                        ].filter(Boolean).join(' · ');
+                        const body = (
+                          <>
+                            <span className="block text-sm font-semibold leading-5 text-[var(--axis-ink)]">
+                              {sourceTitle}
+                            </span>
+                            <span className="mt-1 block text-[11px] font-semibold text-[var(--axis-muted)]">
+                              {sourceMeta}
+                            </span>
+                          </>
+                        );
+                        return source.url ? (
                           <a
-                            key={source.id}
+                            key={`${sourceTitle}-${index}`}
                             href={source.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="block rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-sm font-semibold leading-5 text-[var(--axis-ink)] transition hover:text-[var(--axis-accent-strong)]"
+                            className="block rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2.5 transition hover:bg-[var(--axis-canvas)]"
                           >
-                            <span className="block truncate">{source.title}</span>
-                            <span className="mt-0.5 block text-[11px] text-[var(--axis-muted)]">{sourceName(source)}</span>
+                            {body}
                           </a>
                         ) : (
-                          <div key={source.id} className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-sm font-semibold leading-5 text-[var(--axis-ink)]">
-                            <span className="block truncate">{source.title}</span>
-                            <span className="mt-0.5 block text-[11px] text-[var(--axis-muted)]">{sourceName(source)}</span>
-                          </div>
-                        )
-                      ))}
-                    </div>
-                  </section>
-                ) : null}
-
-                {selectedSourceTrace.length > 0 ? (
-                  <section className="mt-4 border-t border-[var(--axis-hairline)] pt-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.10em] text-[var(--axis-muted)]">출처 추적</p>
-                    <div className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--axis-body)]">
-                      {selectedSourceTrace.map((trace, index) => {
-                        const issueId = sourceTraceIssueId(trace);
-                        const cardId = sourceTraceCardId(trace);
-                        return (
-                          <div key={`${issueId}-${cardId}-${index}`} className="rounded-[var(--axis-radius-sm)] bg-[var(--axis-surface-soft)] px-3 py-2">
-                            <span className="font-semibold text-[var(--axis-ink)]">
-                              {cardId || issueId || trace.title || `trace-${index + 1}`}
-                            </span>
-                            {issueId && cardId ? (
-                              <span className="ml-2 text-[var(--axis-muted)]">통합분석 {issueId}</span>
-                            ) : null}
+                          <div
+                            key={`${sourceTitle}-${index}`}
+                            className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2.5"
+                          >
+                            {body}
                           </div>
                         );
                       })}
@@ -792,8 +829,8 @@ export function HomeDashboardView({
           {/* 우측 하단 — RoC/Stock 토글 차트. 카드뉴스 사이드바 (min-h-[430px]) 와 같은 크기로 적층. */}
           <div data-guide="home-charts">
           <ChartButton
-            title={showStockChart ? 'Peer사 주가 증감률' : '섹터별 검색 관심도 변화'}
-            helper={showStockChart ? 'Rate of change' : 'Sector interest delta'}
+            title={showStockChart ? 'Peer사 주가 증감률' : '섹터별 키워드 증감폭'}
+            helper={showStockChart ? 'Rate of change' : 'Daily delta'}
             icon={<LineChartIcon size={18} />}
             controls={chartSwitcher}
           >
@@ -836,8 +873,8 @@ export function HomeDashboardView({
                 <div className="flex h-full flex-col justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="axis-kicker">Sector interest</p>
-                      <p className="mt-1 text-sm font-semibold text-[var(--axis-ink)]">섹터 관심도 그래프를 따로 불러오는 중입니다.</p>
+                      <p className="axis-kicker">Search index</p>
+                      <p className="mt-1 text-sm font-semibold text-[var(--axis-ink)]">섹터 키워드 증감폭 그래프를 따로 불러오는 중입니다.</p>
                     </div>
                     <span className="rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-muted)]">
                       lazy load
@@ -855,7 +892,7 @@ export function HomeDashboardView({
                 </div>
               ) : keywordTrendsError ? (
                 <div className="flex h-full flex-col items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-chart-danger-border)] bg-[var(--axis-chart-danger-surface)] p-4 text-center">
-                  <p className="text-sm font-semibold text-[var(--axis-danger)]">섹터 관심도 그래프를 불러오지 못했습니다.</p>
+                  <p className="text-sm font-semibold text-[var(--axis-danger)]">섹터 키워드 증감폭 그래프를 불러오지 못했습니다.</p>
                   <p className="mt-2 max-w-[320px] text-xs leading-5 text-[var(--axis-muted)]">{keywordTrendsError}</p>
                   <button
                     type="button"
@@ -898,7 +935,6 @@ export function HomeDashboardView({
                               key: item.key,
                               name: item.name,
                               color: item.color,
-                              ratioLabel: formatKeywordRatio(point[`${item.key}Ratio`]),
                               deltaLabel: formatKeywordDelta(point[item.key]),
                             })),
                             insight: matchedInsight ?? null,
@@ -996,9 +1032,9 @@ export function HomeDashboardView({
                 </ResponsiveContainer>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4 text-center">
-                  <p className="text-sm font-semibold text-[var(--axis-ink)]">표시할 섹터 관심도 데이터가 없습니다.</p>
+                  <p className="text-sm font-semibold text-[var(--axis-ink)]">표시할 섹터 키워드 증감폭 데이터가 없습니다.</p>
                   <p className="mt-2 max-w-[320px] text-xs leading-5 text-[var(--axis-muted)]">
-                    백엔드의 섹터 관심도 캐시가 아직 비어 있거나 검색 트렌드 데이터가 없습니다.
+                    백엔드의 섹터 키워드 캐시가 아직 비어 있거나 검색 트렌드 데이터가 없습니다.
                   </p>
                 </div>
               )}
@@ -1017,13 +1053,13 @@ export function HomeDashboardView({
               <div className="mt-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-chart-accent-border)] bg-[var(--axis-chart-accent-surface)] px-3 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
-                    섹터 관심도 날짜별 값
+                    섹터 키워드 날짜별 증감폭
                   </p>
                   <div className="inline-flex items-center gap-2">
                     <span className="text-[11px] font-semibold text-[var(--axis-muted)]">{activeKeywordPoint.time}</span>
                     <button
                       type="button"
-                      aria-label="관심도 패널 닫기"
+                      aria-label="증감폭 패널 닫기"
                       className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[rgba(220,90,36,0.24)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:text-[var(--axis-ink)]"
                       onClick={() => {
                         setActiveKeywordPoint(null);
@@ -1051,7 +1087,6 @@ export function HomeDashboardView({
                         </span>
                         <span className="shrink-0 font-semibold text-[var(--axis-muted)]">{item.deltaLabel}</span>
                       </div>
-                      <p className="mt-1 text-[10px] font-semibold text-[var(--axis-muted)]">관심도 {item.ratioLabel}</p>
                     </div>
                   ))}
                 </div>
@@ -1110,7 +1145,7 @@ export function HomeDashboardView({
             <p className="mt-2 text-[10px] leading-4 text-[var(--axis-muted)]">
               {showStockChart
                 ? `Peer 4사 전일 대비 주가 증감률 · ${dashboard.stockSource?.label ?? '실시간 주가 데이터 대기'}`
-                : `관련 키워드 묶음 기준 섹터 관심도 일별 전일 대비 지수 차이 · ${keywordTrends?.sourceName ?? 'lazy keyword trend endpoint'}`}
+                : `관련 키워드 묶음 기준 일별 전일 대비 증감폭 · ${keywordTrends?.sourceName ?? 'lazy keyword trend endpoint'}`}
             </p>
           </ChartButton>
           </div>

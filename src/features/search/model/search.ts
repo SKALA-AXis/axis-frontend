@@ -1,4 +1,4 @@
-export type SearchScope = 'ALL' | 'BRIEFING' | 'CARD_NEWS' | 'KEYWORD_GRAPH' | 'PEER_PLUS';
+export type SearchScope = 'ALL' | 'BRIEFING' | 'CARD_NEWS' | 'PEER_PLUS';
 export type SearchPeriod = 'all' | '7d' | '30d' | '90d' | 'custom';
 
 export type SearchResultItem = {

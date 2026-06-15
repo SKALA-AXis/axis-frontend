@@ -23,6 +23,7 @@ import {
   buildBriefingRange,
   getBriefingFocusTitle,
   getWeekOptions,
+  getWeekStartDateValue,
   periodMeta,
   toDateInputValue,
   toMonthInputValue,
@@ -63,6 +64,11 @@ function normalizeBriefingText(text: string) {
   return text.replace(/(^|\s)\d+\.\s*/g, '$1').replace(/\s+/g, ' ').trim();
 }
 
+function clampValue(value: string, maxValue: string) {
+  if (!value) return maxValue;
+  return value > maxValue ? maxValue : value;
+}
+
 function adaptGeneratedBriefing(briefing: BriefingViewModel): BriefingReport {
   return {
     label: briefing.label,
@@ -100,8 +106,14 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   const [activeInsightStep, setActiveInsightStep] = useState(0);
   const [activeBriefingReasoningId, setActiveBriefingReasoningId] = useState<'focus' | null>(null);
 
+  const todayDateValue = useMemo(() => toDateInputValue(), []);
+  const currentMonthValue = todayDateValue.slice(0, 7);
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const weeklyOptions = useMemo(() => getWeekOptions(weeklyMonth), [weeklyMonth]);
+  const latestSelectableWeek = useMemo(() => {
+    const selectableWeeks = weeklyOptions.filter((option) => getWeekStartDateValue(weeklyMonth, option.value) <= todayDateValue);
+    return selectableWeeks[selectableWeeks.length - 1] ?? weeklyOptions[0];
+  }, [todayDateValue, weeklyMonth, weeklyOptions]);
   const briefingRange = useMemo(
     () => buildBriefingRange(period, dailyDate, weeklyMonth, weeklyIndex, monthlyMonth),
     [dailyDate, monthlyMonth, period, weeklyIndex, weeklyMonth],
@@ -110,17 +122,34 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     () => toBriefingAnchorDate(period, dailyDate, weeklyMonth, weeklyIndex, monthlyMonth),
     [dailyDate, monthlyMonth, period, weeklyIndex, weeklyMonth],
   );
+  const briefingPeriodSelection = useMemo(
+    () => ({
+      anchorDate: briefingAnchorDate,
+      month: period === 'weekly' ? weeklyMonth : period === 'monthly' ? monthlyMonth : undefined,
+      weekIndex: period === 'weekly' ? weeklyIndex : undefined,
+    }),
+    [briefingAnchorDate, monthlyMonth, period, weeklyIndex, weeklyMonth],
+  );
   const {
     briefing: generatedBriefing,
     isGenerating,
     error: generatedBriefingError,
+    savedBriefingMissing,
     reload: reloadGeneratedBriefing,
-  } = useGeneratedBriefing(period, briefingAnchorDate, rankedCards, briefingRange);
+  } = useGeneratedBriefing(period, briefingPeriodSelection, rankedCards, briefingRange);
 
   useEffect(() => {
     if (isLoading) return;
     onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
   }, [cards, isLoading, onUpdateTimeChange]);
+
+  useEffect(() => {
+    const latestWeekValue = latestSelectableWeek?.value;
+    if (latestWeekValue && getWeekStartDateValue(weeklyMonth, weeklyIndex) > todayDateValue) {
+      setWeeklyIndex(latestWeekValue);
+    }
+  }, [latestSelectableWeek?.value, todayDateValue, weeklyIndex, weeklyMonth]);
+
   const briefing = useMemo(
     () => (generatedBriefing ? adaptGeneratedBriefing(generatedBriefing) : null),
     [generatedBriefing],
@@ -138,6 +167,12 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     () => generatedBriefing?.flowSteps ?? [],
     [generatedBriefing?.flowSteps],
   );
+  const servedDailyReportDate = generatedBriefing?.reportDate ?? generatedBriefing?.dateTo ?? '';
+  const dailyBriefingNotice = period === 'daily' && servedDailyReportDate && servedDailyReportDate !== dailyDate
+    ? `${dailyDate} 기준 새 브리핑이 없어 최신 브리핑을 보여줍니다.`
+    : period === 'daily' && savedBriefingMissing
+      ? `${dailyDate} 기준 새 브리핑이 없어 임시 생성 결과를 보여줍니다.`
+      : '';
   const activeFlowStep = briefingFlowSteps[activeInsightStep] ?? briefingFlowSteps[0] ?? null;
   const reportText = useMemo(
     () => (briefing ? buildBriefingReportText(briefing, briefingFocusTitle, briefingFlowSteps) : ''),
@@ -265,6 +300,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
 
   const pageError = error ?? generatedBriefingError;
   const isPageLoading = isLoading || isGenerating;
+  const shouldShowBlockingState = !briefing && (isPageLoading || Boolean(pageError));
   const hasBriefingContent = Boolean(
     briefing && (
       briefing.briefingLead ||
@@ -279,10 +315,10 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     reloadGeneratedBriefing();
   };
 
-  if (isPageLoading || pageError || !briefing || !hasBriefingContent) {
+  if (shouldShowBlockingState || !briefing || !hasBriefingContent) {
     return (
       <PageState
-        loading={isPageLoading}
+        loading={shouldShowBlockingState && isPageLoading}
         error={pageError}
         empty={!isPageLoading && !pageError && (!briefing || !hasBriefingContent)}
         loadingLabel="브리핑을 생성하는 중입니다."
@@ -312,19 +348,20 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
       <ExecutiveContainer className="pb-12 pt-3">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="sr-only">브리핑</h1>
-          <div data-guide="briefing-period" className="relative">
-            <button
-              type="button"
-              onClick={() => setDatePickerOpen((open) => !open)}
-              className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)]"
-              aria-expanded={datePickerOpen}
-            >
-              <CalendarDays size={15} className="text-[var(--axis-accent)]" />
-              <span>{periodMeta[period].label}</span>
-              <span className="h-4 w-px bg-[var(--axis-hairline)]" aria-hidden="true" />
-              <span className="tabular-nums text-[var(--axis-muted)]">{briefingRange.displayLabel}</span>
-            </button>
-            {datePickerOpen ? (
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+            <div data-guide="briefing-period" className="relative">
+              <button
+                type="button"
+                onClick={() => setDatePickerOpen((open) => !open)}
+                className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)]"
+                aria-expanded={datePickerOpen}
+              >
+                <CalendarDays size={15} className="text-[var(--axis-accent)]" />
+                <span>{periodMeta[period].label}</span>
+                <span className="h-4 w-px bg-[var(--axis-hairline)]" aria-hidden="true" />
+                <span className="tabular-nums text-[var(--axis-muted)]">{briefingRange.displayLabel}</span>
+              </button>
+              {datePickerOpen ? (
               <div className="absolute left-0 top-[calc(100%+8px)] z-20 w-[min(360px,calc(100vw-32px))] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3 shadow-[0_24px_70px_-42px_rgba(0,0,0,0.45)]">
                 <p className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--axis-accent-strong)]">브리핑 범위</p>
                 <div className="mt-2 grid grid-cols-3 gap-2">
@@ -349,7 +386,8 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                     <input
                       type="date"
                       value={dailyDate}
-                      onChange={(event) => setDailyDate(event.target.value)}
+                      max={todayDateValue}
+                      onChange={(event) => setDailyDate(clampValue(event.target.value, todayDateValue))}
                       className="min-w-0 bg-transparent text-right text-sm font-semibold text-[var(--axis-ink)] outline-none"
                     />
                   </label>
@@ -361,8 +399,9 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                       <input
                         type="month"
                         value={weeklyMonth}
+                        max={currentMonthValue}
                         onChange={(event) => {
-                          setWeeklyMonth(event.target.value);
+                          setWeeklyMonth(clampValue(event.target.value, currentMonthValue));
                           setWeeklyIndex(1);
                         }}
                         className="min-w-0 bg-transparent text-right text-sm font-semibold text-[var(--axis-ink)] outline-none"
@@ -376,7 +415,13 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                         className="min-w-0 bg-transparent text-right text-sm font-semibold text-[var(--axis-ink)] outline-none"
                       >
                         {weeklyOptions.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
+                          <option
+                            key={option.value}
+                            value={option.value}
+                            disabled={getWeekStartDateValue(weeklyMonth, option.value) > todayDateValue}
+                          >
+                            {option.label}
+                          </option>
                         ))}
                       </select>
                     </label>
@@ -391,13 +436,22 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                     <input
                       type="month"
                       value={monthlyMonth}
-                      onChange={(event) => setMonthlyMonth(event.target.value)}
+                      max={currentMonthValue}
+                      onChange={(event) => setMonthlyMonth(clampValue(event.target.value, currentMonthValue))}
                       className="min-w-0 bg-transparent text-right text-sm font-semibold text-[var(--axis-ink)] outline-none"
                     />
                   </label>
                 ) : null}
               </div>
-            ) : null}
+              ) : null}
+            </div>
+            <span className="flex min-h-[1.625rem] min-w-0 flex-1 flex-wrap items-center gap-2">
+              {dailyBriefingNotice ? (
+                <span className="max-w-full break-keep text-sm font-semibold leading-6 text-[var(--axis-muted)]">
+                  {dailyBriefingNotice}
+                </span>
+              ) : null}
+            </span>
           </div>
           <div data-guide="briefing-share-print" className="flex flex-wrap gap-2">
             <ExecutiveButton variant="secondary" icon={<Share2 size={16} />} onClick={handleShareBriefing}>

@@ -12,6 +12,13 @@ import { FloatingCardNewsOverlay, shareCardNews } from '../../shared/FloatingCar
 import { PageProcessLoading, PageState } from '../../shared/PageState';
 import { EmptyBlock } from '../shared/axis';
 
+function toLocalDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function buildCardNewsRows(cards: CardNewsItem[]) {
   const catalog = buildCardCatalog(getLatestFirst(cards));
   const uniqueRows = Array.from(
@@ -62,6 +69,7 @@ export function CardNewsWorkspaceView({
   const [detailSlideIndex, setDetailSlideIndex] = useState(0);
   const [actionFeedback, setActionFeedback] = useState('');
   const [updatingCardId, setUpdatingCardId] = useState<string | null>(null);
+  const todayDateValue = useMemo(() => toLocalDateInputValue(), []);
   const rows = useMemo(() => buildCardNewsRows(cards), [cards]);
   const peerOptions = ['전체', ...Array.from(new Set(rows.map((row) => row.peer)))];
   const sectorOptions = ['전체', ...Array.from(new Set(rows.map((row) => row.sourceType)))];
@@ -221,7 +229,8 @@ export function CardNewsWorkspaceView({
             <input
               type="date"
               value={dateFilter}
-              onChange={(event) => setDateFilter(event.target.value)}
+              max={todayDateValue}
+              onChange={(event) => setDateFilter(event.target.value > todayDateValue ? todayDateValue : event.target.value)}
               className="h-7 w-[130px] bg-transparent text-sm font-semibold text-[var(--axis-ink)] outline-none"
             />
           </label>

@@ -28,6 +28,7 @@ export interface BriefingSnapshot {
 export interface BriefingsData {
   dailySnapshot: BriefingSnapshot;
   weeklySnapshot: BriefingSnapshot;
+  monthlySnapshot: BriefingSnapshot;
   evidenceSources: string[];
   history: BriefingHistoryItem[];
 }

@@ -712,7 +712,7 @@ export function AuthScreen({
       </section>
 
       <aside
-        className="absolute inset-y-0 right-0 hidden w-[44vw] min-w-[560px] overflow-hidden text-[var(--auth-hero-ink)] transition-colors duration-300 lg:flex lg:flex-col lg:justify-between lg:p-16 xl:p-24"
+        className="absolute inset-y-0 right-0 hidden w-[44vw] min-w-[560px] overflow-hidden text-[var(--auth-hero-ink)] transition-colors duration-300 lg:flex lg:flex-col lg:justify-center lg:p-16 xl:p-24"
         style={authHeroStyle}
       >
         <svg
@@ -730,7 +730,7 @@ export function AuthScreen({
         </svg>
 
         <div className="relative">
-          <p className="mb-40 text-micro-eyebrow text-[var(--auth-hero-muted)]">PEER INTELLIGENCE</p>
+          <p className="mb-8 text-micro-eyebrow text-[var(--auth-hero-muted)]">PEER INTELLIGENCE</p>
           <h2 className="mb-6 font-display text-display-lg leading-tight text-[var(--auth-hero-ink)] drop-shadow-[0_12px_32px_rgba(0,0,0,0.22)]">
             오늘의 동향을<br />내일의 결정으로
           </h2>

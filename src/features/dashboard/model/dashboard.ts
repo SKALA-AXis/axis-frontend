@@ -133,6 +133,7 @@ export interface DashboardKeywordTrendsData {
   keywordSeries: DashboardKeywordSeries[];
   keywordInsights?: DashboardKeywordInsight[];
   sourceName?: string | null;
+  dataUpdatedAt?: string | null;
   cachedAt?: string | null;
   stale?: boolean;
 }
@@ -176,6 +177,8 @@ export interface TodayInsightSource {
   source_name?: string;
   sourceName?: string;
   publisher?: string;
+  related_companies?: string[];
+  relatedCompanies?: string[];
   url?: string;
   published_at?: string | null;
   publishedAt?: string | null;
@@ -250,6 +253,7 @@ export interface TodayInsightSection {
 export interface TodayInsightData {
   report_date: string;
   generated_at: string;
+  data_updated_at?: string | null;
   headline: string;
   executive_summary: string;
   executive_implication?: string;

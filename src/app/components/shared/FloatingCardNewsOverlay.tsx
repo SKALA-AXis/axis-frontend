@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bookmark, ChevronLeft, ChevronRight, ExternalLink, Newspaper, Share2, X } from 'lucide-react';
 import { getCardLogoImageClass, getFallbackCardLogo, isCardLogoUrl } from '../../../features/card-news/cardLogoFallback';
-import type { CardNewsItem } from '../../../features/card-news/model/cardNews';
+import type { CardNewsItem, CardNewsStructuredTextItem } from '../../../features/card-news/model/cardNews';
 import { getDisplayDate, getPeerLabel, getSummaryLines } from '../../../features/card-news/mappers/cardNewsExecutive';
 
 type ShareDataWithFiles = ShareData & { files?: File[] };
@@ -14,6 +14,42 @@ function compactShareLines(lines: Array<string | null | undefined>) {
   return lines
     .map((line) => String(line ?? '').trim())
     .filter((line) => line.length > 0);
+}
+
+function stripDisplayLabels(value: string) {
+  return value
+    .replace(/^핵심\s*(?:시사점|대응|방안)\s*[:：]\s*/i, '')
+    .replace(/^근거\s*\/?\s*설명\s*[:：]\s*/i, '')
+    .trim();
+}
+
+function splitMainDetailText(value: string): CardNewsStructuredTextItem {
+  const compact = value.replace(/\s+/g, ' ').trim();
+  const [main = '', detail = ''] = stripDisplayLabels(compact).split(/\s*근거\s*\/?\s*설명\s*[:：]\s*/);
+  return {
+    main: stripDisplayLabels(main),
+    detail: stripDisplayLabels(detail),
+  };
+}
+
+function textLinesToStructuredItems(lines: string[]) {
+  return lines
+    .map(splitMainDetailText)
+    .filter((line) => line.main.length > 0);
+}
+
+function structuredItemsForDisplay(items: CardNewsStructuredTextItem[] | undefined, fallback: string[]) {
+  const normalized = (items ?? [])
+    .map((item) => ({
+      main: stripDisplayLabels(item.main ?? ''),
+      detail: item.detail ? stripDisplayLabels(item.detail) : '',
+    }))
+    .filter((item) => item.main.length > 0);
+  return normalized.length > 0 ? normalized : textLinesToStructuredItems(fallback);
+}
+
+function structuredItemsForShare(items: CardNewsStructuredTextItem[] | undefined, fallback: string[]) {
+  return structuredItemsForDisplay(items, fallback).map((item) => compactShareLines([item.main, item.detail]).join(' '));
 }
 
 function formatShareSection(title: string, lines: string[]) {
@@ -30,8 +66,8 @@ function formatShareSection(title: string, lines: string[]) {
 function buildCardNewsShareText(card: CardNewsItem) {
   const sections = [
     formatShareSection('요약', getSummaryLines(card)),
-    formatShareSection('시사점', card.insights),
-    formatShareSection('대응방안', card.actionItems),
+    formatShareSection('시사점', structuredItemsForShare(card.insightDetails, card.insights)),
+    formatShareSection('대응방안', structuredItemsForShare(card.actionDetails, card.actionItems)),
   ];
   const meta = compactShareLines([
     card.date ? `일자: ${card.date}` : '',
@@ -131,6 +167,8 @@ async function shareCardNews(card: CardNewsItem) {
 
 export { shareCardNews };
 
+type CardNewsSlideLine = CardNewsStructuredTextItem;
+
 function getCardSourceOptions(card: CardNewsItem) {
   const fromSources = (card.sources ?? []).map((source, index) => ({
     id: `source-${index}`,
@@ -195,26 +233,27 @@ export function FloatingCardNewsOverlay({
   onCardChange?: (cardId: string) => void;
 }) {
   const noDataLine = '데이터 없음';
-  const slides = [
+  const slides: Array<{ kicker: string; title: string; lines: CardNewsSlideLine[] }> = [
     {
       kicker: 'AI 요약',
       title: '핵심 변화 3줄 요약',
-      lines: getSummaryLines(card).slice(0, 3),
+      lines: getSummaryLines(card).slice(0, 3).map((line) => ({ main: line })),
     },
     {
       kicker: '시사점',
       title: '시장 변화가 주는 시사점',
-      lines: card.insights.slice(0, 3),
+      lines: structuredItemsForDisplay(card.insightDetails, card.insights).slice(0, 3),
     },
     {
       kicker: '다음 행동',
       title: '우선 실행해야 할 대응',
-      lines: card.actionItems.slice(0, 3),
+      lines: structuredItemsForDisplay(card.actionDetails, card.actionItems).slice(0, 3),
     },
   ];
   const slideCount = Math.max(slides.length, 1);
   const activeIndex = ((slideIndex % slideCount) + slideCount) % slideCount;
   const activeSlide = slides[activeIndex] ?? slides[0];
+  const showLineNumbers = activeSlide.lines.length > 1;
   const slideImage = card.slides?.[activeIndex]?.image_url ?? card.coverImageUrl;
   const slideImageAlt = card.slides?.[activeIndex]?.image_alt ?? card.coverImageAlt;
   const slideImageClass = getCardLogoImageClass(slideImage, 'hero') ?? 'absolute inset-0 h-full w-full object-cover opacity-58 transition-opacity';
@@ -374,11 +413,23 @@ export function FloatingCardNewsOverlay({
                 {activeSlide.lines.length > 0 ? (
                   <div className="mt-5 divide-y divide-[var(--axis-hairline)]">
                     {activeSlide.lines.map((line, index) => (
-                      <div key={`${activeSlide.kicker}-${index}`} className="grid grid-cols-[34px_minmax(0,1fr)] gap-4 py-4 first:pt-0 last:pb-0">
-                        <span className="mt-1 font-mono text-xs font-bold text-[var(--axis-accent-strong)]">{String(index + 1).padStart(2, '0')}</span>
-                        <p className="text-base font-medium leading-8 text-[var(--axis-body)]">
-                          {line}
-                        </p>
+                      <div
+                        key={`${activeSlide.kicker}-${index}`}
+                        className="grid grid-cols-[34px_minmax(0,1fr)] gap-4 py-4 first:pt-0 last:pb-0"
+                      >
+                        <span className="mt-1 font-mono text-xs font-bold text-[var(--axis-accent-strong)]">
+                          {showLineNumbers ? String(index + 1).padStart(2, '0') : ''}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-base font-semibold leading-8 text-[var(--axis-ink)]">
+                            {line.main}
+                          </p>
+                          {line.detail ? (
+                            <p className="mt-2 text-sm font-medium leading-6 text-[var(--axis-muted)]">
+                              {line.detail}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, LoaderCircle, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import { searchRepository } from '../../../../features/search/api/searchRepository';
 import type { SearchPeriod, SearchResponse, SearchResultItem, SearchScope } from '../../../../features/search/model/search';
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
@@ -10,7 +10,6 @@ const scopeOptions: Array<{ value: SearchScope; label: string }> = [
   { value: 'BRIEFING', label: '브리핑' },
   { value: 'PEER_PLUS', label: 'Peer+' },
   { value: 'CARD_NEWS', label: '카드뉴스' },
-  { value: 'KEYWORD_GRAPH', label: '키워드 그래프' },
 ];
 
 const periodOptions: Array<{ value: SearchPeriod; label: string }> = [
@@ -25,7 +24,6 @@ const sectionConfig: Array<{ type: SearchResultItem['type']; label: string; empt
   { type: 'BRIEFING', label: '브리핑', empty: '조건에 맞는 브리핑이 없습니다.' },
   { type: 'PEER_PLUS', label: 'Peer+', empty: '조건에 맞는 Peer가 없습니다.' },
   { type: 'CARD_NEWS', label: '카드뉴스', empty: '조건에 맞는 카드뉴스가 없습니다.' },
-  { type: 'KEYWORD_GRAPH', label: '키워드 그래프', empty: '조건에 맞는 키워드 노드가 없습니다.' },
 ];
 
 const searchSectionPageSize = 5;
@@ -33,7 +31,6 @@ const defaultSectionPages: Record<SearchResultItem['type'], number> = {
   BRIEFING: 0,
   PEER_PLUS: 0,
   CARD_NEWS: 0,
-  KEYWORD_GRAPH: 0,
 };
 
 type SearchFilters = {
@@ -93,6 +90,18 @@ function formatResultDate(value: string) {
   }).replace(/\.$/, '');
 }
 
+function toLocalDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function clampDateInputValue(value: string, maxValue: string) {
+  if (!value) return '';
+  return value > maxValue ? maxValue : value;
+}
+
 function getCountLabel(response: SearchResponse | null, type: SearchResultItem['type'], fallback: number) {
   const count = response?.counts?.[type];
   return typeof count === 'number' ? count : fallback;
@@ -101,17 +110,49 @@ function getCountLabel(response: SearchResponse | null, type: SearchResultItem['
 function getResultTarget(item: SearchResultItem) {
   if (item.target === 'briefings') return 'briefings';
   if (item.target === 'issues' || item.target === 'cardNews') return 'issues';
-  if (item.target === 'keywordGraph') return 'keywordGraph';
   if (item.target === 'peerPlus') return 'peerPlus';
   if (item.type === 'BRIEFING') return 'briefings';
   if (item.type === 'CARD_NEWS') return 'issues';
-  if (item.type === 'KEYWORD_GRAPH') return 'keywordGraph';
   if (item.type === 'PEER_PLUS') return 'peerPlus';
   return 'home';
 }
 
+function SearchLoadingState({ sections }: { sections: typeof sectionConfig }) {
+  return (
+    <div className="space-y-4">
+      <div className="axis-panel-flat flex items-center gap-3 p-4">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--axis-radius-md)] bg-[var(--axis-accent-soft)] text-[var(--axis-accent-strong)]">
+          <LoaderCircle size={18} className="animate-spin" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-[var(--axis-ink)]">검색 결과를 정리하는 중입니다.</p>
+        </div>
+      </div>
+
+      {sections.map((section) => (
+        <section key={section.type} className="axis-panel-flat overflow-hidden">
+          <div className="flex items-center justify-between border-b border-[var(--axis-hairline)] px-4 py-3">
+            <h3 className="text-sm font-bold text-[var(--axis-ink)]">{section.label}</h3>
+            <span className="h-5 w-12 animate-pulse rounded-full bg-[var(--axis-surface-soft)]" />
+          </div>
+          <div className="divide-y divide-[var(--axis-hairline)]">
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="px-4 py-4">
+                <div className="h-3 w-28 animate-pulse rounded bg-[var(--axis-surface-soft)]" />
+                <div className="mt-3 h-4 w-3/4 animate-pulse rounded bg-[var(--axis-surface-soft)]" />
+                <div className="mt-2 h-3 w-full max-w-[520px] animate-pulse rounded bg-[var(--axis-surface-soft)]" />
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export function SearchResultsView({ initialQuery, initialScope, requestKey, onNavigate }: SearchResultsViewProps) {
   const pageSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const todayDateValue = useMemo(() => toLocalDateInputValue(), []);
   const [query, setQuery] = useState(initialQuery);
   const [scope, setScope] = useState<SearchScope>(initialScope);
   const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
@@ -157,7 +198,6 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
     return {
       BRIEFING: items.filter((item) => item.type === 'BRIEFING'),
       CARD_NEWS: items.filter((item) => item.type === 'CARD_NEWS'),
-      KEYWORD_GRAPH: items.filter((item) => item.type === 'KEYWORD_GRAPH'),
       PEER_PLUS: items.filter((item) => item.type === 'PEER_PLUS'),
     };
   }, [response]);
@@ -248,7 +288,7 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
           <p className="axis-kicker">Global search</p>
           <h1 className="mt-2 font-display text-heading-2 font-semibold text-[var(--axis-ink)]">검색 결과</h1>
           <p className="mt-2 text-sm font-semibold text-[var(--axis-muted)]">
-            브리핑, 카드뉴스, 키워드 그래프, Peer+ 결과를 같은 기준으로 다시 조회합니다.
+            브리핑, 카드뉴스, Peer+ 결과를 같은 기준으로 다시 조회합니다.
           </p>
         </div>
 
@@ -307,7 +347,12 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
                 <input
                   type="date"
                   value={filters.startDate}
-                  onChange={(event) => setFilters((current) => ({ ...current, period: 'custom', startDate: event.target.value }))}
+                  max={todayDateValue}
+                  onChange={(event) => setFilters((current) => ({
+                    ...current,
+                    period: 'custom',
+                    startDate: clampDateInputValue(event.target.value, todayDateValue),
+                  }))}
                   className="h-10 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
                 />
               </label>
@@ -319,7 +364,12 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
                 <input
                   type="date"
                   value={filters.endDate}
-                  onChange={(event) => setFilters((current) => ({ ...current, period: 'custom', endDate: event.target.value }))}
+                  max={todayDateValue}
+                  onChange={(event) => setFilters((current) => ({
+                    ...current,
+                    period: 'custom',
+                    endDate: clampDateInputValue(event.target.value, todayDateValue),
+                  }))}
                   className="h-10 w-full rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
                 />
               </label>
@@ -353,7 +403,12 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
                 </h2>
               </div>
               <span className="rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-1.5 text-xs font-bold text-[var(--axis-muted)]">
-                {status === 'success' ? `${total}건` : status === 'loading' ? '검색 중' : '대기'}
+                {status === 'success' ? `${total}건` : status === 'loading' ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <LoaderCircle size={13} className="animate-spin" />
+                    검색 중
+                  </span>
+                ) : '대기'}
               </span>
             </div>
 
@@ -363,9 +418,7 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
               </div>
             ) : null}
             {status === 'loading' ? (
-              <div className="axis-panel-flat p-8 text-center text-sm font-semibold text-[var(--axis-muted)]">
-                검색 결과를 불러오는 중입니다.
-              </div>
+              <SearchLoadingState sections={visibleSections} />
             ) : null}
             {status === 'error' ? (
               <div className="rounded-[var(--axis-radius-lg)] border border-[rgba(220,38,38,0.24)] bg-[rgba(220,38,38,0.08)] p-8 text-center text-sm font-semibold text-[var(--axis-danger)]">

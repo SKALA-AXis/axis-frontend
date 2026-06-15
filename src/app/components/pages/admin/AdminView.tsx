@@ -1,5 +1,5 @@
-import { History, Newspaper, Pencil, RefreshCw, RotateCcw, Search, Users } from 'lucide-react';
-import { type PointerEvent, useEffect, useState } from 'react';
+import { History, Newspaper, Pencil, RefreshCw, RotateCcw, Search, Trash2, Users } from 'lucide-react';
+import { type MouseEvent, type PointerEvent, useEffect, useState } from 'react';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -394,6 +394,119 @@ function AdminDeletedCardsPanel({
   onReload: () => void;
   onRestore: (cardId: string, reason: string) => Promise<void>;
 }) {
+  const hiddenStorageKey = 'axis.admin.deleted-card-news.hidden-ids';
+  const [listMode, setListMode] = useState<'VISIBLE' | 'HIDDEN'>('VISIBLE');
+  const [hiddenCardIds, setHiddenCardIds] = useState<string[]>(() => readHiddenCardIds(hiddenStorageKey));
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const hiddenCardIdSet = new Set(hiddenCardIds);
+  const selectedCardIdSet = new Set(selectedCardIds);
+  const visibleCards = cards.filter((card) => !hiddenCardIdSet.has(card.id));
+  const hiddenCards = cards.filter((card) => hiddenCardIdSet.has(card.id));
+  const displayCards = listMode === 'VISIBLE' ? visibleCards : hiddenCards;
+  const pageSize = 5;
+  const totalPages = Math.max(1, Math.ceil(displayCards.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStart = (safePage - 1) * pageSize;
+  const pageCards = displayCards.slice(pageStart, pageStart + pageSize);
+  const pageCardIds = pageCards.map((card) => card.id);
+  const selectedCount = selectedCardIds.length;
+  const allRowsSelected = pageCardIds.length > 0 && pageCardIds.every((id) => selectedCardIdSet.has(id));
+  const paginationWindowSize = 5;
+  const pageWindowStart = Math.floor((safePage - 1) / paginationWindowSize) * paginationWindowSize + 1;
+  const visiblePageNumbers = Array.from(
+    { length: Math.min(paginationWindowSize, totalPages - pageWindowStart + 1) },
+    (_, index) => pageWindowStart + index,
+  );
+  const previousPage = safePage > 1 ? safePage - 1 : null;
+  const nextPage = safePage < totalPages ? safePage + 1 : null;
+  const setPageSafely = (page: number) => {
+    setCurrentPage(Math.min(totalPages, Math.max(1, page)));
+  };
+
+  useEffect(() => {
+    writeHiddenCardIds(hiddenStorageKey, hiddenCardIds);
+  }, [hiddenStorageKey, hiddenCardIds]);
+
+  useEffect(() => {
+    setSelectedCardIds([]);
+    setCurrentPage(1);
+  }, [listMode]);
+
+  useEffect(() => {
+    const displayCardIdSet = new Set(displayCards.map((card) => card.id));
+    setSelectedCardIds((currentIds) => {
+      const nextIds = currentIds.filter((id) => displayCardIdSet.has(id));
+      return nextIds.length === currentIds.length ? currentIds : nextIds;
+    });
+  }, [cards, hiddenCardIds, listMode]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const toggleCard = (cardId: string) => {
+    setSelectedCardIds((currentIds) => (
+      currentIds.includes(cardId)
+        ? currentIds.filter((id) => id !== cardId)
+        : [...currentIds, cardId]
+    ));
+  };
+
+  const togglePageCards = () => {
+    setSelectedCardIds((currentIds) => {
+      if (allRowsSelected) {
+        return currentIds.filter((id) => !pageCardIds.includes(id));
+      }
+      return Array.from(new Set([...currentIds, ...pageCardIds]));
+    });
+  };
+
+  const hideSelectedCards = () => {
+    if (selectedCount === 0) {
+      window.alert('삭제할 카드뉴스를 선택해주세요.');
+      return;
+    }
+    const confirmed = window.confirm(`선택한 카드뉴스 ${selectedCount}건을 삭제 목록에서 숨길까요?`);
+    if (!confirmed) {
+      return;
+    }
+    setHiddenCardIds((currentIds) => Array.from(new Set([...currentIds, ...selectedCardIds])));
+    setSelectedCardIds([]);
+    setCurrentPage(1);
+  };
+
+  const hideAllCards = () => {
+    if (visibleCards.length === 0) {
+      return;
+    }
+    const confirmed = window.confirm(`삭제 목록의 카드뉴스 ${visibleCards.length}건을 모두 숨길까요?`);
+    if (!confirmed) {
+      return;
+    }
+    setHiddenCardIds((currentIds) => Array.from(new Set([...currentIds, ...visibleCards.map((card) => card.id)])));
+    setSelectedCardIds([]);
+    setCurrentPage(1);
+  };
+
+  const restoreSelectedToList = () => {
+    if (selectedCount === 0) {
+      window.alert('복구할 카드뉴스를 선택해주세요.');
+      return;
+    }
+    setHiddenCardIds((currentIds) => currentIds.filter((id) => !selectedCardIdSet.has(id)));
+    setSelectedCardIds([]);
+    setCurrentPage(1);
+  };
+
+  const restoreAllToList = () => {
+    setHiddenCardIds([]);
+    setSelectedCardIds([]);
+    setCurrentPage(1);
+  };
+
   const handleRestore = async (card: AdminCard) => {
     const reason = window.prompt(`"${card.title}" 카드뉴스 복구 사유를 입력해주세요.`);
     if (reason === null) {
@@ -413,6 +526,8 @@ function AdminDeletedCardsPanel({
 
     try {
       await onRestore(card.id, trimmedReason);
+      setHiddenCardIds((currentIds) => currentIds.filter((id) => id !== card.id));
+      setSelectedCardIds((currentIds) => currentIds.filter((id) => id !== card.id));
     } catch {
       // Hook error state is surfaced in the panel.
     }
@@ -431,7 +546,79 @@ function AdminDeletedCardsPanel({
       </div>
 
       <div className="mb-4">
-        <ExecutiveBadge tone="warning">삭제된 카드뉴스 {cards.length}건</ExecutiveBadge>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setListMode('VISIBLE')}
+              className={`rounded-[var(--axis-radius-sm)] border px-3 py-2 text-sm font-semibold transition ${
+                listMode === 'VISIBLE'
+                  ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
+                  : 'border-[var(--axis-hairline)] bg-white text-[var(--axis-ink)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]'
+              }`}
+            >
+              삭제 목록
+            </button>
+            <button
+              type="button"
+              onClick={() => setListMode('HIDDEN')}
+              className={`rounded-[var(--axis-radius-sm)] border px-3 py-2 text-sm font-semibold transition ${
+                listMode === 'HIDDEN'
+                  ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
+                  : 'border-[var(--axis-hairline)] bg-white text-[var(--axis-ink)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]'
+              }`}
+            >
+              숨긴 항목
+            </button>
+            <ExecutiveBadge tone="warning">삭제된 카드뉴스 {cards.length}건</ExecutiveBadge>
+            <ExecutiveBadge tone={listMode === 'VISIBLE' ? 'neutral' : 'accent'}>
+              {listMode === 'VISIBLE' ? '삭제 목록' : '숨긴 항목'} {displayCards.length}건
+            </ExecutiveBadge>
+            {selectedCount > 0 ? <ExecutiveBadge tone="accent">선택 {selectedCount}건</ExecutiveBadge> : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {listMode === 'VISIBLE' ? (
+              <>
+                <ExecutiveButton
+                  variant="danger"
+                  icon={<Trash2 size={15} />}
+                  disabled={selectedCount === 0}
+                  onClick={hideSelectedCards}
+                >
+                  선택 삭제
+                </ExecutiveButton>
+                <ExecutiveButton
+                  variant="danger"
+                  icon={<Trash2 size={15} />}
+                  disabled={visibleCards.length === 0}
+                  onClick={hideAllCards}
+                >
+                  전체 삭제
+                </ExecutiveButton>
+              </>
+            ) : (
+              <>
+                <ExecutiveButton
+                  variant="secondary"
+                  icon={<RotateCcw size={15} />}
+                  disabled={selectedCount === 0}
+                  onClick={restoreSelectedToList}
+                >
+                  선택 복구
+                </ExecutiveButton>
+                <ExecutiveButton
+                  variant="secondary"
+                  icon={<RotateCcw size={15} />}
+                  disabled={hiddenCards.length === 0}
+                  onClick={restoreAllToList}
+                >
+                  전체 복구
+                </ExecutiveButton>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {error ? (
@@ -444,6 +631,16 @@ function AdminDeletedCardsPanel({
         <table className="axis-data-table min-w-[920px]">
           <thead>
             <tr>
+              <th className="w-12">
+                <input
+                  type="checkbox"
+                  checked={allRowsSelected}
+                  disabled={isLoading || pageCards.length === 0}
+                  onChange={togglePageCards}
+                  aria-label="현재 페이지 카드뉴스 전체 선택"
+                  className="h-4 w-4 rounded border-[var(--axis-hairline)]"
+                />
+              </th>
               <th>제목</th>
               <th>Peer사</th>
               <th>삭제 사유</th>
@@ -454,33 +651,127 @@ function AdminDeletedCardsPanel({
           </thead>
           <tbody>
             {isLoading ? (
-              <TableStateRow colSpan={6} label="삭제된 카드뉴스를 불러오는 중입니다." skeleton />
-            ) : cards.length === 0 ? (
-              <TableStateRow colSpan={6} label="삭제된 카드뉴스가 없습니다." />
-            ) : cards.map((card) => (
+              <TableStateRow colSpan={7} label="삭제된 카드뉴스를 불러오는 중입니다." skeleton />
+            ) : displayCards.length === 0 ? (
+              <TableStateRow colSpan={7} label={listMode === 'VISIBLE' ? '삭제 목록에 카드뉴스가 없습니다.' : '숨긴 항목이 없습니다.'} />
+            ) : pageCards.map((card) => (
               <tr key={card.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedCardIdSet.has(card.id)}
+                    onChange={() => toggleCard(card.id)}
+                    aria-label={`${card.title} 선택`}
+                    className="h-4 w-4 rounded border-[var(--axis-hairline)]"
+                  />
+                </td>
                 <td className="font-semibold text-[var(--axis-ink)]">{card.title}</td>
                 <td>{card.peerId}</td>
                 <td>{card.deletionReason || '-'}</td>
                 <td>{card.deletedBy || '-'}</td>
                 <td>{formatLastLogin(card.deletedAt)}</td>
                 <td>
-                  <button
-                    type="button"
-                    disabled={updatingCardId === card.id}
-                    onClick={() => void handleRestore(card)}
-                    className="inline-flex items-center gap-2 rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    <RotateCcw size={14} />
-                    복구
-                  </button>
+                  {listMode === 'VISIBLE' ? (
+                    <button
+                      type="button"
+                      disabled={updatingCardId === card.id}
+                      onClick={() => void handleRestore(card)}
+                      className="inline-flex items-center gap-2 rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      <RotateCcw size={14} />
+                      복구
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHiddenCardIds((currentIds) => currentIds.filter((id) => id !== card.id));
+                        setSelectedCardIds((currentIds) => currentIds.filter((id) => id !== card.id));
+                      }}
+                      className="inline-flex items-center gap-2 rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                    >
+                      <RotateCcw size={14} />
+                      목록으로 복구
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <DeletedCardsPagination
+        className="mt-4 mb-40"
+        safePage={safePage}
+        visiblePageNumbers={visiblePageNumbers}
+        previousPage={previousPage}
+        nextPage={nextPage}
+        onPageChange={setPageSafely}
+      />
     </section>
+  );
+}
+
+function DeletedCardsPagination({
+  className = 'mb-4',
+  safePage,
+  visiblePageNumbers,
+  previousPage,
+  nextPage,
+  onPageChange,
+}: {
+  className?: string;
+  safePage: number;
+  visiblePageNumbers: number[];
+  previousPage: number | null;
+  nextPage: number | null;
+  onPageChange: (page: number) => void;
+}) {
+  const handleClick = (page: number) => (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onPageChange(page);
+  };
+
+  return (
+    <nav
+      aria-label="삭제된 카드뉴스 페이지 이동"
+      className={`relative z-[100] flex flex-wrap items-center justify-center gap-3 pointer-events-auto ${className}`}
+    >
+      <div className="relative flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-2 shadow-[0_12px_32px_-24px_rgba(0,0,0,0.28)]">
+        <button
+          type="button"
+          onClick={previousPage ? handleClick(previousPage) : undefined}
+          disabled={previousPage === null}
+          className="cursor-pointer pointer-events-auto rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {'<'}
+        </button>
+        {visiblePageNumbers.map((pageNumber) => (
+          <button
+            key={pageNumber}
+            type="button"
+            onClick={handleClick(pageNumber)}
+            className={`min-w-9 cursor-pointer pointer-events-auto rounded-[var(--axis-radius-sm)] border px-3 py-2 text-sm font-medium transition ${
+              pageNumber === safePage
+                ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
+                : 'border-[var(--axis-hairline)] bg-white text-[var(--axis-ink)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]'
+            }`}
+          >
+            {pageNumber}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={nextPage ? handleClick(nextPage) : undefined}
+          disabled={nextPage === null}
+          className="cursor-pointer pointer-events-auto rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {'>'}
+        </button>
+      </div>
+    </nav>
   );
 }
 
@@ -588,4 +879,28 @@ function auditActionLabel(action: string) {
   if (action === 'card_news.restore') return '카드뉴스 복구';
   if (action === 'card_news.status_change') return '카드뉴스 상태 변경';
   return action;
+}
+
+function readHiddenCardIds(storageKey: string) {
+  try {
+    const storedValue = window.localStorage.getItem(storageKey);
+    if (!storedValue) {
+      return [];
+    }
+    const parsedValue = JSON.parse(storedValue);
+    if (!Array.isArray(parsedValue)) {
+      return [];
+    }
+    return parsedValue.filter((value): value is string => typeof value === 'string');
+  } catch {
+    return [];
+  }
+}
+
+function writeHiddenCardIds(storageKey: string, cardIds: string[]) {
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(cardIds));
+  } catch {
+    // Local UI preference only. Ignore storage failures.
+  }
 }

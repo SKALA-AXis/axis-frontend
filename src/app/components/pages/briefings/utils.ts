@@ -28,7 +28,10 @@ export const periodMeta: Record<BriefingPeriod, { label: string; title: string; 
 };
 
 export function toDateInputValue(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function toMonthInputValue(date = new Date()) {
@@ -76,6 +79,44 @@ export function getWeekOptions(monthValue: string) {
   });
 }
 
+export function getWeekStartDateValue(monthValue: string, weekIndex: number) {
+  const [rawYear, rawMonth] = monthValue.split('-').map(Number);
+  const fallback = new Date();
+  const year = rawYear || fallback.getFullYear();
+  const month = rawMonth || fallback.getMonth() + 1;
+  const safeWeekIndex = Math.max(1, Math.min(5, Number.isFinite(weekIndex) ? weekIndex : 1));
+  const startDay = (safeWeekIndex - 1) * 7 + 1;
+  return `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+}
+
+export function getWeekEndDateValue(monthValue: string, weekIndex: number) {
+  const [rawYear, rawMonth] = monthValue.split('-').map(Number);
+  const fallback = new Date();
+  const year = rawYear || fallback.getFullYear();
+  const month = rawMonth || fallback.getMonth() + 1;
+  const lastDate = new Date(year, month, 0).getDate();
+  const safeWeekIndex = Math.max(1, Math.min(5, Number.isFinite(weekIndex) ? weekIndex : 1));
+  const endDay = Math.min(lastDate, safeWeekIndex * 7);
+  return `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+}
+
+export function getWeekAnchorDateValue(monthValue: string, weekIndex: number, todayValue = toDateInputValue()) {
+  const startDate = getWeekStartDateValue(monthValue, weekIndex);
+  const endDate = getWeekEndDateValue(monthValue, weekIndex);
+  if (monthValue === todayValue.slice(0, 7) && startDate <= todayValue && todayValue <= endDate) {
+    return todayValue;
+  }
+  return endDate;
+}
+
+function getWeekRangeLabel(monthValue: string, weekIndex: number, todayValue = toDateInputValue()) {
+  const startDate = getWeekStartDateValue(monthValue, weekIndex);
+  const endDate = getWeekAnchorDateValue(monthValue, weekIndex, todayValue);
+  const [startYear, startMonth, startDay] = startDate.split('-');
+  const [, endMonth, endDay] = endDate.split('-');
+  return `${startYear}.${startMonth}.${startDay} - ${endMonth}.${endDay}`;
+}
+
 export function buildBriefingRange(
   period: BriefingPeriod,
   dailyDate: string,
@@ -99,7 +140,7 @@ export function buildBriefingRange(
     const weekOptions = getWeekOptions(weeklyMonth);
     const selectedWeek = weekOptions.find((item) => item.value === weekIndex) ?? weekOptions[0];
     const label = selectedWeek?.label ?? `${month}월 ${getWeekLabel(1)}`;
-    const range = selectedWeek?.range ?? formatKoreanMonth(weeklyMonth);
+    const range = selectedWeek ? getWeekRangeLabel(weeklyMonth, selectedWeek.value) : formatKoreanMonth(weeklyMonth);
     return {
       seedKey: `weekly-${weeklyMonth}-${selectedWeek?.value ?? 1}`,
       title: `${label} 브리핑`,
