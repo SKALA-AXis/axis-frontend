@@ -58,6 +58,14 @@ function firstNonEmptyString(...values: Array<string | null | undefined>) {
   return values.find((value) => typeof value === 'string' && value.trim().length > 0);
 }
 
+function isSafeCoverImageUrl(value: string | null | undefined) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return false;
+  }
+  const trimmed = value.trim();
+  return trimmed.startsWith('/') || trimmed.startsWith('https://');
+}
+
 function resolveSourceName(sourceName?: string, url?: string) {
   if (sourceName && sourceName !== 'naver_news') {
     return sourceName;
@@ -101,10 +109,13 @@ export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem
           },
         ];
   const fallbackLogo = getFallbackCardLogo(card);
+  const safeCoverImageUrl = isSafeCoverImageUrl(card.coverImageUrl) ? card.coverImageUrl : null;
+  const safeDisplayImageUrl = isSafeCoverImageUrl(card.display?.background_asset_url) ? card.display?.background_asset_url : null;
+  const safeSlideImageUrl = isSafeCoverImageUrl(primarySlide?.image_url) ? primarySlide?.image_url : null;
   const coverImageUrl = firstNonEmptyString(
-    card.coverImageUrl,
-    card.display?.background_asset_url,
-    primarySlide?.image_url,
+    safeCoverImageUrl,
+    safeDisplayImageUrl,
+    safeSlideImageUrl,
     fallbackLogo?.url,
   ) ?? '/png.png';
   const normalizedSources = card.sources?.map((source) => ({
