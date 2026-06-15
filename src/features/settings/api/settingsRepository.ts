@@ -1,6 +1,6 @@
 import { getAccessToken } from '../../../shared/api/authSession';
 import { env } from '../../../shared/config/env';
-import type { AccessLogItem } from '../model/accessLog';
+import type { AccessLogItem, AccessLogPage } from '../model/accessLog';
 
 type ApiResponse<T> = {
   success: boolean;
@@ -11,6 +11,11 @@ type ApiResponse<T> = {
 
 type AccessLogsResponse = {
   items?: RawAccessLog[];
+  page?: number;
+  size?: number;
+  total?: number;
+  totalPages?: number;
+  total_pages?: number;
 };
 
 type RawAccessLog = Record<string, unknown>;
@@ -18,9 +23,19 @@ type RawAccessLog = Record<string, unknown>;
 class SettingsRepository {
   private readonly baseUrl = env.apiBaseUrl;
 
-  async accessLogs(): Promise<AccessLogItem[]> {
-    const response = await this.request<AccessLogsResponse>('/api/settings/access-logs');
-    return (response?.items ?? []).map(toAccessLogItem);
+  async accessLogs(page = 0, size = 5): Promise<AccessLogPage> {
+    const response = await this.request<AccessLogsResponse>(`/api/settings/access-logs?page=${page}&size=${size}`);
+    const items = (response?.items ?? []).map(toAccessLogItem);
+    const responseSize = numberValue(response, ['size'], size);
+    const total = numberValue(response, ['total'], items.length);
+
+    return {
+      items,
+      page: numberValue(response, ['page'], page),
+      size: responseSize,
+      total,
+      totalPages: numberValue(response, ['totalPages', 'total_pages'], Math.ceil(total / Math.max(1, responseSize))),
+    };
   }
 
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
@@ -107,6 +122,23 @@ function stringValue(source: RawAccessLog, keys: string[]) {
   return '';
 }
 
+function numberValue(source: Record<string, unknown> | undefined, keys: string[], fallback: number) {
+  if (!source) return fallback;
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  return fallback;
+}
+
 function booleanValue(value: unknown, fallback: boolean) {
   return typeof value === 'boolean' ? value : fallback;
 }
@@ -115,19 +147,19 @@ function inferCountryFromIp(value: string) {
   const ip = value.trim().toLowerCase();
   if (!ip) return '알 수 없음';
   if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1' || ip === '0:0:0:0:0:0:0:1') {
-    return '로컬';
+    return '로컬 개발환경';
   }
   if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('169.254.')) {
-    return '내부망';
+    return '사내/내부망';
   }
   if (ip.startsWith('172.')) {
     const secondOctet = Number(ip.split('.')[1]);
     if (secondOctet >= 16 && secondOctet <= 31) {
-      return '내부망';
+      return '사내/내부망';
     }
   }
   if (ip.startsWith('fc') || ip.startsWith('fd') || ip.startsWith('fe80:')) {
-    return '내부망';
+    return '사내/내부망';
   }
   return '알 수 없음';
 }
