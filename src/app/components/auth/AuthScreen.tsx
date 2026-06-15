@@ -489,7 +489,7 @@ export function AuthScreen({
             <form className="space-y-6" onSubmit={handleForgotPasswordSubmit} noValidate>
               <div>
                 <p className="mb-3 text-micro-eyebrow text-action">PASSWORD RESET</p>
-                <h1 className="font-display text-heading-1 text-ink mb-3">비밀번호 찾기</h1>
+                <h1 className="font-display text-heading-1 text-ink mb-3">비밀번호 재설정</h1>
                 <p className="text-body-md leading-6 text-steel">가입 이메일을 입력하면 재설정 안내를 보내드립니다.</p>
               </div>
 
