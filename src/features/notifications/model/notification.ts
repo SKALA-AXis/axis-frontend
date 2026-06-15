@@ -21,3 +21,7 @@ export type NotificationPreferences = {
   importantEnabled: boolean;
   keywords: string[];
 };
+
+export function formatNotificationCount(count: number) {
+  return count > 99 ? '99+' : count.toLocaleString('ko-KR');
+}

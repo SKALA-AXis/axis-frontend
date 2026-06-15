@@ -19,6 +19,11 @@ function toLocalDateInputValue(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+function readCardDeepLinkId() {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('card');
+}
+
 function buildCardNewsRows(cards: CardNewsItem[]) {
   const catalog = buildCardCatalog(getLatestFirst(cards));
   const uniqueRows = Array.from(
@@ -67,6 +72,7 @@ export function CardNewsWorkspaceView({
   const [cardPage, setCardPage] = useState(1);
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
   const [detailSlideIndex, setDetailSlideIndex] = useState(0);
+  const [deepLinkedCardId, setDeepLinkedCardId] = useState<string | null>(() => readCardDeepLinkId());
   const [actionFeedback, setActionFeedback] = useState('');
   const [updatingCardId, setUpdatingCardId] = useState<string | null>(null);
   const todayDateValue = useMemo(() => toLocalDateInputValue(), []);
@@ -106,10 +112,30 @@ export function CardNewsWorkspaceView({
     return Array.from({ length: windowEnd - cardPageWindowStart + 1 }, (_, index) => cardPageWindowStart + index);
   }, [cardPageWindowStart, totalCardPages]);
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
+  const visibleDetailCards = visibleRows.map((row) => row.card);
+  const overlayCards = detailCard && visibleDetailCards.some((card) => card.id === detailCard.id)
+    ? visibleDetailCards
+    : cards;
+
+  useEffect(() => {
+    const syncDeepLink = () => {
+      setDeepLinkedCardId(readCardDeepLinkId());
+    };
+    window.addEventListener('popstate', syncDeepLink);
+    return () => window.removeEventListener('popstate', syncDeepLink);
+  }, []);
 
   useEffect(() => {
     setDetailSlideIndex(0);
   }, [detailCardId]);
+
+  useEffect(() => {
+    if (!deepLinkedCardId || isLoading) return;
+    if (!cards.some((card) => card.id === deepLinkedCardId)) return;
+    setDetailCardId(deepLinkedCardId);
+    setDetailSlideIndex(0);
+    setDeepLinkedCardId(null);
+  }, [cards, deepLinkedCardId, isLoading]);
 
   useEffect(() => {
     setKeywordFilter(initialQuery);
@@ -396,7 +422,7 @@ export function CardNewsWorkspaceView({
       {detailCard ? (
         <FloatingCardNewsOverlay
           card={detailCard}
-          cards={visibleRows.map((row) => row.card)}
+          cards={overlayCards}
           bookmarked={bookmarkedIds.includes(detailCard.id)}
           slideIndex={detailSlideIndex}
           onSlideChange={setDetailSlideIndex}
