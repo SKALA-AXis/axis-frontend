@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Bookmark, CalendarDays, Filter, Share2, Trash2 } from 'lucide-react';
-import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
+import { getCardLogoImageClass, getFallbackCardLogo } from '../../../../features/card-news/cardLogoFallback';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { buildCardCatalog } from '../../../../features/card-news/mappers/cardNewsPresentation';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
@@ -33,6 +33,16 @@ function buildCardNewsRows(cards: CardNewsItem[]) {
     sourceType: card.sector,
     keywords: [card.peer, card.sector, card.accentLabel].filter(Boolean),
   }));
+}
+
+function replaceBrokenCardImage(image: HTMLImageElement, card: CardNewsItem) {
+  const fallbackLogo = getFallbackCardLogo(card);
+  if (!fallbackLogo || image.getAttribute('src') === fallbackLogo.url) {
+    return;
+  }
+  image.src = fallbackLogo.url;
+  image.alt = fallbackLogo.alt;
+  image.className = getCardLogoImageClass(fallbackLogo.url, 'card') ?? image.className;
 }
 
 export function CardNewsWorkspaceView({
@@ -277,6 +287,7 @@ export function CardNewsWorkspaceView({
                             src={row.card.coverImageUrl}
                             alt={row.card.coverImageAlt}
                             className={getCardLogoImageClass(row.card.coverImageUrl, 'card') ?? 'absolute inset-0 h-full w-full object-cover opacity-55'}
+                            onError={(event) => replaceBrokenCardImage(event.currentTarget, row.card)}
                           />
                         ) : (
                           <div className="absolute inset-0" style={{ background: row.coverStyle }} />
