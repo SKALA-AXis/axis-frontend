@@ -32,6 +32,28 @@ import {
   getWhyImportant,
 } from '../../../features/card-news/mappers/cardNewsExecutive';
 
+// 모든 뷰 하단에 공통으로 노출되는 지원/문의 푸터. ExecutivePage 가 렌더하므로
+// DashboardShell 이 분기하는 11개 뷰 전체에 한 번에 적용된다.
+function SupportFooter() {
+  return (
+    <footer className="border-t border-[var(--axis-hairline)]">
+      <div className="mx-auto flex w-full max-w-[1760px] flex-col items-start gap-1.5 px-3 py-4 text-caption text-[var(--axis-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-4 lg:px-5 2xl:px-6">
+        <p>© 2026 SK AX · AXIS — AX Intelligence Signal</p>
+        <p>
+          문제 발생 또는 문의사항은{' '}
+          <a
+            href="mailto:axis.admin@sk.com"
+            className="font-semibold text-[var(--axis-body)] underline-offset-2 hover:underline"
+          >
+            axis.admin@sk.com
+          </a>
+          {' '}으로 연락해 주세요.
+        </p>
+      </div>
+    </footer>
+  );
+}
+
 export function ExecutivePage({
   children,
   className = '',
@@ -39,7 +61,14 @@ export function ExecutivePage({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={`axis-executive-page min-h-full overflow-auto ${className}`}>{children}</div>;
+  // 자식 뷰는 flex-1 래퍼 안에서 기존 block flow 를 그대로 유지하고,
+  // 푸터만 그 아래로 밀어 짧은 페이지에서도 화면 하단에 고정되게 한다.
+  return (
+    <div className={`axis-executive-page flex min-h-full flex-col overflow-auto ${className}`}>
+      <div className="flex-1">{children}</div>
+      <SupportFooter />
+    </div>
+  );
 }
 
 export function ExecutiveContainer({

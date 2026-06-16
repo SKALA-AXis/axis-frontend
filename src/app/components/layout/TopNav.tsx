@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, HelpCircle, Search, Settings } from 'lucide-react';
 import type { AuthUser } from '../../../features/auth/model/auth';
 import { notificationsRepository } from '../../../features/notifications/api/notificationsRepository';
-import type { NotificationItem } from '../../../features/notifications/model/notification';
+import { formatNotificationCount, type NotificationItem } from '../../../features/notifications/model/notification';
 import type { SearchScope } from '../../../features/search/model/search';
 import { viewLabels } from '../../../shared/content/navigation';
 import { formatTopNavUpdateTime } from '../../../shared/lib/viewFreshness';
@@ -82,6 +82,7 @@ export function TopNav({
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [searchScope, setSearchScope] = useState<SearchScope>('ALL');
   const visibleNotifications = notifications.slice(0, 5);
+  const unreadCountLabel = formatNotificationCount(unreadCount);
   const hideGlobalSearch = activeView === 'search';
 
   const loadNotifications = useCallback(async (limit = 10) => {
@@ -269,7 +270,7 @@ export function TopNav({
           <Bell size={16} strokeWidth={2} />
           {unreadCount > 0 ? (
             <span className="absolute -right-0.5 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-sk-red px-1 text-[9px] font-bold leading-none text-white">
-              {unreadCount}
+              {unreadCountLabel}
             </span>
           ) : null}
         </button>
@@ -279,7 +280,7 @@ export function TopNav({
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p className="axis-kicker">Notifications</p>
-                <p className="mt-1 text-xs font-semibold text-[var(--axis-muted)]">안읽음 {unreadCount}건</p>
+                <p className="mt-1 text-xs font-semibold text-[var(--axis-muted)]">안읽음 {unreadCountLabel}건</p>
               </div>
               <div className="flex items-center gap-2">
                 <button

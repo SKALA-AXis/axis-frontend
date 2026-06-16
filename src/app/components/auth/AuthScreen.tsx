@@ -489,7 +489,7 @@ export function AuthScreen({
             <form className="space-y-6" onSubmit={handleForgotPasswordSubmit} noValidate>
               <div>
                 <p className="mb-3 text-micro-eyebrow text-action">PASSWORD RESET</p>
-                <h1 className="font-display text-heading-1 text-ink mb-3">비밀번호 찾기</h1>
+                <h1 className="font-display text-heading-1 text-ink mb-3">비밀번호 재설정</h1>
                 <p className="text-body-md leading-6 text-steel">가입 이메일을 입력하면 재설정 안내를 보내드립니다.</p>
               </div>
 
@@ -742,6 +742,20 @@ export function AuthScreen({
 
         <div className="absolute bottom-0 left-0 right-0 h-2 bg-sunset-stripe" />
       </aside>
+
+      {/* 로그인 전 화면에도 문의 연락처 노출 — 로그인 곤란/오류 시 사용자가 바로 연락할 수 있도록 */}
+      <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-6 pb-4">
+        <p className="pointer-events-auto rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/82 px-4 py-1.5 text-caption text-[var(--axis-muted)] shadow-[0_14px_36px_-28px_rgba(0,0,0,0.45)] backdrop-blur">
+          문제 발생 또는 문의사항은{' '}
+          <a
+            href="mailto:axis.admin@sk.com"
+            className="font-semibold text-[var(--axis-body)] underline-offset-2 hover:underline"
+          >
+            axis.admin@sk.com
+          </a>
+          {' '}으로 연락해 주세요.
+        </p>
+      </footer>
     </div>
   );
 }

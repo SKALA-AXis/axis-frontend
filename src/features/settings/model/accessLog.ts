@@ -7,3 +7,11 @@ export type AccessLogItem = {
   userAgent: string;
   occurredAt: string;
 };
+
+export type AccessLogPage = {
+  items: AccessLogItem[];
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+};

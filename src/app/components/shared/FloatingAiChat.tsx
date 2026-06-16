@@ -143,11 +143,11 @@ export function FloatingAiChat({ activeView, scrollToTopControl }: FloatingAiCha
     if (!file) return;
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     if (!isPdf) {
-      appendAssistantMessage('PDF 파일만 첨부할 수 있습니다.');
+      appendAssistantMessage(formatAssistantError(assistantErrorCodes.pdfUnsupportedType));
       return;
     }
     if (file.size > 15 * 1024 * 1024) {
-      appendAssistantMessage('PDF 파일은 15MB 이하만 첨부할 수 있습니다.');
+      appendAssistantMessage(formatAssistantError(assistantErrorCodes.pdfTooLarge));
       return;
     }
     setAttachment(file);
@@ -314,16 +314,18 @@ export function FloatingAiChat({ activeView, scrollToTopControl }: FloatingAiCha
             {isSending ? <AssistantSendingIndicator /> : null}
           </div>
 
-          <ChatComposer
-            query={query}
-            attachment={attachment}
-            isSending={isSending}
-            placeholder={uiText.dashboard.chatPlaceholder}
-            onQueryChange={setQuery}
-            onSend={() => void handleSend()}
-            onAttachmentChange={handleAttachmentChange}
-            onRemoveAttachment={() => setAttachment(null)}
-          />
+          {!isHistoryOpen ? (
+            <ChatComposer
+              query={query}
+              attachment={attachment}
+              isSending={isSending}
+              placeholder={uiText.dashboard.chatPlaceholder}
+              onQueryChange={setQuery}
+              onSend={() => void handleSend()}
+              onAttachmentChange={handleAttachmentChange}
+              onRemoveAttachment={() => setAttachment(null)}
+            />
+          ) : null}
         </section>
       ) : (
         <ChatBubblePreview isVisible={isBubbleVisible} />

@@ -1,5 +1,5 @@
-import { Bell, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Type, X, User } from 'lucide-react';
-import type { FormEvent } from 'react';
+import { Bell, ChevronLeft, ChevronRight, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Type, X, User } from 'lucide-react';
+import type { FormEvent, ReactNode } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ExecutiveBadge,
@@ -26,6 +26,9 @@ type AccessLogStatus = 'idle' | 'loading' | 'success' | 'error';
 type NotificationPreferenceStatus = 'idle' | 'loading' | 'success' | 'error';
 type PasswordChangeStatus = 'idle' | 'loading' | 'success' | 'error';
 
+const ACCESS_LOG_PAGE_SIZE = 5;
+const ACCESS_LOG_PAGE_WINDOW_SIZE = 5;
+
 export function SettingsView({
   onLogout,
   currentUser,
@@ -42,6 +45,9 @@ export function SettingsView({
   const [accessLogs, setAccessLogs] = useState<AccessLogItem[]>([]);
   const [accessLogStatus, setAccessLogStatus] = useState<AccessLogStatus>('idle');
   const [accessLogError, setAccessLogError] = useState('');
+  const [accessLogPage, setAccessLogPage] = useState(1);
+  const [accessLogTotal, setAccessLogTotal] = useState(0);
+  const [accessLogTotalPages, setAccessLogTotalPages] = useState(1);
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordChangeStatus, setPasswordChangeStatus] = useState<PasswordChangeStatus>('idle');
@@ -53,11 +59,20 @@ export function SettingsView({
   });
   const [notificationPreferenceStatus, setNotificationPreferenceStatus] = useState<NotificationPreferenceStatus>('idle');
   const [notificationPreferenceError, setNotificationPreferenceError] = useState('');
+  const [notificationPreferenceSaved, setNotificationPreferenceSaved] = useState(false);
   const [keywordDraft, setKeywordDraft] = useState('');
   const displayName = currentUser?.name || currentUser?.email?.split('@')[0] || 'AXIS 사용자';
   const email = currentUser?.email || 'axis.user@sk.com';
   const textScaleStep = clampTextScaleStep(textPreference.step);
   const textScaleLabel = `${Math.round((textScaleSteps[textScaleStep] - 1) * 100)}%`;
+  const safeAccessLogPage = Math.min(accessLogPage, Math.max(1, accessLogTotalPages));
+  const accessLogPageWindowStart = Math.floor((safeAccessLogPage - 1) / ACCESS_LOG_PAGE_WINDOW_SIZE) * ACCESS_LOG_PAGE_WINDOW_SIZE + 1;
+  const visibleAccessLogPageNumbers = Array.from(
+    { length: Math.min(ACCESS_LOG_PAGE_WINDOW_SIZE, Math.max(1, accessLogTotalPages) - accessLogPageWindowStart + 1) },
+    (_, index) => accessLogPageWindowStart + index,
+  );
+  const accessLogRangeStart = accessLogTotal === 0 ? 0 : (safeAccessLogPage - 1) * ACCESS_LOG_PAGE_SIZE + 1;
+  const accessLogRangeEnd = accessLogTotal === 0 ? 0 : Math.min(accessLogTotal, accessLogRangeStart + accessLogs.length - 1);
 
   const tabs: Array<{ id: SettingsTab; label: string; icon: typeof User }> = [
     { id: 'account', label: '회원 정보', icon: User },
@@ -66,15 +81,20 @@ export function SettingsView({
     { id: 'largeText', label: '더 큰 텍스트', icon: Type },
   ];
 
-  const loadAccessLogs = useCallback(async () => {
+  const loadAccessLogs = useCallback(async (page = 1) => {
     setAccessLogStatus('loading');
     setAccessLogError('');
     try {
-      const items = await settingsRepository.accessLogs();
-      setAccessLogs(items);
+      const result = await settingsRepository.accessLogs(Math.max(0, page - 1), ACCESS_LOG_PAGE_SIZE);
+      setAccessLogs(result.items);
+      setAccessLogPage(result.page + 1);
+      setAccessLogTotal(result.total);
+      setAccessLogTotalPages(Math.max(1, result.totalPages));
       setAccessLogStatus('success');
     } catch (error) {
       setAccessLogs([]);
+      setAccessLogTotal(0);
+      setAccessLogTotalPages(1);
       setAccessLogStatus('error');
       setAccessLogError(error instanceof Error ? error.message : '접속 로그를 불러오지 못했습니다.');
     }
@@ -82,13 +102,20 @@ export function SettingsView({
 
   useEffect(() => {
     if (activeTab === 'history' && accessLogStatus === 'idle') {
-      void loadAccessLogs();
+      void loadAccessLogs(1);
     }
   }, [accessLogStatus, activeTab, loadAccessLogs]);
+
+  const moveAccessLogPage = (page: number) => {
+    const nextPage = Math.min(Math.max(1, page), Math.max(1, accessLogTotalPages));
+    setAccessLogPage(nextPage);
+    void loadAccessLogs(nextPage);
+  };
 
   const loadNotificationPreferences = useCallback(async () => {
     setNotificationPreferenceStatus('loading');
     setNotificationPreferenceError('');
+    setNotificationPreferenceSaved(false);
     try {
       setNotificationPreferences(await notificationsRepository.preferences());
       setNotificationPreferenceStatus('success');
@@ -101,13 +128,21 @@ export function SettingsView({
   const saveNotificationPreferences = async () => {
     setNotificationPreferenceStatus('loading');
     setNotificationPreferenceError('');
+    setNotificationPreferenceSaved(false);
     try {
       setNotificationPreferences(await notificationsRepository.updatePreferences(notificationPreferences));
       setNotificationPreferenceStatus('success');
+      setNotificationPreferenceSaved(true);
     } catch (error) {
       setNotificationPreferenceStatus('error');
       setNotificationPreferenceError(error instanceof Error ? error.message : '알림 설정을 저장하지 못했습니다.');
     }
+  };
+
+  const updateNotificationPreferencesDraft = (updater: (current: NotificationPreferences) => NotificationPreferences) => {
+    setNotificationPreferenceSaved(false);
+    setNotificationPreferenceError('');
+    setNotificationPreferences(updater);
   };
 
   const addKeyword = () => {
@@ -116,7 +151,7 @@ export function SettingsView({
       setKeywordDraft('');
       return;
     }
-    setNotificationPreferences((current) => ({ ...current, keywords: [...current.keywords, keyword] }));
+    updateNotificationPreferencesDraft((current) => ({ ...current, keywords: [...current.keywords, keyword] }));
     setKeywordDraft('');
   };
 
@@ -179,9 +214,9 @@ export function SettingsView({
           actions={<ExecutiveButton variant="danger" icon={<LogOut size={16} />} onClick={onLogout}>로그아웃</ExecutiveButton>}
         />
 
-        <section className="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <section className="grid gap-5 xl:grid-cols-[16rem_minmax(0,1fr)]">
           <aside className="axis-panel-flat h-fit p-3">
-            <nav data-guide="settings-tabs" className="flex gap-2 overflow-x-auto lg:flex-col">
+            <nav data-guide="settings-tabs" className="flex gap-2 overflow-x-auto xl:flex-col">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -191,7 +226,7 @@ export function SettingsView({
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex shrink-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-4 py-3 text-left transition lg:w-full ${
+                    className={`flex shrink-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-4 py-3 text-left transition xl:w-full ${
                       isActive
                         ? 'bg-[var(--axis-accent)] text-white shadow-[0_14px_34px_-26px_rgba(220,90,36,0.65)]'
                         : 'text-[var(--axis-body)] hover:bg-[var(--axis-surface-muted)]'
@@ -296,49 +331,86 @@ export function SettingsView({
                       variant="secondary"
                       icon={<RefreshCw size={14} />}
                       disabled={accessLogStatus === 'loading'}
-                      onClick={() => void loadAccessLogs()}
+                      onClick={() => void loadAccessLogs(safeAccessLogPage)}
                     >
                       새로고침
                     </ExecutiveButton>
                   </div>
                 </div>
                 <div className="mt-5 overflow-x-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)]">
-                  <table className="axis-data-table">
+                  <table className="axis-data-table min-w-[900px]">
                     <thead>
                       <tr>
                         <th>일시</th>
-                        <th>Action</th>
-                        <th>국가</th>
+                        <th>이벤트</th>
+                        <th>상태</th>
+                        <th>접속 위치</th>
                         <th>IP 주소</th>
+                        <th>접속 환경</th>
                       </tr>
                     </thead>
                     <tbody>
                       {accessLogStatus === 'loading' ? (
                         <tr>
-                          <td colSpan={4} className="text-center text-[var(--axis-muted)]">접속 로그를 불러오는 중입니다.</td>
+                          <td colSpan={6} className="text-center text-[var(--axis-muted)]">접속 로그를 불러오는 중입니다.</td>
                         </tr>
                       ) : null}
                       {accessLogStatus === 'error' ? (
                         <tr>
-                          <td colSpan={4} className="text-center text-[var(--axis-danger)]">{accessLogError}</td>
+                          <td colSpan={6} className="text-center text-[var(--axis-danger)]">{accessLogError}</td>
                         </tr>
                       ) : null}
                       {accessLogStatus === 'success' && accessLogs.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="text-center text-[var(--axis-muted)]">표시할 접속 로그가 없습니다.</td>
+                          <td colSpan={6} className="text-center text-[var(--axis-muted)]">표시할 접속 로그가 없습니다.</td>
                         </tr>
                       ) : null}
                       {accessLogStatus === 'success' && accessLogs.map((item) => (
                         <tr key={item.id}>
                           <td>{formatAccessLogTime(item.occurredAt)}</td>
                           <td>{formatAccessLogAction(item)}</td>
-                          <td>{item.country || '알 수 없음'}</td>
+                          <td><AccessLogStatusPill item={item} /></td>
+                          <td>{formatAccessLogLocation(item.country)}</td>
                           <td>{item.ipAddress || '기록 없음'}</td>
+                          <td title={item.userAgent || undefined}>{formatAccessLogClient(item.userAgent)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                {accessLogStatus === 'success' && accessLogTotalPages > 1 ? (
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-caption-bold text-[var(--axis-muted)]">
+                      총 {accessLogTotal.toLocaleString('ko-KR')}건 중 {accessLogRangeStart.toLocaleString('ko-KR')}-{accessLogRangeEnd.toLocaleString('ko-KR')}건
+                    </p>
+                    <nav className="flex items-center gap-1" aria-label="접속 로그 페이지">
+                      <AccessLogPageButton
+                        label="이전 페이지"
+                        disabled={safeAccessLogPage <= 1}
+                        onClick={() => moveAccessLogPage(safeAccessLogPage - 1)}
+                      >
+                        <ChevronLeft size={15} />
+                      </AccessLogPageButton>
+                      {visibleAccessLogPageNumbers.map((page) => (
+                        <AccessLogPageButton
+                          key={page}
+                          label={`${page}페이지`}
+                          isActive={page === safeAccessLogPage}
+                          onClick={() => moveAccessLogPage(page)}
+                        >
+                          {page}
+                        </AccessLogPageButton>
+                      ))}
+                      <AccessLogPageButton
+                        label="다음 페이지"
+                        disabled={safeAccessLogPage >= accessLogTotalPages}
+                        onClick={() => moveAccessLogPage(safeAccessLogPage + 1)}
+                      >
+                        <ChevronRight size={15} />
+                      </AccessLogPageButton>
+                    </nav>
+                  </div>
+                ) : null}
               </section>
             ) : null}
 
@@ -356,13 +428,13 @@ export function SettingsView({
                     title="알림 전체"
                     description="상단 알림창과 배지 알림을 사용합니다."
                     checked={notificationPreferences.enabled}
-                    onChange={(checked) => setNotificationPreferences((current) => ({ ...current, enabled: checked }))}
+                    onChange={(checked) => updateNotificationPreferencesDraft((current) => ({ ...current, enabled: checked }))}
                   />
                   <ToggleRow
                     title="중요 시그널"
                     description="수주, 계약, 실적, 투자 등 중요 키워드 감지를 포함합니다."
                     checked={notificationPreferences.importantEnabled}
-                    onChange={(checked) => setNotificationPreferences((current) => ({ ...current, importantEnabled: checked }))}
+                    onChange={(checked) => updateNotificationPreferencesDraft((current) => ({ ...current, importantEnabled: checked }))}
                   />
                 </div>
 
@@ -398,7 +470,7 @@ export function SettingsView({
                       <button
                         key={keyword}
                         type="button"
-                        onClick={() => setNotificationPreferences((current) => ({
+                        onClick={() => updateNotificationPreferencesDraft((current) => ({
                           ...current,
                           keywords: current.keywords.filter((item) => item !== keyword),
                         }))}
@@ -418,7 +490,7 @@ export function SettingsView({
                   >
                     알림 설정 저장
                   </ExecutiveButton>
-                  {notificationPreferenceStatus === 'success' ? <ExecutiveBadge tone="success">저장되었습니다</ExecutiveBadge> : null}
+                  {notificationPreferenceSaved ? <ExecutiveBadge tone="success">저장되었습니다</ExecutiveBadge> : null}
                   {notificationPreferenceStatus === 'error' ? <ExecutiveBadge tone="danger">{notificationPreferenceError}</ExecutiveBadge> : null}
                 </div>
               </section>
@@ -523,6 +595,9 @@ function formatAccessLogAction(item: AccessLogItem) {
     LOGIN_SUCCESS: '로그인 성공',
     LOGIN_FAILURE: '로그인 실패',
     LOGOUT: '로그아웃',
+    PASSWORD_RESET_REQUESTED: '비밀번호 재설정 요청',
+    PASSWORD_RESET_FAILED: '비밀번호 재설정 실패',
+    PASSWORD_RESET_COMPLETED: '비밀번호 재설정 완료',
     REFRESH_ROTATED: '자동 로그인 갱신',
     REFRESH_REUSE_DETECTED: '토큰 재사용 탐지',
     PASSWORD_CHANGED: '비밀번호 변경',
@@ -539,6 +614,94 @@ function formatAccessLogAction(item: AccessLogItem) {
     return label;
   }
   return `${label} 실패`;
+}
+
+function formatAccessLogLocation(value: string) {
+  const label = value.trim();
+  if (!label) return '알 수 없음';
+  if (label === '내부망') return '사내/내부망';
+  if (label === '로컬') return '로컬 개발환경';
+  return label;
+}
+
+function formatAccessLogClient(value: string) {
+  const userAgent = value.trim();
+  if (!userAgent) return '기록 없음';
+
+  const browser = detectBrowser(userAgent);
+  const os = detectOperatingSystem(userAgent);
+  return [browser, os].filter(Boolean).join(' / ') || '기타 환경';
+}
+
+function detectBrowser(userAgent: string) {
+  if (/edg\//i.test(userAgent)) return 'Edge';
+  if (/opr\//i.test(userAgent)) return 'Opera';
+  if (/firefox\//i.test(userAgent)) return 'Firefox';
+  if (/chrome\//i.test(userAgent) || /crios\//i.test(userAgent)) return 'Chrome';
+  if (/safari\//i.test(userAgent) && /version\//i.test(userAgent)) return 'Safari';
+  if (/postmanruntime/i.test(userAgent)) return 'Postman';
+  if (/^curl\//i.test(userAgent)) return 'cURL';
+  if (/okhttp\//i.test(userAgent)) return 'OkHttp';
+  return '';
+}
+
+function detectOperatingSystem(userAgent: string) {
+  if (/windows nt/i.test(userAgent)) return 'Windows';
+  if (/iphone|ipad|ipod/i.test(userAgent)) return 'iOS';
+  if (/android/i.test(userAgent)) return 'Android';
+  if (/mac os x|macintosh/i.test(userAgent)) return 'macOS';
+  if (/linux/i.test(userAgent)) return 'Linux';
+  return '';
+}
+
+function accessLogStatus(item: AccessLogItem) {
+  if (item.action === 'REFRESH_REUSE_DETECTED') {
+    return { label: '주의', className: 'border-[rgba(217,119,6,0.24)] bg-[rgba(217,119,6,0.10)] text-[rgb(180,83,9)]' };
+  }
+  if (!item.success || item.action.endsWith('_FAILURE') || item.action.endsWith('_FAILED')) {
+    return { label: '실패', className: 'border-[rgba(220,38,38,0.24)] bg-[rgba(220,38,38,0.10)] text-[var(--axis-danger)]' };
+  }
+  return { label: '성공', className: 'border-[rgba(22,163,74,0.22)] bg-[rgba(22,163,74,0.10)] text-[var(--axis-success)]' };
+}
+
+function AccessLogStatusPill({ item }: { item: AccessLogItem }) {
+  const status = accessLogStatus(item);
+  return (
+    <span className={`inline-flex h-7 min-w-[3rem] items-center justify-center rounded-sm border px-2 text-caption-bold ${status.className}`}>
+      {status.label}
+    </span>
+  );
+}
+
+function AccessLogPageButton({
+  label,
+  isActive = false,
+  disabled = false,
+  onClick,
+  children,
+}: {
+  label: string;
+  isActive?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-current={isActive ? 'page' : undefined}
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex h-8 min-w-8 items-center justify-center rounded-sm border px-2 text-caption-bold transition ${
+        isActive
+          ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
+          : 'border-[var(--axis-hairline)] bg-[var(--axis-surface)] text-[var(--axis-body)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent)]'
+      } disabled:cursor-not-allowed disabled:opacity-40`}
+    >
+      {children}
+    </button>
+  );
 }
 
 function Field({

@@ -15,6 +15,14 @@ type NotificationListResponse = {
   items?: RawNotification[];
   unread_count?: number;
   unreadCount?: number;
+  page?: number;
+  limit?: number;
+  size?: number;
+  total?: number;
+  total_count?: number;
+  totalCount?: number;
+  totalPages?: number;
+  total_pages?: number;
   hasNext?: boolean;
   nextCursor?: string | null;
 };
@@ -22,15 +30,59 @@ type NotificationListResponse = {
 class NotificationsRepository {
   private readonly baseUrl = env.apiBaseUrl;
 
-  async list(limit = 10, unreadOnly = false) {
-    const params = new URLSearchParams({ limit: String(limit), unread_only: String(unreadOnly) });
+  async list(limit = 10, unreadOnly = false, page = 0) {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      unread_only: String(unreadOnly),
+      page: String(page),
+    });
     const response = await this.request<NotificationListResponse>(`/api/notifications?${params.toString()}`, { method: 'GET' });
+    const items = (response?.items ?? []).map(toNotificationItem);
+    const responseLimit = numberValue(response?.limit ?? response?.size, limit);
+    const totalCount = numberValue(response?.total_count ?? response?.totalCount ?? response?.total, items.length);
+
     return {
-      items: (response?.items ?? []).map(toNotificationItem),
+      items,
       unreadCount: numberValue(response?.unread_count ?? response?.unreadCount, 0),
+      page: numberValue(response?.page, page),
+      limit: responseLimit,
+      totalCount,
+      totalPages: numberValue(response?.totalPages ?? response?.total_pages, Math.ceil(totalCount / Math.max(1, responseLimit))),
       hasNext: response?.hasNext === true,
       nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null,
     };
+  }
+
+  async listAll(limit = 100, unreadOnly = false) {
+    const items: ReturnType<typeof toNotificationItem>[] = [];
+    const seenIds = new Set<string>();
+    let page = 0;
+    let unreadCount = 0;
+    let totalCount = 0;
+    let totalPages = 1;
+
+    while (true) {
+      const result = await this.list(limit, unreadOnly, page);
+      if (page === 0) {
+        unreadCount = result.unreadCount;
+        totalCount = result.totalCount;
+        totalPages = Math.max(1, result.totalPages);
+      }
+
+      const newItems = result.items.filter((item) => {
+        if (seenIds.has(item.id)) return false;
+        seenIds.add(item.id);
+        return true;
+      });
+      items.push(...newItems);
+
+      if (!result.hasNext || newItems.length === 0) {
+        break;
+      }
+      page += 1;
+    }
+
+    return { items, unreadCount, totalCount, totalPages };
   }
 
   async unreadCount() {

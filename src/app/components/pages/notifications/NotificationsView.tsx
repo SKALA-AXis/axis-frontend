@@ -1,7 +1,7 @@
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { notificationsRepository } from '../../../../features/notifications/api/notificationsRepository';
-import type { NotificationItem } from '../../../../features/notifications/model/notification';
+import { formatNotificationCount, type NotificationItem } from '../../../../features/notifications/model/notification';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -22,7 +22,7 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
     setStatus('loading');
     setError('');
     try {
-      const result = await notificationsRepository.list(50);
+      const result = await notificationsRepository.listAll(100);
       setItems(result.items);
       setUnreadCount(result.unreadCount);
       setStatus('success');
@@ -55,6 +55,7 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
     }
     onNavigate?.(item.target);
   };
+  const unreadCountLabel = formatNotificationCount(unreadCount);
 
   return (
     <ExecutivePage>
@@ -65,7 +66,7 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
           subtitle="키워드와 중요 시그널로 생성된 알림을 확인합니다."
           actions={(
             <div data-guide="notifications-actions" className="flex flex-wrap items-center gap-2">
-              <ExecutiveBadge tone={unreadCount > 0 ? 'danger' : 'neutral'}>안읽음 {unreadCount}건</ExecutiveBadge>
+              <ExecutiveBadge tone={unreadCount > 0 ? 'danger' : 'neutral'}>안읽음 {unreadCountLabel}건</ExecutiveBadge>
               <ExecutiveButton variant="secondary" icon={<CheckCheck size={16} />} onClick={() => void markAllRead()}>모두 읽음</ExecutiveButton>
               <ExecutiveButton variant="secondary" icon={<Trash2 size={16} />} onClick={() => void deleteRead()}>읽은 알림 지우기</ExecutiveButton>
             </div>
