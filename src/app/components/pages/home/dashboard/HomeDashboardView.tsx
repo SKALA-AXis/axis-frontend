@@ -296,6 +296,19 @@ export function HomeDashboardView({
 
   const heroCard = rankedCards[0] ?? latestCards[0];
   const summaryCard = summaryChoices[summaryIndex % Math.max(summaryChoices.length, 1)] ?? heroCard;
+  // "오늘의 요약 카드뉴스" 사이드바는 /api/cards(최신 카드 전체)를 쓰므로, 오늘(KST) 신규 카드가
+  // 아직 없으면 최신=어제 카드가 잡힌다. 카드 실제 날짜 기준으로 제목·날짜 칩을 정직하게 표기한다.
+  const summaryCardDate = summaryCard ? getDisplayDate(summaryCard) : '';
+  const summaryCardIsToday =
+    summaryCardDate.replace(/\D/g, '').slice(0, 8) === todayDateValue.replace(/\D/g, '');
+  const summaryCardDateChip = !summaryCard
+    ? 'TODAY'
+    : summaryCardIsToday
+      ? summaryCardDate || '오늘'
+      : summaryCardDate
+        ? `최신 · ${summaryCardDate}`
+        : '최신';
+  const summaryHeading = summaryCard && !summaryCardIsToday ? '최신 요약 카드뉴스' : '오늘의 요약 카드뉴스';
   const homeDetailCard = homeDetailCardId ? cards.find((card) => card.id === homeDetailCardId) ?? null : null;
   const selectedActions = selectedSignal?.responseDirection.length
     ? selectedSignal.responseDirection.slice(0, 2)
@@ -753,7 +766,7 @@ export function HomeDashboardView({
             <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="axis-kicker">Card news</p>
-                <h3 className="axis-section-heading mt-1 truncate">오늘의 요약 카드뉴스</h3>
+                <h3 className="axis-section-heading mt-1 truncate">{summaryHeading}</h3>
               </div>
               <span className="shrink-0">
                 <ExecutiveBadge tone="accent">{summaryChoices.length}건</ExecutiveBadge>
@@ -775,7 +788,7 @@ export function HomeDashboardView({
               <div className="relative flex h-full min-h-0 min-w-0 flex-col justify-between overflow-hidden p-4 text-white">
                 <div className="flex min-w-0 items-start justify-between gap-3 text-xs font-semibold">
                   <span className="shrink-0 rounded-sm border border-white/25 bg-white/10 px-2.5 py-1 tracking-[0.06em]">
-                    {summaryCard ? getDisplayDate(summaryCard) : 'TODAY'}
+                    {summaryCardDateChip}
                   </span>
                   <span className="max-w-[44%] truncate rounded-sm border border-white/25 bg-white/10 px-2.5 py-1">
                     {summaryCard?.category_label ?? summaryCard?.category ?? 'AX'}
