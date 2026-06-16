@@ -2,8 +2,8 @@ import type { CardNewsItem } from '../model/cardNews';
 import { cardNewsPeerLabels } from '../../../shared/content/cardNewsLabels';
 import { cardNewsPresentationDefaults } from '../../../shared/content/cardNewsPresentationDefaults';
 
-export type PeerName = '삼성SDS' | 'LG CNS' | '현대 오토에버' | '포스코 DX';
-export type SectorName = 'AX' | '보안' | '수주' | '인프라' | '섹터' | 'AI' | 'Peer';
+export type PeerName = '삼성SDS' | 'LG CNS' | '현대 오토에버' | '포스코 DX' | 'industry';
+export type SectorName = 'AX' | '보안' | '수주' | '인프라' | 'industry' | '섹터' | 'AI' | 'Peer';
 export type SourceTypeName = '증권사' | '뉴스' | 'IR' | '블로그';
 
 export type CardCatalogItem = {
@@ -79,7 +79,7 @@ function derivePeerName(card: CardNewsItem): PeerName {
 
 function deriveSectorName(card: CardNewsItem): Exclude<SectorName, '섹터' | 'AI' | 'Peer'> {
   const sector = card.category_label ?? card.category ?? cardNewsPresentationDefaults.sector;
-  if (sector === '보안' || sector === '수주' || sector === '인프라' || sector === 'AX') {
+  if (sector === '보안' || sector === '수주' || sector === '인프라' || sector === 'AX' || sector === 'industry') {
     return sector;
   }
   return cardNewsPresentationDefaults.sector;
