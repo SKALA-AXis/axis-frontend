@@ -14,6 +14,37 @@ type AccessLogsResponse = {
 };
 
 type RawAccessLog = Record<string, unknown>;
+type RawStrategyContext = Record<string, unknown>;
+
+export type StrategyContextSourceType = 'manual_text' | 'uploaded_file';
+
+export type StrategyContextItem = {
+  id: string;
+  content: string;
+  rawText: string;
+  sourceType: StrategyContextSourceType;
+  fileName?: string;
+  fileSize?: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StrategyContextInput = {
+  rawText: string;
+  sourceType: StrategyContextSourceType;
+  fileName?: string;
+  fileSize?: number;
+};
+
+export type StrategyContextFileExtraction = {
+  fileName: string;
+  fileSize: number;
+  contentType?: string;
+  extractedText: string;
+  truncated: boolean;
+  extractionMethod?: string;
+  ocrUsed?: boolean;
+};
 
 class SettingsRepository {
   private readonly baseUrl = env.apiBaseUrl;
@@ -33,8 +64,54 @@ class SettingsRepository {
     });
   }
 
+  async strategyContexts(): Promise<StrategyContextItem[]> {
+    const response = await this.request<{ items?: RawStrategyContext[] }>('/api/settings/strategy-contexts');
+    return (response?.items ?? []).map(toStrategyContextItem);
+  }
+
+  async createStrategyContext(input: StrategyContextInput): Promise<StrategyContextItem> {
+    const response = await this.request<RawStrategyContext>('/api/settings/strategy-contexts', {
+      method: 'POST',
+      body: JSON.stringify(toStrategyContextPayload(input)),
+    });
+    return toStrategyContextItem(response);
+  }
+
+  async updateStrategyContext(id: string, input: StrategyContextInput): Promise<StrategyContextItem> {
+    const response = await this.request<RawStrategyContext>(`/api/settings/strategy-contexts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(toStrategyContextPayload(input)),
+    });
+    return toStrategyContextItem(response);
+  }
+
+  async deleteStrategyContext(id: string): Promise<void> {
+    await this.request<unknown>(`/api/settings/strategy-contexts/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async extractStrategyContextFile(file: File): Promise<StrategyContextFileExtraction> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.request<Record<string, unknown>>('/api/settings/strategy-context-files', {
+      method: 'POST',
+      body: formData,
+    });
+    return {
+      fileName: stringValue(response, ['fileName', 'file_name']) || file.name,
+      fileSize: numberValue(response.fileSize, file.size),
+      contentType: stringValue(response, ['contentType', 'content_type']),
+      extractedText: stringValue(response, ['extractedText', 'extracted_text']),
+      truncated: booleanValue(response.truncated, false),
+      extractionMethod: stringValue(response, ['extractionMethod', 'extraction_method']) || undefined,
+      ocrUsed: booleanValue(response.ocrUsed ?? response.ocr_used, false),
+    };
+  }
+
   private async request<T>(path: string, init: RequestInit = { method: 'GET' }): Promise<T> {
     const accessToken = getAccessToken();
+    const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
@@ -43,7 +120,7 @@ class SettingsRepository {
         credentials: 'include',
         headers: {
           Accept: 'application/json',
-          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+          ...(init.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           ...(init.headers ?? {}),
         },
@@ -61,6 +138,32 @@ class SettingsRepository {
 }
 
 export const settingsRepository = new SettingsRepository();
+
+function toStrategyContextPayload(input: StrategyContextInput) {
+  return {
+    rawText: input.rawText,
+    sourceType: input.sourceType,
+    fileName: input.fileName,
+    fileSize: input.fileSize,
+  };
+}
+
+function toStrategyContextItem(raw: RawStrategyContext): StrategyContextItem {
+  const rawText = stringValue(raw, ['rawText', 'raw_text', 'content']);
+  const sourceType = stringValue(raw, ['sourceType', 'source_type']) === 'uploaded_file'
+    ? 'uploaded_file'
+    : 'manual_text';
+  return {
+    id: stringValue(raw, ['id']),
+    content: rawText,
+    rawText,
+    sourceType,
+    fileName: stringValue(raw, ['fileName', 'file_name']) || undefined,
+    fileSize: optionalNumberValue(raw.fileSize ?? raw.file_size),
+    createdAt: stringValue(raw, ['createdAt', 'created_at']),
+    updatedAt: stringValue(raw, ['updatedAt', 'updated_at']),
+  };
+}
 
 function toAccessLogItem(raw: RawAccessLog): AccessLogItem {
   const ipAddress = stringValue(raw, ['ipAddress', 'ip_address']);
@@ -94,7 +197,7 @@ async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> 
   }
 }
 
-function stringValue(source: RawAccessLog, keys: string[]) {
+function stringValue(source: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = source[key];
     if (typeof value === 'string') {
@@ -109,6 +212,30 @@ function stringValue(source: RawAccessLog, keys: string[]) {
 
 function booleanValue(value: unknown, fallback: boolean) {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function numberValue(value: unknown, fallback: number) {
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return fallback;
+}
+
+function optionalNumberValue(value: unknown) {
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
 }
 
 function inferCountryFromIp(value: string) {
