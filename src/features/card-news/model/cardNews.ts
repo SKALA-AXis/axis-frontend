@@ -3,8 +3,8 @@ export type CardNewsArticlePage = {
   paragraphs: string[];
 };
 
-export type PeerId = 'samsung_sds' | 'lg_cns' | 'hyundai_autoever' | 'posco_dx';
-export type SectorId = 'ax' | 'security' | 'infra' | 'deal' | 'other';
+export type PeerId = 'samsung_sds' | 'lg_cns' | 'hyundai_autoever' | 'posco_dx' | 'industry_trend';
+export type SectorId = 'ax' | 'security' | 'infra' | 'deal' | 'industry' | 'other';
 export type ExposureBand = 'high' | 'medium' | 'low';
 export type EventType = 'partnership' | 'ma' | 'personnel' | 'tech' | 'regulation' | 'new_biz' | 'contract';
 

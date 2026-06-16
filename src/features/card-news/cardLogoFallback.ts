@@ -2,7 +2,7 @@ import type { CardNewsItem } from './model/cardNews';
 
 export type CardLogoKey = NonNullable<CardNewsItem['peer_id']> | 'sk_ax';
 
-export const cardLogoByKey: Record<CardLogoKey, string> = {
+export const cardLogoByKey: Partial<Record<CardLogoKey, string>> = {
   samsung_sds: '/card_logos/samsung_sds-removebg-preview.png',
   lg_cns: '/card_logos/lg_cns-removebg-preview.png',
   hyundai_autoever: '/card_logos/hyundai_autoever-removebg-preview.png',
@@ -10,7 +10,7 @@ export const cardLogoByKey: Record<CardLogoKey, string> = {
   sk_ax: '/card_logos/sk_ax.png',
 };
 
-export const cardLogoAltByKey: Record<CardLogoKey, string> = {
+export const cardLogoAltByKey: Partial<Record<CardLogoKey, string>> = {
   samsung_sds: '삼성SDS 로고',
   lg_cns: 'LG CNS 로고',
   hyundai_autoever: '현대오토에버 로고',
@@ -52,12 +52,14 @@ export function inferCardLogoKey(card: Partial<CardNewsItem>): CardLogoKey | und
 
 export function getFallbackCardLogo(card: Partial<CardNewsItem>) {
   const logoKey = inferCardLogoKey(card);
-  return logoKey
-    ? {
-        url: cardLogoByKey[logoKey],
-        alt: cardLogoAltByKey[logoKey],
-      }
-    : undefined;
+  const url = logoKey ? cardLogoByKey[logoKey] : undefined;
+  if (!logoKey || !url) {
+    return undefined;
+  }
+  return {
+    url,
+    alt: cardLogoAltByKey[logoKey] ?? '카드뉴스 로고',
+  };
 }
 
 export function isCardLogoUrl(url?: string | null) {
@@ -70,7 +72,7 @@ function getCardLogoKeyByUrl(url?: string | null): CardLogoKey | undefined {
 
 export type CardLogoImageSize = 'hero' | 'card' | 'related' | 'compact';
 
-const cardLogoScaleByKey: Record<CardLogoKey, string> = {
+const cardLogoScaleByKey: Partial<Record<CardLogoKey, string>> = {
   samsung_sds: 'scale-105',
   lg_cns: 'scale-[1.55]',
   hyundai_autoever: 'scale-110',
