@@ -285,6 +285,7 @@ export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem
     subtitle: card.subtitle ?? null,
     category_label: card.category_label ?? null,
     published_date: card.published_date ?? null,
+    published_at: card.published_at ?? null,
     summary_lines: card.summary_lines ?? derivedSummary,
     event_type: card.event_type,
     sector: card.sector,

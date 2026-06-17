@@ -166,6 +166,7 @@ export type CardNewsItem = {
   subtitle?: string | null;
   category_label?: string | null;
   published_date?: string | null;
+  published_at?: string | null;
   summary_lines?: string[];
   event_type?: EventType;
   sector?: SectorId;

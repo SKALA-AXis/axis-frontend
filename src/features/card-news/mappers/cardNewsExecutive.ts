@@ -143,7 +143,7 @@ export function getExecutiveRank(cards: CardNewsItem[]) {
 }
 
 function getCardTimestamp(card: CardNewsItem) {
-  const value = card.published_date ?? card.date ?? card.created_at ?? '';
+  const value = card.published_at ?? card.published_date ?? card.date ?? card.created_at ?? '';
   const timestamp = Date.parse(value);
   return Number.isNaN(timestamp) ? 0 : timestamp;
 }
