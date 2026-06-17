@@ -274,6 +274,7 @@ export interface TodayInsightData {
   // 홈 3상태 렌더 지원 (today_signal | recent_signal | quiet)
   state?: string;
   signal_date?: string | null;
+  recent_headline?: string | null;
   week_synthesis?: string | null;
   coverage_stats?: Record<string, unknown>;
   provenance?: Record<string, unknown>;

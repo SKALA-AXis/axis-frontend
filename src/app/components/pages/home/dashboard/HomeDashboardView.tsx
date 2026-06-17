@@ -154,6 +154,12 @@ export function HomeDashboardView({
     (!todayInsightState && (isTodayInsightStatusPlaceholder || isTodayInsightNoCurrentSignals));
   const showQuietSynthesis =
     !todayInsightLoading && isTodayInsightQuiet && Boolean(todayInsightWeekSynthesis);
+  const todayInsightRecentHeadline = String(todayInsight?.recent_headline ?? '').trim();
+  const todayInsightSignalDate = String(todayInsight?.signal_date ?? '').slice(0, 10);
+  const showRecentSignal =
+    !todayInsightLoading &&
+    todayInsightState === 'recent_signal' &&
+    Boolean(todayInsightRecentHeadline);
   const coverageStripText = (() => {
     const c = todayInsightCoverage;
     if (!c) return '';
@@ -545,7 +551,22 @@ export function HomeDashboardView({
                   </p>
                 </section>
               ) : null}
-              {!showQuietSynthesis && (todayInsightTitle || mainInsightSignals.length > 0) ? (
+              {showRecentSignal ? (
+                <section className="mt-6 max-w-4xl">
+                  <p className="axis-kicker text-xs text-[var(--axis-muted)]">
+                    최근 핵심{todayInsightSignalDate ? ` · ${todayInsightSignalDate}` : ''}
+                  </p>
+                  <h2 className="mt-3 break-keep text-[clamp(1.7rem,2.2vw,2.6rem)] font-display leading-[1.2] text-ink">
+                    {todayInsightRecentHeadline}
+                  </h2>
+                  <p className="mt-3 text-sm font-semibold text-[var(--axis-muted)]">
+                    오늘 신규 주요 신호 없음 — 기준일을 바꿔 전체 분석을 볼 수 있습니다.
+                  </p>
+                </section>
+              ) : null}
+              {!showQuietSynthesis &&
+              !showRecentSignal &&
+              (todayInsightTitle || mainInsightSignals.length > 0) ? (
                 <section className="mt-6 max-w-5xl">
                   {todayInsightTitle ? (
                     <div className="max-w-4xl">
@@ -586,6 +607,7 @@ export function HomeDashboardView({
                 </section>
               ) : null}
               {!showQuietSynthesis &&
+              !showRecentSignal &&
               mainInsightSignals.length === 0 &&
               todayInsightSubtitleBullets.length > 0 ? (
                 <div className="mt-5 grid max-w-5xl gap-3">
@@ -603,7 +625,7 @@ export function HomeDashboardView({
                     </article>
                   ))}
                 </div>
-              ) : mainInsightSignals.length === 0 && todayInsightSubtitle ? (
+              ) : !showRecentSignal && mainInsightSignals.length === 0 && todayInsightSubtitle ? (
                 <p className="mt-5 max-w-3xl text-base leading-7 text-[var(--axis-body)]">
                   {todayInsightSubtitle}
                 </p>
