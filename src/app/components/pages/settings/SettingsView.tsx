@@ -789,12 +789,15 @@ export function SettingsView({
 
                 <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h3 className="text-heading-5 font-semibold text-[var(--axis-ink)]">전략 자료 입력</h3>
                       <p className="mt-1 text-caption leading-5 text-[var(--axis-muted)]">
                         뉴스·공시 등 외부 수집 정보만으로는 알 수 없는 우리 조직의 계획, 제품 로드맵, 제안 방향을 입력해 주세요.
                       </p>
                     </div>
+                    <p className="max-w-[360px] shrink-0 text-right text-caption leading-5 text-[var(--axis-muted)]">
+                      해당 내용은 LLM에 전달되어 분석 처리되오니 유의 바랍니다.
+                    </p>
                   </div>
                   {strategyContextLoadStatus === 'loading' ? (
                     <div className="mt-3">
