@@ -1054,8 +1054,7 @@ export function MixerView({
           <section data-guide="mixer-result" className="space-y-5">
             <article data-guide="mixer-result-headline" className="border-b border-[var(--axis-hairline)] pb-6">
               <div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <ExecutiveBadge tone="accent">믹스 인사이트</ExecutiveBadge>
+                <div className="flex flex-wrap items-center justify-end gap-3">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-[var(--axis-muted)]">
                       카드 {sourceCardIds.length}장 조합
@@ -1101,12 +1100,6 @@ export function MixerView({
                 </div>
               </div>
             </article>
-
-            {result.warning ? (
-              <div className="rounded-[var(--axis-radius-md)] border border-[rgba(220,90,36,0.3)] bg-[rgba(220,90,36,0.08)] px-4 py-3 text-sm leading-6 text-[var(--axis-accent-strong)]">
-                {result.warning}
-              </div>
-            ) : null}
 
             {hasStepView ? (
               <article data-guide="mixer-result-steps" className="axis-panel-flat p-5">
@@ -1532,8 +1525,8 @@ export function MixerView({
                       </div>
                       {check.answer ? (
                         <div className="mt-3 rounded-[var(--axis-radius-md)] bg-[rgba(220,90,36,0.06)] px-3 py-3">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">A.</p>
-                          <MixerReadableText text={check.answer} maxItems={2} compact className="mt-2" />
+                          <p className="pl-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">A.</p>
+                          <MixerReadableText text={check.answer} maxItems={2} compact className="mt-2 pl-4" />
                         </div>
                       ) : null}
                       {check.evidence_refs && check.evidence_refs.length > 0 ? (
