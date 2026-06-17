@@ -103,6 +103,10 @@ class NotificationsRepository {
     return this.request<{ cleared: boolean; deleted_count?: number; deletedCount?: number }>('/api/notifications?scope=READ', { method: 'DELETE' });
   }
 
+  async clearAll() {
+    return this.request<{ cleared: boolean; deleted_count?: number; deletedCount?: number }>('/api/notifications?scope=ALL', { method: 'DELETE' });
+  }
+
   async preferences() {
     const response = await this.request<Partial<NotificationPreferences>>('/api/me/notification-preferences', { method: 'GET' });
     return toPreferences(response);
