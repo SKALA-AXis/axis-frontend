@@ -297,8 +297,10 @@ export function TopNav({
                   type="button"
                   onClick={async () => {
                     try {
-                      await notificationsRepository.deleteRead();
-                      setNotifications((current) => current.filter((item) => !item.read));
+                      await notificationsRepository.clearAll();
+                      setNotifications([]);
+                      setUnreadCount(0);
+                      setNotificationError('');
                     } catch (error) {
                       setNotificationError(error instanceof Error ? error.message : '알림을 지우지 못했습니다.');
                     }
