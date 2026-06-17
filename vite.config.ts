@@ -21,6 +21,17 @@ export default defineConfig({
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
             return 'react-vendor';
           }
+          // 대형 시각화/3D/UI 라이브러리도 각자 벤더 청크로 고정 — 앱 코드만 바뀌는
+          // 배포에서 이들 청크 해시가 유지돼 브라우저 캐시 적중률이 올라간다 (#115).
+          if (id.includes('node_modules/recharts')) {
+            return 'recharts-vendor';
+          }
+          if (id.includes('node_modules/three')) {
+            return 'three-vendor';
+          }
+          if (id.includes('node_modules/@radix-ui')) {
+            return 'radix-vendor';
+          }
         },
       },
     },
