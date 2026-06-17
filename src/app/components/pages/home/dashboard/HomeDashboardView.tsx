@@ -143,6 +143,26 @@ export function HomeDashboardView({
   const isTodayInsightNoCurrentSignals = todayInsightKind.includes('no_current_signals');
   const isTodayInsightMockLike = isTodayInsightFixture || isTodayInsightStatusPlaceholder;
   const displayTodayInsight = isTodayInsightMockLike ? null : todayInsight;
+  // 홈 3상태 — quiet 면 깊은 3섹션 대신 '이번 주 종합' + 모니터링 스트립(임원 빈화면 방지).
+  const todayInsightState = String(todayInsight?.state ?? '');
+  const todayInsightWeekSynthesis = String(todayInsight?.week_synthesis ?? '').trim();
+  const todayInsightCoverage = (todayInsight?.coverage_stats ?? null) as
+    | Record<string, unknown>
+    | null;
+  const isTodayInsightQuiet =
+    todayInsightState === 'quiet' ||
+    (!todayInsightState && (isTodayInsightStatusPlaceholder || isTodayInsightNoCurrentSignals));
+  const showQuietSynthesis =
+    !todayInsightLoading && isTodayInsightQuiet && Boolean(todayInsightWeekSynthesis);
+  const coverageStripText = (() => {
+    const c = todayInsightCoverage;
+    if (!c) return '';
+    const reviewed = Number(c.reviewed_last_7d ?? 0) || 0;
+    const urgent = Number(c.urgent_last_7d ?? 0) || 0;
+    const peers = Number(c.peers_monitored ?? 4) || 4;
+    if (!reviewed && !urgent) return '';
+    return `모니터링 정상 · 최근 7일 ${reviewed.toLocaleString()}건 검토 · 긴급 ${urgent}건 · peer ${peers}사 감시`;
+  })();
   const todayInsightSignals = useMemo<HomeTodayInsightSignal[]>(
     () => {
       if (isTodayInsightMockLike) {
@@ -511,7 +531,21 @@ export function HomeDashboardView({
                   ) : null}
                 </span>
               </div>
-              {todayInsightTitle || mainInsightSignals.length > 0 ? (
+              {!todayInsightLoading && coverageStripText ? (
+                <div className="mt-3 inline-flex w-fit items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-muted)]">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#16a34a]" />
+                  {coverageStripText}
+                </div>
+              ) : null}
+              {showQuietSynthesis ? (
+                <section className="mt-6 max-w-4xl">
+                  <p className="axis-kicker text-xs text-[var(--axis-muted)]">이번 주 종합</p>
+                  <p className="mt-3 break-keep text-[clamp(1.4rem,1.9vw,2.1rem)] font-display leading-[1.35] text-ink">
+                    {todayInsightWeekSynthesis}
+                  </p>
+                </section>
+              ) : null}
+              {!showQuietSynthesis && (todayInsightTitle || mainInsightSignals.length > 0) ? (
                 <section className="mt-6 max-w-5xl">
                   {todayInsightTitle ? (
                     <div className="max-w-4xl">
@@ -551,7 +585,9 @@ export function HomeDashboardView({
                   ) : null}
                 </section>
               ) : null}
-              {mainInsightSignals.length === 0 && todayInsightSubtitleBullets.length > 0 ? (
+              {!showQuietSynthesis &&
+              mainInsightSignals.length === 0 &&
+              todayInsightSubtitleBullets.length > 0 ? (
                 <div className="mt-5 grid max-w-5xl gap-3">
                   {todayInsightSubtitleBullets.slice(0, 2).map((line, index) => (
                     <article
