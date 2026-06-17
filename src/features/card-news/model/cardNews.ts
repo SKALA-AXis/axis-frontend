@@ -187,6 +187,10 @@ export type CardNewsItem = {
   validation_pass?: boolean | null;
   is_human_reviewed?: boolean;
   is_bookmarked?: boolean;
+  strategy_context_applied?: boolean;
+  strategyContextApplied?: boolean;
+  strategy_context_applied_at?: string | null;
+  strategyContextAppliedAt?: string | null;
   bookmark_count?: number | null;
   share_count?: number | null;
   created_at?: string;

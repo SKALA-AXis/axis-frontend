@@ -5,6 +5,8 @@ import type { CardNewsDisplaySection, CardNewsItem, CardNewsStructuredTextItem }
 export interface CardNewsRepository {
   list(): Promise<CardNewsItem[]>;
   today(): Promise<CardNewsItem[]>;
+  applyStrategyContext(cardId: string): Promise<CardNewsItem>;
+  revertStrategyContext(cardId: string): Promise<CardNewsItem>;
 }
 
 class HttpCardNewsRepository implements CardNewsRepository {
@@ -24,6 +26,24 @@ class HttpCardNewsRepository implements CardNewsRepository {
 
     const response = await httpClient.get<{ items: Partial<CardNewsItem>[] }>('/api/cards/today?limit=10');
     return response.items.map(normalizeCardNewsItem);
+  }
+
+  async applyStrategyContext(cardId: string): Promise<CardNewsItem> {
+    if (!httpClient) {
+      throw new Error('API client is not configured.');
+    }
+
+    const response = await httpClient.post<Partial<CardNewsItem>>(`/api/cards/${cardId}/strategy-context/apply`);
+    return normalizeCardNewsItem(response);
+  }
+
+  async revertStrategyContext(cardId: string): Promise<CardNewsItem> {
+    if (!httpClient) {
+      throw new Error('API client is not configured.');
+    }
+
+    const response = await httpClient.post<Partial<CardNewsItem>>(`/api/cards/${cardId}/strategy-context/revert`);
+    return normalizeCardNewsItem(response);
   }
 }
 
@@ -304,6 +324,10 @@ export function normalizeCardNewsItem(card: Partial<CardNewsItem>): CardNewsItem
     validation_pass: card.validation_pass ?? null,
     is_human_reviewed: card.is_human_reviewed ?? false,
     is_bookmarked: card.is_bookmarked ?? false,
+    strategy_context_applied: card.strategy_context_applied ?? card.strategyContextApplied ?? false,
+    strategyContextApplied: card.strategyContextApplied ?? card.strategy_context_applied ?? false,
+    strategy_context_applied_at: card.strategy_context_applied_at ?? card.strategyContextAppliedAt ?? null,
+    strategyContextAppliedAt: card.strategyContextAppliedAt ?? card.strategy_context_applied_at ?? null,
     bookmark_count: card.bookmark_count ?? 0,
     share_count: card.share_count ?? 0,
     created_at: card.created_at,
