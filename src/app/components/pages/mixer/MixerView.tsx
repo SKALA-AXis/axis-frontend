@@ -86,7 +86,7 @@ const MIXER_ANALYSIS_MODE_OPTIONS: {
 ];
 
 const RADAR_CHART_RADIUS = 86;
-const RADAR_LABEL_RADIUS = RADAR_CHART_RADIUS + 36;
+const RADAR_LABEL_RADIUS = RADAR_CHART_RADIUS + 22;
 const RADAR_GRID_LEVELS = [0.25, 0.5, 0.75, 1];
 
 function formatLocalDateInputValue(date = new Date()) {
