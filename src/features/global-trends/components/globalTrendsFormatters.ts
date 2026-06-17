@@ -80,7 +80,14 @@ export function deriveMentionDelta(
 }
 
 export function trendTitle(item: Pick<GlobalTrendItem, 'title' | 'keyword'>) {
-  return item.title ?? item.keyword.replace(/_/g, ' ');
+  return cleanTrendTitle(item.title ?? item.keyword.replace(/_/g, ' '));
+}
+
+function cleanTrendTitle(value: string) {
+  return value
+    .replace(/\s+[—-]\s+(?:strong|moderate|weak)\s+강도\s+글로벌\s+트렌드\s*$/i, '')
+    .replace(/\s+[—-]\s+글로벌\s+트렌드\s*$/i, '')
+    .trim();
 }
 
 export function rankTrendItems(items: GlobalTrendItem[]) {
