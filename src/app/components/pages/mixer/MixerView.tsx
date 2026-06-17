@@ -86,6 +86,7 @@ const MIXER_ANALYSIS_MODE_OPTIONS: {
 ];
 
 const RADAR_CHART_RADIUS = 86;
+const RADAR_LABEL_RADIUS = RADAR_CHART_RADIUS + 22;
 const RADAR_GRID_LEVELS = [0.25, 0.5, 0.75, 1];
 
 function formatLocalDateInputValue(date = new Date()) {
@@ -106,6 +107,15 @@ function radarPoint(index: number, total: number, score = 1) {
   return {
     x: Math.cos(angle) * radius,
     y: Math.sin(angle) * radius,
+  };
+}
+
+function radarLabelPoint(index: number, total: number) {
+  const safeTotal = Math.max(total, 1);
+  const angle = -Math.PI / 2 + (index * 2 * Math.PI) / safeTotal;
+  return {
+    x: Math.cos(angle) * RADAR_LABEL_RADIUS,
+    y: Math.sin(angle) * RADAR_LABEL_RADIUS,
   };
 }
 
@@ -1341,7 +1351,7 @@ export function MixerView({
                         ))}
                         {radarChartAxes.map((axis, index) => {
                           const outer = radarPoint(index, radarChartAxes.length, 1);
-                          const labelPoint = radarPoint(index, radarChartAxes.length, 1.16);
+                          const labelPoint = radarLabelPoint(index, radarChartAxes.length);
                           const textAnchor = Math.abs(labelPoint.x) < 8 ? 'middle' : labelPoint.x > 0 ? 'start' : 'end';
                           const isActive = activeRadarAxis?.axis === axis.axis;
                           return (
@@ -1435,10 +1445,10 @@ export function MixerView({
                             </p>
                           </div>
                         </div>
-                        {(activeRadarAxis.prompted_interpretation || activeRadarAxis.explanation) ? (
+                        {activeRadarAxis.prompted_interpretation ? (
                           <div className="mt-3 rounded-[var(--axis-radius-md)] bg-[var(--axis-canvas)] px-3 py-3">
                             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">에이전트 해석</p>
-                            <MixerReadableText text={activeRadarAxis.prompted_interpretation || activeRadarAxis.explanation} maxItems={2} compact className="mt-2" />
+                            <MixerReadableText text={activeRadarAxis.prompted_interpretation} maxItems={2} compact className="mt-2" />
                           </div>
                         ) : null}
                         {activeRadarAxis.meaning ? (
