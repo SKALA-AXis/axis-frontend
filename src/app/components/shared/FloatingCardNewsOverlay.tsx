@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Bookmark, ChevronLeft, ChevronRight, ExternalLink, Newspaper, Share2, X } from 'lucide-react';
+import { Bookmark, ChevronLeft, ChevronRight, ExternalLink, Newspaper, Share2, Sparkles, X } from 'lucide-react';
+import { cardNewsRepository } from '../../../features/card-news/api/cardNewsRepository';
 import { getCardLogoImageClass, getFallbackCardLogo, isCardLogoUrl } from '../../../features/card-news/cardLogoFallback';
 import type { CardNewsItem, CardNewsStructuredTextItem } from '../../../features/card-news/model/cardNews';
 import { getDisplayDate, getPeerLabel, getSummaryLines } from '../../../features/card-news/mappers/cardNewsExecutive';
@@ -214,7 +215,7 @@ function dedupeCardsById(cards: CardNewsItem[]) {
 }
 
 export function FloatingCardNewsOverlay({
-  card,
+  card: initialCard,
   bookmarked,
   slideIndex,
   onSlideChange,
@@ -233,6 +234,12 @@ export function FloatingCardNewsOverlay({
   onCardChange?: (cardId: string) => void;
 }) {
   const noDataLine = '데이터 없음';
+  const [shareFeedback, setShareFeedback] = useState('');
+  const [strategyFeedback, setStrategyFeedback] = useState('');
+  const [strategyCard, setStrategyCard] = useState<CardNewsItem | null>(null);
+  const [strategyLoading, setStrategyLoading] = useState(false);
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
+  const card = strategyCard ?? initialCard;
   const slides: Array<{ kicker: string; title: string; lines: CardNewsSlideLine[] }> = [
     {
       kicker: 'AI 요약',
@@ -257,8 +264,7 @@ export function FloatingCardNewsOverlay({
   const slideImage = card.slides?.[activeIndex]?.image_url ?? card.coverImageUrl;
   const slideImageAlt = card.slides?.[activeIndex]?.image_alt ?? card.coverImageAlt;
   const slideImageClass = getCardLogoImageClass(slideImage, 'hero') ?? 'absolute inset-0 h-full w-full object-cover opacity-58 transition-opacity';
-  const [shareFeedback, setShareFeedback] = useState('');
-  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
+  const strategyApplied = Boolean(card.strategy_context_applied || card.strategyContextApplied);
   const sourceOptions = getCardSourceOptions(card);
   const sourceCount = Math.max(
     card.source_count ?? 0,
@@ -272,6 +278,12 @@ export function FloatingCardNewsOverlay({
   const currentCardIndex = orderedCards.findIndex((item) => item.id === card.id);
   const previousCard = currentCardIndex > 0 ? orderedCards[currentCardIndex - 1] : null;
   const nextCard = currentCardIndex >= 0 && currentCardIndex < orderedCards.length - 1 ? orderedCards[currentCardIndex + 1] : null;
+
+  useEffect(() => {
+    setStrategyFeedback('');
+    setStrategyCard(null);
+    setStrategyLoading(false);
+  }, [initialCard.id]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -306,6 +318,23 @@ export function FloatingCardNewsOverlay({
   const navigateSlide = (direction: -1 | 1) => {
     if (slides.length === 0) return;
     onSlideChange((activeIndex + direction + slides.length) % slides.length);
+  };
+
+  const toggleStrategyContextPreview = async () => {
+    if (strategyLoading) return;
+    setStrategyLoading(true);
+    setStrategyFeedback(strategyApplied ? '기본 대응방안으로 되돌리는 중입니다.' : '맞춤 전략을 적용하는 중입니다.');
+    try {
+      const updatedCard = strategyApplied
+        ? await cardNewsRepository.revertStrategyContext(card.id)
+        : await cardNewsRepository.applyStrategyContext(card.id);
+      setStrategyCard(updatedCard);
+      setStrategyFeedback(strategyApplied ? '기본 대응방안으로 되돌렸습니다.' : '맞춤 전략을 적용했습니다.');
+    } catch {
+      setStrategyFeedback('맞춤 전략 처리를 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setStrategyLoading(false);
+    }
   };
 
   return (
@@ -507,8 +536,23 @@ export function FloatingCardNewsOverlay({
                     </div>
                   ) : null}
                 </div>
+                <button
+                  type="button"
+                  onClick={toggleStrategyContextPreview}
+                  disabled={strategyLoading}
+                  aria-pressed={strategyApplied}
+                  className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--axis-radius-md)] border px-3.5 py-2 text-sm font-semibold transition ${
+                    strategyApplied
+                      ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)] hover:bg-[rgba(220,90,36,0.14)]'
+                      : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-ink)] hover:border-[var(--axis-accent)]'
+                  } disabled:cursor-wait disabled:opacity-70`}
+                >
+                  <Sparkles size={15} />
+                  {strategyLoading ? '처리 중' : strategyApplied ? '맞춤 전략 적용' : '맞춤 전략 미적용'}
+                </button>
               </div>
               {shareFeedback ? <p className="mt-3 text-xs font-semibold text-[var(--axis-muted)]">{shareFeedback}</p> : null}
+              {strategyFeedback ? <p className="mt-2 text-xs font-semibold text-[var(--axis-muted)]">{strategyFeedback}</p> : null}
             </footer>
           </div>
         </div>

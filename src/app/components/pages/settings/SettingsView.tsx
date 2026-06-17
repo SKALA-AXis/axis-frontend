@@ -1,6 +1,24 @@
-import { Bell, ChevronLeft, ChevronRight, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Type, X, User } from 'lucide-react';
+import {
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  History,
+  KeyRound,
+  LogOut,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  Trash2,
+  Type,
+  Upload,
+  X,
+  User,
+} from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -13,7 +31,10 @@ import { Switch } from '../../ui/switch';
 import type { AuthUser } from '../../../../features/auth/model/auth';
 import { notificationsRepository } from '../../../../features/notifications/api/notificationsRepository';
 import type { NotificationPreferences } from '../../../../features/notifications/model/notification';
-import { settingsRepository } from '../../../../features/settings/api/settingsRepository';
+import {
+  settingsRepository,
+  type StrategyContextItem,
+} from '../../../../features/settings/api/settingsRepository';
 import type { AccessLogItem } from '../../../../features/settings/model/accessLog';
 import {
   clampTextScaleStep,
@@ -21,10 +42,13 @@ import {
   type TextPreference,
 } from '../../../../shared/config/textPreferences';
 
-type SettingsTab = 'account' | 'history' | 'notifications' | 'largeText';
+type SettingsTab = 'account' | 'history' | 'notifications' | 'largeText' | 'strategyContext';
 type AccessLogStatus = 'idle' | 'loading' | 'success' | 'error';
 type NotificationPreferenceStatus = 'idle' | 'loading' | 'success' | 'error';
 type PasswordChangeStatus = 'idle' | 'loading' | 'success' | 'error';
+type StrategyContextStatus = 'idle' | 'loading' | 'success' | 'error';
+
+const strategyContextFileMaxBytes = 5 * 1024 * 1024;
 
 const ACCESS_LOG_PAGE_SIZE = 5;
 const ACCESS_LOG_PAGE_WINDOW_SIZE = 5;
@@ -41,6 +65,7 @@ export function SettingsView({
   onTextPreferenceChange: (preference: TextPreference) => void;
 }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+  const strategyFileInputRef = useRef<HTMLInputElement>(null);
   const [profileSaved, setProfileSaved] = useState(false);
   const [accessLogs, setAccessLogs] = useState<AccessLogItem[]>([]);
   const [accessLogStatus, setAccessLogStatus] = useState<AccessLogStatus>('idle');
@@ -61,6 +86,14 @@ export function SettingsView({
   const [notificationPreferenceError, setNotificationPreferenceError] = useState('');
   const [notificationPreferenceSaved, setNotificationPreferenceSaved] = useState(false);
   const [keywordDraft, setKeywordDraft] = useState('');
+  const [strategyContextItems, setStrategyContextItems] = useState<StrategyContextItem[]>([]);
+  const [strategyContext, setStrategyContext] = useState('');
+  const [strategyContextFile, setStrategyContextFile] = useState<{ fileName: string; fileSize: number } | null>(null);
+  const [editingStrategyContextId, setEditingStrategyContextId] = useState<string | null>(null);
+  const [strategyContextListOpen, setStrategyContextListOpen] = useState(false);
+  const [strategyContextLoadStatus, setStrategyContextLoadStatus] = useState<StrategyContextStatus>('idle');
+  const [strategyContextStatus, setStrategyContextStatus] = useState<StrategyContextStatus>('idle');
+  const [strategyContextMessage, setStrategyContextMessage] = useState('');
   const displayName = currentUser?.name || currentUser?.email?.split('@')[0] || 'AXIS 사용자';
   const email = currentUser?.email || 'axis.user@sk.com';
   const textScaleStep = clampTextScaleStep(textPreference.step);
@@ -78,6 +111,7 @@ export function SettingsView({
     { id: 'account', label: '회원 정보', icon: User },
     { id: 'history', label: '접속 로그', icon: ShieldCheck },
     { id: 'notifications', label: '알림 설정', icon: Bell },
+    { id: 'strategyContext', label: '맞춤 전략 자료', icon: FileText },
     { id: 'largeText', label: '더 큰 텍스트', icon: Type },
   ];
 
@@ -111,6 +145,31 @@ export function SettingsView({
     setAccessLogPage(nextPage);
     void loadAccessLogs(nextPage);
   };
+
+  const loadStrategyContexts = useCallback(async () => {
+    setStrategyContextLoadStatus('loading');
+    try {
+      const items = await settingsRepository.strategyContexts();
+      setStrategyContextItems(items);
+      if (!editingStrategyContextId && !strategyContext.trim() && items[0]) {
+        setStrategyContext(items[0].content);
+        setStrategyContextFile(items[0].fileName && typeof items[0].fileSize === 'number'
+          ? { fileName: items[0].fileName, fileSize: items[0].fileSize }
+          : null);
+      }
+      setStrategyContextLoadStatus('success');
+    } catch (error) {
+      setStrategyContextLoadStatus('error');
+      setStrategyContextStatus('error');
+      setStrategyContextMessage(error instanceof Error ? error.message : '전략 자료를 불러오지 못했습니다.');
+    }
+  }, [editingStrategyContextId, strategyContext]);
+
+  useEffect(() => {
+    if (activeTab === 'strategyContext' && strategyContextLoadStatus === 'idle') {
+      void loadStrategyContexts();
+    }
+  }, [activeTab, loadStrategyContexts, strategyContextLoadStatus]);
 
   const loadNotificationPreferences = useCallback(async () => {
     setNotificationPreferenceStatus('loading');
@@ -153,6 +212,131 @@ export function SettingsView({
     }
     updateNotificationPreferencesDraft((current) => ({ ...current, keywords: [...current.keywords, keyword] }));
     setKeywordDraft('');
+  };
+
+  const saveStrategyContext = async () => {
+    const nextContext = strategyContext.trim();
+    if (!nextContext) {
+      setStrategyContextStatus('error');
+      setStrategyContextMessage('전략 자료 내용을 입력하세요.');
+      return;
+    }
+
+    setStrategyContextStatus('loading');
+    setStrategyContextMessage(editingStrategyContextId ? '수정 내용을 구조화하는 중입니다.' : '전략 자료를 구조화하는 중입니다.');
+    try {
+      const payload = {
+        rawText: nextContext,
+        sourceType: strategyContextFile ? 'uploaded_file' as const : 'manual_text' as const,
+        fileName: strategyContextFile?.fileName,
+        fileSize: strategyContextFile?.fileSize,
+      };
+      const savedItem = editingStrategyContextId
+        ? await settingsRepository.updateStrategyContext(editingStrategyContextId, payload)
+        : await settingsRepository.createStrategyContext(payload);
+      setStrategyContextItems((current) => (
+        editingStrategyContextId
+          ? current.map((item) => (item.id === savedItem.id ? savedItem : item))
+          : [savedItem, ...current.filter((item) => item.id !== savedItem.id)]
+      ));
+      setStrategyContext(savedItem.content);
+      setEditingStrategyContextId(null);
+      setStrategyContextFile(null);
+      setStrategyContextListOpen(true);
+      setStrategyContextStatus('success');
+      setStrategyContextMessage(editingStrategyContextId ? '수정되었습니다' : '저장되었습니다');
+    } catch (error) {
+      setStrategyContextStatus('error');
+      setStrategyContextMessage(error instanceof Error ? error.message : '전략 자료를 저장하지 못했습니다.');
+    }
+  };
+
+  const clearStrategyContext = () => {
+    setStrategyContext('');
+    setStrategyContextFile(null);
+    setEditingStrategyContextId(null);
+    setStrategyContextStatus('idle');
+    setStrategyContextMessage('');
+  };
+
+  const editStrategyContext = (item: StrategyContextItem) => {
+    setStrategyContext(item.content);
+    setStrategyContextFile(item.fileName && typeof item.fileSize === 'number'
+      ? { fileName: item.fileName, fileSize: item.fileSize }
+      : null);
+    setEditingStrategyContextId(item.id);
+    setStrategyContextStatus('idle');
+    setStrategyContextMessage('');
+  };
+
+  const deleteStrategyContext = async (itemId: string) => {
+    const item = strategyContextItems.find((current) => current.id === itemId);
+    if (!item || !window.confirm('이 전략 자료를 삭제할까요?')) {
+      return;
+    }
+
+    setStrategyContextStatus('loading');
+    setStrategyContextMessage('삭제 중입니다.');
+    try {
+      await settingsRepository.deleteStrategyContext(itemId);
+      const nextItems = strategyContextItems.filter((current) => current.id !== itemId);
+      setStrategyContextItems(nextItems);
+      if (editingStrategyContextId === itemId) {
+        clearStrategyContext();
+      }
+      setStrategyContextStatus('success');
+      setStrategyContextMessage('삭제되었습니다');
+    } catch (error) {
+      setStrategyContextStatus('error');
+      setStrategyContextMessage(error instanceof Error ? error.message : '전략 자료를 삭제하지 못했습니다.');
+    }
+  };
+
+  const handleStrategyContextFileUpload = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+
+    if (file.size > strategyContextFileMaxBytes) {
+      setStrategyContextStatus('error');
+      setStrategyContextMessage('파일은 5MB 이내로 업로드하세요.');
+      if (strategyFileInputRef.current) {
+        strategyFileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setStrategyContextStatus('loading');
+    setStrategyContextMessage('파일 본문을 추출하는 중입니다.');
+    try {
+      const extraction = await settingsRepository.extractStrategyContextFile(file);
+      const trimmedContent = extraction.extractedText.trim();
+      if (!trimmedContent) {
+        setStrategyContextStatus('error');
+        setStrategyContextMessage('파일에서 읽을 수 있는 텍스트가 없습니다.');
+        return;
+      }
+
+      setStrategyContext(trimmedContent);
+      setStrategyContextFile({ fileName: extraction.fileName, fileSize: extraction.fileSize });
+      setEditingStrategyContextId(null);
+      setStrategyContextStatus('success');
+      let message = '파일 내용을 불러왔습니다.';
+      if (extraction.ocrUsed) {
+        message = 'OCR로 파일 내용을 불러왔습니다.';
+      }
+      if (extraction.truncated) {
+        message = '파일 내용이 길어 일부 텍스트만 불러왔습니다.';
+      }
+      setStrategyContextMessage(message);
+    } catch (error) {
+      setStrategyContextStatus('error');
+      setStrategyContextMessage(error instanceof Error ? error.message : '파일 내용을 읽지 못했습니다.');
+    } finally {
+      if (strategyFileInputRef.current) {
+        strategyFileInputRef.current.value = '';
+      }
+    }
   };
 
   useEffect(() => {
@@ -564,6 +748,178 @@ export function SettingsView({
                 </div>
               </section>
             ) : null}
+
+            {activeTab === 'strategyContext' ? (
+              <section className="p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <FileText size={17} className="text-[var(--axis-accent)]" />
+                      <h2 className="axis-section-heading">맞춤 전략 자료</h2>
+                    </div>
+                    <p className="mt-2 max-w-2xl text-body-sm text-[var(--axis-muted)]">
+                      입력한 내용을 반영해 카드뉴스의 대응방안을 우리 조직 관점으로 더 구체화합니다.
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <input
+                      ref={strategyFileInputRef}
+                      type="file"
+                      accept=".txt,.md,.csv,.json,.log,.pdf,.png,.jpg,.jpeg,.webp,text/*,application/pdf,application/json,image/*"
+                      className="hidden"
+                      onChange={(event) => void handleStrategyContextFileUpload(event.currentTarget.files?.[0])}
+                    />
+                    <ExecutiveButton
+                      variant="secondary"
+                      icon={<Upload size={16} />}
+                      disabled={strategyContextStatus === 'loading'}
+                      onClick={() => strategyFileInputRef.current?.click()}
+                    >
+                      파일 업로드
+                    </ExecutiveButton>
+                    <ExecutiveButton
+                      variant="secondary"
+                      icon={<History size={16} />}
+                      onClick={() => setStrategyContextListOpen((current) => !current)}
+                    >
+                      저장된 자료 보기
+                    </ExecutiveButton>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-heading-5 font-semibold text-[var(--axis-ink)]">전략 자료 입력</h3>
+                      <p className="mt-1 text-caption leading-5 text-[var(--axis-muted)]">
+                        뉴스·공시 등 외부 수집 정보만으로는 알 수 없는 우리 조직의 계획, 제품 로드맵, 제안 방향을 입력해 주세요.
+                      </p>
+                    </div>
+                  </div>
+                  {strategyContextLoadStatus === 'loading' ? (
+                    <div className="mt-3">
+                      <ExecutiveBadge>저장된 자료를 불러오는 중</ExecutiveBadge>
+                    </div>
+                  ) : null}
+                  {editingStrategyContextId || strategyContextFile ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {editingStrategyContextId ? <ExecutiveBadge tone="warning">수정 중</ExecutiveBadge> : null}
+                      {strategyContextFile ? (
+                        <ExecutiveBadge>
+                          {strategyContextFile.fileName} · {formatFileSize(strategyContextFile.fileSize)}
+                        </ExecutiveBadge>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <label htmlFor="strategy-context-input" className="sr-only">맞춤 전략 자료 컨텍스트</label>
+                  <textarea
+                    id="strategy-context-input"
+                    value={strategyContext}
+                    rows={10}
+                    onChange={(event) => {
+                      setStrategyContext(event.target.value);
+                      setStrategyContextStatus('idle');
+                      setStrategyContextMessage('');
+                    }}
+                    placeholder="예: 현재 준비 중인 제품·서비스, 개발 단계, 기존 기획 범위, 보완이 필요한 기능, 우선 적용 업무, 타깃 고객, 제안 방향, 조직의 강점, 파트너 협력 필요 영역 등을 입력하세요."
+                    className="mt-4 min-h-[220px] w-full resize-y rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-4 py-3 text-body-sm leading-6 text-[var(--axis-ink)] outline-none transition placeholder:text-[var(--axis-muted)] focus:border-[var(--axis-accent)]"
+                  />
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2" aria-live="polite">
+                    <ExecutiveButton
+                      icon={<Save size={16} />}
+                      disabled={strategyContextStatus === 'loading'}
+                      onClick={() => void saveStrategyContext()}
+                    >
+                      {strategyContextStatus === 'loading' ? '처리 중' : editingStrategyContextId ? '수정 저장' : '저장'}
+                    </ExecutiveButton>
+                    <ExecutiveButton
+                      variant="secondary"
+                      icon={<X size={16} />}
+                      disabled={strategyContextStatus === 'loading'}
+                      onClick={clearStrategyContext}
+                    >
+                      입력 비우기
+                    </ExecutiveButton>
+                    {strategyContextMessage ? (
+                      <ExecutiveBadge tone={strategyContextStatus === 'error' ? 'danger' : strategyContextStatus === 'loading' ? 'warning' : 'success'}>
+                        {strategyContextMessage}
+                      </ExecutiveBadge>
+                    ) : null}
+                  </div>
+                </div>
+
+                {strategyContextListOpen ? (
+                  <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-heading-5 font-semibold text-[var(--axis-ink)]">누적 전략 자료</h3>
+                        <p className="mt-1 text-caption leading-5 text-[var(--axis-muted)]">
+                          저장된 자료를 불러와 수정하거나 삭제할 수 있습니다.
+                        </p>
+                      </div>
+                      <ExecutiveBadge>{strategyContextItems.length}건</ExecutiveBadge>
+                    </div>
+
+                    <div className="mt-4 grid gap-3">
+                      {strategyContextItems.length === 0 ? (
+                        <div className="rounded-[var(--axis-radius-md)] border border-dashed border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-6 text-center text-body-sm text-[var(--axis-muted)]">
+                          저장된 전략 자료가 없습니다.
+                        </div>
+                      ) : null}
+                      {strategyContextItems.map((item) => (
+                        <article
+                          key={item.id}
+                          className={`rounded-[var(--axis-radius-md)] border bg-[var(--axis-canvas)] p-4 transition ${
+                            editingStrategyContextId === item.id
+                              ? 'border-[var(--axis-accent)]'
+                              : 'border-[var(--axis-hairline)]'
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <ExecutiveBadge>{item.sourceType === 'uploaded_file' ? '파일' : '직접 입력'}</ExecutiveBadge>
+                                <span className="text-caption-bold text-[var(--axis-muted)]">
+                                  {formatStrategyContextTime(item.updatedAt)} 업데이트
+                                </span>
+                                {item.fileName ? (
+                                  <span className="min-w-0 break-words text-caption text-[var(--axis-muted)]">
+                                    {item.fileName}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="mt-2 max-h-12 overflow-hidden break-words text-caption leading-5 text-[var(--axis-muted)]">
+                                {strategyContextPreview(item.content)}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <ExecutiveButton
+                                variant="secondary"
+                                icon={<Pencil size={15} />}
+                                disabled={strategyContextStatus === 'loading'}
+                                onClick={() => editStrategyContext(item)}
+                              >
+                                수정
+                              </ExecutiveButton>
+                              <ExecutiveButton
+                                variant="ghost"
+                                icon={<Trash2 size={15} />}
+                                disabled={strategyContextStatus === 'loading'}
+                                onClick={() => void deleteStrategyContext(item.id)}
+                              >
+                                삭제
+                              </ExecutiveButton>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
           </main>
         </section>
       </ExecutiveContainer>
@@ -702,6 +1058,34 @@ function AccessLogPageButton({
       {children}
     </button>
   );
+}
+
+function formatStrategyContextTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '방금';
+  }
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Seoul',
+  }).format(date);
+}
+
+function formatFileSize(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return '0 KB';
+  }
+  if (value < 1024 * 1024) {
+    return `${Math.max(1, Math.round(value / 1024))} KB`;
+  }
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function strategyContextPreview(value: string) {
+  return value.replace(/\s+/g, ' ').trim() || '내용 없음';
 }
 
 function Field({
