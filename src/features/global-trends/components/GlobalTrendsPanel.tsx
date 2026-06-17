@@ -1,4 +1,4 @@
-import { ChevronDown, ExternalLink, LineChart, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react';
+import { ChevronDown, ExternalLink, LineChart, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { ExecutiveBadge, ExecutiveButton } from '../../../app/components/executive/ExecutiveSystem';
 import { PageState } from '../../../app/components/shared/PageState';
@@ -7,12 +7,7 @@ import type { GlobalTrendEvidenceLink, GlobalTrendItem } from '../model/globalTr
 import {
   categoryLabel,
   companyLabel,
-  deltaTone,
-  deriveMentionDelta,
-  formatPercent,
-  formatTrendDelta,
   rankTrendItems,
-  rankTrendShifts,
   trendTitle,
 } from './globalTrendsFormatters';
 
@@ -141,62 +136,14 @@ function rankRisingTrendShifts(items: GlobalTrendItem[]) {
 }
 
 function TrendShiftRow({ item }: { item: GlobalTrendItem }) {
-  const delta = deriveMentionDelta(item.mention_count, item.frequency_delta_pct);
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-      <span className="w-20 shrink-0 text-right" title={formatTrendDelta(item.frequency_delta_pct)}>
-        <DeltaStat delta={delta} pct={item.frequency_delta_pct} />
+      <span className="w-20 shrink-0 text-right text-xs font-bold text-[var(--axis-muted)]">
+        {item.mention_count ?? 0}건
       </span>
       <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--axis-ink)]">{trendTitle(item)}</span>
-      <span className="hidden text-[13px] text-[var(--axis-muted)] sm:inline">
-        {delta?.kind === 'changed'
-          ? `${delta.previous}건 → ${delta.current}건`
-          : `언급 ${item.mention_count ?? 0}건`}
-      </span>
       <ExecutiveBadge tone="neutral">{categoryLabel(item.keyword_category)}</ExecutiveBadge>
     </div>
-  );
-}
-
-/** 언급 건수 변화 우선 표기 — 역산 불가(delta null)일 때만 % 폴백 */
-function DeltaStat({ delta, pct }: { delta: ReturnType<typeof deriveMentionDelta>; pct?: number | null }) {
-  if (delta?.kind === 'new') {
-    return (
-      <span
-        className="inline-flex items-center rounded-full bg-[rgba(220,90,36,0.12)] px-2 py-0.5 text-[11px] font-black tracking-wide text-[var(--axis-accent-strong)]"
-        title="이번 분석에서 처음 포착된 키워드"
-      >
-        NEW
-      </span>
-    );
-  }
-  if (delta?.kind === 'changed') {
-    const isUp = delta.diff > 0;
-    return (
-      <span
-        className={`inline-flex items-center gap-1 text-xs font-bold ${
-          isUp ? 'text-[var(--axis-success)]' : 'text-[var(--axis-danger)]'
-        }`}
-      >
-        {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-        {isUp ? '+' : '−'}
-        {Math.abs(delta.diff)}건
-      </span>
-    );
-  }
-  if (delta?.kind === 'flat' || deltaTone(pct) === 'flat') {
-    return <span className="inline-flex items-center gap-1 text-xs font-bold text-[var(--axis-muted)]">유지</span>;
-  }
-  const isUp = deltaTone(pct) === 'up';
-  return (
-    <span
-      className={`inline-flex items-center gap-1 text-xs font-bold ${
-        isUp ? 'text-[var(--axis-success)]' : 'text-[var(--axis-danger)]'
-      }`}
-    >
-      {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-      {formatPercent(pct)}
-    </span>
   );
 }
 
