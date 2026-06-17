@@ -2,12 +2,12 @@ import { type WheelEvent as ReactWheelEvent, useCallback, useEffect, useMemo, us
 import { Filter, Maximize2, Minus, Plus } from 'lucide-react';
 import * as THREE from 'three';
 import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
-import { normalizeCardNewsItem } from '../../../../features/card-news/api/cardNewsRepository';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { getDisplayDate, getPeerLabel } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
-import { httpClient } from '../../../../shared/api/httpClient';
+import { fetchKeywordGraph, fetchKeywordGraphCards, isKeywordGraphApiConfigured } from '../../../../features/keyword-graph/api/keywordGraphRepository';
+import type { KeywordGraphPayload } from '../../../../features/keyword-graph/model/keywordGraph';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/content/keywordGraph';
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
@@ -16,17 +16,6 @@ import { Skeleton } from '../../ui/skeleton';
 import { FilterChip } from '../shared/axis';
 
 type NavigateHandler = (view: string) => void;
-
-type KeywordGraphPayload = {
-  selectedId?: string;
-  nodes?: Array<Partial<KeywordNode>>;
-  edges?: Array<Partial<KeywordEdge>>;
-};
-
-type KeywordGraphCardsPayload = {
-  items?: Array<Partial<CardNewsItem>>;
-  total?: number;
-};
 
 type KeywordGraphLoadStage = 'requesting' | 'normalizing' | 'rendering';
 
@@ -228,14 +217,6 @@ function fallbackNodeCards(
   return node.category === '기업'
     ? fallbackCompanyCards(node, cards, nodes, edges)
     : fallbackKeywordCards(node, cards);
-}
-
-async function fetchKeywordGraphCards(nodeId: string) {
-  if (!httpClient) {
-    throw new Error('API client is not configured.');
-  }
-  const payload = await httpClient.get<KeywordGraphCardsPayload>(`/api/keyword-graph/${encodeURIComponent(nodeId)}/cards?limit=30`);
-  return (payload.items ?? []).map(normalizeCardNewsItem);
 }
 
 function resolveCssColor(value: string, fallback: string) {
@@ -689,7 +670,7 @@ export function KeywordGraphView({
     let cancelled = false;
 
     async function loadKeywordGraph() {
-      if (!httpClient) {
+      if (!isKeywordGraphApiConfigured()) {
         setGraphLoading(false);
         setGraphError('API client is not configured.');
         return;
@@ -700,7 +681,7 @@ export function KeywordGraphView({
         setGraphLoading(true);
         setGraphLoadStage('requesting');
         setGraphError(null);
-        const payload = await httpClient.get<KeywordGraphPayload>('/api/keyword-graph');
+        const payload = await fetchKeywordGraph();
         if (cancelled) return;
         setGraphLoadStage('normalizing');
         setGraphPayload(payload);
@@ -755,7 +736,7 @@ export function KeywordGraphView({
   }, [selectedId, visibleNodes]);
 
   useEffect(() => {
-    if (!httpClient || visibleNodes.length === 0) return undefined;
+    if (!isKeywordGraphApiConfigured() || visibleNodes.length === 0) return undefined;
     let cancelled = false;
 
     async function prefetchKeywordCards() {
@@ -805,7 +786,7 @@ export function KeywordGraphView({
     setKeywordRelatedCards([]);
 
     async function loadKeywordCards() {
-      if (!httpClient) return;
+      if (!isKeywordGraphApiConfigured()) return;
       try {
         setKeywordCardsLoading(true);
         setKeywordCardsError(null);
