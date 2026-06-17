@@ -38,6 +38,14 @@ export interface GlobalTrendEvidenceLink {
   published_at?: string;
 }
 
+export interface GlobalCompanyMovement {
+  company_id: string;
+  headline?: string;
+  summary?: string;
+  evidence_titles?: string[];
+  top_themes?: string[];
+}
+
 export type GlobalTrendDataSource = 'live';
 
 export interface GlobalTrendItem {
@@ -61,6 +69,7 @@ export interface GlobalTrendItem {
   forecasts?: GlobalForecastRow[];
   final_one_liner?: string;
   overall_summary?: string;
+  company_movements?: GlobalCompanyMovement[];
   evidence_source_links?: GlobalTrendEvidenceLink[];
   leading_companies?: string[];
   intensity?: string | null;
@@ -104,6 +113,7 @@ export interface GlobalTrendsRunRequest {
   window_days?: number;
   sk_ax_business_lines?: string[] | null;
   include_peer_alignment?: boolean;
+  global_only?: boolean;
   min_mention_count?: number;
   max_trend_count?: number;
 }

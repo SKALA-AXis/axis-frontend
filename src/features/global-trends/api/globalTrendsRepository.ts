@@ -48,6 +48,7 @@ class HttpGlobalTrendsRepository implements GlobalTrendsRepository {
     const data = await httpClient.post<GlobalTrendsRunResult>('/api/global/trends/run', {
       window_days: request.window_days ?? 30,
       include_peer_alignment: request.include_peer_alignment ?? true,
+      global_only: request.global_only ?? true,
       max_trend_count: request.max_trend_count ?? 8,
       min_mention_count: request.min_mention_count ?? 3,
       ...(request.company_ids ? { company_ids: request.company_ids } : {}),

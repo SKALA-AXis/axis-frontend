@@ -5,14 +5,12 @@ import { PageState } from '../../../app/components/shared/PageState';
 import { useGlobalTrendsList } from '../hooks/useGlobalTrendsList';
 import type { GlobalTrendEvidenceLink, GlobalTrendItem } from '../model/globalTrends';
 import {
-  ALIGNMENT_META,
   categoryLabel,
   companyLabel,
   deltaTone,
   deriveMentionDelta,
   formatPercent,
   formatTrendDelta,
-  peerLabel,
   rankTrendItems,
   rankTrendShifts,
   trendTitle,
@@ -35,8 +33,6 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
   const peerMovements = useMemo(() => buildPeerMovements(topItems), [topItems]);
   const evidenceGroups = useMemo(() => buildEvidenceGroups(topItems), [topItems]);
   const trendBrief = useMemo(() => buildTrendBrief(topItems), [topItems]);
-  const headlineEvidence = useMemo(() => buildHeadlineEvidence(topItems), [topItems]);
-  const domesticPeerMoves = useMemo(() => buildDomesticPeerMoves(topItems), [topItems]);
 
   useEffect(() => {
     const latest = topItems[0]?.updated_at ?? topItems[0]?.created_at ?? listData?.latest_trend_date ?? null;
@@ -80,68 +76,29 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           {trendBrief.supporting ? (
             <p className="mt-4 max-w-6xl text-xl leading-[1.55] text-[var(--axis-body)]">{trendBrief.supporting}</p>
           ) : null}
-          {headlineEvidence.length > 0 ? (
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-caption-bold text-[var(--axis-muted)]">예시</span>
-              {headlineEvidence.map((link) => (
-                <a
-                  key={link.url}
-                  href={link.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex max-w-[420px] items-center gap-1.5 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-1.5 text-caption-bold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
-                >
-                  <span className="min-w-0 truncate">
-                    {link.source ? `${link.source} · ` : ''}
-                    {link.title}
-                  </span>
-                  <ExternalLink size={12} className="shrink-0" />
-                </a>
-              ))}
-            </div>
-          ) : null}
         </section>
-
-        {domesticPeerMoves.some((peer) => peer.moves.length > 0) ? (
-          <section className="axis-panel-flat p-5">
-            <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">핵심 트렌드 대응 — SK AX · 국내 Peer</p>
-            <p className="mt-1 text-caption text-[var(--axis-muted)]">각 피어가 실제로 대응한 트렌드만 표시합니다.</p>
-            <div className="mt-4 divide-y divide-[var(--axis-hairline)] border-t border-[var(--axis-hairline)]">
-              {domesticPeerMoves.map((peer) => (
-                <div key={peer.peerId} className="grid min-h-12 grid-cols-[104px_minmax(0,1fr)] items-start gap-3 py-3">
-                  <strong className="pt-0.5 text-sm font-bold text-[var(--axis-ink)]">{peer.label}</strong>
-                  {peer.moves.length > 0 ? (
-                    <div className="min-w-0 space-y-1.5">
-                      {peer.moves.map((move) => (
-                        <div key={`${peer.peerId}-${move.trend}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px] leading-6 text-[var(--axis-body)]">
-                          <ExecutiveBadge tone={ALIGNMENT_META[move.alignment]?.tone ?? 'neutral'}>
-                            {ALIGNMENT_META[move.alignment]?.label ?? move.alignment}
-                          </ExecutiveBadge>
-                          <span className="min-w-0">
-                            <span className="font-semibold text-[var(--axis-ink)]">{move.trend}</span>
-                            {move.note ? <> — {move.note}</> : null}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="pt-0.5 text-[15px] leading-6 text-[var(--axis-muted)]">핵심 트렌드 관련 공개 동향 미확인</span>
-                  )}
-                </div>
-              ))}
-            </div>
-            <p className="mt-3 text-caption text-[var(--axis-muted)]">✨ 트렌드별 AI 정렬 판정·전략 노트(AI 초안) 기반입니다.</p>
-          </section>
-        ) : null}
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <section className="axis-panel-flat bg-[var(--axis-surface-soft)] p-5">
-            <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">글로벌 피어사별 최신 움직임</p>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">글로벌 피어사별 최신 움직임</p>
+                <p className="mt-1 text-caption text-[var(--axis-muted)]">포착 트렌드를 회사별로 묶어 확인합니다.</p>
+              </div>
+              <ExecutiveBadge tone="neutral">최근 30일</ExecutiveBadge>
+            </div>
             <div className="mt-4 divide-y divide-[var(--axis-hairline)] border-t border-[var(--axis-hairline)]">
               {peerMovements.map((movement) => (
-                <div key={movement.companyId} className="grid min-h-12 grid-cols-[104px_minmax(0,1fr)] items-center gap-3 py-3">
-                  <strong className="text-sm font-bold text-[var(--axis-ink)]">{movement.company}</strong>
-                  <span className="text-[15px] leading-6 text-[var(--axis-body)]">{movement.summary}</span>
+                <div key={movement.companyId} className="grid min-h-[88px] grid-cols-[104px_minmax(0,1fr)] items-start gap-3 py-3">
+                  <div className="space-y-1 pt-0.5">
+                    <strong className="block text-sm font-bold text-[var(--axis-ink)]">{movement.company}</strong>
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <p className="text-[15px] font-semibold leading-6 text-[var(--axis-ink)]">{movement.summary}</p>
+                    {movement.note ? (
+                      <p className="text-sm leading-6 text-[var(--axis-muted)]">{movement.note}</p>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -166,7 +123,6 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
 
         <section className="axis-panel-flat p-5">
           <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">근거 뉴스</p>
-          <h3 className="mt-1 text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">클릭하면 원문 기사와 판단 근거를 확인</h3>
           <div className="mt-4 grid gap-3 xl:grid-cols-3">
             {evidenceGroups.length === 0 ? (
               <p className="text-sm text-[var(--axis-muted)]">연결된 원문 링크가 없습니다.</p>
@@ -181,7 +137,7 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
 }
 
 function rankRisingTrendShifts(items: GlobalTrendItem[]) {
-  return rankTrendShifts(items).filter((item) => (item.frequency_delta_pct ?? 0) > 0);
+  return rankTrendItems(items);
 }
 
 function TrendShiftRow({ item }: { item: GlobalTrendItem }) {
@@ -257,8 +213,7 @@ function EvidenceDetails({ item }: { item: EvidenceGroup }) {
         </span>
       </summary>
       <div className="border-t border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
-        {item.summary ? <p className="text-sm leading-6 text-[var(--axis-body)]">{item.summary}</p> : null}
-        <div className="mt-3 space-y-2">
+        <div className="space-y-2">
           {item.links.map((link) => (
             <a
               key={`${item.id}-${link.url}`}
@@ -297,37 +252,65 @@ function buildTrendBrief(items: GlobalTrendItem[]) {
   const selectedAxes = axes.length > 0 ? axes : ['제품 경험', 'AI 인프라 운영', '산업 적용'];
   const headline =
     agentHeadline ??
-    `글로벌 피어사들은 AI를 별도 기능이 아니라 ${selectedAxes.join(', ')}의 기본 레이어로 확장하고 있습니다.`;
+    `글로벌 피어사들은 AI를 ${selectedAxes.join(', ')}의 기본 레이어로 확장하고 있습니다.`;
   const supporting = agentSupporting ?? '';
 
   return { headline, supporting };
 }
 
 function buildPeerMovements(items: GlobalTrendItem[]) {
+  const companyMovements = collectCompanyMovements(items);
   return GLOBAL_COMPANY_IDS.map((companyId) => {
-    const matched = items
-      .filter((item) => item.leading_companies?.some((company) => company.toLowerCase() === companyId))
-      .slice(0, 2)
-      .map((item) => trendTitle(item));
+    const companyMovement = companyMovements.get(companyId);
+    const matched = items.filter((item) => item.leading_companies?.some((company) => company.toLowerCase() === companyId));
 
     return {
       companyId,
       company: companyLabel(companyId),
-      summary: matched.length > 0 ? matched.join(' · ') : fallbackPeerMovement(companyId),
+      summary: companyMovement?.headline || buildCompanyMovementSummary(matched),
+      note: companyMovement?.summary || buildPeerMovementNote(matched),
     };
   });
 }
 
-function fallbackPeerMovement(companyId: string) {
-  const fallbacks: Record<string, string> = {
-    nvidia: 'AI 인프라 · 제조 · 로보틱스',
-    microsoft: 'Copilot · Azure AI · 업무 자동화',
-    google: 'Gemini · Workspace · Cloud',
-    amazon: 'AWS · 생성형 AI · 산업 사례',
-    meta: '오픈 모델 · AI Agent',
-    apple: '온디바이스 AI · 개인정보 보호',
-  };
-  return fallbacks[companyId] ?? '글로벌 IT 신호 관찰 중';
+function collectCompanyMovements(items: GlobalTrendItem[]) {
+  const movements = new Map<string, NonNullable<GlobalTrendItem['company_movements']>[number]>();
+  for (const item of items) {
+    for (const movement of item.company_movements ?? []) {
+      const companyId = movement.company_id?.trim().toLowerCase();
+      if (!companyId || movements.has(companyId)) continue;
+      if (!movement.headline && !movement.summary) continue;
+      movements.set(companyId, movement);
+    }
+  }
+  return movements;
+}
+
+function buildPeerMovementNote(items: GlobalTrendItem[]) {
+  const primary = items[0];
+  if (!primary) return '';
+
+  const summary = displayableKoreanSummary(primary.summary);
+  if (summary) return summary;
+
+  return '';
+}
+
+function buildCompanyMovementSummary(items: GlobalTrendItem[]) {
+  const trendTitles = items.slice(0, 2).map((item) => trendTitle(item));
+  if (trendTitles.length > 0) return trendTitles.join(' · ');
+  return '상위 트렌드 매칭 없음';
+}
+
+function displayableKoreanSummary(value?: string | null) {
+  const summary = value?.trim();
+  if (!summary) return '';
+  if (!/[가-힣]/.test(summary)) return '';
+  if (/global\s*6사\s*newsroom/i.test(summary)) return '';
+  if (/intensity\s*=/i.test(summary)) return '';
+  if (/(?:strong|moderate|weak)\s*강도\s*글로벌\s*트렌드/i.test(summary)) return '';
+
+  return summary;
 }
 
 type EvidenceGroup = {
@@ -370,39 +353,4 @@ function formatEvidenceSources(links?: GlobalTrendEvidenceLink[]) {
 
 function hasAny(values: Set<string>, targets: string[]) {
   return targets.some((target) => values.has(target));
-}
-
-/** 최신 트렌드 헤드라인 아래 붙일 대표 근거 1~2건 — 영향도 상위 트렌드의 원문 링크에서 추출 */
-function buildHeadlineEvidence(items: GlobalTrendItem[]) {
-  const links: { source?: string; title: string; url: string }[] = [];
-  for (const item of items) {
-    for (const link of item.evidence_source_links ?? []) {
-      if (!link.url || !link.title) continue;
-      if (links.some((seen) => seen.url === link.url)) continue;
-      links.push({ source: link.source_name, title: link.title, url: link.url });
-      if (links.length >= 2) return links;
-    }
-  }
-  return links;
-}
-
-const DOMESTIC_PEER_ORDER = ['sk_ax', 'samsung_sds', 'lg_cns', 'hyundai_autoever', 'posco_dx'];
-const MAX_MOVES_PER_PEER = 3;
-
-/**
- * 각 피어가 "실제로 대응한" 트렌드만 추출 — alignment_type 이 missing 이 아닌 행만.
- * 영향도 순(items 가 이미 정렬됨)으로 피어마다 다른 트렌드가 자연히 노출된다.
- * 대응 흔적이 없는 피어는 moves 가 비고, 화면에선 한 줄로 압축 표시.
- */
-function buildDomesticPeerMoves(items: GlobalTrendItem[]) {
-  return DOMESTIC_PEER_ORDER.map((peerId) => {
-    const moves: { trend: string; note?: string; alignment: string }[] = [];
-    for (const item of items) {
-      if (moves.length >= MAX_MOVES_PER_PEER) break;
-      const row = item.peer_alignment?.find((peer) => peer.peer_id === peerId);
-      if (!row || row.alignment_type === 'missing') continue;
-      moves.push({ trend: trendTitle(item), note: row.strategic_note, alignment: row.alignment_type });
-    }
-    return { peerId, label: peerLabel(peerId), moves };
-  });
 }
