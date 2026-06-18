@@ -877,7 +877,7 @@ export function KeywordGraphView({
   return (
     <ExecutivePage className="h-full overflow-hidden">
       <ExecutiveContainer className="flex h-full max-w-none flex-col overflow-hidden px-3 pb-3 pt-2 sm:px-4 lg:px-4">
-        <section className="axis-panel-flat flex min-h-0 flex-1 flex-col overflow-hidden">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--axis-radius-lg)] bg-[var(--axis-surface)]">
           <header className="flex flex-col gap-2 p-3 lg:flex-row lg:items-center lg:justify-end">
             <h1 className="sr-only">키워드 그래프</h1>
             <div data-guide="keyword-controls" className="flex flex-wrap gap-2">

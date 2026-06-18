@@ -123,7 +123,7 @@ export function buildSelectionRatioData<T extends string>(
   return Array.from(counts.entries()).map(([name, value]) => ({
     name,
     value,
-    color: colorMap[name],
+    color: colorMap[name] ?? '#6B7280',
   }));
 }
 

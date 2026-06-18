@@ -7,9 +7,9 @@
  *   2026-06-12 박지원 — 글로벌 트렌드 브리핑/시그널 UI 다듬기, agent 헤드라인·요약 사용, 기업 동향 렌더 및 모멘텀 카운트 단순화
  *   2026-06-18 안가은 — 튜토리얼과 브리핑 관리자 UI 정리
  */
-import { ChevronDown, ExternalLink, LineChart, RefreshCw } from 'lucide-react';
+import { ChevronDown, ExternalLink, LineChart } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
-import { ExecutiveBadge, ExecutiveButton } from '../../../app/components/executive/ExecutiveSystem';
+import { ExecutiveBadge } from '../../../app/components/executive/ExecutiveSystem';
 import { PageState } from '../../../app/components/shared/PageState';
 import { useGlobalTrendsList } from '../hooks/useGlobalTrendsList';
 import type { GlobalTrendEvidenceLink, GlobalTrendItem } from '../model/globalTrends';
@@ -66,13 +66,9 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           </div>
         ) : null}
 
-        <section data-guide="global-trends-summary" className="axis-panel-flat p-5">
-          <div data-guide="global-trends-header" className="flex flex-wrap items-start justify-between gap-3">
+        <section data-guide="global-trends-summary" className="p-5">
+          <div data-guide="global-trends-header" className="flex flex-wrap items-start gap-3">
             <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">최신 트렌드</p>
-            <ExecutiveButton variant="secondary" onClick={() => reload()} disabled={isLoading}>
-              <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
-              새로고침
-            </ExecutiveButton>
           </div>
           <p className="mt-4 max-w-6xl text-[2.25rem] font-display font-semibold leading-[1.3] text-[var(--axis-ink)]">
             {trendBrief.headline}

@@ -587,6 +587,7 @@ export function FloatingCardNewsOverlay({
                   onClick={toggleStrategyContextPreview}
                   disabled={strategyLoading}
                   aria-pressed={strategyApplied}
+                  aria-label={strategyApplied ? '맞춤 전략 적용됨' : '맞춤 전략 적용하기'}
                   className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--axis-radius-md)] border px-3.5 py-2 text-sm font-semibold transition ${
                     strategyApplied
                       ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)] hover:bg-[rgba(220,90,36,0.14)]'
@@ -594,7 +595,7 @@ export function FloatingCardNewsOverlay({
                   } disabled:cursor-wait disabled:opacity-70`}
                 >
                   <Sparkles size={15} />
-                  {strategyLoading ? '처리 중' : strategyApplied ? '맞춤 전략 적용' : '맞춤 전략 미적용'}
+                  맞춤 전략 적용
                 </button>
               </div>
               {shareFeedback ? <p className="mt-3 text-xs font-semibold text-[var(--axis-muted)]">{shareFeedback}</p> : null}
