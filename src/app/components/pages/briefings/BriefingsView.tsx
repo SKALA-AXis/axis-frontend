@@ -7,6 +7,7 @@ import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from 
 import { useGeneratedBriefing } from '../../../../features/briefings/hooks/useGeneratedBriefing';
 import type { BriefingViewModel } from '../../../../features/briefings/mappers/briefingGenerateMapper';
 import { toBriefingAnchorDate } from '../../../../features/briefings/utils/briefingDate';
+import { clampValue, normalizeBriefingText, stripLeadingRangeLabel } from '../../../../features/briefings/lib/briefingText';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import {
   ExecutiveBadge,
@@ -49,25 +50,6 @@ type BriefingsViewProps = {
   onToggleBookmark?: (cardId: string) => void;
   onUpdateTimeChange?: (updatedAt: string | null) => void;
 };
-
-function stripLeadingRangeLabel(text: string, leadLabel: string) {
-  if (text.startsWith(`${leadLabel}에는 `)) {
-    return text.slice(`${leadLabel}에는 `.length);
-  }
-  if (text.startsWith(`${leadLabel}에 `)) {
-    return text.slice(`${leadLabel}에 `.length);
-  }
-  return text;
-}
-
-function normalizeBriefingText(text: string) {
-  return text.replace(/(^|\s)\d+\.\s*/g, '$1').replace(/\s+/g, ' ').trim();
-}
-
-function clampValue(value: string, maxValue: string) {
-  if (!value) return maxValue;
-  return value > maxValue ? maxValue : value;
-}
 
 function adaptGeneratedBriefing(briefing: BriefingViewModel): BriefingReport {
   return {
