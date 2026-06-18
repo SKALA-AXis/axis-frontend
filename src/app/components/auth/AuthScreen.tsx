@@ -1,6 +1,7 @@
 import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, MailCheck, Moon, RefreshCw, Sun } from 'lucide-react';
 import type { SignupPayload } from '../../../features/auth/model/auth';
+import { isCallbackPath, shouldShowRawResetError } from '../../../features/auth/lib/authRouting';
 import { Input } from '../ui/input';
 
 export type AuthMode =
@@ -83,15 +84,6 @@ function AuthNotice({ tone, children }: { tone: NoticeTone; children: ReactNode 
       <span>{children}</span>
     </div>
   );
-}
-
-function isCallbackPath() {
-  return window.location.pathname === '/auth/email-verifications/confirm' ||
-    window.location.pathname === '/auth/password-reset/confirm';
-}
-
-function shouldShowRawResetError(message: string) {
-  return message.includes('백엔드 서버') || message.includes('API를 찾을 수 없습니다') || message.includes('서버 오류');
 }
 
 export function AuthScreen({
