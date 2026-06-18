@@ -1,5 +1,5 @@
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { notificationsRepository } from '../../../../features/notifications/api/notificationsRepository';
 import { formatNotificationCount, type NotificationItem } from '../../../../features/notifications/model/notification';
 import {
@@ -9,14 +9,25 @@ import {
   ExecutiveHeader,
   ExecutivePage,
 } from '../../executive/ExecutiveSystem';
+import { PageWindowPagination } from '../../shared/PageWindowPagination';
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error';
+const notificationsPageSize = 20;
 
 export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) => void }) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [status, setStatus] = useState<LoadStatus>('idle');
   const [error, setError] = useState('');
+
+  const totalPages = Math.max(1, Math.ceil(items.length / notificationsPageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const visibleItems = useMemo(
+    () => items.slice((safeCurrentPage - 1) * notificationsPageSize, safeCurrentPage * notificationsPageSize),
+    [items, safeCurrentPage],
+  );
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -25,6 +36,8 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
       const result = await notificationsRepository.listAll(100);
       setItems(result.items);
       setUnreadCount(result.unreadCount);
+      setTotalCount(result.items.length);
+      setCurrentPage(1);
       setStatus('success');
     } catch (loadError) {
       setStatus('error');
@@ -36,6 +49,10 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
     void load();
   }, [load]);
 
+  const movePage = (page: number) => {
+    setCurrentPage(Math.min(Math.max(1, page), totalPages));
+  };
+
   const markAllRead = async () => {
     await notificationsRepository.markAllRead();
     setItems((current) => current.map((item) => ({ ...item, read: true })));
@@ -44,7 +61,7 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
 
   const deleteRead = async () => {
     await notificationsRepository.deleteRead();
-    setItems((current) => current.filter((item) => !item.read));
+    await load();
   };
 
   const openNotification = async (item: NotificationItem) => {
@@ -56,6 +73,8 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
     onNavigate?.(item.target);
   };
   const unreadCountLabel = formatNotificationCount(unreadCount);
+  const rangeStart = totalCount === 0 ? 0 : (safeCurrentPage - 1) * notificationsPageSize + 1;
+  const rangeEnd = totalCount === 0 ? 0 : Math.min(totalCount, rangeStart + visibleItems.length - 1);
 
   return (
     <ExecutivePage>
@@ -83,7 +102,7 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
           {status === 'success' && items.length === 0 ? (
             <div className="p-6 text-sm font-semibold text-[var(--axis-muted)]">표시할 알림이 없습니다.</div>
           ) : null}
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -111,6 +130,20 @@ export function NotificationsView({ onNavigate }: { onNavigate?: (view: string) 
               </span>
             </button>
           ))}
+          {status === 'success' && totalCount > 0 ? (
+            <div className="border-t border-[var(--axis-hairline)] px-5 py-5 text-center">
+              <p className="text-xs font-semibold text-[var(--axis-muted)]">
+                총 {totalCount.toLocaleString('ko-KR')}건 중 {rangeStart.toLocaleString('ko-KR')}-{rangeEnd.toLocaleString('ko-KR')}건
+              </p>
+              <PageWindowPagination
+                className="mt-3 w-full"
+                currentPage={safeCurrentPage}
+                totalPages={totalPages}
+                onPageChange={movePage}
+                ariaLabel="알림 목록 페이지 이동"
+              />
+            </div>
+          ) : null}
         </section>
       </ExecutiveContainer>
     </ExecutivePage>

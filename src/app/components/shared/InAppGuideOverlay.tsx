@@ -181,6 +181,8 @@ export function InAppGuideOverlay({
   const isLast = safeStepIndex === steps.length - 1;
   const hasDynamicPanel = Boolean(guideLayout.panelStyle);
   const hasDynamicHighlight = Boolean(guideLayout.highlightStyle);
+  const stepTargetKey = step ? guideTargetByAnchor[step.anchor] : null;
+  const hasMissingTargetFallback = Boolean(stepTargetKey && !hasDynamicPanel);
 
   const handleGuideClose = () => {
     setStepIndex(0);
@@ -322,25 +324,33 @@ export function InAppGuideOverlay({
     return null;
   }
 
+  const fallbackPanelClass = hasMissingTargetFallback
+    ? 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'
+    : step.position;
+  const fallbackHighlightClass = hasMissingTargetFallback
+    ? 'hidden'
+    : `hidden lg:block ${step.highlight}`;
+  const fallbackArrowClass = hasMissingTargetFallback ? 'hidden' : step.arrow;
+
   return (
     <div className="pointer-events-none fixed inset-0 z-[120]">
       <div className="pointer-events-auto absolute inset-0 bg-[rgba(10,14,22,0.38)] backdrop-blur-[1px]" />
       <div
         className={`pointer-events-none absolute z-10 rounded-[18px] border-2 border-[var(--axis-accent)] bg-[rgba(220,90,36,0.08)] shadow-[0_0_0_9999px_rgba(10,14,22,0.28)] ${
-          hasDynamicHighlight ? '' : `hidden lg:block ${step.highlight}`
+          hasDynamicHighlight ? '' : fallbackHighlightClass
         }`}
         style={guideLayout.highlightStyle}
       />
       <section
         ref={panelRef}
         className={`pointer-events-auto absolute z-20 max-h-[calc(100vh-32px)] w-[min(420px,calc(100vw-32px))] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-6 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.58)] transition-all duration-300 ${
-          hasDynamicPanel ? '' : step.position
+          hasDynamicPanel ? '' : fallbackPanelClass
         }`}
         style={guideLayout.panelStyle}
       >
         <div
           className={`absolute h-5 w-5 rotate-45 border-[var(--axis-hairline)] bg-[var(--axis-canvas)] ${
-            hasDynamicPanel ? `border ${guideLayout.arrowClass ?? '-left-2 border-b border-l'}` : step.arrow
+            hasDynamicPanel ? `border ${guideLayout.arrowClass ?? '-left-2 border-b border-l'}` : fallbackArrowClass
           }`}
           style={guideLayout.arrowStyle}
         />

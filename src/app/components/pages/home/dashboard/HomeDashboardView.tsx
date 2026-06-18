@@ -143,26 +143,7 @@ export function HomeDashboardView({
   const isTodayInsightNoCurrentSignals = todayInsightKind.includes('no_current_signals');
   const isTodayInsightMockLike = isTodayInsightFixture || isTodayInsightStatusPlaceholder;
   const displayTodayInsight = isTodayInsightMockLike ? null : todayInsight;
-  // 홈 3상태 — quiet 면 깊은 3섹션 대신 '이번 주 종합' + 모니터링 스트립(임원 빈화면 방지).
-  const todayInsightState = String(todayInsight?.state ?? '');
-  const todayInsightWeekSynthesis = String(todayInsight?.week_synthesis ?? '').trim();
-  const todayInsightCoverage = (todayInsight?.coverage_stats ?? null) as
-    | Record<string, unknown>
-    | null;
-  const isTodayInsightQuiet =
-    todayInsightState === 'quiet' ||
-    (!todayInsightState && (isTodayInsightStatusPlaceholder || isTodayInsightNoCurrentSignals));
-  const showQuietSynthesis =
-    !todayInsightLoading && isTodayInsightQuiet && Boolean(todayInsightWeekSynthesis);
-  const coverageStripText = (() => {
-    const c = todayInsightCoverage;
-    if (!c) return '';
-    const reviewed = Number(c.reviewed_last_7d ?? 0) || 0;
-    const urgent = Number(c.urgent_last_7d ?? 0) || 0;
-    const peers = Number(c.peers_monitored ?? 4) || 4;
-    if (!reviewed && !urgent) return '';
-    return `모니터링 정상 · 최근 7일 ${reviewed.toLocaleString()}건 검토 · 긴급 ${urgent}건 · peer ${peers}사 감시`;
-  })();
+  // 홈 3상태 — quiet 면 실제 리포트 fallback 안내만 노출한다.
   const todayInsightSignals = useMemo<HomeTodayInsightSignal[]>(
     () => {
       if (isTodayInsightMockLike) {
@@ -181,17 +162,13 @@ export function HomeDashboardView({
     },
     [displayTodayInsight, isTodayInsightMockLike],
   );
-  const todayInsightStateLabel = isTodayInsightStatusPlaceholder
-    ? (isTodayInsightNoCurrentSignals ? '신규 신호 없음' : '오늘 리포트 없음')
-    : isTodayInsightMockLike
-      ? '생성 대기'
-      : null;
+  const todayInsightStateLabel = null;
   const todayInsightStatusLine = isTodayInsightStatusPlaceholder
     ? isTodayInsightNoCurrentSignals
-      ? `${insightAnchorDate} 기준 새롭게 업데이트할 주요 동향이 없습니다.`
-      : `${insightAnchorDate} 기준 저장된 Today's Insight가 아직 없습니다.`
+      ? '새롭게 업데이트할 주요 동향이 없습니다.'
+      : '저장된 Today\'s Insight가 아직 없습니다.'
     : isTodayInsightStale
-      ? `${insightAnchorDate} 기준 새롭게 업데이트할 주요 동향이 없어 최신 리포트를 보여줍니다.`
+      ? '새롭게 업데이트할 주요 동향이 없어 최신 리포트를 보여줍니다.'
       : '';
   const [todayInsightNotice, setTodayInsightNotice] = useState<{
     anchorDate: string;
@@ -519,11 +496,6 @@ export function HomeDashboardView({
                   />
                 </label>
                 <span className="flex min-h-[1.625rem] min-w-0 flex-1 flex-wrap items-center gap-2">
-                  {visibleTodayInsightNotice?.label ? (
-                    <span className="rounded-full border border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[var(--axis-accent-strong)]">
-                      {visibleTodayInsightNotice.label}
-                    </span>
-                  ) : null}
                   {visibleTodayInsightNotice?.line ? (
                     <span className="max-w-full break-keep text-sm font-semibold leading-6 text-[var(--axis-muted)]">
                       {visibleTodayInsightNotice.line}
@@ -531,21 +503,7 @@ export function HomeDashboardView({
                   ) : null}
                 </span>
               </div>
-              {!todayInsightLoading && coverageStripText ? (
-                <div className="mt-3 inline-flex w-fit items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-muted)]">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#16a34a]" />
-                  {coverageStripText}
-                </div>
-              ) : null}
-              {showQuietSynthesis ? (
-                <section className="mt-6 max-w-4xl">
-                  <p className="axis-kicker text-xs text-[var(--axis-muted)]">이번 주 종합</p>
-                  <p className="mt-3 break-keep text-[clamp(1.4rem,1.9vw,2.1rem)] font-display leading-[1.35] text-ink">
-                    {todayInsightWeekSynthesis}
-                  </p>
-                </section>
-              ) : null}
-              {!showQuietSynthesis && (todayInsightTitle || mainInsightSignals.length > 0) ? (
+              {todayInsightTitle || mainInsightSignals.length > 0 ? (
                 <section className="mt-6 max-w-5xl">
                   {todayInsightTitle ? (
                     <div className="max-w-4xl">
@@ -585,9 +543,7 @@ export function HomeDashboardView({
                   ) : null}
                 </section>
               ) : null}
-              {!showQuietSynthesis &&
-              mainInsightSignals.length === 0 &&
-              todayInsightSubtitleBullets.length > 0 ? (
+              {mainInsightSignals.length === 0 && todayInsightSubtitleBullets.length > 0 ? (
                 <div className="mt-5 grid max-w-5xl gap-3">
                   {todayInsightSubtitleBullets.slice(0, 2).map((line, index) => (
                     <article

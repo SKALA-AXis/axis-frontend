@@ -4,6 +4,7 @@ import { CalendarDays, Share2, Sparkles, TrendingUp, X } from 'lucide-react';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
+import type { BriefingGenerateResult } from '../../../../features/briefings/api/briefingsRepository';
 import { useGeneratedBriefing } from '../../../../features/briefings/hooks/useGeneratedBriefing';
 import type { BriefingViewModel } from '../../../../features/briefings/mappers/briefingGenerateMapper';
 import { toBriefingAnchorDate } from '../../../../features/briefings/utils/briefingDate';
@@ -48,6 +49,13 @@ type BriefingsViewProps = {
   bookmarkedIds?: string[];
   onToggleBookmark?: (cardId: string) => void;
   onUpdateTimeChange?: (updatedAt: string | null) => void;
+  initialSelection?: {
+    id?: string;
+    period?: BriefingPeriod;
+    date?: string;
+    cachedResult?: BriefingGenerateResult | null;
+    requestKey?: number;
+  } | null;
 };
 
 function stripLeadingRangeLabel(text: string, leadLabel: string) {
@@ -67,6 +75,15 @@ function normalizeBriefingText(text: string) {
 function clampValue(value: string, maxValue: string) {
   if (!value) return maxValue;
   return value > maxValue ? maxValue : value;
+}
+
+function isDateInputValue(value: string | undefined) {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+function getWeekIndexFromDateValue(value: string) {
+  const day = Number(value.slice(8, 10));
+  return Math.max(1, Math.min(5, Math.ceil((Number.isFinite(day) && day > 0 ? day : 1) / 7)));
 }
 
 function adaptGeneratedBriefing(briefing: BriefingViewModel): BriefingReport {
@@ -90,7 +107,7 @@ function adaptGeneratedBriefing(briefing: BriefingViewModel): BriefingReport {
   };
 }
 
-export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTimeChange }: BriefingsViewProps) {
+export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTimeChange, initialSelection }: BriefingsViewProps) {
   const { cards, isLoading, error, reload } = useCardNews();
   const contentViewMode = useContentViewMode();
   const [period, setPeriod] = useState<BriefingPeriod>('daily');
@@ -127,8 +144,9 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
       anchorDate: briefingAnchorDate,
       month: period === 'weekly' ? weeklyMonth : period === 'monthly' ? monthlyMonth : undefined,
       weekIndex: period === 'weekly' ? weeklyIndex : undefined,
+      briefingId: initialSelection?.id,
     }),
-    [briefingAnchorDate, monthlyMonth, period, weeklyIndex, weeklyMonth],
+    [briefingAnchorDate, initialSelection?.id, monthlyMonth, period, weeklyIndex, weeklyMonth],
   );
   const {
     briefing: generatedBriefing,
@@ -136,12 +154,31 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
     error: generatedBriefingError,
     savedBriefingMissing,
     reload: reloadGeneratedBriefing,
-  } = useGeneratedBriefing(period, briefingPeriodSelection, rankedCards, briefingRange);
+  } = useGeneratedBriefing(period, briefingPeriodSelection, rankedCards, briefingRange, initialSelection?.cachedResult ?? null);
 
   useEffect(() => {
     if (isLoading) return;
     onUpdateTimeChange?.(pickLatestCardTimestamp(cards));
   }, [cards, isLoading, onUpdateTimeChange]);
+
+  useEffect(() => {
+    if (!isDateInputValue(initialSelection?.date)) return;
+
+    const nextDate = clampValue(initialSelection?.date ?? '', todayDateValue);
+    const nextPeriod = initialSelection?.period ?? 'daily';
+    setPeriod(nextPeriod);
+    setDatePickerOpen(false);
+    if (nextPeriod === 'monthly') {
+      setMonthlyMonth(nextDate.slice(0, 7));
+      return;
+    }
+    if (nextPeriod === 'weekly') {
+      setWeeklyMonth(nextDate.slice(0, 7));
+      setWeeklyIndex(getWeekIndexFromDateValue(nextDate));
+      return;
+    }
+    setDailyDate(nextDate);
+  }, [initialSelection?.date, initialSelection?.period, initialSelection?.requestKey, todayDateValue]);
 
   useEffect(() => {
     const latestWeekValue = latestSelectableWeek?.value;
@@ -169,9 +206,9 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   );
   const servedDailyReportDate = generatedBriefing?.reportDate ?? generatedBriefing?.dateTo ?? '';
   const dailyBriefingNotice = period === 'daily' && servedDailyReportDate && servedDailyReportDate !== dailyDate
-    ? `${dailyDate} 기준 새 브리핑이 없어 최신 브리핑을 보여줍니다.`
+    ? '새 브리핑이 없어 최신 브리핑을 보여줍니다.'
     : period === 'daily' && savedBriefingMissing
-      ? `${dailyDate} 기준 새 브리핑이 없어 임시 생성 결과를 보여줍니다.`
+      ? '새 브리핑이 없어 임시 생성 결과를 보여줍니다.'
       : '';
   const activeFlowStep = briefingFlowSteps[activeInsightStep] ?? briefingFlowSteps[0] ?? null;
   const reportText = useMemo(
@@ -467,33 +504,34 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
 
         <section className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
           <main data-guide="briefing-main" className="space-y-5">
-            <section className="axis-panel-flat overflow-hidden border-[rgba(220,90,36,0.24)]">
-              <div className="h-1.5 bg-[linear-gradient(90deg,var(--axis-accent),rgba(220,90,36,0.16))]" />
-              <div className="p-5">
-                <h2 className="mt-2 text-2xl font-display font-semibold leading-tight text-[var(--axis-ink)]">
-                  {briefing.title}
-                </h2>
-                <div className="mt-4 space-y-3">
-                  {briefingOverviewLines.map((line, index) => (
-                    <div
-                      key={`${briefing.title}-overview-${index}`}
-                      className={`flex items-start gap-3 ${index === 0 ? '' : 'border-t border-[var(--axis-hairline)] pt-3'}`}
-                    >
-                      <span className="mt-0.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[rgba(220,90,36,0.12)] px-2 text-sm font-black text-[var(--axis-accent-strong)]">
-                        {index + 1}
-                      </span>
-                      <p className="min-w-0 flex-1 text-base font-semibold leading-7 text-[var(--axis-ink)]">
-                        {line}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {briefing.peers.slice(0, 4).map((peer) => (
-                    <ExecutiveBadge key={peer} tone="accent">{peer}</ExecutiveBadge>
-                  ))}
-                </div>
+            <section className="border-b border-[var(--axis-hairline)] pb-6 sm:pb-7">
+              <h2 className="max-w-5xl font-display text-[1.55rem] font-semibold leading-[1.3] text-[var(--axis-ink)] sm:text-[1.8rem] xl:text-[2rem]">
+                {briefing.title}
+              </h2>
+              <div className="mt-6 divide-y divide-[var(--axis-hairline)] border-t border-[var(--axis-hairline)]">
+                {briefingOverviewLines.map((line, index) => (
+                  <article
+                    key={`${briefing.title}-overview-${index}`}
+                    className="flex items-start gap-4 py-5"
+                  >
+                    <span className="mt-0.5 w-7 shrink-0 text-base font-black text-[var(--axis-accent-strong)]">
+                      {index + 1}
+                    </span>
+                    <p className="min-w-0 max-w-[66rem] flex-1 text-[1.05rem] font-bold leading-8 text-[var(--axis-ink)] sm:text-[1.14rem]">
+                      {line}
+                    </p>
+                  </article>
+                ))}
               </div>
+              {briefing.peers.length > 0 ? (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {briefing.peers.slice(0, 4).map((peer) => (
+                    <span key={peer} className="rounded-[var(--axis-radius-sm)] border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.04)] px-3 py-1.5 text-xs font-semibold text-[var(--axis-accent-strong)]">
+                      {peer}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </section>
 
             {isVisualMode ? (

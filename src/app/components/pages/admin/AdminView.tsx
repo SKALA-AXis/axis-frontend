@@ -1,5 +1,5 @@
 import { History, Newspaper, Pencil, RefreshCw, RotateCcw, Search, Trash2, Users } from 'lucide-react';
-import { type MouseEvent, type PointerEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ExecutiveBadge,
   ExecutiveButton,
@@ -14,6 +14,7 @@ import type { AdminCard } from '../../../../features/admin-cards/model/adminCard
 import { useAdminUsers } from '../../../../features/admin-users/hooks/useAdminUsers';
 import type { AdminUser, AdminUserStatus } from '../../../../features/admin-users/model/adminUser';
 import { TableStateRow } from '../../shared/PageState';
+import { PageWindowPagination } from '../../shared/PageWindowPagination';
 
 type AdminTab = 'users' | 'cards' | 'audit';
 
@@ -43,7 +44,7 @@ export function AdminView() {
       <ExecutiveContainer className="pb-24">
         <ExecutiveHeader title="관리자" />
 
-        <section className="grid gap-3 md:grid-cols-3">
+        <section data-guide="admin-metrics" className="grid gap-3 md:grid-cols-3">
           <ExecutiveMetric label="전체 사용자" value={users.length} helper="관리 대상 계정" />
           <ExecutiveMetric label="활성 사용자" value={activeUsers} helper="ACTIVE 상태" tone="success" />
           <ExecutiveMetric label="정지 사용자" value={suspendedUsers} helper="SUSPENDED 상태" tone="warning" />
@@ -75,7 +76,7 @@ export function AdminView() {
             </nav>
           </aside>
 
-          <main className="axis-panel-flat overflow-visible p-5">
+          <main data-guide="admin-main" className="axis-panel-flat overflow-visible p-5">
             {activeTab === 'users' ? (
               <AdminUsersPanel
                 users={users}
@@ -146,23 +147,8 @@ function AdminUsersPanel({
   const safePage = Math.min(currentPage, totalPages);
   const pageStart = (safePage - 1) * pageSize;
   const visibleUsers = filteredUsers.slice(pageStart, pageStart + pageSize);
-  const paginationWindowSize = 5;
-  const pageWindowStart = Math.floor((safePage - 1) / paginationWindowSize) * paginationWindowSize + 1;
-  const visiblePageNumbers = Array.from(
-    { length: Math.min(paginationWindowSize, totalPages - pageWindowStart + 1) },
-    (_, index) => pageWindowStart + index,
-  );
-  const previousWindowPage = visiblePageNumbers[0] > 1 ? visiblePageNumbers[0] - 1 : null;
-  const nextWindowPage = visiblePageNumbers[visiblePageNumbers.length - 1] < totalPages
-    ? visiblePageNumbers[visiblePageNumbers.length - 1] + 1
-    : null;
   const setPageSafely = (page: number) => {
     setCurrentPage(Math.min(totalPages, Math.max(1, page)));
-  };
-  const handlePagePointerDown = (page: number) => (event: PointerEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setPageSafely(page);
   };
 
   useEffect(() => {
@@ -332,49 +318,13 @@ function AdminUsersPanel({
         </table>
       </div>
 
-      <nav
-        aria-label="사용자 목록 페이지 이동"
-        className="relative z-10 mt-4 mb-24 flex flex-wrap items-center justify-center gap-3 pointer-events-auto md:justify-end"
-      >
-        <div className="relative flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-2 shadow-[0_12px_32px_-24px_rgba(0,0,0,0.28)]">
-          <button
-            type="button"
-            onPointerDown={previousWindowPage ? handlePagePointerDown(previousWindowPage) : undefined}
-            onClickCapture={previousWindowPage ? () => setPageSafely(previousWindowPage) : undefined}
-            onClick={previousWindowPage ? () => setPageSafely(previousWindowPage) : undefined}
-            disabled={previousWindowPage === null}
-            className="cursor-pointer pointer-events-auto rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {'<'}
-          </button>
-          {visiblePageNumbers.map((page) => (
-            <button
-              key={page}
-              type="button"
-              onPointerDown={handlePagePointerDown(page)}
-              onClickCapture={() => setPageSafely(page)}
-              onClick={() => setPageSafely(page)}
-              className={`min-w-9 cursor-pointer pointer-events-auto rounded-[var(--axis-radius-sm)] border px-3 py-2 text-sm font-medium transition ${
-                page === safePage
-                  ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
-                  : 'border-[var(--axis-hairline)] bg-white text-[var(--axis-ink)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-          <button
-            type="button"
-            onPointerDown={nextWindowPage ? handlePagePointerDown(nextWindowPage) : undefined}
-            onClickCapture={nextWindowPage ? () => setPageSafely(nextWindowPage) : undefined}
-            onClick={nextWindowPage ? () => setPageSafely(nextWindowPage) : undefined}
-            disabled={nextWindowPage === null}
-            className="cursor-pointer pointer-events-auto rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {'>'}
-          </button>
-        </div>
-      </nav>
+      <PageWindowPagination
+        className="relative z-10 mt-4 mb-24 pointer-events-auto"
+        currentPage={safePage}
+        totalPages={totalPages}
+        onPageChange={setPageSafely}
+        ariaLabel="사용자 목록 페이지 이동"
+      />
     </section>
   );
 }
@@ -412,14 +362,6 @@ function AdminDeletedCardsPanel({
   const pageCardIds = pageCards.map((card) => card.id);
   const selectedCount = selectedCardIds.length;
   const allRowsSelected = pageCardIds.length > 0 && pageCardIds.every((id) => selectedCardIdSet.has(id));
-  const paginationWindowSize = 5;
-  const pageWindowStart = Math.floor((safePage - 1) / paginationWindowSize) * paginationWindowSize + 1;
-  const visiblePageNumbers = Array.from(
-    { length: Math.min(paginationWindowSize, totalPages - pageWindowStart + 1) },
-    (_, index) => pageWindowStart + index,
-  );
-  const previousPage = safePage > 1 ? safePage - 1 : null;
-  const nextPage = safePage < totalPages ? safePage + 1 : null;
   const setPageSafely = (page: number) => {
     setCurrentPage(Math.min(totalPages, Math.max(1, page)));
   };
@@ -701,77 +643,14 @@ function AdminDeletedCardsPanel({
         </table>
       </div>
 
-      <DeletedCardsPagination
+      <PageWindowPagination
         className="mt-4 mb-40"
-        safePage={safePage}
-        visiblePageNumbers={visiblePageNumbers}
-        previousPage={previousPage}
-        nextPage={nextPage}
+        currentPage={safePage}
+        totalPages={totalPages}
         onPageChange={setPageSafely}
+        ariaLabel="삭제된 카드뉴스 페이지 이동"
       />
     </section>
-  );
-}
-
-function DeletedCardsPagination({
-  className = 'mb-4',
-  safePage,
-  visiblePageNumbers,
-  previousPage,
-  nextPage,
-  onPageChange,
-}: {
-  className?: string;
-  safePage: number;
-  visiblePageNumbers: number[];
-  previousPage: number | null;
-  nextPage: number | null;
-  onPageChange: (page: number) => void;
-}) {
-  const handleClick = (page: number) => (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onPageChange(page);
-  };
-
-  return (
-    <nav
-      aria-label="삭제된 카드뉴스 페이지 이동"
-      className={`relative z-[100] flex flex-wrap items-center justify-center gap-3 pointer-events-auto ${className}`}
-    >
-      <div className="relative flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2 py-2 shadow-[0_12px_32px_-24px_rgba(0,0,0,0.28)]">
-        <button
-          type="button"
-          onClick={previousPage ? handleClick(previousPage) : undefined}
-          disabled={previousPage === null}
-          className="cursor-pointer pointer-events-auto rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          {'<'}
-        </button>
-        {visiblePageNumbers.map((pageNumber) => (
-          <button
-            key={pageNumber}
-            type="button"
-            onClick={handleClick(pageNumber)}
-            className={`min-w-9 cursor-pointer pointer-events-auto rounded-[var(--axis-radius-sm)] border px-3 py-2 text-sm font-medium transition ${
-              pageNumber === safePage
-                ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
-                : 'border-[var(--axis-hairline)] bg-white text-[var(--axis-ink)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]'
-            }`}
-          >
-            {pageNumber}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={nextPage ? handleClick(nextPage) : undefined}
-          disabled={nextPage === null}
-          className="cursor-pointer pointer-events-auto rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-white px-3 py-2 text-sm font-medium text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          {'>'}
-        </button>
-      </div>
-    </nav>
   );
 }
 
@@ -795,6 +674,20 @@ function AdminAuditLogsPanel({
   error: string | null;
   onReload: () => void;
 }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
+  const totalPages = Math.max(1, Math.ceil(logs.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStart = (safePage - 1) * pageSize;
+  const visibleLogs = logs.slice(pageStart, pageStart + pageSize);
+  const setPageSafely = (page: number) => {
+    setCurrentPage(Math.min(totalPages, Math.max(1, page)));
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [logs.length]);
+
   return (
     <section data-guide="admin-audit">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -829,7 +722,7 @@ function AdminAuditLogsPanel({
               <TableStateRow colSpan={5} label="감사 로그를 불러오는 중입니다." skeleton />
             ) : logs.length === 0 ? (
               <TableStateRow colSpan={5} label="표시할 감사 로그가 없습니다." />
-            ) : logs.map((log) => (
+            ) : visibleLogs.map((log) => (
               <tr key={log.id}>
                 <td>{formatLastLogin(log.createdAt)}</td>
                 <td>{log.actorEmail}</td>
@@ -841,6 +734,14 @@ function AdminAuditLogsPanel({
           </tbody>
         </table>
       </div>
+
+      <PageWindowPagination
+        className="mt-4"
+        currentPage={safePage}
+        totalPages={totalPages}
+        onPageChange={setPageSafely}
+        ariaLabel="감사 로그 페이지 이동"
+      />
     </section>
   );
 }

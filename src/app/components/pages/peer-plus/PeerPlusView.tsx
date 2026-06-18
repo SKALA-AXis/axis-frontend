@@ -761,7 +761,7 @@ export function PeerPlusView({
               </div>
             </div>
             <div className="mt-5 grid gap-5 xl:grid-cols-2">
-              <section className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
+              <section data-guide="peer-comparison-summary" className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">핵심 비교 포인트</h3>
                   <div className="flex items-center gap-3">
@@ -790,7 +790,7 @@ export function PeerPlusView({
                   ))}
                 </div>
               </section>
-              <section className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
+              <section data-guide="peer-swot" className="rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--axis-success)]">SWOT 분석</h3>
                   <div className="flex items-center gap-3">
@@ -813,7 +813,7 @@ export function PeerPlusView({
                         item.label === 'Strength'
                           ? 'border-[rgba(220,90,36,0.32)] bg-[linear-gradient(180deg,rgba(220,90,36,0.16),var(--axis-canvas))]'
                           : item.label === 'Weakness'
-                            ? 'border-[rgba(107,107,115,0.26)] bg-[linear-gradient(180deg,rgba(107,107,115,0.14),var(--axis-canvas))]'
+                            ? 'border-[rgba(37,99,235,0.36)] bg-[linear-gradient(180deg,rgba(37,99,235,0.18),var(--axis-canvas))]'
                             : item.label === 'Opportunity'
                               ? 'border-[rgba(90,107,87,0.32)] bg-[linear-gradient(180deg,rgba(90,107,87,0.16),var(--axis-canvas))]'
                               : 'border-[rgba(30,41,59,0.24)] bg-[linear-gradient(180deg,rgba(30,41,59,0.12),var(--axis-canvas))] dark:border-[rgba(246,241,232,0.18)] dark:bg-[linear-gradient(180deg,rgba(246,241,232,0.10),var(--axis-canvas))]'
@@ -826,7 +826,7 @@ export function PeerPlusView({
                               item.label === 'Strength'
                                 ? 'border-[rgba(220,90,36,0.28)] bg-[rgba(220,90,36,0.14)] text-[var(--axis-accent-strong)]'
                                 : item.label === 'Weakness'
-                                  ? 'border-[rgba(107,107,115,0.22)] bg-[rgba(107,107,115,0.10)] text-[var(--axis-muted)]'
+                                  ? 'border-[rgba(37,99,235,0.34)] bg-[rgba(37,99,235,0.14)] text-[#1d4ed8]'
                                   : item.label === 'Opportunity'
                                     ? 'border-[rgba(90,107,87,0.28)] bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
                                     : 'border-[rgba(30,41,59,0.18)] bg-[rgba(30,41,59,0.08)] text-[var(--axis-ink)]'
@@ -840,7 +840,7 @@ export function PeerPlusView({
                                 item.label === 'Strength'
                                   ? 'text-[var(--axis-accent-strong)]'
                                   : item.label === 'Weakness'
-                                    ? 'text-[var(--axis-muted)]'
+                                    ? 'text-[#1d4ed8]'
                                     : item.label === 'Opportunity'
                                       ? 'text-[var(--axis-success)]'
                                       : 'text-[var(--axis-ink)]'

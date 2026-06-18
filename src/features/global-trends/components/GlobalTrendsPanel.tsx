@@ -57,8 +57,8 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           </div>
         ) : null}
 
-        <section className="axis-panel-flat p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <section data-guide="global-trends-summary" className="axis-panel-flat p-5">
+          <div data-guide="global-trends-header" className="flex flex-wrap items-start justify-between gap-3">
             <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">최신 트렌드</p>
             <ExecutiveButton variant="secondary" onClick={() => reload()} disabled={isLoading}>
               <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
@@ -74,7 +74,7 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-          <section className="axis-panel-flat bg-[var(--axis-surface-soft)] p-5">
+          <section data-guide="global-trends-key-trends" className="axis-panel-flat bg-[var(--axis-surface-soft)] p-5">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">글로벌 피어사별 최신 움직임</p>
@@ -99,7 +99,7 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
             </div>
           </section>
 
-          <section className="axis-panel-flat p-5">
+          <section data-guide="global-trends-shifts" className="axis-panel-flat p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">트렌드 모멘텀</p>
@@ -116,7 +116,7 @@ export function GlobalTrendsPanel({ embedded = false, onUpdateTimeChange }: Glob
           </section>
         </section>
 
-        <section className="axis-panel-flat p-5">
+        <section data-guide="global-trends-evidence" className="axis-panel-flat p-5">
           <p className="text-[13px] font-bold uppercase tracking-[1px] text-[var(--axis-accent-strong)]">근거 뉴스</p>
           <div className="mt-4 grid gap-3 xl:grid-cols-3">
             {evidenceGroups.length === 0 ? (

@@ -120,7 +120,7 @@ export function RawArticlesView({ bookmarkedIds }: RawArticlesViewProps) {
           }
         />
 
-        <section className="grid gap-4 md:grid-cols-4 mb-12">
+        <section data-guide="rawarticles-metrics" className="grid gap-4 md:grid-cols-4 mb-12">
           <ExecutiveMetric label="Bookmarked cards" value={bookmarkedCards.length} helper="믹서 입력 후보" />
           <ExecutiveMetric label="Selected" value={selectedCards.length} helper="2~20개 필요" tone={canGenerate ? 'success' : 'warning'} />
           <ExecutiveMetric label="Average exposure" value={selectedCards.length ? Math.round(selectedCards.reduce((total, card) => total + getExposureScore(card), 0) / selectedCards.length) : 0} helper="선택 카드 평균" tone="accent" />
@@ -128,7 +128,7 @@ export function RawArticlesView({ bookmarkedIds }: RawArticlesViewProps) {
         </section>
 
         <section className="mt-12 grid gap-8 xl:grid-cols-[minmax(0,1fr)_30rem]">
-          <div>
+          <div data-guide="rawarticles-candidates">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <p className="axis-kicker">Source cards</p>
@@ -159,7 +159,7 @@ export function RawArticlesView({ bookmarkedIds }: RawArticlesViewProps) {
             )}
           </div>
 
-          <aside className="space-y-4">
+          <aside data-guide="rawarticles-result" className="space-y-4">
             <section className="axis-panel-flat p-4">
               <div className="flex items-center gap-2">
                 <GitMerge size={17} className="text-[var(--axis-accent)]" />

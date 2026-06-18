@@ -275,7 +275,6 @@ export interface TodayInsightData {
   state?: string;
   signal_date?: string | null;
   week_synthesis?: string | null;
-  coverage_stats?: Record<string, unknown>;
   provenance?: Record<string, unknown>;
   warning?: string | null;
 }

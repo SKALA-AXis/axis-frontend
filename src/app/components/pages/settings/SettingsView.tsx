@@ -1,7 +1,5 @@
 import {
   Bell,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   History,
   KeyRound,
@@ -17,7 +15,7 @@ import {
   X,
   User,
 } from 'lucide-react';
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ExecutiveBadge,
@@ -26,6 +24,7 @@ import {
   ExecutiveHeader,
   ExecutivePage,
 } from '../../executive/ExecutiveSystem';
+import { PageWindowPagination } from '../../shared/PageWindowPagination';
 import { Slider } from '../../ui/slider';
 import { Switch } from '../../ui/switch';
 import type { AuthUser } from '../../../../features/auth/model/auth';
@@ -51,7 +50,6 @@ type StrategyContextStatus = 'idle' | 'loading' | 'success' | 'error';
 const strategyContextFileMaxBytes = 5 * 1024 * 1024;
 
 const ACCESS_LOG_PAGE_SIZE = 5;
-const ACCESS_LOG_PAGE_WINDOW_SIZE = 5;
 
 export function SettingsView({
   onLogout,
@@ -99,11 +97,6 @@ export function SettingsView({
   const textScaleStep = clampTextScaleStep(textPreference.step);
   const textScaleLabel = `${Math.round((textScaleSteps[textScaleStep] - 1) * 100)}%`;
   const safeAccessLogPage = Math.min(accessLogPage, Math.max(1, accessLogTotalPages));
-  const accessLogPageWindowStart = Math.floor((safeAccessLogPage - 1) / ACCESS_LOG_PAGE_WINDOW_SIZE) * ACCESS_LOG_PAGE_WINDOW_SIZE + 1;
-  const visibleAccessLogPageNumbers = Array.from(
-    { length: Math.min(ACCESS_LOG_PAGE_WINDOW_SIZE, Math.max(1, accessLogTotalPages) - accessLogPageWindowStart + 1) },
-    (_, index) => accessLogPageWindowStart + index,
-  );
   const accessLogRangeStart = accessLogTotal === 0 ? 0 : (safeAccessLogPage - 1) * ACCESS_LOG_PAGE_SIZE + 1;
   const accessLogRangeEnd = accessLogTotal === 0 ? 0 : Math.min(accessLogTotal, accessLogRangeStart + accessLogs.length - 1);
 
@@ -424,7 +417,7 @@ export function SettingsView({
             </nav>
           </aside>
 
-          <main className="axis-panel-flat overflow-hidden">
+          <main data-guide="settings-panel" className="axis-panel-flat overflow-hidden">
             {activeTab === 'account' ? (
               <section className="p-5">
                 <div className="flex items-center gap-2">
@@ -567,32 +560,12 @@ export function SettingsView({
                     <p className="text-caption-bold text-[var(--axis-muted)]">
                       총 {accessLogTotal.toLocaleString('ko-KR')}건 중 {accessLogRangeStart.toLocaleString('ko-KR')}-{accessLogRangeEnd.toLocaleString('ko-KR')}건
                     </p>
-                    <nav className="flex items-center gap-1" aria-label="접속 로그 페이지">
-                      <AccessLogPageButton
-                        label="이전 페이지"
-                        disabled={safeAccessLogPage <= 1}
-                        onClick={() => moveAccessLogPage(safeAccessLogPage - 1)}
-                      >
-                        <ChevronLeft size={15} />
-                      </AccessLogPageButton>
-                      {visibleAccessLogPageNumbers.map((page) => (
-                        <AccessLogPageButton
-                          key={page}
-                          label={`${page}페이지`}
-                          isActive={page === safeAccessLogPage}
-                          onClick={() => moveAccessLogPage(page)}
-                        >
-                          {page}
-                        </AccessLogPageButton>
-                      ))}
-                      <AccessLogPageButton
-                        label="다음 페이지"
-                        disabled={safeAccessLogPage >= accessLogTotalPages}
-                        onClick={() => moveAccessLogPage(safeAccessLogPage + 1)}
-                      >
-                        <ChevronRight size={15} />
-                      </AccessLogPageButton>
-                    </nav>
+                    <PageWindowPagination
+                      currentPage={safeAccessLogPage}
+                      totalPages={accessLogTotalPages}
+                      onPageChange={moveAccessLogPage}
+                      ariaLabel="접속 로그 페이지 이동"
+                    />
                   </div>
                 ) : null}
               </section>
@@ -1029,37 +1002,6 @@ function AccessLogStatusPill({ item }: { item: AccessLogItem }) {
     <span className={`inline-flex h-7 min-w-[3rem] items-center justify-center rounded-sm border px-2 text-caption-bold ${status.className}`}>
       {status.label}
     </span>
-  );
-}
-
-function AccessLogPageButton({
-  label,
-  isActive = false,
-  disabled = false,
-  onClick,
-  children,
-}: {
-  label: string;
-  isActive?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-current={isActive ? 'page' : undefined}
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex h-8 min-w-8 items-center justify-center rounded-sm border px-2 text-caption-bold transition ${
-        isActive
-          ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
-          : 'border-[var(--axis-hairline)] bg-[var(--axis-surface)] text-[var(--axis-body)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent)]'
-      } disabled:cursor-not-allowed disabled:opacity-40`}
-    >
-      {children}
-    </button>
   );
 }
 
