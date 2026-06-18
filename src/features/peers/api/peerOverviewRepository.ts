@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-26
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-26 안가은 — Peer+ 재무표 연동으로 개요 리포지토리 구현, 이후 키워드·SWOT·LLM 비교 근거 및 로고 폴백 반영
+ */
 import { httpClient } from '../../../shared/api/httpClient';
 import type { PeerAnalysisTraceItem, PeerComparisonInsightItem, PeerOverviewData, PeerOverviewRow, PeerSwotInsightItem } from '../model/peerOverview';
 

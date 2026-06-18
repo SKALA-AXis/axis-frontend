@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-11
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-11 안가은 — 채팅 구조 정리 리팩터링으로 근거 출처 항목 컴포넌트 추가
+ */
 import { Link2 } from 'lucide-react';
 import type { AssistantSource } from '../../../../../features/assistant/model/assistant';
 import { formatEvidenceDate, isHttpUrl } from '../utils';

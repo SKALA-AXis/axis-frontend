@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-06-11
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-11 안가은 — 대시보드/챗 구조 정리 과정에서 차트 유틸 분리 작성
+ *   2026-06-12 안가은 — 대시보드 키워드 트렌드 UI 업데이트 반영
+ */
 import type { DashboardKeywordSeries } from '../../../../../features/dashboard/model/dashboard';
 
 const keywordSeriesFallbackColors = [

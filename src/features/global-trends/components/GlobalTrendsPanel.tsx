@@ -1,3 +1,12 @@
+/*
+ * 작성일: 2026-06-08
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-06-08 최종민 — Peer+ 글로벌 산업 탭 라이브 API 연동, 6사 트렌드 한국어 패널·SK AX 시사점·모멘텀 카운트/근거·피어 응답 목록 구성
+ *   2026-06-10 박진 — 챗봇 로직 수정 반영
+ *   2026-06-12 박지원 — 글로벌 트렌드 브리핑/시그널 UI 다듬기, agent 헤드라인·요약 사용, 기업 동향 렌더 및 모멘텀 카운트 단순화
+ *   2026-06-18 안가은 — 튜토리얼과 브리핑 관리자 UI 정리
+ */
 import { ChevronDown, ExternalLink, LineChart, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { ExecutiveBadge, ExecutiveButton } from '../../../app/components/executive/ExecutiveSystem';

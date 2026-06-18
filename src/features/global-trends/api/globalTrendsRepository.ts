@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-05-15
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-15 최종민 — GlobalTrends 뷰 추가 및 프론트 개편, Peer+ 글로벌 산업 탭 라이브 API 연동
+ *   2026-06-10 박진 — mock 비활성화·믹서 UX 및 챗봇 로직 수정 반영
+ *   2026-06-17 박지원 — 글로벌 기업 동향 렌더 대응
+ */
 import { httpClient } from '../../../shared/api/httpClient';
 import type {
   GlobalTrendDataSource,

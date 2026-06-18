@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-26
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-26 안가은 — Peer+ 포지셔닝 그래프 연동용 타입 정의 및 표시 동작 보완
+ */
 export interface PeerPositioningPoint {
   id: string;
   label: string;

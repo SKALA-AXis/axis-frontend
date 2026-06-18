@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-26
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-26 안가은 — Peer+ 재무표 연동용 개요 타입 정의 및 이후 키워드·SWOT·비교 근거 타입 확장
+ */
 export interface PeerOverviewRow {
   id: string;
   label: string;

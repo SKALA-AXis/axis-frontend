@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-06-09
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-06-09 최종민 — 글로벌 산업 패널 6사 트렌드 리포커스 및 SK AX 시사점·모멘텀 카운트/근거 포매터 구성
+ *   2026-06-17 박지원 — 글로벌 기업 동향 렌더 대응
+ */
 import type { GlobalTrendItem, TrendDetection } from '../model/globalTrends';
 
 export const MAX_TREND_KEYWORDS = 10;

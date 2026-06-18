@@ -1,5 +1,12 @@
 "use client";
 
+/*
+ * 작성일: 2026-04-23
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-23 안가은 — 프론트엔드 초기 설정으로 다이얼로그 UI 컴포넌트 추가 후 화면 UI 개선
+ */
+
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";

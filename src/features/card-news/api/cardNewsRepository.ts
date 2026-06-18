@@ -1,3 +1,12 @@
+/*
+ * 작성일: 2026-05-12
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-12 안가은 — 화면 UI 개선, 카드뉴스 데이터 연동 및 이미지 없을 때 기업 로고 표시, 키워드 그래프 API 연동
+ *   2026-05-18 최종민 — 프론트 전면 개편 및 peer 로고 fallback 도입
+ *   2026-05-18 박지원 — 신뢰도 점수 UI 제거, 소스 카운트 배지 fallback·이미지 fallback·소스 발행 시각 정렬 보정
+ *   2026-06-14 심유정 — 카드뉴스 본문 상세 렌더링 및 전략 컨텍스트 토글 추가
+ */
 import { httpClient } from '../../../shared/api/httpClient';
 import { getFallbackCardLogo } from '../cardLogoFallback';
 import type { CardNewsDisplaySection, CardNewsItem, CardNewsStructuredTextItem } from '../model/cardNews';

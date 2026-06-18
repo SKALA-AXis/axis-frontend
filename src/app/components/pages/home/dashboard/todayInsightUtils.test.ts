@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-17
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-06-17 최종민 — vitest 안전망 도입과 함께 todayInsightUtils characterization 테스트 작성
+ */
 import { describe, expect, it } from 'vitest';
 
 import {

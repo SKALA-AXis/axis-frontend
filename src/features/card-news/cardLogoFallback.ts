@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 카드뉴스 이미지 없을 때 기업 로고 표시 및 peer 개요·카드 로고 fallback 정리
+ *   2026-06-16 박지원 — 산업 트렌드 카드뉴스 지원
+ */
 import type { CardNewsItem } from './model/cardNews';
 
 export type CardLogoKey = NonNullable<CardNewsItem['peer_id']> | 'sk_ax';

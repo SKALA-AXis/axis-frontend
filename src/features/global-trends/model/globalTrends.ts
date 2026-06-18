@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-05-15
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-15 최종민 — GlobalTrends 뷰 모델 신설 및 프론트 개편 반영
+ *   2026-06-10 박진 — 챗봇 로직 관련 수정
+ *   2026-06-12 박지원 — 글로벌 트렌드 브리핑 UI 개선 및 에이전트 요약/헤드라인 반영
+ */
 export type PeerAlignmentType = 'aligned' | 'lagging' | 'missing' | 'diverging';
 
 export interface PeerAlignmentRow {

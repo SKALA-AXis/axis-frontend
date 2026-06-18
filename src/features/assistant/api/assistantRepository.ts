@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-08
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-06-08 박진 — 플로팅 어시스턴트 챗 API 연동 리포지토리 추가, 이후 PDF·히스토리 제어와 챗봇 플로우 갱신
+ */
 import { HttpRequestError, httpClient } from '../../../shared/api/httpClient';
 import type {
   AssistantChatResponse,

@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-29
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-29 안가은 — 관리자 사용자 목록·상태변경 훅 신규 작성 후 로딩 상태 표준화 반영
+ */
 import { useCallback, useEffect, useState } from 'react';
 import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { adminUsersRepository } from '../api/adminUsersRepository';

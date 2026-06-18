@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-22
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-05-22 박진 — 북마크 리포지토리 추가('올라가기 버튼' 작업)
+ */
 import { httpClient } from '../../../shared/api/httpClient';
 
 type BookmarkListResponse = {

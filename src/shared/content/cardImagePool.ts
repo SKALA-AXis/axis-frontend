@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-10
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-06-10 박진 — 챗봇 로직 수정 작업 중 카드 이미지 풀 추가
+ */
 export type ImageCategory = 'ax' | 'security' | 'infra' | 'deals';
 
 export type CuratedImage = {

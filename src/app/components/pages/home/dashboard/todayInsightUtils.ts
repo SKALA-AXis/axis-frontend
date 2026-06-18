@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-11
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-11 안가은 — 대시보드/챗 구조 정리 리팩토링 과정에서 추가, 이후 키워드 트렌드 UI 갱신 반영
+ */
 import type {
   TodayInsightAction,
   TodayInsightSection,

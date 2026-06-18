@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 브리핑 사용자 기능 작업 중 맨 위로 스크롤 버튼 컴포넌트 추가
+ */
 import { type RefObject, useEffect, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 

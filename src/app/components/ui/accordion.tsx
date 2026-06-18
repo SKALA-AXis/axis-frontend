@@ -1,5 +1,11 @@
 "use client";
 
+/*
+ * 작성일: 2026-04-23
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-23 안가은 — 초기 프론트엔드 셋업 시 accordion UI 컴포넌트 추가
+ */
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDownIcon } from "lucide-react";

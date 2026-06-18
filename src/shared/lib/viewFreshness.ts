@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-05-29
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-29 안가은 — 관리자 카드뉴스 관리/감사로그 화면 추가 작업에서 뷰 신선도 유틸 추가, 이후 브리핑/믹서 표시 동작 보정
+ *   2026-06-12 박진 — 생성 브리핑 UI 연동에 맞춰 반영
+ */
 type TimestampCandidate = string | null | undefined;
 
 function parseTimestamp(value: string): number | null {

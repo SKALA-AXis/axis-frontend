@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 인앱 가이드 오버레이 추가 후 대시보드 키워드 트렌드 UI 및 튜토리얼/브리핑 관리자 UI 정리
+ */
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import {

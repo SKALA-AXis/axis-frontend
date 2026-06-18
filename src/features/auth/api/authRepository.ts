@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-21
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-05-21 박진 — 로그인/회원가입 리포지토리 구현, 이후 비밀번호 찾기 기능 추가·수정
+ */
 import { env } from '../../../shared/config/env';
 import { getAccessToken } from '../../../shared/api/authSession';
 import type {

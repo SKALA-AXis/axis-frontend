@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-04-27
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-27 안가은 — 프론트 폴더 구조 재구성 과정에서 브리핑 리포지토리 정리, 이후 UI 개선·키워드 그래프 API·브리핑 표시 동작·튜토리얼/관리자 UI 정리
+ *   2026-06-09 최종민 — 홈 인사이트 anchor_date 및 브리핑 생성 클라이언트 연동
+ *   2026-06-10 박진 — mock 비활성화·믹서 UX 개선, 챗봇 로직 수정, 생성 브리핑 UI 연결
+ */
 import type { BriefingPeriod } from '../data/periodMeta';
 import type { BriefingsData } from '../model/briefing';
 import { httpClient } from '../../../shared/api/httpClient';

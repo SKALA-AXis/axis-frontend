@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-29
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-29 안가은 — 관리자 사용자 조회·상태변경 Repository 신규 작성
+ */
 import { httpClient } from '../../../shared/api/httpClient';
 import type { AdminUser, AdminUserStatus } from '../model/adminUser';
 

@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-29
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-29 안가은 — 관리자 카드뉴스 목록·상태변경 훅 신규 작성 후 로딩 상태 표준화 반영
+ */
 import { useCallback, useEffect, useState } from 'react';
 import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { adminCardsRepository } from '../api/adminCardsRepository';

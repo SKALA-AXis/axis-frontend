@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 브리핑 믹서 사용자 화면 작업으로 타입 정의 추가 후 홈 키워드 급등/트렌드 인사이트 타입 보강
+ */
 export type PositioningTone = 'accent' | 'company' | 'infra' | 'security' | 'deal' | 'success';
 
 export type PositioningPoint = {

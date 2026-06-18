@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-05-18
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-18 최종민 — 프론트 전면 개편 반영, 알림 드롭다운 '지우기' 전체 알림 삭제(scope=ALL) 처리
+ *   2026-05-21 박진 — 로그인/회원가입 로직 개선, 카드뉴스 수정·알림 설정, 챗봇 프론트 반영
+ *   2026-05-29 안가은 — 관리자 카드뉴스 관리·대시보드/검색 인사이트·키워드 트렌드 UI 반영
+ */
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, HelpCircle, Search, Settings } from 'lucide-react';
 import type { AuthUser } from '../../../features/auth/model/auth';

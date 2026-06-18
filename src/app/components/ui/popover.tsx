@@ -1,5 +1,12 @@
 "use client";
 
+/*
+ * 작성일: 2026-04-23
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-23 안가은 — 프론트엔드 초기 셋업으로 Popover 컴포넌트 추가, 이후 화면 UI 개선
+ */
+
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 

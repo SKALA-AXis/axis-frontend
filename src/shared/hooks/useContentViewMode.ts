@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-12
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-12 안가은 — 화면 UI 개선 작업에서 콘텐츠 보기 모드 훅 추가
+ */
 import { useEffect, useState } from 'react';
 import {
   contentViewModeChangeEvent,

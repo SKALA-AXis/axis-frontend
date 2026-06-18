@@ -1,3 +1,12 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 브리핑·믹서 사용자 기능 추가, Peer+ 레이아웃·브리핑/믹서 표시 동작 정리
+ *   2026-06-08 최종민 — Peer+ 글로벌 산업 탭·Global Trends 연동, FloatingAiChat 라우팅 연결, 글로벌 트렌드 사이드바 제거
+ *   2026-06-08 박진 — 플로팅 어시스턴트 챗 API 연동 및 챗봇 로직 수정
+ *   2026-06-12 최종민 — 뷰를 라우트 단위 lazy 청크로 분할, 캐시 헤더 추가
+ */
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { bookmarksRepository } from '../../../features/bookmarks/api/bookmarksRepository';
 import type { AuthUser } from '../../../features/auth/model/auth';

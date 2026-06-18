@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-05-29
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-29 안가은 — 브리핑·믹서 페이지 구성 수정과 함께 글자 크기 조절 기능 추가, 이후 믹서 사용자 기능 보완
+ *   2026-06-11 박진 — 챗봇 프론트엔드 플로우 업데이트에 맞춰 조정
+ */
 export const largeTextPreferenceStorageKey = 'axis:large-text-preference';
 export const largeTextPreferenceChangeEvent = 'axis:large-text-preference-change';
 

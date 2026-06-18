@@ -1,3 +1,13 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 카드뉴스 워크스페이스 뷰 신규 작성 및 이미지 없을 때 기업 로고 폴백 추가
+ *   2026-06-04 안가은 — 로딩 표준화 및 키워드 트렌드 지연 로딩 적용
+ *   2026-06-14 안가은 — 브리핑/믹서 표시 동작 및 튜토리얼·관리자 UI 정리
+ *   2026-06-15 박지원 — 카드뉴스 이미지 폴백 수정
+ *   2026-06-15 박진 — 사용자 챗봇 프론트엔드 업데이트 반영
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { Bookmark, CalendarDays, Filter, Share2, Trash2 } from 'lucide-react';
 import { getCardLogoImageClass, getFallbackCardLogo } from '../../../../features/card-news/cardLogoFallback';

@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-05-15
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-15 최종민 — Mixer 분석 훅 신설 및 SSE 실시간 단계 진행 반영
+ *   2026-06-10 박진 — mock 비활성화 및 챗봇 로직 수정
+ */
 import { useCallback, useState } from 'react';
 import { mixerRepository, type MixerAnalyzeInput } from '../api/mixerRepository';
 import type { MixerAnalysisResponse, MixerStageEvent } from '../model/mixer';

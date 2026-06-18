@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-15
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-15 최종민 — GlobalTrends 뷰 추가 및 전면 개편·Peer+ 글로벌 산업 탭 연동/사이드바 정리
+ */
 export type PeerPlusPeerId = 'samsung_sds' | 'lg_cns' | 'hyundai_autoever' | 'posco_dx';
 
 export const peerPlusSelectionStorageKey = 'axis:peerPlus:selectedPeer';

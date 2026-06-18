@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-29
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-29 안가은 — 관리자 카드뉴스 관리 Repository 신규 작성 및 후속 페이지 구성 수정 반영
+ */
 import { httpClient } from '../../../shared/api/httpClient';
 import type { AdminCard, AdminCardStatus } from '../model/adminCard';
 

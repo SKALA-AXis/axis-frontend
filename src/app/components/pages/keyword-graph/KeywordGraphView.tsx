@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 키워드 그래프 뷰 작성 및 API 연동, 관련 카드뉴스 표시, 이후 그래프/대시보드 UI 개선
+ *   2026-06-10 박진 — 키워드 그래프 엣지 색상 및 렌더링 조정
+ */
 import { type WheelEvent as ReactWheelEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Filter, Maximize2, Minus, Plus } from 'lucide-react';
 import * as THREE from 'three';

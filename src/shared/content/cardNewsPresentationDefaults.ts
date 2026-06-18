@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-10
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-06-10 박진 — 챗봇 로직 수정 작업 중 카드뉴스 프레젠테이션 기본값 추가
+ */
 export const cardNewsPresentationDefaults = {
   peerCompany: '삼성SDS',
   sector: 'AX',

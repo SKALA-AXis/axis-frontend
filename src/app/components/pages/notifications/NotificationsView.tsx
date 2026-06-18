@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-05-22
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-05-22 박진 — 카드뉴스 수정과 함께 알림 설정 UI 추가, 이후 목업 제거 및 챗봇 연동 고도화
+ *   2026-06-14 안가은 — 브리핑/믹서 표시 동작 및 튜토리얼·관리자 UI 정리
+ */
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { notificationsRepository } from '../../../../features/notifications/api/notificationsRepository';

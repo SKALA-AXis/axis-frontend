@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-06-09
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-06-09 최종민 — 홈 인사이트 anchor_date 및 브리핑 생성 클라이언트 추가
+ *   2026-06-14 안가은 — 브리핑·믹서 표시 동작 수정
+ */
 import type { BriefingPeriod } from '../data/periodMeta';
 
 export type BriefingRange = {

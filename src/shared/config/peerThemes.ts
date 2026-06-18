@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-12
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-12 안가은 — 화면 UI 개선 과정에서 Peer사별 테마 색상 정의 추가
+ */
 export type PeerTheme = {
   hero: string;
   solid: string;

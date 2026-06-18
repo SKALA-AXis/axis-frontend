@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-06-09
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-06-09 최종민 — 브리핑 생성 훅 추가(홈 인사이트 anchor_date·브리핑 생성 클라이언트 작업)
+ *   2026-06-11 박진 — 챗봇 프론트 플로우 및 생성 브리핑 UI 연결
+ *   2026-06-14 안가은 — 브리핑·믹서 표시 동작 수정, 튜토리얼/관리자 UI 정리
+ */
 import { useCallback, useEffect, useState } from 'react';
 import type { BriefingPeriod } from '../data/periodMeta';
 import { briefingsRepository, type BriefingGenerateResult } from '../api/briefingsRepository';

@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 브리핑 믹서 사용자 화면 작업 일부로 도넛 콜아웃 차트 추가
+ */
 import type { DonutCalloutDatum } from './types';
 
 function polarPoint(cx: number, cy: number, radius: number, angle: number) {

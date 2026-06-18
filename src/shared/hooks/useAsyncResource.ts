@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-12
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-12 안가은 — 화면 UI 개선 작업에서 비동기 리소스 훅 추가, 이후 로딩 표준화 및 키워드 트렌드 지연 로드 반영
+ */
 import { DependencyList, useCallback, useEffect, useRef, useState } from 'react';
 
 export type AsyncStatus = 'idle' | 'loading' | 'success' | 'error';

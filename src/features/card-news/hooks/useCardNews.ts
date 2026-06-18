@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-12
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-12 안가은 — 화면 UI 개선, 관리자 카드뉴스 관리·감사로그 화면 추가, 로딩 표준화 및 키워드 트렌드 지연 로딩
+ */
 import { useCallback } from 'react';
 import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';
