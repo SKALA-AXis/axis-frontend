@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-05-22
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-05-22 박진 — 카드뉴스 수정 및 알림 설정 작업의 일부로 설정 리포지토리 구성, 이후 비밀번호 찾기·사용자 챗봇 관련 수정
+ *   2026-06-16 심유정 — 전략 컨텍스트 설정 UI 연동 추가
+ */
 import { getAccessToken } from '../../../shared/api/authSession';
 import { env } from '../../../shared/config/env';
 import type { AccessLogItem, AccessLogPage } from '../model/accessLog';

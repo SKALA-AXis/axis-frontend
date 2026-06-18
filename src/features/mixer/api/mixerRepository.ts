@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-05-15
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-15 최종민 — Mixer 리포지토리 신설(mock→실 /api/mixer) 및 SSE 단계 스트리밍 추가
+ *   2026-06-10 박진 — mock 비활성화 및 챗봇 프론트 플로우 수정
+ */
 import { getAccessToken } from '../../../shared/api/authSession';
 import { HttpRequestError, httpClient } from '../../../shared/api/httpClient';
 import { env } from '../../../shared/config/env';

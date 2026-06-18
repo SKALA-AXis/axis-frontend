@@ -1,3 +1,12 @@
+/*
+ * 작성일: 2026-05-22
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-05-22 박진 — 비밀번호 찾기/재설정 기능 업데이트 및 수정
+ *   2026-06-11 안가은 — Peer+ 레이아웃과 인증 화면 hero 카피 정리, 키워드 트렌드 UI 반영
+ *   2026-06-15 최종민 — 전 페이지 하단 문의 연락처 푸터 추가
+ *   2026-06-15 박지원 — develop 브랜치를 글로벌 지원 푸터 작업에 병합
+ */
 import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, MailCheck, Moon, RefreshCw, Sun } from 'lucide-react';
 import type { SignupPayload } from '../../../features/auth/model/auth';

@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-08
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-06-08 박진 — 플로팅 어시스턴트 챗 API 연동용 모델 추가, 이후 챗봇 업데이트·플로우 갱신 반영
+ */
 export type AssistantRole = 'user' | 'assistant' | 'system';
 
 export type AssistantHistoryTurn = {

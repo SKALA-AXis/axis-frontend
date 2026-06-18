@@ -1,3 +1,12 @@
+/*
+ * 작성일: 2026-05-12
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-12 안가은 — 화면 UI 개선 작업 중 카드뉴스 라벨 추가
+ *   2026-05-12 박진 — 섹터별 오류 수정
+ *   2026-05-18 박지원 — credibility score UI 제거 및 industry trend 카드뉴스 라벨 지원
+ *   2026-05-18 최종민 — 프론트 전면 개편(designing 통합·차트/routing/브리핑 흡수)에 맞춰 반영
+ */
 import type { ExposureBand, PeerId, SectorId } from '../../features/card-news/model/cardNews';
 
 export const cardNewsPeerLabels: Record<PeerId, string> = {

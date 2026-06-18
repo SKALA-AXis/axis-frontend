@@ -1,3 +1,13 @@
+/*
+ * 작성일: 2026-05-18
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-18 최종민 — 프론트 전면 개편(designing 통합·차트/routing/브리핑 흡수) 일부로 도입
+ *   2026-05-22 박진 — 카드뉴스 대폭 수정 및 알림 설정 반영
+ *   2026-05-27 안가은 — 카드뉴스 데이터 연동, 이미지 없을 때 기업 로고 표시, 브리핑/믹서 표시 동작 수정
+ *   2026-06-11 심유정 — 카드뉴스 텍스트/파일/에어드롭 공유 기능 추가, 본문 상세 렌더링, 전략 컨텍스트 토글 추가
+ *   2026-06-11 박지원 — 카드 출처 개수 배지 처리 및 이미지 폴백 수정
+ */
 import { useEffect, useState } from 'react';
 import { Bookmark, ChevronLeft, ChevronRight, ExternalLink, Newspaper, Share2, Sparkles, X } from 'lucide-react';
 import { cardNewsRepository } from '../../../features/card-news/api/cardNewsRepository';

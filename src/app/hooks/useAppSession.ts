@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 앱 세션 훅 추가(사용자/브리핑 믹스 기능)
+ *   2026-06-05 박진 — 홈 화면 투데이 인사이트 백엔드 연결 반영
+ *   2026-06-17 최종민 — 로그인 후 딥링크 대상 경로 보존 처리
+ */
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { authRepository } from '../../features/auth/api/authRepository';
 import { dashboardRepository } from '../../features/dashboard/api/dashboardRepository';

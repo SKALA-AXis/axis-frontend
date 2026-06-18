@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-05-18
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-18 최종민 — 프론트 전면 개편 시 브리핑 리포트 텍스트 생성 로직 추가 및 후속 정리
+ *   2026-05-29 안가은 — 브리핑/믹서 페이지 구성 수정 및 글자 크기 조절 반영
+ *   2026-06-10 박진 — 챗봇 플로우 연동에 맞춰 수정
+ */
 import type { BriefingFlowStep, BriefingReport } from './types';
 
 function flowLines(items: readonly BriefingFlowStep[]): string[] {

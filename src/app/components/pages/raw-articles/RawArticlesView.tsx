@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-05-18
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-18 최종민 — 프론트 전면 개편 시 원문 기사 뷰 도입(차트/라우팅/브리핑 통합)
+ *   2026-06-04 안가은 — 로딩 표준화 및 키워드 트렌드 지연 로딩 정비, 튜토리얼·관리자 UI 정리
+ */
 import { useMemo, useState } from 'react';
 import { GitMerge, Share2, Wand2 } from 'lucide-react';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';

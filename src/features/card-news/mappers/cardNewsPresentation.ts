@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-05-12
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-12 안가은 — 화면 UI 개선, 이후 대시보드·검색 인사이트 UI 개선
+ *   2026-06-10 박진 — 챗봇 로직 수정
+ *   2026-06-16 박지원 — 산업 트렌드 카드뉴스 지원
+ */
 import type { CardNewsItem } from '../model/cardNews';
 import { cardNewsPeerLabels } from '../../../shared/content/cardNewsLabels';
 import { cardNewsPresentationDefaults } from '../../../shared/content/cardNewsPresentationDefaults';

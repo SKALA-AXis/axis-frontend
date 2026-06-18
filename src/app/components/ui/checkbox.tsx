@@ -1,5 +1,12 @@
 "use client";
 
+/*
+ * 작성일: 2026-04-23
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-23 안가은 — 프론트엔드 초기 설정으로 체크박스 UI 컴포넌트 추가
+ */
+
 import * as React from "react";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { CheckIcon } from "lucide-react";

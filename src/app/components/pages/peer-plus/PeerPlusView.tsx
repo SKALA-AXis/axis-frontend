@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — Peer+ 개요·키워드·SWOT·믹서 뷰 구성 및 반복 개선, 레이아웃·LLM 비교 근거 반영
+ *   2026-06-08 최종민 — Peer+ 글로벌 산업 탭을 실 API와 연동하고 6사 트렌드 중심으로 패널 재구성
+ *   2026-06-10 박진 — 챗봇 로직 수정에 따른 반영
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { ExternalLink, Globe2, Info, ShieldCheck, X } from 'lucide-react';
 

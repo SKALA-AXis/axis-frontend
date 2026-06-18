@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-17
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-06-17 최종민 — vitest 설정 추가 (P0 안전망, node 환경 characterization 테스트용)
+ */
 import { defineConfig } from 'vitest/config';
 
 // P0 안전망: 리팩토링 characterization 테스트용 최소 설정.

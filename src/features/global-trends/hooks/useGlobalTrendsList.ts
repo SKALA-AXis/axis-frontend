@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-08
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-06-08 최종민 — 글로벌 산업 동향 페이지를 실 API와 연동
+ */
 import { useCallback } from 'react';
 import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';
 import { globalTrendsRepository } from '../api/globalTrendsRepository';

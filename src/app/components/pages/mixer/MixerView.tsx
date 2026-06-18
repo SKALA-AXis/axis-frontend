@@ -1,3 +1,12 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — 믹서 뷰 작성, 이후 결과 레이아웃·표시 동작 및 대시보드 연계 개선
+ *   2026-06-05 최종민 — 탭형 단계 결과 뷰 + 실시간 SSE 단계 진행 표시 추가
+ *   2026-06-10 박진 — 믹서 UX 개선 및 결과 요약 레이아웃 조정, mock 비활성화
+ *   2026-06-17 심유정 — 믹서 레이아웃 마무리 및 레이더 라벨 정리
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bookmark, Box, Check, Filter, Network, Sparkles, X } from 'lucide-react';
 import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';

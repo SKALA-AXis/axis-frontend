@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-29
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-29 안가은 — 관리자 감사로그 조회 훅 신규 작성 후 로딩 상태 표준화 반영
+ */
 import { useCallback } from 'react';
 import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';

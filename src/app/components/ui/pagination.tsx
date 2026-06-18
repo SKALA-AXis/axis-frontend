@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-04-23
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-23 안가은 — Pagination 컴포넌트 초기 추가
+ */
 import * as React from "react";
 import {
   ChevronLeftIcon,

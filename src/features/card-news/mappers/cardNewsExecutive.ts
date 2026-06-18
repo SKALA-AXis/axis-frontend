@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-05-12
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-12 안가은 — 화면 UI 개선 및 카드뉴스 데이터 연동
+ *   2026-05-18 최종민 — 프론트 전면 개편·peer 로고 fallback, Today Insight 듀얼레인 비교 컨텍스트 추가
+ *   2026-05-18 박지원 — 신뢰도 점수 UI 제거, 소스 카운트 배지 fallback·소스 발행 시각 정렬 보정
+ */
 import type { CardNewsEvidenceChain, CardNewsItem } from '../model/cardNews';
 import {
   cardNewsExecutiveDefaults,

@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-05-26
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-05-26 안가은 — Peer+ 포지셔닝 그래프 연동으로 포지셔닝 리포지토리 구현, 이후 브리핑·믹서 표시 동작 수정
+ */
 import { httpClient } from '../../../shared/api/httpClient';
 import type { PeerPositioningData, PeerPositioningPoint } from '../model/peerPositioning';
 

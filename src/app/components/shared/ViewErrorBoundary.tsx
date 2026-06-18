@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-12
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-06-12 최종민 — 뷰를 라우트 단위 지연 청크로 분리하며 에러 바운더리 컴포넌트 추가
+ */
 import { Component, type ReactNode } from 'react';
 
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../executive/ExecutiveSystem';

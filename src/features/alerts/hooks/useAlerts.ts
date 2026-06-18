@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-04-27
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-27 안가은 — 프론트 폴더 구조 재정리 과정에서 알림 조회 훅 추가, 이후 UI 개선·로딩 표준화 반영
+ */
 import { useCallback } from 'react';
 import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';

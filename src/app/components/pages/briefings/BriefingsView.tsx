@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-05-18
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-18 최종민 — 프론트 전면 개편 반영, 인사이트 흡수 후속 정리 및 Home 입구화
+ *   2026-05-19 안가은 — 브리핑·Peer+·믹서 화면 UX 개선, 사용자 가이드 및 브리핑/믹서 표시 동작 정리
+ *   2026-06-10 박진 — 챗봇 로직 수정 및 챗봇 프론트 플로우 업데이트
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Share2, Sparkles, TrendingUp, X } from 'lucide-react';
 

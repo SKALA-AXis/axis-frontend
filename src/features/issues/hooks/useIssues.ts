@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-04-27
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-27 안가은 — 프론트 폴더 구조 개편으로 이슈 훅 정리, 이후 UI 개선·로딩 표준화
+ */
 import { useCallback } from 'react';
 import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';

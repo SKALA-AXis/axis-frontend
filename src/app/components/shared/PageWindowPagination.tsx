@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-18
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-18 안가은 — 튜토리얼/브리핑 관리자 UI 정리 작업으로 페이지 윈도우 페이지네이션 추가
+ */
 export type PageWindow = {
   safePage: number;
   pageNumbers: number[];

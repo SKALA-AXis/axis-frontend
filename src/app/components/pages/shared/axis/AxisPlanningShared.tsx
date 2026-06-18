@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — AXIS 기획 화면 공용 컴포넌트(로딩 블록 등) 추가
+ */
 import type { ReactNode } from 'react';
 
 import { ExecutivePage } from '../../../executive/ExecutiveSystem';

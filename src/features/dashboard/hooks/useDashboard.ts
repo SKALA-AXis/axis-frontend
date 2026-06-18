@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-04-27
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-27 안가은 — 프론트 폴더 구조 재정비 시 대시보드 훅 구성, 이후 로딩 표준화와 홈 키워드 트렌드 인사이트·UI 개선 반영
+ *   2026-06-05 박진 — 홈 투데이 인사이트 백엔드 연결
+ *   2026-06-09 최종민 — 투데이 인사이트 anchor_date 및 브리핑 생성 클라이언트 연동
+ */
 import { useCallback } from 'react';
 import type { AsyncStatus } from '../../../shared/hooks/useAsyncResource';
 import { useAsyncResource } from '../../../shared/hooks/useAsyncResource';

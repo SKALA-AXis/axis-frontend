@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-05-22
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-05-22 박진 — 카드뉴스 수정·알림 설정 작업, 이후 챗봇 로직 수정 반영
+ *   2026-06-05 최종민 — 검색 결과 카드뉴스 섹터 라벨 표기 정리(대문자·약어 처리)
+ *   2026-06-14 안가은 — 대시보드·검색 인사이트 UI 개선 및 브리핑/믹서 표시 동작 정리
+ */
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, LoaderCircle, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import { briefingsRepository, type BriefingGenerateResult } from '../../../../features/briefings/api/briefingsRepository';

@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-04-27
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-27 안가은 — 폴더 구조 재편 과정에서 HTTP 클라이언트 정리, 이후 UI 개선·관리자 카드뉴스/감사로그 화면 연동 반영
+ *   2026-05-15 최종민 — 빈 baseUrl 시 relative URL fallback 수정, 프론트 전면 개편에 맞춘 정비
+ *   2026-05-21 박진 — 로그인 기능·인증 토큰 헤더 처리 추가, 이후 어시스턴트 PDF/이력·챗봇 플로우 대응
+ */
 import { env } from '../config/env';
 import { getAccessToken } from './authSession';
 

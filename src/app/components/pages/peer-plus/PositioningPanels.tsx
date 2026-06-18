@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-01
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-01 안가은 — Peer+ 포지셔닝 산점도 패널 추가, 이후 카드 로고 폴백·레이아웃 개선
+ */
 /**
  * PositioningPanels — Peer+ 페이지 산점도.
  *   • PositioningPanel: 사업 규모 × 매출 성장률 (백엔드 positioning payload 기반)

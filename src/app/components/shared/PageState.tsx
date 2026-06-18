@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-06-04
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-04 안가은 — 로딩 상태 표준화 및 키워드 트렌드 지연 로딩, peer 개요/카드 로고 폴백·대시보드 키워드 트렌드 UI 정리
+ *   2026-06-12 최종민 — 라우트 단위 lazy 청크 분리 및 캐시 헤더 추가
+ */
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../executive/ExecutiveSystem';

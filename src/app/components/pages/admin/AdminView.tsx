@@ -1,3 +1,11 @@
+/*
+ * 작성일: 2026-05-18
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-05-18 최종민 — 프론트 전면 개편 반영
+ *   2026-05-22 박진 — 카드뉴스 수정·알림 설정, 챗봇 로직 수정·고도화 및 목업 삭제
+ *   2026-05-29 안가은 — 관리자 카드뉴스 관리·감사로그 화면, 대시보드/검색 인사이트 UI, 튜토리얼·관리자 UI 정리
+ */
 import { History, Newspaper, Pencil, RefreshCw, RotateCcw, Search, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {

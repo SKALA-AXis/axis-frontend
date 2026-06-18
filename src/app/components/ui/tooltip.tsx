@@ -1,5 +1,11 @@
 "use client";
 
+/*
+ * 작성일: 2026-04-23
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-04-23 안가은 — Tooltip UI 컴포넌트 초기 추가 및 이후 화면 UI 개선
+ */
 import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 

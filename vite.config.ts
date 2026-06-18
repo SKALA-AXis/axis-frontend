@@ -1,3 +1,12 @@
+/*
+ * 작성일: 2026-04-21
+ * 작성자: 최종민
+ * 변경이력:
+ *   2026-04-21 최종민 — axis-frontend 베이스라인에 vite 설정 추가, 이후 라우트별 lazy 청크 분할/캐시 헤더 및 manualChunks 함수 전환
+ *   2026-04-23 안가은 — 프론트 초기 셋업 및 키워드 트렌드 관련 설정 반영
+ *   2026-05-21 박진 — 로그인 기능 구현에 맞춰 설정 반영
+ *   2026-06-11 심유정 — 카드뉴스 텍스트 파일 공유 기능 관련 설정 반영
+ */
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';

@@ -1,3 +1,10 @@
+/*
+ * 작성일: 2026-05-22
+ * 작성자: 박진
+ * 변경이력:
+ *   2026-05-22 박진 — 알림 설정 기능 추가 시 알림 API 리포지토리 구현, 이후 챗봇 프론트엔드 연동
+ *   2026-06-17 최종민 — TopNav 드롭다운 '지우기'가 전체 알림을 지우도록(scope=ALL) 수정
+ */
 import { getAccessToken } from '../../../shared/api/authSession';
 import { env } from '../../../shared/config/env';
 import type { NotificationItem, NotificationPreferences } from '../model/notification';

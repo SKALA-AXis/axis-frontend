@@ -1,3 +1,9 @@
+/*
+ * 작성일: 2026-06-11
+ * 작성자: 안가은
+ * 변경이력:
+ *   2026-06-11 안가은 — 프론트엔드 대시보드/채팅 구조 정리 과정에서 리포트 초안 인쇄 기능 추가
+ */
 import type { AssistantReportDraft } from '../../../../features/assistant/model/assistant';
 
 export function printReportDraft(reportDraft: AssistantReportDraft) {
