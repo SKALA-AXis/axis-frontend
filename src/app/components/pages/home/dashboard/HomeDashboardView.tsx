@@ -12,6 +12,7 @@
  *   2026-06-14 안가은 — 대시보드/검색 인사이트 UI 및 표시 동작 개선
  *   2026-06-16 최종민 — '오늘의 요약 카드뉴스' 라벨을 카드 실제 날짜 기준으로 정정
  *   2026-06-18 안가은 — 튜토리얼과 브리핑 관리자 UI 정리
+ *   2026-06-18 안가은 — Peer사 주가 가격 정보를 그래프 hover 중 차트 하단 패널로 노출
  */
 /**
  * HomeDashboardView — develop 홈 레이아웃 + designing 의 RoC/Stock 토글 차트 통합.
@@ -25,7 +26,7 @@
  *   - 첫번째 ChartButton 을 designing 의 풍부한 keyword/Stock 차트로 (keywordSeries 동적 + spike insight 인터랙션)
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent, ReactNode } from 'react';
+import type { MouseEvent } from 'react';
 import { ChevronLeft, ChevronRight, LineChart as LineChartIcon, X } from 'lucide-react';
 import {
   CartesianGrid,
@@ -33,7 +34,6 @@ import {
   LineChart,
   ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -94,6 +94,44 @@ type ActiveKeywordPoint = {
   insight: KeywordSpikeInsight | null;
 };
 
+type ActiveStockPoint = {
+  date: string;
+  items: Array<{
+    key: string;
+    name: string;
+    color: string;
+    rateLabel: string;
+    priceLabel: string;
+  }>;
+};
+
+const stockDetailSeries = [
+  {
+    key: 'samsungSds',
+    closeKey: 'samsungSdsClose',
+    name: '삼성SDS',
+    color: 'var(--axis-graph-company)',
+  },
+  {
+    key: 'lgCns',
+    closeKey: 'lgCnsClose',
+    name: 'LG CNS',
+    color: 'var(--axis-graph-infra)',
+  },
+  {
+    key: 'hyundaiAutoever',
+    closeKey: 'hyundaiAutoeverClose',
+    name: '현대오토에버',
+    color: 'var(--axis-graph-security)',
+  },
+  {
+    key: 'poscoDx',
+    closeKey: 'poscoDxClose',
+    name: '포스코DX',
+    color: 'var(--axis-graph-deal)',
+  },
+] as const;
+
 export function HomeDashboardView({
   onNavigate,
   bookmarkedIds = [],
@@ -135,6 +173,7 @@ export function HomeDashboardView({
   const [homeDetailCardId, setHomeDetailCardId] = useState<string | null>(null);
   const [homeDetailSlideIndex, setHomeDetailSlideIndex] = useState(0);
   const [activeKeywordPoint, setActiveKeywordPoint] = useState<ActiveKeywordPoint | null>(null);
+  const [activeStockPoint, setActiveStockPoint] = useState<ActiveStockPoint | null>(null);
   const [isKeywordPointPinned, setIsKeywordPointPinned] = useState(false);
   const [isInsightDateSettling, setIsInsightDateSettling] = useState(false);
   const insightDateLoadingSeenRef = useRef(false);
@@ -392,6 +431,21 @@ export function HomeDashboardView({
       poscoDxClose: closePoint?.poscoDx ?? null,
     };
   });
+  const buildStockDetailPoint = (point: Record<string, number | string | null | undefined> | null | undefined): ActiveStockPoint | null => {
+    const date = String(point?.date ?? '');
+    if (!date) return null;
+
+    return {
+      date,
+      items: stockDetailSeries.map((item) => ({
+        key: item.key,
+        name: item.name,
+        color: item.color,
+        rateLabel: formatStockRate(point?.[item.key]),
+        priceLabel: formatStockPrice(point?.[item.closeKey]),
+      })),
+    };
+  };
   const keywordSearchPoints = keywordTrends?.keywordSearchPoints ?? [];
   const keywordSeries = keywordTrends?.keywordSeries ?? [];
   const keywordSeriesForChart = withResolvedKeywordSeriesColors(keywordSeries);
@@ -410,50 +464,15 @@ export function HomeDashboardView({
     20,
     { padding: 2, step: 5 },
   );
-  const renderStockTooltip = ({
-    active,
-    payload,
-    label,
-  }: {
-    active?: boolean;
-    payload?: Array<{ color?: string; dataKey?: string | number; name?: string; value?: number | string | null }>;
-    label?: string;
-  }): ReactNode => {
-    if (!active || !payload?.length || !label) {
-      return null;
+  const handleStockChartMouseMove = (state: unknown) => {
+    if (!state || typeof state !== 'object') return;
+    const activePayload = (state as {
+      activePayload?: Array<{ payload?: Record<string, number | string | null | undefined> }>;
+    }).activePayload;
+    const nextPoint = buildStockDetailPoint(activePayload?.[0]?.payload);
+    if (nextPoint) {
+      setActiveStockPoint(nextPoint);
     }
-
-    const chartPoint = (payload[0] as { payload?: Record<string, number | string | null | undefined> })?.payload;
-    const closeByKey = {
-      samsungSds: chartPoint?.samsungSdsClose,
-      lgCns: chartPoint?.lgCnsClose,
-      hyundaiAutoever: chartPoint?.hyundaiAutoeverClose,
-      poscoDx: chartPoint?.poscoDxClose,
-    } as const;
-
-    return (
-      <div className="min-w-[220px] rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-chart-tooltip-bg)] px-3 py-2.5 shadow-sm backdrop-blur">
-        <p className="text-[11px] font-semibold text-[var(--axis-muted)]">{label}</p>
-        <div className="mt-2 space-y-1.5">
-          {payload.map((item) => {
-            const dataKey = typeof item.dataKey === 'string' ? item.dataKey : '';
-            const closeValue = closeByKey[dataKey as keyof typeof closeByKey] ?? null;
-            return (
-              <div key={dataKey || item.name} className="flex items-start justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2 text-[var(--axis-body)]">
-                  <span className="mt-0.5 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color ?? 'currentColor' }} />
-                  <span className="font-semibold">{item.name}</span>
-                </div>
-                <div className="text-right text-[var(--axis-ink)]">
-                  <p className="font-semibold">{formatStockRate(item.value)}</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--axis-muted)]">{formatStockPrice(closeValue)}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
   };
   const homeDartSummary = dashboard.dartSummary;
   const homeDartRadarData = homeDartSummary?.radarMetrics?.map((item) => ({
@@ -857,6 +876,10 @@ export function HomeDashboardView({
             <div
               className="h-[260px]"
               onMouseLeave={() => {
+                if (showStockChart) {
+                  setActiveStockPoint(null);
+                  return;
+                }
                 if (!isKeywordPointPinned) {
                   setActiveKeywordPoint(null);
                 }
@@ -864,7 +887,11 @@ export function HomeDashboardView({
             >
               {showStockChart ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stockRateChartPoints} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
+                  <LineChart
+                    data={stockRateChartPoints}
+                    margin={{ top: 10, right: 12, left: -20, bottom: 0 }}
+                    onMouseMove={handleStockChartMouseMove}
+                  >
                     <CartesianGrid stroke="var(--axis-graph-edge)" />
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--axis-muted)' }} />
                     <YAxis
@@ -874,15 +901,6 @@ export function HomeDashboardView({
                       tickFormatter={(value: number) => `${value}%`}
                     />
                     <ReferenceLine y={0} stroke="var(--axis-chart-zero-line)" strokeDasharray="3 3" />
-                    <Tooltip
-                      content={(props) =>
-                        renderStockTooltip(props as {
-                          active?: boolean;
-                          payload?: Array<{ color?: string; dataKey?: string | number; name?: string; value?: number | string | null }>;
-                          label?: string;
-                        })
-                      }
-                    />
                     <Line type="linear" dataKey="samsungSds" name="삼성SDS" stroke="var(--axis-graph-company)" strokeWidth={2.3} dot={false} />
                     <Line type="linear" dataKey="lgCns" name="LG CNS" stroke="var(--axis-graph-infra)" strokeWidth={2.3} dot={false} />
                     <Line type="linear" dataKey="hyundaiAutoever" name="현대오토에버" stroke="var(--axis-graph-security)" strokeWidth={2.2} dot={false} />
@@ -1069,6 +1087,46 @@ export function HomeDashboardView({
                   }))
               }
             />
+            {showStockChart && activeStockPoint ? (
+              <div className="mt-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-3 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">
+                    Peer사 종가 · 전일 대비 증감률
+                  </p>
+                  <span className="text-[11px] font-semibold text-[var(--axis-muted)]">{activeStockPoint.date}</span>
+                </div>
+                <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                  {activeStockPoint.items.map((item) => {
+                    const isPositive = item.rateLabel.startsWith('+');
+                    const isNegative = item.rateLabel.startsWith('-');
+                    return (
+                      <div
+                        key={item.key}
+                        className="rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-2.5 py-2 text-[11px]"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="inline-flex min-w-0 items-center gap-1.5 font-semibold text-[var(--axis-body)]">
+                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                            <span className="truncate">{item.name}</span>
+                          </span>
+                          <span className={`shrink-0 font-semibold ${
+                            isPositive
+                              ? 'text-[var(--axis-success)]'
+                              : isNegative
+                                ? 'text-[var(--axis-danger)]'
+                                : 'text-[var(--axis-muted)]'
+                          }`}
+                          >
+                            {item.rateLabel}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-right text-[11px] font-semibold text-[var(--axis-ink)]">{item.priceLabel}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             {!showStockChart && activeKeywordPoint ? (
               <div className="mt-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-chart-accent-border)] bg-[var(--axis-chart-accent-surface)] px-3 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">

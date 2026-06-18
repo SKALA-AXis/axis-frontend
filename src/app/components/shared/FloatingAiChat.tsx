@@ -5,7 +5,7 @@
  *   2026-05-18 최종민 — 프론트 전면 개편(designing 통합·차트/routing/브리핑 흡수) 일부로 도입
  *   2026-05-22 안가은 — 홈화면 그래프 데이터 연동 및 관리자 카드뉴스/감사로그 화면, 대시보드·챗 구조 정리
  *   2026-05-22 박진 — 플로팅 어시스턴트 챗 UI 및 챗봇 API 연동 구현, PDF·히스토리 컨트롤 등 반복 수정
- *   2026-06-18 안가은 — 모바일 하단 내비와 겹치지 않도록 플로팅 챗 위치와 크기 조정
+ *   2026-06-18 안가은 — 모바일 한 줄 하단 내비와 겹치지 않도록 플로팅 챗 위치와 크기 조정
  */
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -254,7 +254,7 @@ export function FloatingAiChat({ activeView, scrollToTopControl }: FloatingAiCha
   };
 
   return (
-    <div className="fixed bottom-[8.75rem] right-3 z-[90] flex flex-col items-end gap-3 sm:bottom-32 sm:right-4 md:bottom-5 md:right-6">
+    <div className="fixed bottom-[5.25rem] right-3 z-[90] flex flex-col items-end gap-3 sm:bottom-[5.5rem] sm:right-4 md:bottom-5 md:right-6">
       {isOpen ? (
         <section className="mb-2 flex h-[min(72dvh,460px)] w-[calc(100vw-1.5rem)] max-w-[360px] flex-col overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] shadow-[0_24px_80px_-42px_rgba(0,0,0,0.62)] sm:w-[360px]">
           <div className="flex items-center justify-between border-b border-[var(--axis-hairline)] px-4 py-3">

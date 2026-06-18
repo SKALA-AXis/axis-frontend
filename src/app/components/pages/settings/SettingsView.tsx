@@ -7,6 +7,7 @@
  *   2026-05-29 안가은 — 브리핑·믹서 페이지 구성 수정 및 글자 크기 조절 추가, 튜토리얼·관리자 UI 정리
  *   2026-06-16 심유정 — 전략 컨텍스트 설정 UI 추가 및 AI 입력 안내 문구 반영
  *   2026-06-18 안가은 — 모바일 설정 탭이 화면 너비 안에서 모두 보이도록 그리드 배치 개선
+ *   2026-06-18 안가은 — 모바일 맞춤 전략 자료 화면의 텍스트·액션 배치 밀도 개선
  */
 import {
   Bell,
@@ -402,8 +403,8 @@ export function SettingsView({
         />
 
         <section className="grid gap-5 xl:grid-cols-[16rem_minmax(0,1fr)]">
-          <aside className="axis-panel-flat h-fit p-3">
-            <nav data-guide="settings-tabs" className="grid grid-cols-2 gap-2 xl:flex xl:flex-col">
+          <aside className="axis-panel-flat h-fit p-2 xl:p-3">
+            <nav data-guide="settings-tabs" className="grid grid-cols-5 gap-1 xl:flex xl:flex-col xl:gap-2">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -413,14 +414,14 @@ export function SettingsView({
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex min-w-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-3 py-3 text-left transition sm:px-4 xl:w-full ${
+                    className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--axis-radius-md)] px-1.5 py-2 text-center transition sm:flex-row sm:gap-2 sm:px-3 xl:w-full xl:justify-start xl:px-4 xl:py-3 xl:text-left ${
                       isActive
                         ? 'bg-[var(--axis-accent)] text-white shadow-[0_14px_34px_-26px_rgba(220,90,36,0.65)]'
                         : 'text-[var(--axis-body)] hover:bg-[var(--axis-surface-muted)]'
                     }`}
                   >
                     <Icon size={17} className="shrink-0" />
-                    <span className="min-w-0 truncate text-body-sm font-semibold">{tab.label}</span>
+                    <span className="min-w-0 truncate text-[10px] font-semibold leading-tight sm:text-body-sm">{tab.label}</span>
                   </button>
                 );
               })}
@@ -733,18 +734,18 @@ export function SettingsView({
             ) : null}
 
             {activeTab === 'strategyContext' ? (
-              <section className="p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <section className="p-4 sm:p-5">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <FileText size={17} className="text-[var(--axis-accent)]" />
                       <h2 className="axis-section-heading">맞춤 전략 자료</h2>
                     </div>
-                    <p className="mt-2 max-w-2xl text-body-sm text-[var(--axis-muted)]">
+                    <p className="mt-2 max-w-3xl text-body-sm leading-6 text-[var(--axis-muted)]">
                       입력한 내용을 반영해 카드뉴스의 대응방안을 우리 조직 관점으로 더 구체화합니다.
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:items-center">
                     <input
                       ref={strategyFileInputRef}
                       type="file"
@@ -770,15 +771,20 @@ export function SettingsView({
                   </div>
                 </div>
 
-                <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-heading-5 font-semibold text-[var(--axis-ink)]">전략 자료 입력</h3>
-                      <p className="mt-1 text-caption leading-5 text-[var(--axis-muted)]">
+                <div className="mt-4 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3 sm:mt-5 sm:p-4">
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-semibold text-[var(--axis-ink)] sm:text-heading-5">전략 자료 입력</h3>
+                        <span className="rounded-sm border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--axis-muted)]">
+                          LLM 분석에 전달됨
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-caption leading-5 text-[var(--axis-muted)]">
                         뉴스·공시 등 외부 수집 정보만으로는 알 수 없는 우리 조직의 계획, 제품 로드맵, 제안 방향을 입력해 주세요.
                       </p>
                     </div>
-                    <p className="max-w-[360px] shrink-0 text-right text-caption leading-5 text-[var(--axis-muted)]">
+                    <p className="rounded-[var(--axis-radius-md)] bg-[var(--axis-surface-soft)] px-3 py-2 text-caption leading-5 text-[var(--axis-muted)] lg:max-w-[320px] lg:text-right">
                       해당 내용은 LLM에 전달되어 분석 처리되오니 유의 바랍니다.
                     </p>
                   </div>
@@ -802,17 +808,18 @@ export function SettingsView({
                   <textarea
                     id="strategy-context-input"
                     value={strategyContext}
-                    rows={10}
+                    rows={8}
                     onChange={(event) => {
                       setStrategyContext(event.target.value);
                       setStrategyContextStatus('idle');
                       setStrategyContextMessage('');
                     }}
                     placeholder="예: 현재 준비 중인 제품·서비스, 개발 단계, 기존 기획 범위, 보완이 필요한 기능, 우선 적용 업무, 타깃 고객, 제안 방향, 조직의 강점, 파트너 협력 필요 영역 등을 입력하세요."
-                    className="mt-4 min-h-[220px] w-full resize-y rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-4 py-3 text-body-sm leading-6 text-[var(--axis-ink)] outline-none transition placeholder:text-[var(--axis-muted)] focus:border-[var(--axis-accent)]"
+                    className="mt-4 min-h-[180px] w-full resize-y rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] px-4 py-3 text-body-sm leading-6 text-[var(--axis-ink)] outline-none transition placeholder:text-[var(--axis-muted)] focus:border-[var(--axis-accent)] sm:min-h-[220px]"
                   />
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2" aria-live="polite">
+                  <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap sm:items-center" aria-live="polite">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     <ExecutiveButton
                       icon={<Save size={16} />}
                       disabled={strategyContextStatus === 'loading'}
@@ -828,6 +835,7 @@ export function SettingsView({
                     >
                       입력 비우기
                     </ExecutiveButton>
+                    </div>
                     {strategyContextMessage ? (
                       <ExecutiveBadge tone={strategyContextStatus === 'error' ? 'danger' : strategyContextStatus === 'loading' ? 'warning' : 'success'}>
                         {strategyContextMessage}
@@ -837,10 +845,10 @@ export function SettingsView({
                 </div>
 
                 {strategyContextListOpen ? (
-                  <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-4">
+                  <div className="mt-5 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface)] p-3 sm:p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <h3 className="text-heading-5 font-semibold text-[var(--axis-ink)]">누적 전략 자료</h3>
+                        <h3 className="text-base font-semibold text-[var(--axis-ink)] sm:text-heading-5">누적 전략 자료</h3>
                         <p className="mt-1 text-caption leading-5 text-[var(--axis-muted)]">
                           저장된 자료를 불러와 수정하거나 삭제할 수 있습니다.
                         </p>
@@ -857,15 +865,15 @@ export function SettingsView({
                       {strategyContextItems.map((item) => (
                         <article
                           key={item.id}
-                          className={`rounded-[var(--axis-radius-md)] border bg-[var(--axis-canvas)] p-4 transition ${
+                          className={`rounded-[var(--axis-radius-md)] border bg-[var(--axis-canvas)] p-3 transition sm:p-4 ${
                             editingStrategyContextId === item.id
                               ? 'border-[var(--axis-accent)]'
                               : 'border-[var(--axis-hairline)]'
                           }`}
                         >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                 <ExecutiveBadge>{item.sourceType === 'uploaded_file' ? '파일' : '직접 입력'}</ExecutiveBadge>
                                 <span className="text-caption-bold text-[var(--axis-muted)]">
                                   {formatStrategyContextTime(item.updatedAt)} 업데이트
@@ -880,23 +888,27 @@ export function SettingsView({
                                 {strategyContextPreview(item.content)}
                               </p>
                             </div>
-                            <div className="flex shrink-0 items-center gap-2">
-                              <ExecutiveButton
-                                variant="secondary"
-                                icon={<Pencil size={15} />}
+                            <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
+                              <button
+                                type="button"
                                 disabled={strategyContextStatus === 'loading'}
                                 onClick={() => editStrategyContext(item)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
+                                aria-label="전략 자료 수정"
+                                title="수정"
                               >
-                                수정
-                              </ExecutiveButton>
-                              <ExecutiveButton
-                                variant="ghost"
-                                icon={<Trash2 size={15} />}
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                type="button"
                                 disabled={strategyContextStatus === 'loading'}
                                 onClick={() => void deleteStrategyContext(item.id)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--axis-radius-md)] border border-transparent text-[var(--axis-muted)] transition hover:border-[var(--axis-danger)] hover:bg-[rgba(218,30,40,0.08)] hover:text-[var(--axis-danger)] disabled:cursor-not-allowed disabled:opacity-45"
+                                aria-label="전략 자료 삭제"
+                                title="삭제"
                               >
-                                삭제
-                              </ExecutiveButton>
+                                <Trash2 size={15} />
+                              </button>
                             </div>
                           </div>
                         </article>

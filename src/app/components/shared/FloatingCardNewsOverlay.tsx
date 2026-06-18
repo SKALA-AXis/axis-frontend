@@ -7,6 +7,7 @@
  *   2026-05-27 안가은 — 카드뉴스 데이터 연동, 이미지 없을 때 기업 로고 표시, 브리핑/믹서 표시 동작 수정
  *   2026-06-11 심유정 — 카드뉴스 텍스트/파일/에어드롭 공유 기능 추가, 본문 상세 렌더링, 전략 컨텍스트 토글 추가
  *   2026-06-11 박지원 — 카드 출처 개수 배지 처리 및 이미지 폴백 수정
+ *   2026-06-18 안가은 — 모바일 상세 화면 닫기·이전/다음 뉴스 이동 버튼 및 원문 목록 접근성 개선
  */
 import { useEffect, useState } from 'react';
 import { Bookmark, ChevronLeft, ChevronRight, ExternalLink, Newspaper, Share2, Sparkles, X } from 'lucide-react';
@@ -355,10 +356,18 @@ export function FloatingCardNewsOverlay({
         onClick={onClose}
         className="absolute inset-0 bg-[rgba(16,16,20,0.30)] backdrop-blur-[3px]"
       />
-      <section className="absolute left-1/2 top-1/2 h-[min(640px,calc(100vh_-_56px))] w-[min(960px,calc(100vw_-_32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] shadow-[0_34px_110px_-42px_rgba(0,0,0,0.58)] md:overflow-hidden xl:w-[min(960px,calc(100vw_-_360px))]">
+      <section className="absolute inset-x-3 bottom-3 top-3 overflow-y-auto rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] shadow-[0_34px_110px_-42px_rgba(0,0,0,0.58)] md:bottom-auto md:left-1/2 md:top-1/2 md:h-[min(640px,calc(100vh_-_56px))] md:w-[min(960px,calc(100vw_-_32px))] md:-translate-x-1/2 md:-translate-y-1/2 md:overflow-hidden xl:w-[min(960px,calc(100vw_-_360px))]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_16px_44px_-30px_rgba(0,0,0,0.72)] backdrop-blur transition hover:bg-black/60 md:hidden"
+          aria-label="카드뉴스 상세 닫기"
+        >
+          <X size={17} />
+        </button>
         <div className="grid md:h-full md:grid-cols-[340px_minmax(0,1fr)] lg:grid-cols-[380px_minmax(0,1fr)]">
-          <div className="min-h-[360px] border-b border-[var(--axis-hairline)] bg-[#081324] md:min-h-0 md:border-b-0 md:border-r">
-            <div className="relative h-full min-h-[360px] w-full overflow-hidden bg-[#081324] md:min-h-0">
+          <div className="min-h-[280px] border-b border-[var(--axis-hairline)] bg-[#081324] sm:min-h-[340px] md:min-h-0 md:border-b-0 md:border-r">
+            <div className="relative h-full min-h-[280px] w-full overflow-hidden bg-[#081324] sm:min-h-[340px] md:min-h-0">
               {slideImage ? (
                 <img
                   src={slideImage}
@@ -368,7 +377,7 @@ export function FloatingCardNewsOverlay({
                 />
               ) : null}
               <div className="absolute inset-0 bg-gradient-to-b from-black/22 via-[#081324]/40 to-black/90" />
-              <div className="relative flex h-full min-h-[360px] flex-col justify-between p-4 text-white md:min-h-0">
+              <div className="relative flex h-full min-h-[280px] flex-col justify-between p-4 pr-14 text-white sm:min-h-[340px] md:min-h-0 md:pr-4">
                 <div className="flex items-start justify-between gap-3 text-xs font-semibold">
                   <span className="rounded-sm border border-white/25 bg-white/10 px-2.5 py-1">{getDisplayDate(card)}</span>
                   <span className="rounded-sm border border-white/25 bg-white/10 px-2.5 py-1">{card.category_label ?? card.category}</span>
@@ -389,7 +398,7 @@ export function FloatingCardNewsOverlay({
           </div>
 
           <div className="flex min-h-0 flex-col">
-            <header className="flex h-[154px] shrink-0 items-start justify-between gap-4 border-b border-[var(--axis-hairline)] px-5 py-4 md:h-[164px] md:px-6">
+            <header className="flex min-h-[132px] shrink-0 items-start justify-between gap-4 border-b border-[var(--axis-hairline)] px-4 py-4 md:h-[164px] md:px-6">
               <div className="min-w-0">
                 <p className="axis-kicker">{activeSlide.kicker}</p>
                 <h3 className="mt-2 line-clamp-3 font-display text-[21px] font-semibold leading-tight text-[var(--axis-ink)] md:text-[24px]">
@@ -399,7 +408,7 @@ export function FloatingCardNewsOverlay({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] text-[var(--axis-body)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]"
+                className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] text-[var(--axis-body)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] md:inline-flex"
                 aria-label="카드뉴스 상세 닫기"
               >
                 <X size={16} />
@@ -444,7 +453,30 @@ export function FloatingCardNewsOverlay({
               </div>
             </nav>
 
-            <article className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-6">
+            {orderedCards.length > 1 ? (
+              <div className="grid grid-cols-2 gap-2 border-b border-[var(--axis-hairline)] px-4 py-3 md:hidden">
+                <button
+                  type="button"
+                  onClick={() => navigateCard(previousCard)}
+                  disabled={!previousCard || !onCardChange}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={16} />
+                  이전 뉴스
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigateCard(nextCard)}
+                  disabled={!nextCard || !onCardChange}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] transition hover:border-[var(--axis-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  다음 뉴스
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            ) : null}
+
+            <article className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-6">
                 <div className="mx-auto max-w-3xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--axis-muted)]">
                   {getPeerLabel(card)} · {card.category_label ?? card.category}
@@ -480,7 +512,7 @@ export function FloatingCardNewsOverlay({
               </div>
             </article>
 
-            <footer className="border-t border-[var(--axis-hairline)] px-5 py-4 md:px-6">
+            <footer className="border-t border-[var(--axis-hairline)] px-4 py-4 md:px-6">
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -523,12 +555,16 @@ export function FloatingCardNewsOverlay({
                     {sourceOptions.length > 1 ? '원문 열기' : '원문 열기'}
                   </button>
                   {sourcePickerOpen && sourceOptions.length > 1 ? (
-                    <div className="absolute bottom-[calc(100%_+_10px)] right-0 z-10 w-[320px] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] shadow-[0_22px_70px_-36px_rgba(0,0,0,0.45)]">
+                    <div
+                      role="dialog"
+                      aria-label="원문 기사 목록"
+                      className="fixed inset-x-5 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[80] max-h-[min(360px,calc(100dvh_-_2rem))] overflow-hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] shadow-[0_22px_70px_-36px_rgba(0,0,0,0.45)] md:absolute md:inset-x-auto md:bottom-[calc(100%_+_10px)] md:right-0 md:z-10 md:w-[min(320px,calc(100vw_-_48px))]"
+                    >
                       <div className="border-b border-[var(--axis-hairline)] bg-[var(--axis-surface-muted)] px-4 py-3">
                         <p className="axis-kicker">Source links</p>
                         <p className="mt-1 text-xs font-semibold text-[var(--axis-muted)]">열어볼 원문 기사를 선택하세요.</p>
                       </div>
-                      <div className="max-h-[240px] overflow-y-auto p-2">
+                      <div className="max-h-[min(260px,calc(100dvh_-_8rem))] overflow-y-auto p-2 md:max-h-[240px]">
                         {sourceOptions.map((source) => (
                           <button
                             key={source.id}

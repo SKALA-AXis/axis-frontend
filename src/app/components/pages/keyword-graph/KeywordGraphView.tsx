@@ -4,6 +4,7 @@
  * 변경이력:
  *   2026-06-01 안가은 — 키워드 그래프 뷰 작성 및 API 연동, 관련 카드뉴스 표시, 이후 그래프/대시보드 UI 개선
  *   2026-06-10 박진 — 키워드 그래프 엣지 색상 및 렌더링 조정
+ *   2026-06-18 안가은 — 모바일 키워드 관련 뉴스 미리보기 패널이 잘리지 않도록 높이·스크롤 개선
  */
 import { type WheelEvent as ReactWheelEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Filter, Maximize2, Minus, Plus } from 'lucide-react';
@@ -930,11 +931,11 @@ export function KeywordGraphView({
               )}
               {keywordOverlayOpen ? (
                 <div
-                  className="absolute inset-0 z-20 bg-[rgba(250,248,244,0.72)] p-5 backdrop-blur-[2px] dark:bg-[rgba(24,25,31,0.72)]"
+                  className="absolute inset-0 z-20 overflow-y-auto bg-[rgba(250,248,244,0.72)] p-3 backdrop-blur-[2px] dark:bg-[rgba(24,25,31,0.72)] sm:p-5"
                   onClick={() => setKeywordOverlayOpen(false)}
                 >
                   <section
-                    className="mx-auto mt-8 max-w-[720px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-5 shadow-[0_24px_70px_-34px_rgba(0,0,0,0.45)]"
+                    className="mx-auto my-3 max-h-[calc(100%_-_1.5rem)] w-full max-w-[720px] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_24px_70px_-34px_rgba(0,0,0,0.45)] sm:my-8 sm:max-h-[calc(100%_-_4rem)] sm:p-5"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <div className="mb-4 flex items-start justify-between gap-3">
@@ -1068,7 +1069,7 @@ export function KeywordGraphView({
                 className="absolute inset-0 z-[6] cursor-default"
               />
               <section
-                className="absolute bottom-6 right-6 z-10 max-h-[min(520px,calc(100vh-120px))] w-[min(620px,calc(100vw-32px))] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/95 p-4 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.56)] backdrop-blur"
+                className="absolute bottom-3 left-3 right-3 z-10 max-h-[calc(100dvh_-_9rem)] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/95 p-4 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.56)] backdrop-blur sm:bottom-6 sm:left-auto sm:right-6 sm:max-h-[min(520px,calc(100vh_-_120px))] sm:w-[min(620px,calc(100vw_-_32px))]"
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="mb-3 flex items-start justify-between gap-3">
