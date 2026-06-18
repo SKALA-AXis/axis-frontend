@@ -9,6 +9,7 @@ import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard'
 import { fetchKeywordGraph, fetchKeywordGraphCards, isKeywordGraphApiConfigured } from '../../../../features/keyword-graph/api/keywordGraphRepository';
 import type { KeywordGraphPayload } from '../../../../features/keyword-graph/model/keywordGraph';
 import { getGraphNodeDisplayRadius, getSpherePosition, splitGraphLabel } from '../../../../features/keyword-graph/lib/graphGeometry';
+import { allGraphCategories, graphCategories, normalizeKeywordGraphEdge, normalizeKeywordGraphNode } from '../../../../features/keyword-graph/lib/graphNodes';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/content/keywordGraph';
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
@@ -20,8 +21,6 @@ type NavigateHandler = (view: string) => void;
 
 type KeywordGraphLoadStage = 'requesting' | 'normalizing' | 'rendering';
 
-const graphCategories = ['AX', '보안', '인프라', '수주'] as const;
-const allGraphCategories = ['기업', ...graphCategories] as const;
 const keywordSphereLightEdgeColor = '#2B241E';
 const keywordSphereLightActiveEdgeColor = '#DC5A24';
 const keywordSphereDarkEdgeColor = '#FFF1D8';
@@ -37,34 +36,6 @@ const emptySelectedNode: KeywordNode = {
   changeRate: 0,
   sourceType: 'raw_articles',
 };
-
-function normalizeKeywordGraphNode(node: Partial<KeywordNode>, index: number): KeywordNode | null {
-  if (!node.id || !node.label) return null;
-  const category = allGraphCategories.includes(node.category as KeywordNode['category'])
-    ? node.category as KeywordNode['category']
-    : 'AX';
-  return {
-    id: node.id,
-    label: node.label,
-    x: typeof node.x === 'number' ? node.x : 450 + Math.cos(index) * 180,
-    y: typeof node.y === 'number' ? node.y : 280 + Math.sin(index) * 180,
-    size: typeof node.size === 'number' ? node.size : 18,
-    category,
-    score: typeof node.score === 'number' ? node.score : 0,
-    changeRate: typeof node.changeRate === 'number' ? node.changeRate : 0,
-    sourceType: node.sourceType ?? 'raw_articles',
-  };
-}
-
-function normalizeKeywordGraphEdge(edge: Partial<KeywordEdge>): KeywordEdge | null {
-  if (!edge.source || !edge.target) return null;
-  return {
-    source: edge.source,
-    target: edge.target,
-    weight: typeof edge.weight === 'number' ? edge.weight : 2,
-    relationType: edge.relationType ?? '관련 기사',
-  };
-}
 
 function KeywordRelatedCardButton({ card, onOpen }: { card: CardNewsItem; onOpen: () => void }) {
   return (
