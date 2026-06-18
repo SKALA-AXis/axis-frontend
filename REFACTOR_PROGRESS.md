@@ -30,30 +30,32 @@
 
 ## ⏸ 이월 (무인 자동작업 부적합 — 사유 + 실행가능 가이드)
 
-### 🔄 P2 — container/presentational 분할 (component ≤600줄) — 착수(순수 추출부터)
-> **진척(2026-06-18)**: P3 인프라 위에서 KeywordGraphView(1131→975)의 순수 로직을 테스트 가드하며 분리 —
-> `lib/graphGeometry`(Three.js 기하 3종 +테스트9)·`lib/graphNodes`(정규화기+카테고리 상수 +테스트6) 추출,
-> 도달불가 카드폴백 ~76줄 제거(origin/develop 에서도 dead 확인). 남은 큰 화면은 아래 표 참고.
+### 🔄 P2 — container/presentational 분할 (component ≤600줄) — 쉬운 추출 6파일 완료
+> **진척(2026-06-18, 인터랙티브 세션)**: P3 인프라 위에서 6개 빅파일의 **순수 헬퍼 + 표현 하위컴포넌트**를
+> 테스트 가드하며 features/*/lib·components 로 분리(전부 move-only, 매 커밋 tsc+vitest+build green).
+> 도달불가 dead 코드 2건(KeywordGraph 카드폴백·Mixer escapeRegExp, origin/develop 에서도 dead 확인) 제거.
+> 추출 모듈: KeywordGraph(graphGeometry·graphNodes) · Mixer(radarGeometry·mixerText·mixerSentence·
+> mixerFilters + 표현 컴포넌트 3종 MixerReadableText·MixerFilterGroupPanel·MixerAnalysisProgressPanel) ·
+> Settings(accessLogFormat·strategyContextFormat + SettingsFormFields) · Peers(peerNumberFormat·
+> peerEvidenceText) · Admin(adminFormat) · Briefings(briefingText). RTL 컴포넌트 테스트 포함 **총 82 테스트**.
 >
-> **나머지 이월 사유**: 대상이 전부 **상태 보유 핵심 데모 화면**인데, 이 레포는
-> (1) 테스트가 전무하고(아래 P3), (2) 로컬에서 앱 실행/시각 검증이 불가(풀빌드 minify 데드락).
-> `tsc`+`build` 는 타입·번들만 보장하고 **렌더/상태/레이아웃 회귀는 못 잡는다.**
-> 데모(2026-06-23) 직전 무인 환경에서 핵심 화면을 시각 검증 없이 분할하는 것은
-> "완벽한지 확인" 원칙 위반 → **테스트(P3) 선행 후 소단위 분할** 권장.
+> **남은 것 = 하드 컨테이너 분할(감독 권장)**: 각 화면의 **메인 상태 컴포넌트**(state/effect/handler + 결과 렌더 JSX),
+> AdminView 대형 패널 4종, HomeDashboardView(모듈레벨 헬퍼 없는 단일 컴포넌트)는 stateful 분할이라
+> 렌더/상태 회귀 위험. 무인 환경(앱 미실행·시각검증 불가)에선 보류 — RTL 렌더 테스트로 가드하며 감독 하 진행 권장.
 
 600줄 초과 대상(실측):
 
 | 컴포넌트 | 줄수 | 권장 분할(소단위) |
 |---|---:|---|
-| MixerView | 2042 | mixer 설정 패널 / 결과 뷰 / 공유 모달 / 프리셋 — 우선 **순수 표현 leaf**(props-only)부터 |
-| HomeDashboardView | 1224 | 위젯별(요약·타임라인·시그널·차트) presentational 추출, 컨테이너는 데이터/상태만 |
-| SettingsView | 1166 | 탭별(프로필·알림규칙·비번·접속로그) 섹션 컴포넌트 |
-| KeywordGraphView | ~~1131~~ **975** | three.js 캔버스 / 사이드 카드패널 / 필터바 분리 (데이터·기하·정규화는 P1/P2 로 분리 완료) |
-| PeerPlusView | 947 | peer 비교 표 / 기간 셀렉터 / 카드 그리드 |
-| BriefingsView | 938 | 생성 폼 / 목록 / 상세 |
-| AdminView | 906 | 리소스별(peers·sources·prompts·scheduler·usage·audit) 패널 |
-| AuthScreen | 761 | 로그인/회원가입/이메일인증 단계 폼 |
-| FloatingCardNewsOverlay | 622 | 오버레이 셸 / 카드 본문 / 네비게이션 |
+| MixerView | ~~2042~~ **1582** | 쉬운 추출 완료(헬퍼4+표현컴포넌트3). 남은=메인 상태 컴포넌트 분할 |
+| HomeDashboardView | 1224 | 모듈레벨 헬퍼 無(단일 컴포넌트) → 하드 분할만 가능(위젯별 presentational) |
+| SettingsView | ~~1166~~ **975** | 쉬운 추출 완료(포맷터2+폼컴포넌트). 남은=탭별 섹션 컨테이너 분할 |
+| KeywordGraphView | ~~1131~~ **975** | 데이터·기하·정규화 분리 완료. 남은=three.js 캔버스/카드패널 컴포넌트 분할 |
+| PeerPlusView | ~~947~~ **873** | 숫자/증거 포맷터 분리 완료. 남은=비교표/카드그리드 + parseTopKeywordEvidence |
+| BriefingsView | ~~938~~ **920** | 텍스트 헬퍼 분리. 남은=생성폼/목록/상세 + adaptGeneratedBriefing 매퍼 |
+| AdminView | ~~906~~ **872** | 포맷터 분리 완료. 남은=대형 패널 4종(AdminUsers·DeletedCards·AuditLogs) 분할 |
+| AuthScreen | 761 | 미착수 — 단계 폼(로그인/회원가입/이메일인증) 분할 |
+| FloatingCardNewsOverlay | 622 | 미착수 — 오버레이 셸/카드 본문/네비 분할 |
 > sidebar.tsx(726)는 shadcn/ui 생성물 → 분할 대상 아님.
 
 **안전 분할 순서(컴포넌트당)**: ① 순수 표현 leaf(hooks 無, props in→JSX out) 추출 → ② 순수 helper/포맷 모듈화
