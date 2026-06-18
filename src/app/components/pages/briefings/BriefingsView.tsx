@@ -32,6 +32,7 @@ import type { BriefingFlowStep, BriefingPeriod, BriefingReport } from './types';
 import {
   buildBriefingRange,
   getBriefingFocusTitle,
+  getWeekEndDateValue,
   getWeekOptions,
   getWeekStartDateValue,
   periodMeta,
@@ -95,6 +96,17 @@ function getWeekIndexFromDateValue(value: string) {
   return Math.max(1, Math.min(5, Math.ceil((Number.isFinite(day) && day > 0 ? day : 1) / 7)));
 }
 
+function getLatestCompletedWeekValue(monthValue: string, todayValue: string) {
+  const weekOptions = getWeekOptions(monthValue);
+  const completedWeeks = weekOptions.filter((option) => getWeekEndDateValue(monthValue, option.value) <= todayValue);
+  if (completedWeeks.length > 0) {
+    return completedWeeks[completedWeeks.length - 1].value;
+  }
+
+  const startedWeeks = weekOptions.filter((option) => getWeekStartDateValue(monthValue, option.value) <= todayValue);
+  return (startedWeeks[startedWeeks.length - 1] ?? weekOptions[0])?.value ?? 1;
+}
+
 function adaptGeneratedBriefing(briefing: BriefingViewModel): BriefingReport {
   return {
     label: briefing.label,
@@ -122,7 +134,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   const [period, setPeriod] = useState<BriefingPeriod>('daily');
   const [dailyDate, setDailyDate] = useState(() => toDateInputValue());
   const [weeklyMonth, setWeeklyMonth] = useState(() => toMonthInputValue());
-  const [weeklyIndex, setWeeklyIndex] = useState(1);
+  const [weeklyIndex, setWeeklyIndex] = useState(() => getLatestCompletedWeekValue(toMonthInputValue(), toDateInputValue()));
   const [monthlyMonth, setMonthlyMonth] = useState(() => toMonthInputValue());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
@@ -137,7 +149,11 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
   const rankedCards = useMemo(() => getExecutiveRank(cards), [cards]);
   const weeklyOptions = useMemo(() => getWeekOptions(weeklyMonth), [weeklyMonth]);
   const latestSelectableWeek = useMemo(() => {
-    const selectableWeeks = weeklyOptions.filter((option) => getWeekStartDateValue(weeklyMonth, option.value) <= todayDateValue);
+    const selectableWeeks = weeklyOptions.filter((option) => getWeekEndDateValue(weeklyMonth, option.value) <= todayDateValue);
+    if (selectableWeeks.length === 0) {
+      const startedWeeks = weeklyOptions.filter((option) => getWeekStartDateValue(weeklyMonth, option.value) <= todayDateValue);
+      return startedWeeks[startedWeeks.length - 1] ?? weeklyOptions[0];
+    }
     return selectableWeeks[selectableWeeks.length - 1] ?? weeklyOptions[0];
   }, [todayDateValue, weeklyMonth, weeklyOptions]);
   const briefingRange = useMemo(
@@ -191,10 +207,17 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
 
   useEffect(() => {
     const latestWeekValue = latestSelectableWeek?.value;
-    if (latestWeekValue && getWeekStartDateValue(weeklyMonth, weeklyIndex) > todayDateValue) {
+    if (latestWeekValue && getWeekEndDateValue(weeklyMonth, weeklyIndex) > todayDateValue) {
       setWeeklyIndex(latestWeekValue);
     }
   }, [latestSelectableWeek?.value, todayDateValue, weeklyIndex, weeklyMonth]);
+
+  const handlePeriodSelect = (nextPeriod: BriefingPeriod) => {
+    setPeriod(nextPeriod);
+    if (nextPeriod === 'weekly' && latestSelectableWeek?.value) {
+      setWeeklyIndex(latestSelectableWeek.value);
+    }
+  };
 
   const briefing = useMemo(
     () => (generatedBriefing ? adaptGeneratedBriefing(generatedBriefing) : null),
@@ -415,7 +438,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                     <button
                       key={item}
                       type="button"
-                      onClick={() => setPeriod(item)}
+                      onClick={() => handlePeriodSelect(item)}
                       className={`h-9 rounded-[var(--axis-radius-md)] border text-sm font-semibold transition ${
                         period === item
                           ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
@@ -447,8 +470,9 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                         value={weeklyMonth}
                         max={currentMonthValue}
                         onChange={(event) => {
-                          setWeeklyMonth(clampValue(event.target.value, currentMonthValue));
-                          setWeeklyIndex(1);
+                          const nextMonth = clampValue(event.target.value, currentMonthValue);
+                          setWeeklyMonth(nextMonth);
+                          setWeeklyIndex(getLatestCompletedWeekValue(nextMonth, todayDateValue));
                         }}
                         className="min-w-0 bg-transparent text-right text-sm font-semibold text-[var(--axis-ink)] outline-none"
                       />

@@ -14,7 +14,7 @@ export const cardNewsPeerLabels: Record<PeerId, string> = {
   lg_cns: 'LG CNS',
   hyundai_autoever: '현대오토에버',
   posco_dx: '포스코DX',
-  industry_trend: 'industry',
+  industry_trend: '산업 동향',
 };
 
 export const cardNewsSectorLabels: Record<SectorId, string> = {
