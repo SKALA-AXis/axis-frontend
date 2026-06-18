@@ -19,8 +19,9 @@ import { mixerRepository } from '../../../../features/mixer/api/mixerRepository'
 import { RADAR_CHART_RADIUS, RADAR_GRID_LEVELS, RADAR_LABEL_RADIUS, clampRadarScore, radarLabelPoint, radarPoint } from '../../../../features/mixer/lib/radarGeometry';
 import { areMixerTextsSimilar, formatMixerDate, mixerModeLabel, provenanceString, sanitizeMixerActionText, sanitizeMixerDisplayText, uniqueMixerTexts } from '../../../../features/mixer/lib/mixerText';
 import { splitMixerReadableText } from '../../../../features/mixer/lib/mixerSentence';
-import { buildMixerFilterOptions, isCompanyKeyword, mergeMixerFilterOptions, type MixerFilterOption } from '../../../../features/mixer/lib/mixerFilters';
+import { buildMixerFilterOptions, isCompanyKeyword, mergeMixerFilterOptions } from '../../../../features/mixer/lib/mixerFilters';
 import { HighlightedMixerText, MixerReadableText } from '../../../../features/mixer/components/MixerReadableText';
+import { MixerFilterGroupPanel } from '../../../../features/mixer/components/MixerFilterGroupPanel';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -73,64 +74,6 @@ function formatLocalDateInputValue(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-
-function MixerFilterGroupPanel({
-  title,
-  options,
-  selected,
-  onToggle,
-  emptyMessage,
-  dense = false,
-  scroll = false,
-}: {
-  title: string;
-  options: MixerFilterOption[];
-  selected: string[];
-  onToggle: (value: string) => void;
-  emptyMessage: string;
-  dense?: boolean;
-  scroll?: boolean;
-}) {
-  return (
-    <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <p className="axis-kicker">{title}</p>
-        <span className="rounded-full bg-[var(--axis-canvas)] px-2 py-0.5 text-[10px] font-semibold text-[var(--axis-muted)]">
-          {selected.length}
-        </span>
-      </div>
-      {options.length > 0 ? (
-        <div className={`flex flex-wrap gap-1 ${scroll ? 'max-h-[104px] overflow-y-auto pr-1' : ''}`}>
-          {options.map((option) => {
-            const isSelected = selected.includes(option.value);
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onToggle(option.value)}
-                className={`${dense ? 'min-h-6 px-2 py-0.5 text-[10px]' : 'min-h-6 px-2 py-0.5 text-[10px]'} max-w-full rounded-full border font-semibold transition ${
-                  isSelected
-                    ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.12)] text-[var(--axis-accent-strong)] dark:border-white/50 dark:bg-white/15 dark:text-white'
-                    : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]'
-                }`}
-                title={`${option.label} · ${option.count}개`}
-              >
-                <span className="inline-flex max-w-full items-center gap-1.5">
-                  <span className="truncate">{option.label}</span>
-                  <span className="shrink-0 text-[10px] opacity-70">{option.count}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="rounded-[var(--axis-radius-sm)] bg-[var(--axis-canvas)] px-2 py-1.5 text-xs leading-5 text-[var(--axis-muted)]">
-          {emptyMessage}
-        </p>
-      )}
-    </div>
-  );
-}
 
 function MixerAnalysisProgressPanel({
   stage,
