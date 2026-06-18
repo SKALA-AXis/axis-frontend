@@ -53,7 +53,7 @@
 | KeywordGraphView | ~~1131~~ **975** | 데이터·기하·정규화 분리 완료. 남은=three.js 캔버스/카드패널 컴포넌트 분할 |
 | PeerPlusView | ~~947~~ **873** | 숫자/증거 포맷터 분리 완료. 남은=비교표/카드그리드 + parseTopKeywordEvidence |
 | BriefingsView | ~~938~~ **920** | 텍스트 헬퍼 분리. 남은=생성폼/목록/상세 + adaptGeneratedBriefing 매퍼 |
-| AdminView | ~~906~~ **872** | 포맷터 분리 완료. 남은=대형 패널 4종(AdminUsers·DeletedCards·AuditLogs) 분할 |
+| AdminView | ~~906~~ **384** ✅ | **600 게이트 통과** — 패널 3종(Pagination·AuditLogs·DeletedCards) + 포맷터·hiddenCards 분리, RTL 가드. 남은=AdminUsersPanel(inline, 게이트 내) |
 | AuthScreen | 761 | 미착수 — 단계 폼(로그인/회원가입/이메일인증) 분할 |
 | FloatingCardNewsOverlay | 622 | 미착수 — 오버레이 셸/카드 본문/네비 분할 |
 > sidebar.tsx(726)는 shadcn/ui 생성물 → 분할 대상 아님.
