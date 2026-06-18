@@ -181,7 +181,11 @@ export function useAppSession(): UseAppSessionResult {
   };
 
   const handleLoginSuccess = () => {
-    window.history.replaceState({}, '', '/');
+    // 인증 콜백 경로(/auth/...)에서 온 로그인만 URL 을 정리하고,
+    // 일반 딥링크(예: /peer)는 보존해 로그인 후 원래 페이지로 진입한다.
+    if (isAuthCallbackPathname()) {
+      window.history.replaceState({}, '', '/');
+    }
     setIsAuthenticated(true);
   };
 
