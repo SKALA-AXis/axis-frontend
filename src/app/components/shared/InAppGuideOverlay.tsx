@@ -3,6 +3,7 @@
  * 작성자: 안가은
  * 변경이력:
  *   2026-06-01 안가은 — 인앱 가이드 오버레이 추가 후 대시보드 키워드 트렌드 UI 및 튜토리얼/브리핑 관리자 UI 정리
+ *   2026-06-18 안가은 — 모바일 가이드 패널을 하단 시트로 분리해 설명 대상이 가려지지 않도록 개선
  */
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
@@ -60,11 +61,32 @@ function createGuideLayout(rect: DOMRect): GuideLayout {
   const viewportHeight = window.innerHeight;
   const gap = 18;
   const margin = 16;
+  const isMobile = viewportWidth < 768;
 
   const panelWidth = Math.min(420, viewportWidth - margin * 2);
   const estimatedPanelHeight = Math.min(560, viewportHeight - margin * 2);
   const targetCenterX = rect.left + rect.width / 2;
   const targetCenterY = rect.top + rect.height / 2;
+
+  if (isMobile) {
+    return {
+      panelStyle: {
+        left: 12,
+        right: 12,
+        bottom: 12,
+        top: 'auto',
+        width: 'auto',
+        maxHeight: Math.min(360, viewportHeight * 0.46),
+      },
+      highlightStyle: {
+        left: clamp(rect.left - 8, 8, viewportWidth - 16),
+        top: clamp(rect.top - 8, 8, viewportHeight - 16),
+        width: Math.max(24, Math.min(rect.width + 16, viewportWidth - Math.max(16, rect.left))),
+        height: Math.max(24, Math.min(rect.height + 16, viewportHeight - Math.max(16, rect.top))),
+      },
+      arrowClass: 'hidden',
+    };
+  }
 
   if (rect.top < 96) {
     const top = clamp(rect.bottom + gap, margin, Math.max(margin, viewportHeight - estimatedPanelHeight - margin));
@@ -340,7 +362,7 @@ export function InAppGuideOverlay({
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[120]">
-      <div className="pointer-events-auto absolute inset-0 bg-[rgba(10,14,22,0.38)] backdrop-blur-[1px]" />
+      <div className="pointer-events-auto absolute inset-0 bg-[rgba(10,14,22,0.22)] backdrop-blur-[1px] md:bg-[rgba(10,14,22,0.38)]" />
       <div
         className={`pointer-events-none absolute z-10 rounded-[18px] border-2 border-[var(--axis-accent)] bg-[rgba(220,90,36,0.08)] shadow-[0_0_0_9999px_rgba(10,14,22,0.28)] ${
           hasDynamicHighlight ? '' : fallbackHighlightClass
@@ -349,7 +371,7 @@ export function InAppGuideOverlay({
       />
       <section
         ref={panelRef}
-        className={`pointer-events-auto absolute z-20 max-h-[calc(100vh-32px)] w-[min(420px,calc(100vw-32px))] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-6 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.58)] transition-all duration-300 ${
+        className={`pointer-events-auto absolute z-20 max-h-[calc(100vh-32px)] w-[min(420px,calc(100vw-32px))] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.58)] transition-all duration-300 md:p-6 ${
           hasDynamicPanel ? '' : fallbackPanelClass
         }`}
         style={guideLayout.panelStyle}
@@ -363,7 +385,7 @@ export function InAppGuideOverlay({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="axis-kicker">{viewLabels[activeView] ?? 'AXIS'} guide</p>
-            <h2 className="mt-2 text-2xl font-display font-semibold text-[var(--axis-ink)]">{step.title}</h2>
+            <h2 className="mt-2 text-xl font-display font-semibold leading-tight text-[var(--axis-ink)] md:text-2xl">{step.title}</h2>
           </div>
           <button
             type="button"
@@ -378,8 +400,8 @@ export function InAppGuideOverlay({
             <X size={17} />
           </button>
         </div>
-        <p className="mt-4 text-base font-medium leading-7 text-[var(--axis-body)]">{step.body}</p>
-        <div className="mt-5 space-y-3">
+        <p className="mt-3 text-sm font-medium leading-6 text-[var(--axis-body)] md:mt-4 md:text-base md:leading-7">{step.body}</p>
+        <div className="mt-4 space-y-3 md:mt-5">
           <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">사용자 인사이트</p>
             <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--axis-body)]">
@@ -396,7 +418,7 @@ export function InAppGuideOverlay({
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">설명 위치</p>
           <p className="mt-1 text-sm font-semibold text-[var(--axis-ink)]">{step.anchor}</p>
         </div>
-        <div className="mt-6 flex items-center justify-between gap-3">
+        <div className="mt-5 flex items-center justify-between gap-3 md:mt-6">
           <span className="text-sm font-semibold text-[var(--axis-muted)]">{safeStepIndex + 1} / {steps.length}</span>
           <div className="flex gap-2">
             <button

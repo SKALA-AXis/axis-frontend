@@ -4,7 +4,7 @@
  * 변경이력:
  *   2026-05-18 최종민 — 프론트 전면 개편 반영, Peer+ 글로벌 산업 탭 연동, 글로벌 트렌드 사이드바 제거
  *   2026-05-29 안가은 — 브리핑·믹서 페이지 구성 수정 및 사용자 기능 추가 반영
- *   2026-06-18 안가은 — 모바일 하단 내비를 모든 메뉴가 보이는 그리드 구조로 개선
+ *   2026-06-18 안가은 — 모바일 하단 내비를 한 줄에서 모든 메뉴가 보이는 구조로 개선
  */
 import {
   ChevronLeft,
@@ -48,7 +48,7 @@ export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, 
     ? [...primaryNavigationItems, adminNavigationItem]
     : primaryNavigationItems;
   const ThemeIcon = themeMode === 'dark' ? Sun : Moon;
-  const mobileGridClass = menuItems.length > 6 ? 'grid-cols-4' : 'grid-cols-3';
+  const mobileGridClass = menuItems.length > 6 ? 'grid-cols-7' : 'grid-cols-6';
 
   return (
     <>
@@ -132,8 +132,9 @@ export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, 
 
       {/* ─── Mobile bottom nav ────────────────────────────────── */}
       <nav
+        data-guide="sidebar-nav"
         aria-label="주요 메뉴"
-        className={`fixed inset-x-0 bottom-0 z-40 grid ${mobileGridClass} gap-1 border-t border-hairline-soft bg-canvas px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-18px_48px_-42px_rgba(0,0,0,0.58)] md:hidden`}
+        className={`fixed inset-x-0 bottom-0 z-40 grid ${mobileGridClass} gap-0.5 border-t border-hairline-soft bg-canvas px-1.5 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-18px_48px_-42px_rgba(0,0,0,0.58)] md:hidden`}
       >
         {menuItems.map((item) => {
           const Icon = menuIcons[item.id];
@@ -143,12 +144,13 @@ export function Sidebar({ activeView, onViewChange, currentUserRole, themeMode, 
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={`relative flex min-h-[46px] min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1.5 py-1.5 transition-colors ${
+              className={`relative flex h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-1 transition-colors ${
                 isActive ? 'bg-[rgba(220,90,36,0.08)] text-action' : 'text-stone hover:bg-surface'
               }`}
+              aria-current={isActive ? 'page' : undefined}
             >
               <Icon className="h-4 w-4" strokeWidth={isActive ? 2.2 : 1.8} />
-              <span className={`max-w-full truncate text-[10px] leading-tight ${isActive ? 'font-display-strong' : ''}`}>{item.label}</span>
+              <span className={`max-w-full truncate text-[9px] leading-tight sm:text-[10px] ${isActive ? 'font-display-strong' : ''}`}>{item.label}</span>
             </button>
           );
         })}

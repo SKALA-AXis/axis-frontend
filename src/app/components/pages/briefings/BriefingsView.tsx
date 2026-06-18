@@ -5,6 +5,7 @@
  *   2026-05-18 최종민 — 프론트 전면 개편 반영, 인사이트 흡수 후속 정리 및 Home 입구화
  *   2026-05-19 안가은 — 브리핑·Peer+·믹서 화면 UX 개선, 사용자 가이드 및 브리핑/믹서 표시 동작 정리
  *   2026-06-10 박진 — 챗봇 로직 수정 및 챗봇 프론트 플로우 업데이트
+ *   2026-06-18 안가은 — 모바일 브리핑 안내 문구와 해석 흐름 STEP 배치 개선
  */
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Share2, Sparkles, TrendingUp, X } from 'lucide-react';
@@ -393,7 +394,7 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
       <ExecutiveContainer className="pb-12 pt-3">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="sr-only">브리핑</h1>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             <div data-guide="briefing-period" className="relative">
               <button
                 type="button"
@@ -490,9 +491,9 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
               </div>
               ) : null}
             </div>
-            <span className="flex min-h-[1.625rem] min-w-0 flex-1 flex-wrap items-center gap-2">
+            <span className="flex min-h-[1.25rem] w-full min-w-0 items-center sm:min-h-[1.625rem] sm:w-auto sm:flex-1">
               {dailyBriefingNotice ? (
-                <span className="max-w-full break-keep text-sm font-semibold leading-6 text-[var(--axis-muted)]">
+                <span className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold leading-5 text-[var(--axis-muted)] sm:text-sm sm:leading-6">
                   {dailyBriefingNotice}
                 </span>
               ) : null}
@@ -620,7 +621,33 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                         </button>
                       ))}
                     </div>
-                    <article className="mt-5 grid gap-5 xl:grid-cols-[120px_minmax(0,1fr)]">
+                    <article className="relative mt-5 overflow-hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-4 sm:px-5 sm:py-5 xl:hidden">
+                      <div className="absolute inset-y-4 left-0 w-1 rounded-full bg-[linear-gradient(180deg,var(--axis-accent),rgba(220,90,36,0.18))] sm:inset-y-5" />
+                      <div className="flex items-start gap-3 sm:gap-4">
+                        <span className="mt-0.5 inline-flex shrink-0 items-center rounded-full border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.08)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--axis-accent-strong)] sm:px-3 sm:text-[11px]">
+                          Step {String(activeInsightStep + 1).padStart(2, '0')}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="axis-kicker">{activeFlowStep.label}</p>
+                          <h3 className="mt-2 text-[1.05rem] font-semibold leading-7 text-[var(--axis-ink)] sm:text-[1.1rem] sm:leading-8">{activeFlowStep.headline}</h3>
+                          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)] sm:mt-3">{activeFlowStep.description}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid gap-3">
+                        {activeFlowStep.details.map((detail, detailIndex) => (
+                          <div
+                            key={`${activeFlowStep.id}-${detailIndex}`}
+                            className="flex items-start gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-3 sm:p-4"
+                          >
+                            <span className="mt-1 shrink-0 font-mono text-[11px] font-bold text-[var(--axis-accent-strong)]">
+                              {String(activeInsightStep + 1).padStart(2, '0')}-{detailIndex + 1}
+                            </span>
+                            <p className="min-w-0 text-sm leading-6 text-[var(--axis-body)]">{detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </article>
+                    <article className="mt-5 hidden gap-5 xl:grid xl:grid-cols-[120px_minmax(0,1fr)]">
                       <div className="flex items-start xl:justify-center">
                         <div className="flex min-h-[176px] w-[128px] flex-col items-center justify-center rounded-[20px] border border-[rgba(220,90,36,0.18)] bg-[rgba(220,90,36,0.08)] px-4 py-5 text-center">
                           <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-accent-strong)]">Step</span>
@@ -725,7 +752,29 @@ export function BriefingsView({ bookmarkedIds = [], onToggleBookmark, onUpdateTi
                         </button>
                       ))}
                     </div>
-                    <div className="mt-5 rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-5 py-4">
+                    <div className="mt-5 rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-4 sm:px-5 xl:hidden">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 inline-flex shrink-0 items-center rounded-full border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.08)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--axis-accent-strong)] sm:px-3 sm:text-[11px]">
+                          Step {String(activeInsightStep + 1).padStart(2, '0')}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="axis-kicker">{activeFlowStep.label}</p>
+                          <h3 className="mt-1.5 text-base font-semibold text-[var(--axis-ink)]">{activeFlowStep.headline}</h3>
+                          <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{activeFlowStep.description}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid gap-3">
+                        {activeFlowStep.details.map((detail, detailIndex) => (
+                          <div key={`${activeFlowStep.id}-${detailIndex}`} className="flex items-start gap-3 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 py-3 sm:px-4">
+                            <span className="mt-1 shrink-0 font-mono text-[11px] font-bold text-[var(--axis-accent-strong)]">
+                              {String(activeInsightStep + 1).padStart(2, '0')}-{detailIndex + 1}
+                            </span>
+                            <p className="min-w-0 text-sm leading-6 text-[var(--axis-body)]">{detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="mt-5 hidden rounded-[var(--axis-radius-xl)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-5 py-4 xl:block">
                       <p className="axis-kicker">{activeFlowStep.label}</p>
                       <h3 className="mt-1.5 text-base font-semibold text-[var(--axis-ink)]">{activeFlowStep.headline}</h3>
                       <p className="mt-2 text-sm leading-6 text-[var(--axis-body)]">{activeFlowStep.description}</p>
