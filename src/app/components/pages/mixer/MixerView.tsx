@@ -18,6 +18,7 @@ import {
 import { mixerRepository } from '../../../../features/mixer/api/mixerRepository';
 import { RADAR_CHART_RADIUS, RADAR_GRID_LEVELS, RADAR_LABEL_RADIUS, clampRadarScore, radarLabelPoint, radarPoint } from '../../../../features/mixer/lib/radarGeometry';
 import { areMixerTextsSimilar, formatMixerDate, mixerModeLabel, provenanceString, sanitizeMixerActionText, sanitizeMixerDisplayText, uniqueMixerTexts } from '../../../../features/mixer/lib/mixerText';
+import { splitMixerReadableText } from '../../../../features/mixer/lib/mixerSentence';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -151,63 +152,6 @@ function mergeMixerFilterOptions(options: MixerFilterOption[], limit?: number) {
     (a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'),
   );
   return typeof limit === 'number' ? sorted.slice(0, limit) : sorted;
-}
-
-const MIXER_INCOMPLETE_ENDINGS = [
-  '가',
-  '이',
-  '은',
-  '는',
-  '을',
-  '를',
-  '와',
-  '과',
-  '로',
-  '으로',
-  '에',
-  '에서',
-  '에게',
-  '까지',
-  '보다',
-  '처럼',
-  '같은',
-  '위한',
-  '통해',
-  '대해',
-  '하며',
-  '하고',
-  '하거나',
-  '또는',
-  '및',
-];
-
-function mixerSentenceBase(value: string) {
-  return value.replace(/["'“”‘’]+/g, '').trim().replace(/[.!?。]+$/g, '').trim();
-}
-
-function isCompleteMixerSentence(value: string) {
-  const base = mixerSentenceBase(value);
-  if (!base) return false;
-  if (MIXER_INCOMPLETE_ENDINGS.some((ending) => base.endsWith(ending))) return false;
-  if (base.length <= 12 && !/(습니다|합니다|됩니다|입니다|니다|요|다)$/.test(base)) return false;
-  return /(습니다|합니다|됩니다|입니다|니다|요|다)$/.test(base);
-}
-
-function splitMixerReadableText(text: string, maxItems = 3) {
-  const normalized = sanitizeMixerDisplayText(text)
-    .replace(/…|\.{2,}/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!normalized) return [];
-  const sentenceMatches = normalized.match(/[^.!?。]+[.!?。]+/g) ?? [];
-  const sentences = sentenceMatches
-    .map((sentence) => sentence.trim())
-    .filter(isCompleteMixerSentence);
-  if (sentences.length === 0 && isCompleteMixerSentence(normalized)) {
-    sentences.push(normalized);
-  }
-  const uniqueSentences = uniqueMixerTexts(sentences);
-  return maxItems > 0 ? uniqueSentences.slice(0, maxItems) : uniqueSentences;
 }
 
 function HighlightedMixerText({ text }: { text: string }) {
