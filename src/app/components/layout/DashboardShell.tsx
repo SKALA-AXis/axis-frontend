@@ -6,6 +6,7 @@
  *   2026-06-08 최종민 — Peer+ 글로벌 산업 탭·Global Trends 연동, FloatingAiChat 라우팅 연결, 글로벌 트렌드 사이드바 제거
  *   2026-06-08 박진 — 플로팅 어시스턴트 챗 API 연동 및 챗봇 로직 수정
  *   2026-06-12 최종민 — 뷰를 라우트 단위 lazy 청크로 분할, 캐시 헤더 추가
+ *   2026-06-18 안가은 — 모바일 하단 내비와 플로팅 요소가 본문을 가리지 않도록 여백 조정
  */
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { bookmarksRepository } from '../../../features/bookmarks/api/bookmarksRepository';
@@ -435,7 +436,7 @@ export function DashboardShell({
           themeMode={themeMode}
           onThemeToggle={() => setThemeMode((mode) => (mode === 'dark' ? 'light' : 'dark'))}
         />
-        <main ref={mainScrollRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 text-body-md md:pb-0">
+        <main ref={mainScrollRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-36 text-body-md md:pb-0">
           {/* key=activeView: 한 뷰에서 에러가 나도 다른 뷰로 이동하면 boundary 가 초기화되도록 */}
           <ViewErrorBoundary key={activeView}>
             <Suspense fallback={<PageSkeleton variant={viewSkeletonVariants[activeView] ?? 'dashboard'} />}>

@@ -6,6 +6,7 @@
  *   2026-05-18 최종민 — 프론트 전면 개편(designing 통합·차트·라우팅·브리핑 흡수) 반영
  *   2026-05-18 박지원 — 신뢰도 점수 UI 제거
  *   2026-06-15 최종민 — 전 페이지 하단 문의 연락처 푸터 추가
+ *   2026-06-18 안가은 — 모바일 화면에서 헤더 액션 영역이 자연스럽게 줄바꿈되도록 개선
  */
 import type { ReactNode } from 'react';
 import {
@@ -106,7 +107,7 @@ export function ExecutiveHeader({
   return (
     <header className="mb-3 flex justify-end pb-1">
       <h1 className="sr-only">{title}</h1>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">{actions}</div> : null}
     </header>
   );
 }

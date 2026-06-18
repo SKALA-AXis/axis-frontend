@@ -7,6 +7,7 @@
  *   2026-06-14 안가은 — 브리핑/믹서 표시 동작 및 튜토리얼·관리자 UI 정리
  *   2026-06-15 박지원 — 카드뉴스 이미지 폴백 수정
  *   2026-06-15 박진 — 사용자 챗봇 프론트엔드 업데이트 반영
+ *   2026-06-18 안가은 — 모바일 필터·검색 영역이 깨지지 않도록 카드뉴스 워크스페이스 반응형 개선
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Bookmark, CalendarDays, Filter, Share2, Trash2 } from 'lucide-react';
@@ -229,15 +230,15 @@ export function CardNewsWorkspaceView({
           subtitle="카드 커버 단위로 전체 흐름을 빠르게 훑고, 필요한 카드만 열어 AI 요약, 시사점, 원문 링크까지 이어서 확인할 수 있는 화면입니다."
         />
 
-        <section data-guide="cardnews-filter" className="relative z-0 mb-5 flex flex-wrap items-center gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
-          <span className="inline-flex h-9 items-center gap-2 rounded-full bg-[var(--axis-canvas)] px-3 text-xs font-semibold text-[var(--axis-muted)]">
+        <section data-guide="cardnews-filter" className="relative z-0 mb-5 grid grid-cols-2 items-center gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2 sm:flex sm:flex-wrap">
+          <span className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-[var(--axis-canvas)] px-3 text-xs font-semibold text-[var(--axis-muted)] sm:justify-start">
             <Filter size={14} />
             필터
           </span>
           <select
             value={peerFilter}
             onChange={(event) => setPeerFilter(event.target.value)}
-            className="h-9 min-w-[132px] rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+            className="h-9 min-w-0 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)] sm:min-w-[132px]"
             aria-label="Peer사 필터"
           >
             {peerOptions.map((peer) => (
@@ -247,14 +248,14 @@ export function CardNewsWorkspaceView({
           <select
             value={sectorFilter}
             onChange={(event) => setSectorFilter(event.target.value)}
-            className="h-9 min-w-[132px] rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)]"
+            className="h-9 min-w-0 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)] outline-none focus:border-[var(--axis-accent)] sm:min-w-[132px]"
             aria-label="섹터 필터"
           >
             {sectorOptions.map((sector) => (
               <option key={sector} value={sector}>{sector}</option>
             ))}
           </select>
-          <label className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)]">
+          <label className="inline-flex h-9 min-w-0 items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-ink)]">
             <CalendarDays size={14} className="text-[var(--axis-accent)]" />
             <span className="sr-only">카드뉴스 날짜 선택</span>
             <input
@@ -262,10 +263,10 @@ export function CardNewsWorkspaceView({
               value={dateFilter}
               max={todayDateValue}
               onChange={(event) => setDateFilter(event.target.value > todayDateValue ? todayDateValue : event.target.value)}
-              className="h-7 w-[130px] bg-transparent text-sm font-semibold text-[var(--axis-ink)] outline-none"
+              className="h-7 min-w-0 flex-1 bg-transparent text-sm font-semibold text-[var(--axis-ink)] outline-none sm:w-[130px]"
             />
           </label>
-          <label className="relative min-w-[220px] flex-1">
+          <label className="relative col-span-2 min-w-0 flex-1 sm:min-w-[220px]">
             <span className="sr-only">카드뉴스 키워드 검색</span>
             <input
               type="search"
@@ -278,7 +279,7 @@ export function CardNewsWorkspaceView({
           <button
             type="button"
             onClick={() => setBookmarkedOnly((current) => !current)}
-            className={`ml-auto inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${
+            className={`inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-xs font-semibold transition sm:ml-auto ${
               bookmarkedOnly
                 ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
                 : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]'
@@ -288,7 +289,7 @@ export function CardNewsWorkspaceView({
             <Bookmark size={14} fill={bookmarkedOnly ? 'currentColor' : 'none'} />
             북마크만
           </button>
-          <span className="inline-flex h-9 items-center rounded-full px-3 text-xs font-semibold text-[var(--axis-muted)]">
+          <span className="inline-flex h-9 items-center justify-center rounded-full px-3 text-xs font-semibold text-[var(--axis-muted)] sm:justify-start">
             {visibleRows.length}건
           </span>
         </section>

@@ -6,6 +6,7 @@
  *   2026-05-21 박진 — 로그인/회원가입 로직 개선, 카드뉴스·알림 설정, 비밀번호 찾기 화면 수정
  *   2026-05-29 안가은 — 브리핑·믹서 페이지 구성 수정 및 글자 크기 조절 추가, 튜토리얼·관리자 UI 정리
  *   2026-06-16 심유정 — 전략 컨텍스트 설정 UI 추가 및 AI 입력 안내 문구 반영
+ *   2026-06-18 안가은 — 모바일 설정 탭이 화면 너비 안에서 모두 보이도록 그리드 배치 개선
  */
 import {
   Bell,
@@ -402,7 +403,7 @@ export function SettingsView({
 
         <section className="grid gap-5 xl:grid-cols-[16rem_minmax(0,1fr)]">
           <aside className="axis-panel-flat h-fit p-3">
-            <nav data-guide="settings-tabs" className="flex gap-2 overflow-x-auto xl:flex-col">
+            <nav data-guide="settings-tabs" className="grid grid-cols-2 gap-2 xl:flex xl:flex-col">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -412,14 +413,14 @@ export function SettingsView({
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex shrink-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-4 py-3 text-left transition xl:w-full ${
+                    className={`flex min-w-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-3 py-3 text-left transition sm:px-4 xl:w-full ${
                       isActive
                         ? 'bg-[var(--axis-accent)] text-white shadow-[0_14px_34px_-26px_rgba(220,90,36,0.65)]'
                         : 'text-[var(--axis-body)] hover:bg-[var(--axis-surface-muted)]'
                     }`}
                   >
-                    <Icon size={17} />
-                    <span className="text-body-sm font-semibold">{tab.label}</span>
+                    <Icon size={17} className="shrink-0" />
+                    <span className="min-w-0 truncate text-body-sm font-semibold">{tab.label}</span>
                   </button>
                 );
               })}

@@ -5,6 +5,7 @@
  *   2026-05-18 최종민 — 프론트 전면 개편 반영
  *   2026-05-22 박진 — 카드뉴스 수정·알림 설정, 챗봇 로직 수정·고도화 및 목업 삭제
  *   2026-05-29 안가은 — 관리자 카드뉴스 관리·감사로그 화면, 대시보드/검색 인사이트 UI, 튜토리얼·관리자 UI 정리
+ *   2026-06-18 안가은 — 모바일 관리자 탭이 화면 안에서 균형 있게 배치되도록 반응형 개선
  */
 import { History, Newspaper, Pencil, RefreshCw, RotateCcw, Search, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -60,7 +61,7 @@ export function AdminView() {
 
         <section className="mt-5 grid gap-5 xl:grid-cols-[15rem_minmax(0,1fr)]">
           <aside className="axis-panel-flat h-fit p-3">
-            <nav data-guide="admin-tabs" className="flex gap-2 overflow-x-auto xl:flex-col">
+            <nav data-guide="admin-tabs" className="grid grid-cols-3 gap-2 xl:flex xl:flex-col">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -70,14 +71,14 @@ export function AdminView() {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex shrink-0 items-center gap-3 rounded-[var(--axis-radius-md)] px-4 py-3 text-left transition xl:w-full ${
+                    className={`flex min-w-0 items-center gap-2 rounded-[var(--axis-radius-md)] px-2.5 py-3 text-left transition sm:gap-3 sm:px-4 xl:w-full ${
                       isActive
                         ? 'bg-[var(--axis-accent)] text-white shadow-[0_14px_34px_-26px_rgba(220,90,36,0.65)]'
                         : 'text-[var(--axis-body)] hover:bg-[var(--axis-surface-muted)]'
                     }`}
                   >
-                    <Icon size={17} />
-                    <span className="text-sm font-semibold">{tab.label}</span>
+                    <Icon size={17} className="shrink-0" />
+                    <span className="min-w-0 truncate text-sm font-semibold">{tab.label}</span>
                   </button>
                 );
               })}
