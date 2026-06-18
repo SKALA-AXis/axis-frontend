@@ -669,6 +669,7 @@ export function MixerView({
       'LG CNS': '#C026D3',
       '현대 오토에버': '#00A76F',
       '포스코 DX': '#FF8A00',
+      industry: '#6B7280',
     },
   );
   const selectedSourceTypeRatioData = buildSelectionRatioData(
