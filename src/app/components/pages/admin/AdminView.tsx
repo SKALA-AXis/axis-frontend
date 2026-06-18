@@ -13,6 +13,7 @@ import { useAdminCards } from '../../../../features/admin-cards/hooks/useAdminCa
 import type { AdminCard } from '../../../../features/admin-cards/model/adminCard';
 import { useAdminUsers } from '../../../../features/admin-users/hooks/useAdminUsers';
 import type { AdminUser, AdminUserStatus } from '../../../../features/admin-users/model/adminUser';
+import { auditActionLabel, formatLastLogin, statusLabel, statusTone } from '../../../../features/admin-users/lib/adminFormat';
 import { TableStateRow } from '../../shared/PageState';
 
 type AdminTab = 'users' | 'cards' | 'audit';
@@ -845,41 +846,6 @@ function AdminAuditLogsPanel({
   );
 }
 
-function formatLastLogin(value: string | null) {
-  if (!value) return '기록 없음';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
-
-function statusLabel(status: AdminUserStatus) {
-  if (status === 'ACTIVE') return '활성';
-  if (status === 'SUSPENDED') return '정지';
-  if (status === 'WITHDRAWN') return '탈퇴';
-  return '대기';
-}
-
-function statusTone(status: AdminUserStatus): 'success' | 'warning' | 'danger' | 'neutral' {
-  if (status === 'ACTIVE') return 'success';
-  if (status === 'SUSPENDED') return 'warning';
-  if (status === 'WITHDRAWN') return 'danger';
-  return 'neutral';
-}
-
-function auditActionLabel(action: string) {
-  if (action === 'card_news.delete') return '카드뉴스 삭제';
-  if (action === 'card_news.restore') return '카드뉴스 복구';
-  if (action === 'card_news.status_change') return '카드뉴스 상태 변경';
-  return action;
-}
 
 function readHiddenCardIds(storageKey: string) {
   try {
