@@ -11,3 +11,5 @@ export type KeywordGraphCardsPayload = {
   items?: Array<Partial<CardNewsItem>>;
   total?: number;
 };
+
+export type KeywordGraphLoadStage = 'requesting' | 'normalizing' | 'rendering';
