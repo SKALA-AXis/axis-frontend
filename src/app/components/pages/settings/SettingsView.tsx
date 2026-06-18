@@ -37,6 +37,7 @@ import {
 } from '../../../../features/settings/api/settingsRepository';
 import type { AccessLogItem } from '../../../../features/settings/model/accessLog';
 import { accessLogStatus, formatAccessLogAction, formatAccessLogClient, formatAccessLogLocation, formatAccessLogTime } from '../../../../features/settings/lib/accessLogFormat';
+import { formatFileSize, formatStrategyContextTime, strategyContextPreview } from '../../../../features/settings/lib/strategyContextFormat';
 import {
   clampTextScaleStep,
   textScaleSteps,
@@ -969,34 +970,6 @@ function AccessLogPageButton({
       {children}
     </button>
   );
-}
-
-function formatStrategyContextTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '방금';
-  }
-  return new Intl.DateTimeFormat('ko-KR', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Seoul',
-  }).format(date);
-}
-
-function formatFileSize(value: number) {
-  if (!Number.isFinite(value) || value <= 0) {
-    return '0 KB';
-  }
-  if (value < 1024 * 1024) {
-    return `${Math.max(1, Math.round(value / 1024))} KB`;
-  }
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function strategyContextPreview(value: string) {
-  return value.replace(/\s+/g, ' ').trim() || '내용 없음';
 }
 
 function Field({
