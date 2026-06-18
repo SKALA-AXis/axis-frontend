@@ -16,6 +16,7 @@ import {
   type MixerStageEvent,
 } from '../../../../features/mixer/model/mixer';
 import { mixerRepository } from '../../../../features/mixer/api/mixerRepository';
+import { RADAR_CHART_RADIUS, RADAR_GRID_LEVELS, RADAR_LABEL_RADIUS, clampRadarScore, radarLabelPoint, radarPoint } from '../../../../features/mixer/lib/radarGeometry';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -85,38 +86,11 @@ const MIXER_ANALYSIS_MODE_OPTIONS: {
   },
 ];
 
-const RADAR_CHART_RADIUS = 86;
-const RADAR_LABEL_RADIUS = RADAR_CHART_RADIUS + 22;
-const RADAR_GRID_LEVELS = [0.25, 0.5, 0.75, 1];
-
 function formatLocalDateInputValue(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-function clampRadarScore(score: number) {
-  return Math.max(0, Math.min(Number.isFinite(score) ? score : 0, 1));
-}
-
-function radarPoint(index: number, total: number, score = 1) {
-  const safeTotal = Math.max(total, 1);
-  const angle = -Math.PI / 2 + (index * 2 * Math.PI) / safeTotal;
-  const radius = RADAR_CHART_RADIUS * clampRadarScore(score);
-  return {
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
-  };
-}
-
-function radarLabelPoint(index: number, total: number) {
-  const safeTotal = Math.max(total, 1);
-  const angle = -Math.PI / 2 + (index * 2 * Math.PI) / safeTotal;
-  return {
-    x: Math.cos(angle) * RADAR_LABEL_RADIUS,
-    y: Math.sin(angle) * RADAR_LABEL_RADIUS,
-  };
 }
 
 function escapeRegExp(value: string) {
