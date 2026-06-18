@@ -50,7 +50,7 @@
 | MixerView | ~~2042~~ **1582** | 쉬운 추출 완료(헬퍼4+표현컴포넌트3). 남은=메인 상태 컴포넌트 분할 |
 | HomeDashboardView | 1224 | 모듈레벨 헬퍼 無(단일 컴포넌트) → 하드 분할만 가능(위젯별 presentational) |
 | SettingsView | ~~1166~~ **975** | 쉬운 추출 완료(포맷터2+폼컴포넌트). 남은=탭별 섹션 컨테이너 분할 |
-| KeywordGraphView | ~~1131~~ **975** | 데이터·기하·정규화 분리 완료. 남은=three.js 캔버스/카드패널 컴포넌트 분할 |
+| KeywordGraphView | ~~1131~~ **583** ✅ | **600 게이트 통과** — 데이터·기하·정규화·3D구(KeywordSphereGraph)·패널 전부 분리, RTL 가드 |
 | PeerPlusView | ~~947~~ **873** | 숫자/증거 포맷터 분리 완료. 남은=비교표/카드그리드 + parseTopKeywordEvidence |
 | BriefingsView | ~~938~~ **920** | 텍스트 헬퍼 분리. 남은=생성폼/목록/상세 + adaptGeneratedBriefing 매퍼 |
 | AdminView | ~~906~~ **384** ✅ | **600 게이트 통과** — 패널 3종(Pagination·AuditLogs·DeletedCards) + 포맷터·hiddenCards 분리, RTL 가드. 남은=AdminUsersPanel(inline, 게이트 내) |
