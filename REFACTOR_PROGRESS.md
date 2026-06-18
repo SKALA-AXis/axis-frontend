@@ -30,8 +30,12 @@
 
 ## ⏸ 이월 (무인 자동작업 부적합 — 사유 + 실행가능 가이드)
 
-### P2 — container/presentational 분할 (component ≤600줄)
-> **이월 사유**: 대상이 전부 **상태 보유 핵심 데모 화면**인데, 이 레포는
+### 🔄 P2 — container/presentational 분할 (component ≤600줄) — 착수(순수 추출부터)
+> **진척(2026-06-18)**: P3 인프라 위에서 KeywordGraphView(1131→975)의 순수 로직을 테스트 가드하며 분리 —
+> `lib/graphGeometry`(Three.js 기하 3종 +테스트9)·`lib/graphNodes`(정규화기+카테고리 상수 +테스트6) 추출,
+> 도달불가 카드폴백 ~76줄 제거(origin/develop 에서도 dead 확인). 남은 큰 화면은 아래 표 참고.
+>
+> **나머지 이월 사유**: 대상이 전부 **상태 보유 핵심 데모 화면**인데, 이 레포는
 > (1) 테스트가 전무하고(아래 P3), (2) 로컬에서 앱 실행/시각 검증이 불가(풀빌드 minify 데드락).
 > `tsc`+`build` 는 타입·번들만 보장하고 **렌더/상태/레이아웃 회귀는 못 잡는다.**
 > 데모(2026-06-23) 직전 무인 환경에서 핵심 화면을 시각 검증 없이 분할하는 것은
@@ -44,7 +48,7 @@
 | MixerView | 2042 | mixer 설정 패널 / 결과 뷰 / 공유 모달 / 프리셋 — 우선 **순수 표현 leaf**(props-only)부터 |
 | HomeDashboardView | 1224 | 위젯별(요약·타임라인·시그널·차트) presentational 추출, 컨테이너는 데이터/상태만 |
 | SettingsView | 1166 | 탭별(프로필·알림규칙·비번·접속로그) 섹션 컴포넌트 |
-| KeywordGraphView | 1131 | three.js 캔버스 / 사이드 카드패널 / 필터바 분리 (데이터는 이미 P1 로 repo 분리됨) |
+| KeywordGraphView | ~~1131~~ **975** | three.js 캔버스 / 사이드 카드패널 / 필터바 분리 (데이터·기하·정규화는 P1/P2 로 분리 완료) |
 | PeerPlusView | 947 | peer 비교 표 / 기간 셀렉터 / 카드 그리드 |
 | BriefingsView | 938 | 생성 폼 / 목록 / 상세 |
 | AdminView | 906 | 리소스별(peers·sources·prompts·scheduler·usage·audit) 패널 |
@@ -55,15 +59,12 @@
 **안전 분할 순서(컴포넌트당)**: ① 순수 표현 leaf(hooks 無, props in→JSX out) 추출 → ② 순수 helper/포맷 모듈화
 → ③ 마지막에 상태/effect 컨테이너만 잔류. 각 단계 `tsc`+`build`+(가능하면)스토리/스냅샷.
 
-### P3 — 테스트 (이 환경에선 안전 도입 불가)
-> - `vitest` 바이너리는 transitive 로 존재하나 **package.json 미선언**, **jsdom/@testing-library 부재**(컴포넌트 테스트 불가),
->   `test` 스크립트는 `echo 'No tests yet'` 스텁.
-> - 이 워크트리의 `node_modules` 는 **팀원 메인 체크아웃에 심링크**라, 여기서 `npm install` 하면 팀원 환경을 오염시키고
->   `package-lock.json` 이 바뀐다. 무인/격리 원칙상 금지.
-> **권장(감독 하)**: 메인 체크아웃에서 `vitest`+`jsdom`+`@testing-library/react`+`@vitest/coverage-v8` 정식 추가,
-> `test` 스크립트 `vitest run` 으로 교체, vite.config 에 `test` 블록(environment: 'jsdom') 추가.
-> 그 후 **순수 대상부터**: repository(httpClient 목), mappers(cardNewsExecutive 등), `features/*/api` 정규화 함수.
-> 이게 갖춰지면 P2 분할을 회귀 없이 진행 가능.
+### ✅ P3 — 테스트 인프라 (완료, 2026-06-18)
+- node_modules 심링크 제거 → **격리 워크트리에 실설치**(팀원 메인 환경 무영향)로 환경 제약 해소.
+- devDeps: `vitest`·`jsdom`·`@testing-library/react`·`@testing-library/jest-dom`·`@vitest/coverage-v8`.
+- `vitest.config.ts`(vite.config mergeConfig + jsdom) · `vitest.setup.ts`(jest-dom) · `test` 스크립트 `vitest run`.
+- 현재 테스트 19종: keywordGraphRepository(4)·graphGeometry(9)·graphNodes(6). 매 커밋 vitest green.
+- → 이제 P2 컴포넌트 분할을 회귀 테스트로 가드 가능.
 
 ### 비고
 - 본 워크트리는 node_modules 를 메인에 심링크해 게이트만 돌림(읽기 전용). 머지 전 정식 체크아웃에서 풀빌드 CI 확인 권장.
