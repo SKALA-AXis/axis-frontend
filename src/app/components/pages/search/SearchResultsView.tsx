@@ -5,6 +5,7 @@
  *   2026-05-22 박진 — 카드뉴스 수정·알림 설정 작업, 이후 챗봇 로직 수정 반영
  *   2026-06-05 최종민 — 검색 결과 카드뉴스 섹터 라벨 표기 정리(대문자·약어 처리)
  *   2026-06-14 안가은 — 대시보드·검색 인사이트 UI 개선 및 브리핑/믹서 표시 동작 정리
+ *   2026-06-18 안가은 — 모바일 검색 상세 필터와 기간 입력 영역의 반응형 배치 개선
  */
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, LoaderCircle, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
@@ -381,7 +382,7 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
               </select>
             </label>
 
-            <div className="mt-3 grid gap-3">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">
                   <CalendarDays size={13} />

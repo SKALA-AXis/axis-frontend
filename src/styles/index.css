@@ -3,6 +3,8 @@
  * - 클래스 이름 보존 (호출 코드 영향 X)
  * - 다크 톤 폐기. .axis-graph-stage 만 Three.js 용 다크 유지
  * - Mistral 토큰은 theme.css 가 SoT — 여기선 utility 클래스만
+ * 변경이력:
+ *   2026-06-18 안가은 — 모바일 입력·카드·테이블·타이포그래피 공통 스타일 보완
  */
 @import './fonts.css';
 @import './tailwind.css';
@@ -475,6 +477,49 @@ html.dark {
   color: var(--ink);
   font-size: var(--text-body-md);
   padding: 0.875rem 0.75rem;
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .axis-page-header {
+    margin-bottom: 1rem;
+  }
+
+  .axis-page-title {
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+
+  .axis-section-heading {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  .axis-panel,
+  .axis-panel-flat,
+  .axis-panel-vivid,
+  .axis-glass,
+  .axis-soft-card,
+  .axis-editorial-card,
+  .axis-executive-card {
+    border-radius: 10px;
+  }
+
+  .axis-executive-card {
+    padding: 1rem;
+  }
+
+  .axis-data-table th,
+  .axis-data-table td {
+    font-size: 0.8125rem;
+    padding: 0.625rem;
+    white-space: nowrap;
+  }
 }
 
 /* ─── Dark shell — light 으로 변환 (기존 cyberpunk 폐기) ─── */

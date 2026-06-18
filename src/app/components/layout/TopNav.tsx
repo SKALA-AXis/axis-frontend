@@ -5,6 +5,7 @@
  *   2026-05-18 최종민 — 프론트 전면 개편 반영, 알림 드롭다운 '지우기' 전체 알림 삭제(scope=ALL) 처리
  *   2026-05-21 박진 — 로그인/회원가입 로직 개선, 카드뉴스 수정·알림 설정, 챗봇 프론트 반영
  *   2026-05-29 안가은 — 관리자 카드뉴스 관리·대시보드/검색 인사이트·키워드 트렌드 UI 반영
+ *   2026-06-18 안가은 — 모바일 상단바에서 검색·알림·사용자 액션이 모두 보이도록 반응형 개선
  */
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, HelpCircle, Search, Settings } from 'lucide-react';
@@ -169,32 +170,32 @@ export function TopNav({
 
   return (
     <header
-      className="relative z-40 flex h-20 shrink-0 items-center gap-4 bg-canvas px-4 lg:px-6"
+      className="relative z-40 flex shrink-0 flex-wrap items-center gap-2 bg-canvas px-3 py-2 sm:px-4 lg:h-20 lg:flex-nowrap lg:gap-4 lg:px-6 lg:py-0"
     >
       {/* ─── 좌측: AXIS 로고 + 현재 페이지 ────────────────── */}
-      <div className="relative flex min-w-[150px] shrink-0 items-center gap-4 lg:min-w-[240px]">
+      <div className="relative order-1 flex min-w-0 flex-1 items-center gap-2 sm:gap-3 lg:order-none lg:min-w-[240px] lg:flex-none lg:gap-4">
         <button
           type="button"
           onClick={onLogoClick}
-          className="rounded-[var(--axis-radius-md)] p-1 transition hover:bg-[var(--axis-surface-soft)]"
+          className="shrink-0 rounded-[var(--axis-radius-md)] p-1 transition hover:bg-[var(--axis-surface-soft)]"
           aria-label="홈으로 이동"
         >
           <img
             src="/axis-logo.png"
             alt="AXIS"
-            className="h-12 w-auto shrink-0 object-contain"
+            className="h-10 w-auto shrink-0 object-contain sm:h-12"
           />
         </button>
 
-        <div className="hidden min-w-0 flex-col gap-1 leading-none lg:flex">
+        <div className="flex min-w-0 flex-col gap-0.5 leading-none">
             <span
-              className="text-fine-print tracking-[0.16em] uppercase text-stone"
+              className="hidden text-fine-print tracking-[0.16em] uppercase text-stone sm:block"
               style={{ fontWeight: 600 }}
             >
               Now Viewing
             </span>
             <span
-              className="font-display text-body-md-strong text-ink tracking-tight"
+              className="truncate font-display text-body-sm-strong text-ink tracking-tight sm:text-body-md-strong"
               style={{ fontWeight: 700 }}
             >
               {currentLabel}
@@ -204,11 +205,11 @@ export function TopNav({
 
       {/* ─── 가운데: 글로벌 검색 input ──────────────────────── */}
       {hideGlobalSearch ? (
-        <div className="min-w-0 flex-1" aria-hidden="true" />
+        <div className="hidden min-w-0 lg:order-none lg:block lg:flex-1" aria-hidden="true" />
       ) : (
         <form
           data-guide="global-search"
-          className="relative min-w-0 flex-1"
+          className="relative order-3 min-w-0 basis-full lg:order-none lg:flex-1"
           onSubmit={handleSearchSubmit}
         >
           <label htmlFor="axis-global-search" className="sr-only">검색</label>
@@ -216,22 +217,22 @@ export function TopNav({
             <select
               value={searchScope}
               onChange={(event) => setSearchScope(event.target.value as SearchScope)}
-              className="h-full w-[118px] shrink-0 border-r border-hairline bg-transparent px-3 text-caption-bold text-[var(--axis-ink)] outline-none sm:w-[132px]"
+              className="h-full w-[92px] shrink-0 border-r border-hairline bg-transparent px-2 text-caption-bold text-[var(--axis-ink)] outline-none sm:w-[132px] sm:px-3"
               aria-label="검색 범위"
             >
               {searchScopeOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
-            <Search size={15} strokeWidth={2.2} className="ml-3 shrink-0 text-stone" />
+            <Search size={15} strokeWidth={2.2} className="ml-2 shrink-0 text-stone sm:ml-3" />
             <input
               id="axis-global-search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onFocus={onSearchClick}
               ref={searchInputRef}
-              className="h-full min-w-0 flex-1 bg-transparent px-3 pr-2 text-body-sm text-charcoal outline-none placeholder:text-stone"
-              placeholder="Peer 동향 · 키워드 · 카드뉴스 검색..."
+              className="h-full min-w-0 flex-1 bg-transparent px-2 text-body-sm text-charcoal outline-none placeholder:text-stone sm:px-3 sm:pr-2"
+              placeholder="검색..."
             />
             <kbd className="pointer-events-none mr-3 hidden shrink-0 rounded-sm border border-hairline bg-cream-soft px-1.5 py-0.5 font-mono text-fine-print text-stone md:inline">
               /
@@ -241,21 +242,22 @@ export function TopNav({
       )}
 
       {/* ─── 우측: 크롤링 업데이트 + 액션 ───────────────────────────── */}
-      <div className="relative flex min-w-fit shrink-0 items-center justify-end gap-1">
+      <div className="relative order-2 flex min-w-fit shrink-0 items-center justify-end gap-1 lg:order-none">
         {/* 마지막 크롤링 업데이트 */}
         {showUpdateTime ? (
           <div
             data-guide="topnav-update"
-            className="mr-1 hidden min-w-[184px] items-center gap-2 rounded-md border border-hairline bg-cream-soft px-2.5 py-1.5 xl:flex"
+            className="mr-1 flex h-9 min-w-0 max-w-[132px] items-center gap-1.5 rounded-md border border-hairline bg-cream-soft px-2 py-1.5 sm:max-w-none sm:gap-2 sm:px-2.5"
+            title={`업데이트 ${lastCrawlUpdate ?? '--.-- --:--'} KST`}
           >
-            <span className="text-caption-bold uppercase tracking-[0.08em] text-charcoal">
+            <span className="hidden text-caption-bold uppercase tracking-[0.08em] text-charcoal sm:inline">
               업데이트
             </span>
-            <span className="text-stone/40">·</span>
+            <span className="hidden text-stone/40 sm:inline">·</span>
             <span className={`font-mono text-sm tabular-nums ${lastCrawlUpdate ? 'text-charcoal' : 'text-stone/50'}`}>
               {lastCrawlUpdate ?? '--.-- --:--'}
             </span>
-            <span className="font-mono text-[11px] text-stone tabular-nums tracking-wider">KST</span>
+            <span className="hidden font-mono text-[11px] text-stone tabular-nums tracking-wider sm:inline">KST</span>
           </div>
         ) : null}
 
@@ -284,7 +286,7 @@ export function TopNav({
         </button>
 
         {notificationsOpen ? (
-          <section className="absolute right-14 top-12 z-30 w-[360px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_22px_70px_-36px_rgba(0,0,0,0.45)]">
+          <section className="fixed left-3 right-3 top-[6.75rem] z-30 max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-4 shadow-[0_22px_70px_-36px_rgba(0,0,0,0.45)] sm:left-auto sm:right-4 sm:w-[360px] lg:absolute lg:right-14 lg:top-12">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p className="axis-kicker">Notifications</p>
@@ -392,7 +394,7 @@ export function TopNav({
           data-guide="topnav-help"
           type="button"
           onClick={onHelpClick}
-          className="hidden h-9 w-9 items-center justify-center rounded-md text-stone transition-colors hover:bg-cream-soft hover:text-ink xl:flex"
+          className="flex h-9 w-9 items-center justify-center rounded-md text-stone transition-colors hover:bg-cream-soft hover:text-ink"
           aria-label="도움말"
         >
           <HelpCircle size={16} strokeWidth={2} />
