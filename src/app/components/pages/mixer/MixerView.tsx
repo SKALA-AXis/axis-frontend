@@ -19,6 +19,7 @@ import { mixerRepository } from '../../../../features/mixer/api/mixerRepository'
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
+import { PageWindowPagination } from '../../shared/PageWindowPagination';
 import { PageProcessLoading, PageState } from '../../shared/PageState';
 import { DonutCalloutChart, buildSelectionRatioData, normalizeMixerPeerLabel } from '../shared/axis';
 
@@ -621,12 +622,6 @@ export function MixerView({
   const candidatePageSize = 20;
   const totalCandidatePages = Math.max(1, Math.ceil(visibleCards.length / candidatePageSize));
   const pagedVisibleCards = visibleCards.slice((candidatePage - 1) * candidatePageSize, candidatePage * candidatePageSize);
-  const candidatePaginationWindowSize = 5;
-  const candidatePageWindowStart = Math.floor((candidatePage - 1) / candidatePaginationWindowSize) * candidatePaginationWindowSize + 1;
-  const candidatePageNumbers = useMemo(() => {
-    const windowEnd = Math.min(totalCandidatePages, candidatePageWindowStart + candidatePaginationWindowSize - 1);
-    return Array.from({ length: windowEnd - candidatePageWindowStart + 1 }, (_, index) => candidatePageWindowStart + index);
-  }, [candidatePageWindowStart, totalCandidatePages]);
   const selectedCards = mixerCards.filter((item) => selectedIds.includes(item.id));
   const openStoredMixerResult = useCallback((payload?: MixerAnalysisResponse | null) => {
     if (!payload) return;
@@ -1903,43 +1898,13 @@ export function MixerView({
                 );
               })}
             </div>
-            <div className="mt-5 flex items-center justify-center px-4 py-3">
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={candidatePageWindowStart === 1}
-                  onClick={() => setCandidatePage(Math.max(1, candidatePageWindowStart - candidatePaginationWindowSize))}
-                  className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  &lt;
-                </button>
-                {candidatePageNumbers.map((pageNumber) => {
-                  const isActive = pageNumber === candidatePage;
-                  return (
-                    <button
-                      key={`candidate-page-${pageNumber}`}
-                      type="button"
-                      onClick={() => setCandidatePage(pageNumber)}
-                      className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-sm font-semibold transition ${
-                        isActive
-                          ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
-                          : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]'
-                      }`}
-                    >
-                      {pageNumber}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  disabled={candidatePageWindowStart + candidatePaginationWindowSize > totalCandidatePages}
-                  onClick={() => setCandidatePage(Math.min(totalCandidatePages, candidatePageWindowStart + candidatePaginationWindowSize))}
-                  className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  &gt;
-                </button>
-              </div>
-            </div>
+            <PageWindowPagination
+              className="mt-5 px-4 py-3"
+              currentPage={candidatePage}
+              totalPages={totalCandidatePages}
+              onPageChange={setCandidatePage}
+              ariaLabel="믹서 후보 카드 페이지 이동"
+            />
           </main>
 
           <aside data-guide="mixer-ratio" className="axis-panel-flat p-5">

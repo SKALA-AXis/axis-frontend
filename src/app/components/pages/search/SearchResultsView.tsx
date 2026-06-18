@@ -1,8 +1,11 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, LoaderCircle, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, LoaderCircle, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
+import { briefingsRepository, type BriefingGenerateResult } from '../../../../features/briefings/api/briefingsRepository';
 import { searchRepository } from '../../../../features/search/api/searchRepository';
 import type { SearchPeriod, SearchResponse, SearchResultItem, SearchScope } from '../../../../features/search/model/search';
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
+import { PageWindowPagination } from '../../shared/PageWindowPagination';
+import type { BriefingPeriod } from '../briefings/types';
 import type { PeerPlusPeerId } from '../../../../shared/content/peerPlus';
 
 const scopeOptions: Array<{ value: SearchScope; label: string }> = [
@@ -54,7 +57,14 @@ type SearchResultsViewProps = {
   initialQuery: string;
   initialScope: SearchScope;
   requestKey: number;
-  onNavigate: (target: string, options?: { peerId?: PeerPlusPeerId; query?: string }) => void;
+  onNavigate: (target: string, options?: {
+    peerId?: PeerPlusPeerId;
+    query?: string;
+    briefingId?: string;
+    briefingDate?: string;
+    briefingPeriod?: BriefingPeriod;
+    briefingPayload?: BriefingGenerateResult | null;
+  }) => void;
 };
 
 // 섹터/카테고리 표기 약자 — 전체 대문자로 노출. 그 외 토큰은 첫 글자만 대문자.
@@ -115,6 +125,16 @@ function getResultTarget(item: SearchResultItem) {
   if (item.type === 'CARD_NEWS') return 'issues';
   if (item.type === 'PEER_PLUS') return 'peerPlus';
   return 'home';
+}
+
+function normalizeResultDate(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const date = value.trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
+}
+
+function getBriefingPeriod(value: unknown): BriefingPeriod {
+  return value === 'weekly' || value === 'monthly' || value === 'daily' ? value : 'daily';
 }
 
 function SearchLoadingState({ sections }: { sections: typeof sectionConfig }) {
@@ -236,6 +256,17 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
     };
   }, [activeRequest]);
 
+  useEffect(() => {
+    const briefingItems = (response?.items ?? []).filter((item) => item.type === 'BRIEFING' && item.id);
+    briefingItems.slice(0, 12).forEach((item) => briefingsRepository.prefetchBriefingById(item.id));
+  }, [response?.items]);
+
+  const prefetchBriefingResult = (item: SearchResultItem) => {
+    if (item.type === 'BRIEFING' && item.id) {
+      briefingsRepository.prefetchBriefingById(item.id);
+    }
+  };
+
   const submitSearch = useCallback((nextFilters = filters) => {
     const normalizedQuery = query.trim();
     if (!normalizedQuery) {
@@ -268,14 +299,18 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
       return;
     }
 
-    onNavigate(target, { query: query.trim() || item.title });
-  };
+    if (target === 'briefings') {
+      onNavigate('briefings', {
+        query: query.trim() || item.title,
+        briefingId: item.id,
+        briefingDate: normalizeResultDate(item.date),
+        briefingPeriod: getBriefingPeriod(item.metadata.briefingType),
+        briefingPayload: item.id ? briefingsRepository.getCachedBriefingById(item.id) : null,
+      });
+      return;
+    }
 
-  const moveSectionPage = (type: SearchResultItem['type'], direction: -1 | 1, totalPages: number) => {
-    setSectionPages((current) => ({
-      ...current,
-      [type]: Math.min(Math.max((current[type] ?? 0) + direction, 0), totalPages - 1),
-    }));
+    onNavigate(target, { query: query.trim() || item.title });
   };
 
   const visibleSections = sectionConfig.filter((section) => scope === 'ALL' || scope === section.type);
@@ -292,7 +327,7 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mb-5 flex flex-col gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2 md:flex-row">
+        <form data-guide="search-query" onSubmit={handleSubmit} className="mb-5 flex flex-col gap-2 rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2 md:flex-row">
           <label className="sr-only" htmlFor="axis-search-page-input">검색어</label>
           <div className="flex min-h-11 min-w-0 flex-1 items-center rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3">
             <Search size={16} className="mr-2 shrink-0 text-[var(--axis-accent)]" />
@@ -319,7 +354,7 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
         </form>
 
         <section className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="axis-panel-flat h-fit p-4">
+          <aside data-guide="search-filters" className="axis-panel-flat h-fit p-4">
             <div className="mb-4 flex items-center gap-2">
               <SlidersHorizontal size={16} className="text-[var(--axis-accent)]" />
               <h2 className="text-sm font-bold text-[var(--axis-ink)]">검색 세부 설정</h2>
@@ -394,7 +429,7 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
             </div>
           </aside>
 
-          <main className="min-w-0">
+          <main data-guide="search-results" className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="axis-kicker">Results</p>
@@ -450,28 +485,6 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
                           <span className="text-xs font-semibold text-[var(--axis-muted)]">
                             {items.length > searchSectionPageSize ? `${currentPage + 1}/${totalPages} · ` : ''}{count}건
                           </span>
-                          {items.length > searchSectionPageSize ? (
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => moveSectionPage(section.type, -1, totalPages)}
-                                disabled={currentPage === 0}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
-                                aria-label={`${section.label} 이전 결과`}
-                              >
-                                <ChevronLeft size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveSectionPage(section.type, 1, totalPages)}
-                                disabled={currentPage >= totalPages - 1}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--axis-radius-sm)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
-                                aria-label={`${section.label} 다음 결과`}
-                              >
-                                <ChevronRight size={15} />
-                              </button>
-                            </div>
-                          ) : null}
                         </div>
                       </div>
                       {visibleItems.length > 0 ? visibleItems.map((item) => (
@@ -479,6 +492,8 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
                           key={`${item.type}-${item.id}`}
                           type="button"
                           onClick={() => navigateToResult(item)}
+                          onMouseEnter={() => prefetchBriefingResult(item)}
+                          onFocus={() => prefetchBriefingResult(item)}
                           className="block w-full border-t border-[var(--axis-hairline)] px-4 py-4 text-left first:border-t-0 transition hover:bg-[var(--axis-surface-soft)]"
                         >
                           <span className="text-[11px] font-semibold text-[var(--axis-accent-strong)]">
@@ -494,6 +509,15 @@ export function SearchResultsView({ initialQuery, initialScope, requestKey, onNa
                       )) : (
                         <p className="px-4 py-6 text-sm font-semibold text-[var(--axis-muted)]">{section.empty}</p>
                       )}
+                      {items.length > searchSectionPageSize ? (
+                        <PageWindowPagination
+                          className="border-t border-[var(--axis-hairline)] px-4 py-3"
+                          currentPage={currentPage + 1}
+                          totalPages={totalPages}
+                          onPageChange={(page) => setSectionPages((current) => ({ ...current, [section.type]: page - 1 }))}
+                          ariaLabel={`${section.label} 검색 결과 페이지 이동`}
+                        />
+                      ) : null}
                     </section>
                   );
                 })}

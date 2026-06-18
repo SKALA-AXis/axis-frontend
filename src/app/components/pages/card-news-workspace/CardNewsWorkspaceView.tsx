@@ -9,6 +9,7 @@ import { adminCardsRepository } from '../../../../features/admin-cards/api/admin
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveHeader, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay, shareCardNews } from '../../shared/FloatingCardNewsOverlay';
+import { PageWindowPagination } from '../../shared/PageWindowPagination';
 import { PageProcessLoading, PageState } from '../../shared/PageState';
 import { EmptyBlock } from '../shared/axis';
 
@@ -105,12 +106,6 @@ export function CardNewsWorkspaceView({
   const cardPageSize = 15;
   const totalCardPages = Math.max(1, Math.ceil(visibleRows.length / cardPageSize));
   const pagedVisibleRows = visibleRows.slice((cardPage - 1) * cardPageSize, cardPage * cardPageSize);
-  const cardPaginationWindowSize = 5;
-  const cardPageWindowStart = Math.floor((cardPage - 1) / cardPaginationWindowSize) * cardPaginationWindowSize + 1;
-  const cardPageNumbers = useMemo(() => {
-    const windowEnd = Math.min(totalCardPages, cardPageWindowStart + cardPaginationWindowSize - 1);
-    return Array.from({ length: windowEnd - cardPageWindowStart + 1 }, (_, index) => cardPageWindowStart + index);
-  }, [cardPageWindowStart, totalCardPages]);
   const detailCard = detailCardId ? cards.find((card) => card.id === detailCardId) ?? null : null;
   const visibleDetailCards = visibleRows.map((row) => row.card);
   const overlayCards = detailCard && visibleDetailCards.some((card) => card.id === detailCard.id)
@@ -373,43 +368,13 @@ export function CardNewsWorkspaceView({
                   );
                 })}
               </main>
-              <div className="mt-5 flex items-center justify-center px-4 py-3">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    disabled={cardPageWindowStart === 1}
-                    onClick={() => setCardPage(Math.max(1, cardPageWindowStart - cardPaginationWindowSize))}
-                    className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    &lt;
-                  </button>
-                  {cardPageNumbers.map((pageNumber) => {
-                    const isActive = pageNumber === cardPage;
-                    return (
-                      <button
-                        key={`cardnews-page-${pageNumber}`}
-                        type="button"
-                        onClick={() => setCardPage(pageNumber)}
-                        className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-sm font-semibold transition ${
-                          isActive
-                            ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.10)] text-[var(--axis-accent-strong)]'
-                            : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-body)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)]'
-                        }`}
-                      >
-                        {pageNumber}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    disabled={cardPageWindowStart + cardPaginationWindowSize > totalCardPages}
-                    onClick={() => setCardPage(Math.min(totalCardPages, cardPageWindowStart + cardPaginationWindowSize))}
-                    className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-3 text-sm font-semibold text-[var(--axis-body)] transition hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    &gt;
-                  </button>
-                </div>
-              </div>
+              <PageWindowPagination
+                className="mt-5 px-4 py-3"
+                currentPage={cardPage}
+                totalPages={totalCardPages}
+                onPageChange={setCardPage}
+                ariaLabel="카드뉴스 페이지 이동"
+              />
             </>
           )}
         </section>

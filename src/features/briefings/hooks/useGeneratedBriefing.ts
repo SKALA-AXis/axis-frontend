@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { BriefingPeriod } from '../data/periodMeta';
-import { briefingsRepository } from '../api/briefingsRepository';
+import { briefingsRepository, type BriefingGenerateResult } from '../api/briefingsRepository';
 import type { BriefingViewModel } from '../mappers/briefingGenerateMapper';
 import { mapGeneratedBriefingToView } from '../mappers/briefingGenerateMapper';
 import type { CardNewsItem } from '../../card-news/model/cardNews';
@@ -11,6 +11,7 @@ export type BriefingPeriodSelection = {
   anchorDate: string;
   month?: string;
   weekIndex?: number;
+  briefingId?: string;
 };
 
 interface UseGeneratedBriefingResult {
@@ -26,8 +27,19 @@ export function useGeneratedBriefing(
   selection: BriefingPeriodSelection,
   fallbackCards: CardNewsItem[],
   range: BriefingRange,
+  initialResult?: BriefingGenerateResult | null,
 ): UseGeneratedBriefingResult {
-  const [briefing, setBriefing] = useState<BriefingViewModel | null>(null);
+  const mapResult = useCallback((result: BriefingGenerateResult) => (
+    mapGeneratedBriefingToView(
+      result as Parameters<typeof mapGeneratedBriefingToView>[0],
+      period,
+      fallbackCards,
+      range,
+    )
+  ), [fallbackCards, period, range]);
+  const [briefing, setBriefing] = useState<BriefingViewModel | null>(() => (
+    initialResult ? mapGeneratedBriefingToView(initialResult as Parameters<typeof mapGeneratedBriefingToView>[0], period, fallbackCards, range) : null
+  ));
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedBriefingMissing, setSavedBriefingMissing] = useState(false);
@@ -38,14 +50,7 @@ export function useGeneratedBriefing(
     setSavedBriefingMissing(false);
     try {
       const { result, savedMissing } = await loadSavedOrGenerate(period, selection);
-      setBriefing(
-        mapGeneratedBriefingToView(
-          result as Parameters<typeof mapGeneratedBriefingToView>[0],
-          period,
-          fallbackCards,
-          range,
-        ),
-      );
+      setBriefing(mapResult(result));
       setSavedBriefingMissing(savedMissing);
     } catch (err) {
       setBriefing(null);
@@ -53,7 +58,14 @@ export function useGeneratedBriefing(
     } finally {
       setIsGenerating(false);
     }
-  }, [fallbackCards, period, range, selection]);
+  }, [mapResult, period, selection]);
+
+  useEffect(() => {
+    if (!initialResult) return;
+    setBriefing(mapResult(initialResult));
+    setError(null);
+    setSavedBriefingMissing(false);
+  }, [initialResult, mapResult]);
 
   useEffect(() => {
     void load();
@@ -63,6 +75,11 @@ export function useGeneratedBriefing(
 }
 
 async function loadSavedOrGenerate(period: BriefingPeriod, selection: BriefingPeriodSelection) {
+  if (selection.briefingId) {
+    const result = await briefingsRepository.getBriefingById(selection.briefingId);
+    return { result, savedMissing: false };
+  }
+
   const summaryRequest =
     period === 'daily'
       ? { briefing_type: period, anchor_date: selection.anchorDate }

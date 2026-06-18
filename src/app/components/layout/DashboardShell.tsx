@@ -1,6 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { bookmarksRepository } from '../../../features/bookmarks/api/bookmarksRepository';
 import type { AuthUser } from '../../../features/auth/model/auth';
+import type { BriefingGenerateResult } from '../../../features/briefings/api/briefingsRepository';
+import type { BriefingPeriod } from '../pages/briefings/types';
 import type { SearchScope } from '../../../features/search/model/search';
 import type { UserRole } from '../../types/userRole';
 import { peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../shared/content/peerPlus';
@@ -118,6 +120,13 @@ export function DashboardShell({
   const [viewFreshness, setViewFreshness] = useState<ViewFreshnessMap>(() => observedUpdateMapFromStore(readViewUpdateStore()));
   const [peerPlusSelectedPeer, setPeerPlusSelectedPeer] = useState<PeerPlusPeerId | undefined>(undefined);
   const [cardNewsSearchQuery, setCardNewsSearchQuery] = useState('');
+  const [briefingNavigationTarget, setBriefingNavigationTarget] = useState<{
+    id?: string;
+    period: BriefingPeriod;
+    date: string;
+    cachedResult?: BriefingGenerateResult | null;
+    requestKey: number;
+  } | null>(null);
   const [globalSearchRequest, setGlobalSearchRequest] = useState<{ query: string; scope: SearchScope; requestKey: number }>({
     query: '',
     scope: 'ALL',
@@ -254,13 +263,25 @@ export function DashboardShell({
       return;
     }
     if (view === 'insight') {
+      setBriefingNavigationTarget(null);
       setActiveView('briefings');
       return;
+    }
+    if (view === 'briefings') {
+      setBriefingNavigationTarget(null);
     }
     setActiveView(view);
   };
 
-  const handleSearchNavigate = (target: string, options?: { peerId?: PeerPlusPeerId; query?: string; scope?: SearchScope }) => {
+  const handleSearchNavigate = (target: string, options?: {
+    peerId?: PeerPlusPeerId;
+    query?: string;
+    scope?: SearchScope;
+    briefingId?: string;
+    briefingDate?: string;
+    briefingPeriod?: BriefingPeriod;
+    briefingPayload?: BriefingGenerateResult | null;
+  }) => {
     if (target === 'search') {
       setGlobalSearchRequest((current) => ({
         query: options?.query ?? '',
@@ -278,6 +299,18 @@ export function DashboardShell({
 
     if (target === 'issues') {
       setCardNewsSearchQuery(options?.query ?? '');
+    }
+
+    if (target === 'briefings' && options?.briefingDate) {
+      setBriefingNavigationTarget((current) => ({
+        id: options.briefingId,
+        period: options.briefingPeriod ?? 'daily',
+        date: options.briefingDate ?? '',
+        cachedResult: options.briefingPayload ?? null,
+        requestKey: (current?.requestKey ?? 0) + 1,
+      }));
+      setActiveView('briefings');
+      return;
     }
 
     handleViewChange(target, { preservePeerSelection: Boolean(options?.peerId) });
@@ -339,6 +372,7 @@ export function DashboardShell({
             bookmarkedIds={bookmarkedIds}
             onToggleBookmark={toggleBookmark}
             onUpdateTimeChange={(updatedAt) => handleViewFreshnessChange('briefings', updatedAt)}
+            initialSelection={briefingNavigationTarget}
           />
         );
       case 'notifications':
