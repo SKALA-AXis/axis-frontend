@@ -19,6 +19,7 @@ import { mixerRepository } from '../../../../features/mixer/api/mixerRepository'
 import { RADAR_CHART_RADIUS, RADAR_GRID_LEVELS, RADAR_LABEL_RADIUS, clampRadarScore, radarLabelPoint, radarPoint } from '../../../../features/mixer/lib/radarGeometry';
 import { areMixerTextsSimilar, formatMixerDate, mixerModeLabel, provenanceString, sanitizeMixerActionText, sanitizeMixerDisplayText, uniqueMixerTexts } from '../../../../features/mixer/lib/mixerText';
 import { splitMixerReadableText } from '../../../../features/mixer/lib/mixerSentence';
+import { buildMixerFilterOptions, isCompanyKeyword, mergeMixerFilterOptions, type MixerFilterOption } from '../../../../features/mixer/lib/mixerFilters';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -42,30 +43,6 @@ const MIXER_EVENT_TYPE_LABELS: Record<string, string> = {
   regulation: '규제',
   new_biz: '신사업',
   contract: '수주',
-};
-
-const MIXER_COMPANY_KEYWORD_BLOCKLIST = [
-  '삼성SDS',
-  '삼성 SDS',
-  'Samsung SDS',
-  'LG CNS',
-  '엘지씨엔에스',
-  '현대오토에버',
-  '현대 오토에버',
-  'Hyundai AutoEver',
-  '포스코DX',
-  '포스코 DX',
-  'POSCO DX',
-  'SK AX',
-  'SK C&C',
-  'SK주식회사',
-  'SK',
-];
-
-type MixerFilterOption = {
-  value: string;
-  label: string;
-  count: number;
 };
 
 const MIXER_ANALYSIS_MODE_OPTIONS: {
@@ -95,64 +72,6 @@ function formatLocalDateInputValue(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function normalizeMixerFilterValue(value: unknown) {
-  return String(value ?? '').trim();
-}
-
-function normalizeMixerKeywordForCompare(value: string) {
-  return value.toLowerCase().replace(/[\s._-]/g, '');
-}
-
-function isCompanyKeyword(value: string) {
-  const normalized = normalizeMixerKeywordForCompare(value);
-  return MIXER_COMPANY_KEYWORD_BLOCKLIST.some((company) => {
-    const companyValue = normalizeMixerKeywordForCompare(company);
-    if (companyValue.length <= 2) return normalized === companyValue;
-    return normalized === companyValue || normalized.includes(companyValue);
-  });
-}
-
-function buildMixerFilterOptions(
-  values: Array<string | null | undefined>,
-  labelMap?: Record<string, string>,
-  limit?: number,
-): MixerFilterOption[] {
-  const counts = new Map<string, number>();
-  values.forEach((rawValue) => {
-    const value = normalizeMixerFilterValue(rawValue);
-    if (!value) return;
-    counts.set(value, (counts.get(value) ?? 0) + 1);
-  });
-  const options = Array.from(counts.entries())
-    .map(([value, count]) => ({
-      value,
-      label: labelMap?.[value] ?? value,
-      count,
-    }))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'));
-  return typeof limit === 'number' ? options.slice(0, limit) : options;
-}
-
-function mergeMixerFilterOptions(options: MixerFilterOption[], limit?: number) {
-  const merged = new Map<string, MixerFilterOption>();
-  options.forEach((option) => {
-    const key = option.label;
-    const current = merged.get(key);
-    if (current) {
-      merged.set(key, { ...current, count: current.count + option.count });
-      return;
-    }
-    merged.set(key, { ...option, value: option.label });
-  });
-  const sorted = Array.from(merged.values()).sort(
-    (a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'),
-  );
-  return typeof limit === 'number' ? sorted.slice(0, limit) : sorted;
-}
 
 function HighlightedMixerText({ text }: { text: string }) {
   return <>{sanitizeMixerDisplayText(text)}</>;
