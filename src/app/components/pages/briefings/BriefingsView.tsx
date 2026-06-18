@@ -17,6 +17,7 @@ import type { BriefingGenerateResult } from '../../../../features/briefings/api/
 import { useGeneratedBriefing } from '../../../../features/briefings/hooks/useGeneratedBriefing';
 import type { BriefingViewModel } from '../../../../features/briefings/mappers/briefingGenerateMapper';
 import { toBriefingAnchorDate } from '../../../../features/briefings/utils/briefingDate';
+import { clampValue, normalizeBriefingText, stripLeadingRangeLabel } from '../../../../features/briefings/lib/briefingText';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import {
   ExecutiveBadge,
@@ -67,25 +68,6 @@ type BriefingsViewProps = {
     requestKey?: number;
   } | null;
 };
-
-function stripLeadingRangeLabel(text: string, leadLabel: string) {
-  if (text.startsWith(`${leadLabel}에는 `)) {
-    return text.slice(`${leadLabel}에는 `.length);
-  }
-  if (text.startsWith(`${leadLabel}에 `)) {
-    return text.slice(`${leadLabel}에 `.length);
-  }
-  return text;
-}
-
-function normalizeBriefingText(text: string) {
-  return text.replace(/(^|\s)\d+\.\s*/g, '$1').replace(/\s+/g, ' ').trim();
-}
-
-function clampValue(value: string, maxValue: string) {
-  if (!value) return maxValue;
-  return value > maxValue ? maxValue : value;
-}
 
 function isDateInputValue(value: string | undefined) {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));

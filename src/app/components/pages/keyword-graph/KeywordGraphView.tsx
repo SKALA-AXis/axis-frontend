@@ -8,16 +8,18 @@
  */
 import { type WheelEvent as ReactWheelEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Filter, Maximize2, Minus, Plus } from 'lucide-react';
-import * as THREE from 'three';
 import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
-import { normalizeCardNewsItem } from '../../../../features/card-news/api/cardNewsRepository';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { getDisplayDate, getPeerLabel } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import type { CardNewsItem } from '../../../../features/card-news/model/cardNews';
 import { useDashboard } from '../../../../features/dashboard/hooks/useDashboard';
-import { httpClient } from '../../../../shared/api/httpClient';
+import { fetchKeywordGraph, fetchKeywordGraphCards, isKeywordGraphApiConfigured } from '../../../../features/keyword-graph/api/keywordGraphRepository';
+import type { KeywordGraphLoadStage, KeywordGraphPayload } from '../../../../features/keyword-graph/model/keywordGraph';
+import { allGraphCategories, graphCategories, normalizeKeywordGraphEdge, normalizeKeywordGraphNode } from '../../../../features/keyword-graph/lib/graphNodes';
+import { KeywordSphereGraph } from '../../../../features/keyword-graph/components/KeywordSphereGraph';
+import { KeywordGraphLoading, KeywordRelatedCardButton, KeywordRelatedCardsLoading } from '../../../../features/keyword-graph/components/KeywordGraphPanels';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
-import { graphCategoryColor, type KeywordEdge, type KeywordNode } from '../../../../shared/content/keywordGraph';
+import type { KeywordEdge, KeywordNode } from '../../../../shared/content/keywordGraph';
 import { ExecutiveButton, ExecutiveContainer, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
 import { Skeleton } from '../../ui/skeleton';
@@ -25,25 +27,6 @@ import { FilterChip } from '../shared/axis';
 
 type NavigateHandler = (view: string) => void;
 
-type KeywordGraphPayload = {
-  selectedId?: string;
-  nodes?: Array<Partial<KeywordNode>>;
-  edges?: Array<Partial<KeywordEdge>>;
-};
-
-type KeywordGraphCardsPayload = {
-  items?: Array<Partial<CardNewsItem>>;
-  total?: number;
-};
-
-type KeywordGraphLoadStage = 'requesting' | 'normalizing' | 'rendering';
-
-const graphCategories = ['AX', '보안', '인프라', '수주'] as const;
-const allGraphCategories = ['기업', ...graphCategories] as const;
-const keywordSphereLightEdgeColor = '#2B241E';
-const keywordSphereLightActiveEdgeColor = '#DC5A24';
-const keywordSphereDarkEdgeColor = '#FFF1D8';
-const keywordSphereDarkActiveEdgeColor = '#FFB08A';
 const emptySelectedNode: KeywordNode = {
   id: 'sk-axis',
   label: 'SK AX',
@@ -55,556 +38,6 @@ const emptySelectedNode: KeywordNode = {
   changeRate: 0,
   sourceType: 'raw_articles',
 };
-
-function normalizeKeywordGraphNode(node: Partial<KeywordNode>, index: number): KeywordNode | null {
-  if (!node.id || !node.label) return null;
-  const category = allGraphCategories.includes(node.category as KeywordNode['category'])
-    ? node.category as KeywordNode['category']
-    : 'AX';
-  return {
-    id: node.id,
-    label: node.label,
-    x: typeof node.x === 'number' ? node.x : 450 + Math.cos(index) * 180,
-    y: typeof node.y === 'number' ? node.y : 280 + Math.sin(index) * 180,
-    size: typeof node.size === 'number' ? node.size : 18,
-    category,
-    score: typeof node.score === 'number' ? node.score : 0,
-    changeRate: typeof node.changeRate === 'number' ? node.changeRate : 0,
-    sourceType: node.sourceType ?? 'raw_articles',
-  };
-}
-
-function normalizeKeywordGraphEdge(edge: Partial<KeywordEdge>): KeywordEdge | null {
-  if (!edge.source || !edge.target) return null;
-  return {
-    source: edge.source,
-    target: edge.target,
-    weight: typeof edge.weight === 'number' ? edge.weight : 2,
-    relationType: edge.relationType ?? '관련 기사',
-  };
-}
-
-function KeywordRelatedCardButton({ card, onOpen }: { card: CardNewsItem; onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex h-full min-w-0 flex-col rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3 text-left transition hover:border-[var(--axis-accent)]"
-    >
-      <div className="relative mb-3 aspect-[4/3] w-full shrink-0 overflow-hidden rounded-[var(--axis-radius-md)] bg-[#081324]">
-        {card.coverImageUrl ? (
-          <img
-            src={card.coverImageUrl}
-            alt={card.coverImageAlt}
-            className={getCardLogoImageClass(card.coverImageUrl, 'related') ?? 'absolute inset-0 h-full w-full object-cover opacity-55'}
-          />
-        ) : null}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/78" />
-        <span className="absolute bottom-2 left-2 max-w-[calc(100%_-_16px)] truncate text-xs font-semibold text-white">{getPeerLabel(card)}</span>
-      </div>
-      <p className="text-xs text-[var(--axis-muted)]">{getDisplayDate(card)}</p>
-      <h3 className="mt-1 min-h-[3.75rem] line-clamp-3 text-sm font-semibold leading-5 text-[var(--axis-ink)]">{card.title}</h3>
-    </button>
-  );
-}
-
-function KeywordRelatedCardsLoading() {
-  return (
-    <div className="grid auto-rows-fr gap-3 md:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, index) => (
-        <div key={index} className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-3">
-          <Skeleton className="aspect-[4/3] w-full bg-[var(--axis-surface-muted)]" />
-          <Skeleton className="mt-3 h-3 w-20 bg-[var(--axis-surface-muted)]" />
-          <Skeleton className="mt-2 h-4 w-full bg-[var(--axis-surface-muted)]" />
-          <Skeleton className="mt-2 h-4 w-4/5 bg-[var(--axis-surface-muted)]" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function KeywordGraphLoading({
-  stage,
-  elapsedSeconds,
-}: {
-  stage: KeywordGraphLoadStage;
-  elapsedSeconds: number;
-}) {
-  const stageLabel =
-    stage === 'requesting' ? '데이터 요청 중' : stage === 'normalizing' ? '응답 정리 중' : '그래프 구성 중';
-  const elapsedLabel =
-    elapsedSeconds < 60
-      ? `${elapsedSeconds}초`
-      : `${Math.floor(elapsedSeconds / 60)}분 ${String(elapsedSeconds % 60).padStart(2, '0')}초`;
-
-  return (
-    <div className="flex h-full min-h-[420px] items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-[360px] rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] p-7 text-center shadow-[0_24px_70px_-42px_rgba(0,0,0,0.28)]">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(220,90,36,0.22)] bg-[rgba(220,90,36,0.08)]">
-          <div className="relative h-11 w-7 animate-[spin_1.8s_ease-in-out_infinite]">
-            <div className="absolute inset-x-0 top-0 mx-auto h-5 w-6 rounded-b-full border-2 border-[var(--axis-accent)] border-t-0" />
-            <div className="absolute inset-x-0 bottom-0 mx-auto h-5 w-6 rounded-t-full border-2 border-[var(--axis-accent)] border-b-0" />
-            <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--axis-accent)]" />
-          </div>
-        </div>
-
-        <p className="mt-6 axis-kicker">Keyword graph</p>
-        <h2 className="mt-2 text-xl font-semibold leading-7 text-[var(--axis-ink)]">{stageLabel}</h2>
-        <div className="mt-5 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] px-4 py-3">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--axis-muted)]">실제 경과 시간</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums text-[var(--axis-ink)]">{elapsedLabel}</p>
-        </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--axis-surface-muted)]">
-          <div className="h-full w-full origin-left animate-pulse rounded-full bg-[linear-gradient(90deg,rgba(220,90,36,0.22),var(--axis-accent),rgba(220,90,36,0.22))]" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function normalizeGraphTerm(value: string) {
-  return value.replace(/\s/g, '').toLowerCase();
-}
-
-const graphCompanySearchTerms: Record<string, string[]> = {
-  'sk-axis': ['SK AX', 'SKAX', 'SK C&C', 'SK㈜ C&C', '에스케이씨앤씨', '에스케이에이엑스'],
-  'samsung-sds': ['samsung_sds', '삼성 SDS', '삼성SDS', '삼성에스디에스'],
-  'lg-cns': ['lg_cns', 'LG CNS', 'LGCNS', '엘지씨엔에스'],
-  'hyundai-autoever': ['hyundai_autoever', '현대 오토에버', '현대오토에버'],
-  'posco-dx': ['posco_dx', '포스코 DX', '포스코DX', '포스코디엑스', '포스코ICT'],
-};
-
-const graphCompanyPeerIdByNodeId: Record<string, string> = {
-  'samsung-sds': 'samsung_sds',
-  'lg-cns': 'lg_cns',
-  'hyundai-autoever': 'hyundai_autoever',
-  'posco-dx': 'posco_dx',
-};
-
-function cardSearchText(card: CardNewsItem) {
-  return normalizeGraphTerm([
-    card.peer_id,
-    getPeerLabel(card),
-    card.title,
-    card.category,
-    card.category_label,
-    card.subtitle,
-    card.sector,
-    ...(card.keywords ?? []),
-    ...(card.summary_lines ?? card.summary),
-    ...(card.insights ?? []),
-  ].filter(Boolean).join(' '));
-}
-
-function fallbackCompanyCards(
-  companyNode: KeywordNode,
-  cards: CardNewsItem[],
-  nodes: KeywordNode[],
-  edges: KeywordEdge[],
-) {
-  const connectedKeywordTerms = edges
-    .filter((edge) => edge.source === companyNode.id || edge.target === companyNode.id)
-    .map((edge) => nodes.find((node) => node.id === (edge.source === companyNode.id ? edge.target : edge.source))?.label)
-    .filter((label): label is string => Boolean(label));
-  const terms = [
-    graphCompanyPeerIdByNodeId[companyNode.id],
-    companyNode.label,
-    ...(graphCompanySearchTerms[companyNode.id] ?? []),
-    ...connectedKeywordTerms.slice(0, 6),
-  ]
-    .filter((term): term is string => Boolean(term))
-    .map(normalizeGraphTerm);
-
-  return cards.filter((card) => {
-    const haystack = cardSearchText(card);
-    return terms.some((term) => term.length > 0 && (haystack.includes(term) || term.includes(haystack)));
-  });
-}
-
-function fallbackKeywordCards(keywordNode: KeywordNode, cards: CardNewsItem[]) {
-  const keywordTerm = normalizeGraphTerm(keywordNode.label);
-  if (!keywordTerm) return [];
-  return cards.filter((card) => cardSearchText(card).includes(keywordTerm));
-}
-
-function fallbackNodeCards(
-  node: KeywordNode,
-  cards: CardNewsItem[],
-  nodes: KeywordNode[],
-  edges: KeywordEdge[],
-) {
-  return node.category === '기업'
-    ? fallbackCompanyCards(node, cards, nodes, edges)
-    : fallbackKeywordCards(node, cards);
-}
-
-async function fetchKeywordGraphCards(nodeId: string) {
-  if (!httpClient) {
-    throw new Error('API client is not configured.');
-  }
-  const payload = await httpClient.get<KeywordGraphCardsPayload>(`/api/keyword-graph/${encodeURIComponent(nodeId)}/cards?limit=30`);
-  return (payload.items ?? []).map(normalizeCardNewsItem);
-}
-
-function resolveCssColor(value: string, fallback: string) {
-  if (typeof window === 'undefined') return fallback;
-  const variableMatch = value.match(/^var\((--[^)]+)\)$/);
-  if (!variableMatch) return value;
-  return getComputedStyle(document.documentElement).getPropertyValue(variableMatch[1]).trim() || fallback;
-}
-
-function getGraphNodeDisplayRadius(node: KeywordNode, active = false) {
-  const base = node.category === '기업'
-    ? node.size / 3.35
-    : node.size >= 22
-      ? node.size / 3.65
-      : node.size / 4.05;
-  return base + (active ? 2.4 : 0);
-}
-
-function splitGraphLabel(label: string) {
-  if (label.includes(' ') && label.length > 11) {
-    const parts = label.split(' ');
-    const midpoint = Math.ceil(parts.length / 2);
-    return [parts.slice(0, midpoint).join(' '), parts.slice(midpoint).join(' ')];
-  }
-  if (label.length > 7) {
-    const midpoint = Math.ceil(label.length / 2);
-    return [label.slice(0, midpoint), label.slice(midpoint)];
-  }
-  return [label];
-}
-
-function getSpherePosition(node: KeywordNode, radius: number, index = 0, totalNodes = 5) {
-  if (node.id === 'sk-axis') {
-    return new THREE.Vector3(0, 0, 0);
-  }
-
-  const companyAnchors: Record<string, [number, number, number]> = {
-    'samsung-sds': [-0.66, 0.58, -0.46],
-    'lg-cns': [0.72, 0.54, -0.34],
-    'hyundai-autoever': [-0.58, -0.62, 0.48],
-    'posco-dx': [0.62, -0.58, 0.50],
-  };
-
-  const anchor = companyAnchors[node.id];
-  if (anchor) {
-    return new THREE.Vector3(anchor[0], anchor[1], anchor[2]).normalize().multiplyScalar(radius * 0.98);
-  }
-
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-  const normalizedIndex = index + 1.5;
-  const phi = Math.acos(1 - (2 * normalizedIndex) / (totalNodes + 2));
-  const theta = normalizedIndex * goldenAngle;
-  const layer = node.size >= 21 ? 0.94 : 0.58 + (index % 6) * 0.07;
-  const layeredRadius = radius * Math.min(1, layer);
-  return new THREE.Vector3(
-    layeredRadius * Math.sin(phi) * Math.cos(theta),
-    layeredRadius * Math.cos(phi),
-    layeredRadius * Math.sin(phi) * Math.sin(theta),
-  );
-}
-
-function KeywordSphereGraph({
-  nodes,
-  edges,
-  selectedId,
-  zoom = 1,
-  fullscreen = false,
-  themeRevision = 0,
-  onSelectNode,
-  onCloseFullscreen,
-}: {
-  nodes: KeywordNode[];
-  edges: KeywordEdge[];
-  selectedId: string;
-  zoom?: number;
-  fullscreen?: boolean;
-  themeRevision?: number;
-  onSelectNode: (nodeId: string) => void;
-  onCloseFullscreen?: () => void;
-}) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const onSelectRef = useRef(onSelectNode);
-  const groupRef = useRef<THREE.Group | null>(null);
-  const rotationRef = useRef<{ x: number; y: number; z: number } | null>(null);
-  const selectedNode = nodes.find((node) => node.id === selectedId) ?? nodes[0];
-
-  useEffect(() => {
-    onSelectRef.current = onSelectNode;
-  }, [onSelectNode]);
-
-  useEffect(() => {
-    groupRef.current?.scale.setScalar(zoom);
-  }, [zoom]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    const canvas = canvasRef.current;
-    if (!container || !canvas) return undefined;
-
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(42, 1, 1, 1200);
-    camera.position.set(0, 0, fullscreen ? 540 : 470);
-
-    const group = new THREE.Group();
-    const preservedRotation = rotationRef.current;
-    group.rotation.x = preservedRotation?.x ?? (fullscreen ? 0.18 : 0.12);
-    group.rotation.y = preservedRotation?.y ?? 0;
-    group.rotation.z = preservedRotation?.z ?? 0;
-    group.scale.setScalar(zoom);
-    groupRef.current = group;
-    scene.add(group);
-
-    const radius = fullscreen ? 214 : 146;
-    const nodePositions = new Map<string, THREE.Vector3>();
-    nodes.forEach((node, index) => nodePositions.set(node.id, getSpherePosition(node, radius, index, nodes.length)));
-    const isDarkMode = document.documentElement.classList.contains('dark');
-
-    group.add(new THREE.AmbientLight(0xffffff, 1.4));
-    const keyLight = new THREE.PointLight(0xffffff, 1.2);
-    keyLight.position.set(120, 180, 260);
-    group.add(keyLight);
-
-    edges.forEach((edge) => {
-      const source = nodePositions.get(edge.source);
-      const target = nodePositions.get(edge.target);
-      if (!source || !target) return;
-      const active = selectedId === edge.source || selectedId === edge.target;
-      const geometry = new THREE.BufferGeometry().setFromPoints([source, target]);
-      const material = new THREE.LineBasicMaterial({
-        color: isDarkMode
-          ? active ? keywordSphereDarkActiveEdgeColor : keywordSphereDarkEdgeColor
-          : active ? keywordSphereLightActiveEdgeColor : keywordSphereLightEdgeColor,
-        transparent: true,
-        opacity: active ? 0.96 : isDarkMode ? 0.58 : 0.84,
-        depthTest: false,
-        depthWrite: false,
-      });
-      group.add(new THREE.Line(geometry, material));
-    });
-
-    const nodeMeshes: THREE.Mesh[] = [];
-    const labelColor = isDarkMode ? '#FFF8EC' : resolveCssColor('var(--axis-ink)', '#1A1A1F');
-    const labelStroke = isDarkMode ? 'rgba(4,5,8,0.96)' : 'rgba(255,255,255,0.98)';
-    const createLabelSprite = (label: string, active: boolean, category: KeywordNode['category']) => {
-      const labelCanvas = document.createElement('canvas');
-      const context = labelCanvas.getContext('2d');
-      const labelLines = splitGraphLabel(label);
-      const fontSize = category === '기업' ? (active ? 35 : 30) : active ? 31 : 26;
-      const lineHeight = fontSize * 1.08;
-      const longestLine = labelLines.reduce((longest, line) => Math.max(longest, line.length), 0);
-      const width = Math.max(150, longestLine * fontSize * 0.86 + 34);
-      const height = Math.max(58, labelLines.length * lineHeight + 22);
-      labelCanvas.width = width;
-      labelCanvas.height = height;
-      if (context) {
-        context.font = `700 ${fontSize}px sans-serif`;
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillStyle = labelColor;
-        context.strokeStyle = labelStroke;
-        context.lineWidth = isDarkMode ? 8 : 7;
-        labelLines.forEach((line, index) => {
-          const y = height / 2 + (index - (labelLines.length - 1) / 2) * lineHeight;
-          context.strokeText(line, width / 2, y);
-          context.fillText(line, width / 2, y);
-        });
-      }
-      const texture = new THREE.CanvasTexture(labelCanvas);
-      const material = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true,
-        opacity: active ? 0.98 : 0.82,
-        depthTest: false,
-      });
-      const sprite = new THREE.Sprite(material);
-      sprite.scale.set(width / (fullscreen ? 4.8 : 5.15), height / (fullscreen ? 4.8 : 5.15), 1);
-      return sprite;
-    };
-
-    nodes.forEach((node) => {
-      const position = nodePositions.get(node.id);
-      if (!position) return;
-      const active = node.id === selectedId;
-      const color = resolveCssColor(graphCategoryColor[node.category], '#D48362');
-      const visibleRadius = getGraphNodeDisplayRadius(node, active);
-      const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(Math.max(node.category === '기업' ? 10 : 6.5, visibleRadius), 28, 18),
-        new THREE.MeshStandardMaterial({
-          color,
-          emissive: color,
-          emissiveIntensity: active ? 0.24 : 0.08,
-          roughness: 0.42,
-          metalness: 0.08,
-        }),
-      );
-      mesh.position.copy(position);
-      mesh.userData.nodeId = node.id;
-      group.add(mesh);
-
-      const hitMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(Math.max(visibleRadius + 8, node.category === '기업' ? 22 : 15), 18, 12),
-        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
-      );
-      hitMesh.position.copy(position);
-      hitMesh.userData.nodeId = node.id;
-      nodeMeshes.push(hitMesh);
-      group.add(hitMesh);
-
-      const labelSprite = createLabelSprite(node.label, active || node.category === '기업', node.category);
-      labelSprite.position.copy(position);
-      group.add(labelSprite);
-    });
-
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const dragState = { dragging: false, lastX: 0, lastY: 0, moved: false };
-
-    const resize = () => {
-      const width = Math.max(1, container.clientWidth);
-      const height = Math.max(1, container.clientHeight);
-      renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (dragState.dragging) {
-        const dx = event.clientX - dragState.lastX;
-        const dy = event.clientY - dragState.lastY;
-        group.rotation.y += dx * 0.006;
-        group.rotation.x += dy * 0.004;
-        rotationRef.current = { x: group.rotation.x, y: group.rotation.y, z: group.rotation.z };
-        dragState.lastX = event.clientX;
-        dragState.lastY = event.clientY;
-        dragState.moved = dragState.moved || Math.abs(dx) + Math.abs(dy) > 2;
-        canvas.style.cursor = 'grabbing';
-        return;
-      }
-      const rect = canvas.getBoundingClientRect();
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
-      raycaster.setFromCamera(pointer, camera);
-      canvas.style.cursor = raycaster.intersectObjects(nodeMeshes, false).length > 0 ? 'pointer' : 'default';
-    };
-
-    const handlePointerDown = (event: PointerEvent) => {
-      dragState.dragging = true;
-      dragState.lastX = event.clientX;
-      dragState.lastY = event.clientY;
-      dragState.moved = false;
-      canvas.setPointerCapture(event.pointerId);
-      canvas.style.cursor = 'grabbing';
-    };
-
-    const handlePointerUp = (event: PointerEvent) => {
-      dragState.dragging = false;
-      if (canvas.hasPointerCapture(event.pointerId)) {
-        canvas.releasePointerCapture(event.pointerId);
-      }
-      canvas.style.cursor = 'default';
-    };
-
-    const handleClick = (event: MouseEvent) => {
-      if (dragState.moved) {
-        dragState.moved = false;
-        return;
-      }
-      const rect = canvas.getBoundingClientRect();
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
-      raycaster.setFromCamera(pointer, camera);
-      const [hit] = raycaster.intersectObjects(nodeMeshes, false);
-      const nodeId = hit?.object.userData.nodeId;
-      if (typeof nodeId === 'string') onSelectRef.current(nodeId);
-    };
-
-    const observer = new ResizeObserver(resize);
-    observer.observe(container);
-    canvas.addEventListener('pointerdown', handlePointerDown);
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('pointerup', handlePointerUp);
-    canvas.addEventListener('pointerleave', handlePointerUp);
-    canvas.addEventListener('click', handleClick);
-    resize();
-
-    let frameId = 0;
-    const animate = () => {
-      if (!dragState.dragging) {
-        group.rotation.y += fullscreen ? 0.0014 : 0.001;
-        rotationRef.current = { x: group.rotation.x, y: group.rotation.y, z: group.rotation.z };
-      }
-      renderer.render(scene, camera);
-      frameId = window.requestAnimationFrame(animate);
-    };
-    animate();
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      observer.disconnect();
-      canvas.removeEventListener('pointerdown', handlePointerDown);
-      canvas.removeEventListener('pointermove', handlePointerMove);
-      canvas.removeEventListener('pointerup', handlePointerUp);
-      canvas.removeEventListener('pointerleave', handlePointerUp);
-      canvas.removeEventListener('click', handleClick);
-      scene.traverse((object) => {
-        if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
-          object.geometry.dispose();
-          const material = object.material;
-          if (Array.isArray(material)) {
-            material.forEach((item) => item.dispose());
-          } else {
-            material.dispose();
-          }
-        }
-        if (object instanceof THREE.Sprite) {
-          object.material.map?.dispose();
-          object.material.dispose();
-        }
-      });
-      rotationRef.current = { x: group.rotation.x, y: group.rotation.y, z: group.rotation.z };
-      renderer.dispose();
-      groupRef.current = null;
-    };
-  }, [edges, fullscreen, nodes, selectedId, themeRevision]);
-
-  return (
-    <div
-      ref={containerRef}
-      className={`relative min-h-0 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,var(--axis-surface-muted),var(--axis-surface-soft)_52%,var(--axis-canvas))] ${
-        fullscreen ? 'h-full w-full' : 'h-full'
-      }`}
-    >
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-label="360도 회전 키워드 구 그래프" />
-      <div data-keyword-sphere-info className="pointer-events-none absolute left-5 top-5 hidden rounded-[var(--axis-radius-lg)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/90 px-4 py-3 shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] backdrop-blur md:block">
-        <p className="axis-kicker">3D keyword sphere</p>
-        <h2 className="mt-1 text-base font-semibold text-[var(--axis-ink)]">{selectedNode?.label ?? '키워드 그래프'}</h2>
-      </div>
-      {fullscreen && onCloseFullscreen ? (
-        <button
-          type="button"
-          onClick={onCloseFullscreen}
-          className="absolute right-5 top-5 rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-canvas)] px-4 py-2 text-sm font-semibold text-[var(--axis-ink)] shadow-[0_18px_48px_-34px_rgba(0,0,0,0.4)] hover:border-[var(--axis-accent)]"
-        >
-          전체화면 닫기
-        </button>
-      ) : null}
-      <div className="pointer-events-none absolute bottom-5 left-5 right-5 flex flex-wrap gap-2">
-        {allGraphCategories.map((item) => (
-          <span key={item} className="inline-flex items-center gap-2 rounded-full border border-[var(--axis-hairline)] bg-[var(--axis-canvas)]/86 px-3 py-1.5 text-xs font-semibold text-[var(--axis-body)] backdrop-blur">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: graphCategoryColor[item] }} />
-            {item}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function KeywordGraphView({
   bookmarkedIds = [],
@@ -697,7 +130,7 @@ export function KeywordGraphView({
     let cancelled = false;
 
     async function loadKeywordGraph() {
-      if (!httpClient) {
+      if (!isKeywordGraphApiConfigured()) {
         setGraphLoading(false);
         setGraphError('API client is not configured.');
         return;
@@ -708,7 +141,7 @@ export function KeywordGraphView({
         setGraphLoading(true);
         setGraphLoadStage('requesting');
         setGraphError(null);
-        const payload = await httpClient.get<KeywordGraphPayload>('/api/keyword-graph');
+        const payload = await fetchKeywordGraph();
         if (cancelled) return;
         setGraphLoadStage('normalizing');
         setGraphPayload(payload);
@@ -763,7 +196,7 @@ export function KeywordGraphView({
   }, [selectedId, visibleNodes]);
 
   useEffect(() => {
-    if (!httpClient || visibleNodes.length === 0) return undefined;
+    if (!isKeywordGraphApiConfigured() || visibleNodes.length === 0) return undefined;
     let cancelled = false;
 
     async function prefetchKeywordCards() {
@@ -813,7 +246,7 @@ export function KeywordGraphView({
     setKeywordRelatedCards([]);
 
     async function loadKeywordCards() {
-      if (!httpClient) return;
+      if (!isKeywordGraphApiConfigured()) return;
       try {
         setKeywordCardsLoading(true);
         setKeywordCardsError(null);
