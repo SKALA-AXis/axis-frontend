@@ -8,7 +8,7 @@
  *   2026-06-17 심유정 — 믹서 레이아웃 마무리 및 레이더 라벨 정리
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bookmark, Box, Check, Filter, Network, Sparkles, X } from 'lucide-react';
+import { Bookmark, Check, Sparkles, X } from 'lucide-react';
 import { getCardLogoImageClass } from '../../../../features/card-news/cardLogoFallback';
 import { useCardNews } from '../../../../features/card-news/hooks/useCardNews';
 import { buildMixerCards } from '../../../../features/card-news/mappers/cardNewsPresentation';
@@ -25,6 +25,13 @@ import {
   type MixerStageEvent,
 } from '../../../../features/mixer/model/mixer';
 import { mixerRepository } from '../../../../features/mixer/api/mixerRepository';
+import { RADAR_CHART_RADIUS, RADAR_GRID_LEVELS, RADAR_LABEL_RADIUS, clampRadarScore, radarLabelPoint, radarPoint } from '../../../../features/mixer/lib/radarGeometry';
+import { areMixerTextsSimilar, formatMixerDate, mixerModeLabel, provenanceString, sanitizeMixerActionText, sanitizeMixerDisplayText, uniqueMixerTexts } from '../../../../features/mixer/lib/mixerText';
+import { splitMixerReadableText } from '../../../../features/mixer/lib/mixerSentence';
+import { buildMixerFilterOptions, isCompanyKeyword, mergeMixerFilterOptions } from '../../../../features/mixer/lib/mixerFilters';
+import { HighlightedMixerText, MixerReadableText } from '../../../../features/mixer/components/MixerReadableText';
+import { MixerFilterGroupPanel } from '../../../../features/mixer/components/MixerFilterGroupPanel';
+import { MixerAnalysisProgressPanel } from '../../../../features/mixer/components/MixerAnalysisProgressPanel';
 import { pickLatestCardTimestamp } from '../../../../shared/lib/viewFreshness';
 import { ExecutiveBadge, ExecutiveButton, ExecutiveContainer, ExecutiveHeader, ExecutivePage } from '../../executive/ExecutiveSystem';
 import { FloatingCardNewsOverlay } from '../../shared/FloatingCardNewsOverlay';
@@ -34,13 +41,6 @@ import { DonutCalloutChart, buildSelectionRatioData, normalizeMixerPeerLabel } f
 
 // axis-ai MixerAnalysisAgent 가 실제로 넘는 단계(prepare→analyze→synthesize→finalize).
 // SSE stage 이벤트의 index 로 현재 단계를 결정 — 가짜 순환이 아니라 실제 진행이다.
-const MIXER_RUN_STEPS: { stage: MixerStageEvent['stage']; title: string; description: string; icon: JSX.Element }[] = [
-  { stage: 'prepare', title: '재료 정리', description: '선택한 카드와 연결된 통합 이슈·분석·시사점을 불러옵니다.', icon: <Box size={16} /> },
-  { stage: 'analyze', title: '패턴 분석', description: '카드들의 공통 패턴·비교 포인트·숨은 결론을 LLM으로 도출합니다.', icon: <Filter size={16} /> },
-  { stage: 'synthesize', title: '대응 방향', description: 'SK AX 관점의 대응 방향과 실행 제언을 만듭니다.', icon: <Network size={16} /> },
-  { stage: 'finalize', title: '추론 정리', description: '추론 흐름과 근거 카드를 정리해 결과로 압축합니다.', icon: <Sparkles size={16} /> },
-];
-
 const MIXER_EVENT_TYPE_LABELS: Record<string, string> = {
   partnership: '제휴',
   ma: 'M&A',
@@ -49,30 +49,6 @@ const MIXER_EVENT_TYPE_LABELS: Record<string, string> = {
   regulation: '규제',
   new_biz: '신사업',
   contract: '수주',
-};
-
-const MIXER_COMPANY_KEYWORD_BLOCKLIST = [
-  '삼성SDS',
-  '삼성 SDS',
-  'Samsung SDS',
-  'LG CNS',
-  '엘지씨엔에스',
-  '현대오토에버',
-  '현대 오토에버',
-  'Hyundai AutoEver',
-  '포스코DX',
-  '포스코 DX',
-  'POSCO DX',
-  'SK AX',
-  'SK C&C',
-  'SK주식회사',
-  'SK',
-];
-
-type MixerFilterOption = {
-  value: string;
-  label: string;
-  count: number;
 };
 
 const MIXER_ANALYSIS_MODE_OPTIONS: {
@@ -95,10 +71,6 @@ const MIXER_ANALYSIS_MODE_OPTIONS: {
   },
 ];
 
-const RADAR_CHART_RADIUS = 86;
-const RADAR_LABEL_RADIUS = RADAR_CHART_RADIUS + 22;
-const RADAR_GRID_LEVELS = [0.25, 0.5, 0.75, 1];
-
 function formatLocalDateInputValue(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -106,444 +78,12 @@ function formatLocalDateInputValue(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-function clampRadarScore(score: number) {
-  return Math.max(0, Math.min(Number.isFinite(score) ? score : 0, 1));
-}
-
-function radarPoint(index: number, total: number, score = 1) {
-  const safeTotal = Math.max(total, 1);
-  const angle = -Math.PI / 2 + (index * 2 * Math.PI) / safeTotal;
-  const radius = RADAR_CHART_RADIUS * clampRadarScore(score);
-  return {
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
-  };
-}
-
-function radarLabelPoint(index: number, total: number) {
-  const safeTotal = Math.max(total, 1);
-  const angle = -Math.PI / 2 + (index * 2 * Math.PI) / safeTotal;
-  return {
-    x: Math.cos(angle) * RADAR_LABEL_RADIUS,
-    y: Math.sin(angle) * RADAR_LABEL_RADIUS,
-  };
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function normalizeMixerFilterValue(value: unknown) {
-  return String(value ?? '').trim();
-}
-
-function normalizeMixerKeywordForCompare(value: string) {
-  return value.toLowerCase().replace(/[\s._-]/g, '');
-}
-
-function isCompanyKeyword(value: string) {
-  const normalized = normalizeMixerKeywordForCompare(value);
-  return MIXER_COMPANY_KEYWORD_BLOCKLIST.some((company) => {
-    const companyValue = normalizeMixerKeywordForCompare(company);
-    if (companyValue.length <= 2) return normalized === companyValue;
-    return normalized === companyValue || normalized.includes(companyValue);
-  });
-}
-
-function buildMixerFilterOptions(
-  values: Array<string | null | undefined>,
-  labelMap?: Record<string, string>,
-  limit?: number,
-): MixerFilterOption[] {
-  const counts = new Map<string, number>();
-  values.forEach((rawValue) => {
-    const value = normalizeMixerFilterValue(rawValue);
-    if (!value) return;
-    counts.set(value, (counts.get(value) ?? 0) + 1);
-  });
-  const options = Array.from(counts.entries())
-    .map(([value, count]) => ({
-      value,
-      label: labelMap?.[value] ?? value,
-      count,
-    }))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'));
-  return typeof limit === 'number' ? options.slice(0, limit) : options;
-}
-
-function mergeMixerFilterOptions(options: MixerFilterOption[], limit?: number) {
-  const merged = new Map<string, MixerFilterOption>();
-  options.forEach((option) => {
-    const key = option.label;
-    const current = merged.get(key);
-    if (current) {
-      merged.set(key, { ...current, count: current.count + option.count });
-      return;
-    }
-    merged.set(key, { ...option, value: option.label });
-  });
-  const sorted = Array.from(merged.values()).sort(
-    (a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'),
-  );
-  return typeof limit === 'number' ? sorted.slice(0, limit) : sorted;
-}
-
-const MIXER_INCOMPLETE_ENDINGS = [
-  '가',
-  '이',
-  '은',
-  '는',
-  '을',
-  '를',
-  '와',
-  '과',
-  '로',
-  '으로',
-  '에',
-  '에서',
-  '에게',
-  '까지',
-  '보다',
-  '처럼',
-  '같은',
-  '위한',
-  '통해',
-  '대해',
-  '하며',
-  '하고',
-  '하거나',
-  '또는',
-  '및',
-];
-
-function mixerSentenceBase(value: string) {
-  return value.replace(/["'“”‘’]+/g, '').trim().replace(/[.!?。]+$/g, '').trim();
-}
-
-function isCompleteMixerSentence(value: string) {
-  const base = mixerSentenceBase(value);
-  if (!base) return false;
-  if (MIXER_INCOMPLETE_ENDINGS.some((ending) => base.endsWith(ending))) return false;
-  if (base.length <= 12 && !/(습니다|합니다|됩니다|입니다|니다|요|다)$/.test(base)) return false;
-  return /(습니다|합니다|됩니다|입니다|니다|요|다)$/.test(base);
-}
-
-function splitMixerReadableText(text: string, maxItems = 3) {
-  const normalized = sanitizeMixerDisplayText(text)
-    .replace(/…|\.{2,}/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!normalized) return [];
-  const sentenceMatches = normalized.match(/[^.!?。]+[.!?。]+/g) ?? [];
-  const sentences = sentenceMatches
-    .map((sentence) => sentence.trim())
-    .filter(isCompleteMixerSentence);
-  if (sentences.length === 0 && isCompleteMixerSentence(normalized)) {
-    sentences.push(normalized);
-  }
-  const uniqueSentences = uniqueMixerTexts(sentences);
-  return maxItems > 0 ? uniqueSentences.slice(0, maxItems) : uniqueSentences;
-}
-
-function HighlightedMixerText({ text }: { text: string }) {
-  return <>{sanitizeMixerDisplayText(text)}</>;
-}
-
-function MixerReadableText({
-  text,
-  maxItems = 3,
-  className = '',
-  compact = false,
-}: {
-  text: string;
-  maxItems?: number;
-  className?: string;
-  compact?: boolean;
-}) {
-  const items = splitMixerReadableText(text, maxItems);
-  if (items.length === 0) return null;
-  return (
-    <div className={`grid ${compact ? 'gap-1.5' : 'gap-2'} ${className}`}>
-      {items.map((item, index) => (
-        <p
-          key={`${item}-${index}`}
-          className={`flex gap-2 ${compact ? 'text-xs leading-5' : 'text-sm leading-6'} text-[var(--axis-body)]`}
-        >
-          <span className="mt-[0.48rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--axis-accent)]" />
-          <span>
-            <HighlightedMixerText text={item} />
-          </span>
-        </p>
-      ))}
-    </div>
-  );
-}
-
-function MixerFilterGroupPanel({
-  title,
-  options,
-  selected,
-  onToggle,
-  emptyMessage,
-  dense = false,
-  scroll = false,
-}: {
-  title: string;
-  options: MixerFilterOption[];
-  selected: string[];
-  onToggle: (value: string) => void;
-  emptyMessage: string;
-  dense?: boolean;
-  scroll?: boolean;
-}) {
-  return (
-    <div className="rounded-[var(--axis-radius-md)] border border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)] p-2">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <p className="axis-kicker">{title}</p>
-        <span className="rounded-full bg-[var(--axis-canvas)] px-2 py-0.5 text-[10px] font-semibold text-[var(--axis-muted)]">
-          {selected.length}
-        </span>
-      </div>
-      {options.length > 0 ? (
-        <div className={`flex flex-wrap gap-1 ${scroll ? 'max-h-[104px] overflow-y-auto pr-1' : ''}`}>
-          {options.map((option) => {
-            const isSelected = selected.includes(option.value);
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onToggle(option.value)}
-                className={`${dense ? 'min-h-6 px-2 py-0.5 text-[10px]' : 'min-h-6 px-2 py-0.5 text-[10px]'} max-w-full rounded-full border font-semibold transition ${
-                  isSelected
-                    ? 'border-[var(--axis-accent)] bg-[rgba(220,90,36,0.12)] text-[var(--axis-accent-strong)] dark:border-white/50 dark:bg-white/15 dark:text-white'
-                    : 'border-[var(--axis-hairline)] bg-[var(--axis-canvas)] text-[var(--axis-muted)] hover:border-[var(--axis-accent)]'
-                }`}
-                title={`${option.label} · ${option.count}개`}
-              >
-                <span className="inline-flex max-w-full items-center gap-1.5">
-                  <span className="truncate">{option.label}</span>
-                  <span className="shrink-0 text-[10px] opacity-70">{option.count}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="rounded-[var(--axis-radius-sm)] bg-[var(--axis-canvas)] px-2 py-1.5 text-xs leading-5 text-[var(--axis-muted)]">
-          {emptyMessage}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function MixerAnalysisProgressPanel({
-  stage,
-  analysisMode,
-}: {
-  stage: MixerStageEvent | null;
-  analysisMode: MixerAnalysisMode;
-}) {
-  const loadingSteps = MIXER_RUN_STEPS;
-  // stage 미수신(요청 직후) 시 0단계 활성. 수신 시 실제 index 사용.
-  const activeStep = stage ? Math.min(Math.max(stage.index, 0), loadingSteps.length - 1) : 0;
-  const total = stage?.total ?? loadingSteps.length;
-  const activeLabel = stage?.label ?? loadingSteps[activeStep]?.description ?? '';
-  const modeLabel = analysisMode === 'deep' ? '정확 분석' : '빠른 실행';
-  const modeDescription =
-    analysisMode === 'deep'
-      ? '정확 분석은 대응 방향을 추가로 정제하므로 시간이 더 걸릴 수 있습니다.'
-      : '빠른 실행은 결과를 먼저 보여주기 위해 핵심 분석 경로만 사용합니다.';
-
-  return (
-    <article className="mb-5 axis-panel-flat mixer-analysis-shell relative overflow-hidden rounded-[var(--axis-radius-lg)] border-[rgba(220,90,36,0.22)] px-5 py-5 shadow-[0_24px_72px_-48px_rgba(26,26,31,0.38)]">
-      <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(220,90,36,0.45),transparent)]" />
-      <div className="relative grid items-center gap-5 md:grid-cols-[180px_minmax(0,1fr)]">
-            <div className="relative mx-auto h-[180px] w-[180px]">
-              <div className="mixer-ring mixer-ring-outer" />
-              <div className="mixer-ring mixer-ring-middle" />
-              <div className="mixer-ring mixer-ring-inner" />
-
-              <div className="mixer-signal mixer-signal-one" />
-              <div className="mixer-signal mixer-signal-two" />
-              <div className="mixer-signal mixer-signal-three" />
-
-              <div className="mixer-card mixer-card-left">
-                <div className="mixer-card-chip" />
-                <div className="mixer-card-line mixer-card-line-long" />
-                <div className="mixer-card-line mixer-card-line-short" />
-              </div>
-              <div className="mixer-card mixer-card-center">
-                <div className="mixer-card-chip" />
-                <div className="mixer-card-line mixer-card-line-long" />
-                <div className="mixer-card-line mixer-card-line-short" />
-              </div>
-              <div className="mixer-card mixer-card-right">
-                <div className="mixer-card-chip" />
-                <div className="mixer-card-line mixer-card-line-long" />
-                <div className="mixer-card-line mixer-card-line-short" />
-              </div>
-            </div>
-
-            <div>
-              <p className="axis-kicker">Mixer analysis</p>
-              <h3 className="mt-2 text-[1.95rem] font-display font-semibold leading-tight tracking-[-0.04em] text-[var(--axis-ink)]">
-                {modeLabel}으로 카드뉴스를 연결 가능한 인사이트로 재구성하고 있습니다.
-              </h3>
-              <p className="mt-3 text-sm leading-6 text-[var(--axis-muted)]">
-                선택한 카드, Peer, 주제 사이의 반복 문맥을 정리하고 SK AX 관점의 실행 판단으로 압축하는 중입니다.
-                {' '}
-                {modeDescription}
-              </p>
-              <div className="mt-5 h-2 overflow-hidden rounded-full bg-[rgba(120,110,96,0.12)]">
-                <div
-                  className="h-full rounded-full bg-[linear-gradient(90deg,var(--axis-accent),rgba(220,90,36,0.45))] transition-[width] duration-500"
-                  style={{ width: `${((activeStep + 1) / total) * 100}%` }}
-                />
-              </div>
-              <p className="mt-2 text-[11px] font-semibold text-[var(--axis-muted)]">
-                {activeStep + 1} / {total} 단계 진행 중
-              </p>
-              <div className="mt-5 grid gap-2">
-                {loadingSteps.map((step, index) => {
-                  const isActive = index === activeStep;
-                  const isComplete = index < activeStep;
-                  return (
-                  <div
-                    key={step.title}
-                    className={`mixer-step-row rounded-[var(--axis-radius-md)] border px-3 py-3 transition ${
-                      isActive
-                        ? 'border-[rgba(220,90,36,0.34)] bg-[rgba(220,90,36,0.08)] shadow-[0_12px_32px_-28px_rgba(220,90,36,0.62)]'
-                        : isComplete
-                          ? 'border-[rgba(90,107,87,0.26)] bg-[rgba(90,107,87,0.07)]'
-                          : 'border-[var(--axis-hairline)] bg-[var(--axis-surface-soft)]'
-                    }`}
-                    style={{ animationDelay: `${index * 0.2}s` }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                        isActive
-                          ? 'bg-[rgba(220,90,36,0.14)] text-[var(--axis-accent-strong)]'
-                          : isComplete
-                            ? 'bg-[rgba(90,107,87,0.14)] text-[var(--axis-success)]'
-                            : 'bg-[var(--axis-canvas)] text-[var(--axis-muted)]'
-                      }`}>
-                        {step.icon}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-[var(--axis-ink)]">{step.title}</span>
-                          {isActive ? <span className="mixer-step-dot" /> : null}
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-[var(--axis-body)]">{step.description}</p>
-                        <p className="mt-1 text-[11px] font-semibold text-[var(--axis-muted)]">
-                          {isActive ? `${activeLabel}...` : isComplete ? '완료' : '대기 중'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )})}
-              </div>
-            </div>
-          </div>
-    </article>
-  );
-}
 
 const MIXER_PHASE_LABELS: Record<MixerCoTStep['phase'], string> = {
   per_card: '카드별 해석',
   cross_card: '카드 간 비교',
   synthesis: '종합 추론',
 };
-
-const provenanceString = (provenance: Record<string, unknown>, key: string): string | null => {
-  const value = provenance?.[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
-};
-
-const sanitizeMixerActionText = (value?: string | null): string => {
-  return (value ?? '')
-    .replace(/^SK AX는 경영진 리뷰 안건을 정보 공유가 아니라 자원 배분 의사결정으로 격상한다\.?\s*/, '')
-    .replace(/^경영진 리뷰 안건을 정보 공유가 아니라 자원 배분 의사결정으로 격상한다\.?\s*/, '')
-    .trim();
-};
-
-const sanitizeMixerDisplayText = (value?: string | null): string => {
-  const cleaned = (value ?? '')
-    .replace(/^각 이슈는\s+/, '')
-    .replace(/^핵심 신호는\s*/, '')
-    .replace(/\bevent_type\b/gi, '이벤트 유형')
-    .replace(/\bexposure_score\b/gi, '노출 점수')
-    .replace(/\bnew_biz\b/gi, '신사업')
-    .replace(/\bma\b/g, 'M&A')
-    .replace(/\b(?:source_card_id|target_card_id|card_id|input_card_ids|matched_card_ids|peer_ids|mix_id|langfuse_trace_id)\b/gi, '')
-    .replace(/\b[a-z][a-z0-9]*_[a-z0-9_]*\b/gi, '')
-    .replace(/\b[A-Z]{2,}-\d{2,}\b/g, '선택 카드')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/\s+([,.!?。])/g, '$1')
-    .replace(/^[\s,;:·ㆍ.。!?]+/g, '')
-    .trim();
-  return dedupeMixerSentences(cleaned);
-};
-
-function normalizeMixerTextKey(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/\bevent_type\b/gi, '이벤트유형')
-    .replace(/\bexposure_score\b/gi, '노출점수')
-    .replace(/\bnew_biz\b/gi, '신사업')
-    .replace(/\bma\b/g, 'm&a')
-    .replace(/\b(?:source_card_id|target_card_id|card_id|input_card_ids|matched_card_ids|peer_ids|mix_id|langfuse_trace_id)\b/gi, '')
-    .replace(/\b[a-z][a-z0-9]*_[a-z0-9_]*\b/gi, '')
-    .replace(/\b[A-Z]{2,}-\d{2,}\b/g, '선택카드')
-    .replace(/[^\p{L}\p{N}]+/gu, '')
-    .trim();
-}
-
-function areMixerTextsSimilar(left?: string | null, right?: string | null) {
-  const leftKey = normalizeMixerTextKey(left ?? '');
-  const rightKey = normalizeMixerTextKey(right ?? '');
-  if (!leftKey || !rightKey) return false;
-  if (leftKey === rightKey) return true;
-  const shorter = leftKey.length <= rightKey.length ? leftKey : rightKey;
-  const longer = leftKey.length > rightKey.length ? leftKey : rightKey;
-  return shorter.length >= 24 && longer.includes(shorter);
-}
-
-function uniqueMixerTexts(values: string[]) {
-  const seen: string[] = [];
-  return values.filter((value) => {
-    const cleaned = sanitizeMixerDisplayText(value);
-    if (!cleaned) return false;
-    if (seen.some((current) => areMixerTextsSimilar(current, cleaned))) return false;
-    seen.push(cleaned);
-    return true;
-  });
-}
-
-function dedupeMixerSentences(value: string) {
-  if (!value) return '';
-  const sentences = value.match(/[^.!?。]+[.!?。]?/g) ?? [value];
-  const seen: string[] = [];
-  const unique = sentences
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => {
-      if (!sentence) return false;
-      if (seen.some((current) => areMixerTextsSimilar(current, sentence))) return false;
-      seen.push(sentence);
-      return true;
-    });
-  return unique.join(' ').trim();
-}
-
-const formatMixerDate = (value?: string | null): string => {
-  if (!value) return '';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
-  return parsed.toISOString().slice(0, 10);
-};
-
-const mixerModeLabel = (mode?: string | null): string => (mode === 'deep' ? '정확 분석' : '빠른 실행');
 
 export function MixerView({
   bookmarkedIds,
