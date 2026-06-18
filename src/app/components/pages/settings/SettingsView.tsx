@@ -17,7 +17,7 @@ import {
   X,
   User,
 } from 'lucide-react';
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ExecutiveBadge,
@@ -39,6 +39,7 @@ import type { AccessLogItem } from '../../../../features/settings/model/accessLo
 import { accessLogStatus, formatAccessLogAction, formatAccessLogClient, formatAccessLogLocation, formatAccessLogTime } from '../../../../features/settings/lib/accessLogFormat';
 import { formatFileSize, formatStrategyContextTime, strategyContextPreview } from '../../../../features/settings/lib/strategyContextFormat';
 import { Field, PasswordField, ToggleRow } from '../../../../features/settings/components/SettingsFormFields';
+import { AccessLogPageButton, AccessLogStatusPill } from '../../../../features/settings/components/AccessLogControls';
 import {
   clampTextScaleStep,
   textScaleSteps,
@@ -930,46 +931,6 @@ export function SettingsView({
         </section>
       </ExecutiveContainer>
     </ExecutivePage>
-  );
-}
-
-function AccessLogStatusPill({ item }: { item: AccessLogItem }) {
-  const status = accessLogStatus(item);
-  return (
-    <span className={`inline-flex h-7 min-w-[3rem] items-center justify-center rounded-sm border px-2 text-caption-bold ${status.className}`}>
-      {status.label}
-    </span>
-  );
-}
-
-function AccessLogPageButton({
-  label,
-  isActive = false,
-  disabled = false,
-  onClick,
-  children,
-}: {
-  label: string;
-  isActive?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-current={isActive ? 'page' : undefined}
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex h-8 min-w-8 items-center justify-center rounded-sm border px-2 text-caption-bold transition ${
-        isActive
-          ? 'border-[var(--axis-accent)] bg-[var(--axis-accent)] text-white'
-          : 'border-[var(--axis-hairline)] bg-[var(--axis-surface)] text-[var(--axis-body)] hover:border-[var(--axis-accent)] hover:text-[var(--axis-accent)]'
-      } disabled:cursor-not-allowed disabled:opacity-40`}
-    >
-      {children}
-    </button>
   );
 }
 
