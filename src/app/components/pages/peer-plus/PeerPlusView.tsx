@@ -7,6 +7,7 @@ import { GlobalTrendsPanel } from '../../../../features/global-trends/components
 import { usePeerPositioning } from '../../../../features/peers/hooks/usePeerPositioning';
 import { usePeerOverview } from '../../../../features/peers/hooks/usePeerOverview';
 import type { PeerAnalysisTraceItem, PeerComparisonInsightItem, PeerOverviewRow, PeerSwotInsightItem } from '../../../../features/peers/model/peerOverview';
+import { formatKrwBn, formatPercent, formatQoqPctPoint, formatQoqPercent, trendToneClass } from '../../../../features/peers/lib/peerNumberFormat';
 import { getDisplayDate, getExecutiveRank, getPeerLabel, getSummaryLines } from '../../../../features/card-news/mappers/cardNewsExecutive';
 import { pickLatestCardTimestamp, pickLatestTimestamp } from '../../../../shared/lib/viewFreshness';
 import { peerPlusOptions, peerPlusSelectionStorageKey, type PeerPlusPeerId } from '../../../../shared/content/peerPlus';
@@ -36,33 +37,6 @@ type PeerReasoningModal = {
 
 const globalIndustryFilterOption = { id: 'global_industry' as const, label: '글로벌 산업' };
 
-
-function formatKrwBn(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return '-';
-  const absolute = Math.abs(value);
-  if (absolute >= 10000) {
-    const jo = value / 10000;
-    return `${trimDecimal(jo, 2)}조`;
-  }
-  return `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(value)}억`;
-}
-
-function formatPercent(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return '-';
-  return `${trimDecimal(value, 2)}%`;
-}
-
-function formatQoqPercent(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return null;
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${trimDecimal(value, 2)}%`;
-}
-
-function formatQoqPctPoint(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return null;
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${trimDecimal(value, 2)}%p`;
-}
 
 function normalizeEvidenceText(text: string) {
   return text.replace(/\s+/g, ' ').trim();
@@ -308,15 +282,6 @@ function KeywordCell({
       )}
     </div>
   );
-}
-
-function trendToneClass(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value) || value === 0) return 'text-[var(--axis-muted)]';
-  return value > 0 ? 'text-[#d3432b]' : 'text-[#2563eb]';
-}
-
-function trimDecimal(value: number, digits: number) {
-  return value.toFixed(digits).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
 }
 
 function readStoredPeerPlusFilter(): PeerPlusFilterId {
