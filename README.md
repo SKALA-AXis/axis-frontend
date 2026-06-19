@@ -41,7 +41,7 @@ src/
 ├── styles/ · docs/ · imports/
 ```
 
-> ⚠️ **이중 구조 주의**: 화면 정의가 `app/components/pages/`와 `features/`에 병존한다.
+> **이중 구조 주의**: 화면 정의가 `app/components/pages/`와 `features/`에 병존한다.
 > 정본 수렴 방향은 팀 결정 대기 (axis-infra `structure-tasks/axis-frontend.md` 2-F1).
 > 신규 API 호출은 반드시 `features/<도메인>/api/*Repository.ts` 경유 — `httpClient` 직접 호출 금지.
 
@@ -127,7 +127,7 @@ npm run test         # vitest run
 npm run preview      # 빌드 결과 미리보기 (포트 3101)
 ```
 
-> ⚠️ **로컬 `npm run build` 가 멈춘 듯 보일 때**: 일부 환경에서 Vite(esbuild) minify 단계가 CPU 0%로 멈추는 현상이 있습니다(코드 문제 아님). 검증만 빠르게 하려면 `npx vite build --minify false`, 정식 풀빌드는 CI 가 수행합니다.
+> **로컬 `npm run build` 가 멈춘 듯 보일 때**: 일부 환경에서 Vite(esbuild) minify 단계가 CPU 0%로 멈추는 현상이 있습니다(코드 문제 아님). 검증만 빠르게 하려면 `npx vite build --minify false`, 정식 풀빌드는 CI 가 수행합니다.
 
 ---
 
@@ -171,7 +171,7 @@ npm run build
 - API 타입: `src/types/api.ts`에서만 import — 직접 타입 선언 금지
 - API 호출: 도메인 `*Repository.ts` 경유 — `shared/api/httpClient` 직접 호출 금지
 - 스타일: Tailwind CSS 우선 — 인라인 `style={{}}` 신규 추가 금지 (기존 잔존분은 점진 치환)
-- AI 생성 콘텐츠에는 반드시 `✨ AI 초안` 레이블 표시
+- AI 생성 콘텐츠에는 반드시 `AI 초안` 레이블 표시
 
 ---
 
