@@ -7,7 +7,7 @@
  *   2026-05-21 박진 — 로그인 기능·인증 토큰 헤더 처리 추가, 이후 어시스턴트 PDF/이력·챗봇 플로우 대응
  */
 import { env } from '../config/env';
-import { getAccessToken } from './authSession';
+import { getAccessToken, setAccessToken } from './authSession';
 
 export interface HttpClient {
   get<T>(path: string): Promise<T>;
@@ -27,6 +27,40 @@ export class HttpRequestError extends Error {
     this.code = options.code;
     this.status = options.status;
   }
+}
+
+// 인메모리 access token 은 ~15분 TTL 이라 세션 도중 만료될 수 있다.
+// 401 을 만나면 refresh 쿠키로 토큰을 한 번 재발급하고 원요청을 1회 재시도한다.
+// 동시 401 은 in-flight 프로미스로 dedupe (refresh 폭주 방지).
+let refreshInFlight: Promise<boolean> | null = null;
+
+export function refreshAccessTokenOnce(baseUrl: string): Promise<boolean> {
+  refreshInFlight ??= (async (): Promise<boolean> => {
+    try {
+      const res = await fetch(`${baseUrl}/api/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) {
+        return false;
+      }
+      const payload = (await res.json()) as
+        | { data?: { access_token?: string }; access_token?: string }
+        | null;
+      const token = payload?.data?.access_token ?? payload?.access_token ?? null;
+      if (token) {
+        setAccessToken(token);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
 }
 
 class FetchHttpClient implements HttpClient {
@@ -52,7 +86,7 @@ class FetchHttpClient implements HttpClient {
     return this.request<T>('DELETE', path);
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async request<T>(method: string, path: string, body?: unknown, retried = false): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' };
     const accessToken = getAccessToken();
     if (accessToken) {
@@ -75,6 +109,14 @@ class FetchHttpClient implements HttpClient {
       throw new HttpRequestError('호출에 실패했다', {
         code: 'NETWORK_REQUEST_FAILED',
       });
+    }
+
+    // 세션 도중 access token 만료(401) 시 refresh 로 재발급 후 1회 재시도.
+    if (response.status === 401 && !retried && accessToken !== null) {
+      const refreshed = await refreshAccessTokenOnce(this.baseUrl);
+      if (refreshed) {
+        return this.request<T>(method, path, body, true);
+      }
     }
 
     const payload = await parseJsonResponse(response);

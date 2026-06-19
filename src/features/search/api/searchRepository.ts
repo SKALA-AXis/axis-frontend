@@ -6,6 +6,7 @@
  *   2026-06-14 안가은 — 대시보드/검색 인사이트 UI 개선에 맞춘 수정
  */
 import { getAccessToken } from '../../../shared/api/authSession';
+import { refreshAccessTokenOnce } from '../../../shared/api/httpClient';
 import { env } from '../../../shared/config/env';
 import type { SearchRequest, SearchResponse, SearchResultItem, SearchScope } from '../model/search';
 
@@ -43,7 +44,7 @@ class SearchRepository {
     }
   }
 
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
+  private async request<T>(path: string, init: RequestInit, retried = false): Promise<T> {
     const accessToken = getAccessToken();
     let response: Response;
     try {
@@ -59,6 +60,14 @@ class SearchRepository {
       });
     } catch {
       throw new Error('백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하세요.');
+    }
+
+    // 세션 도중 access token 만료(401) 시 refresh 후 1회 재시도 (검색이 조용히 0건 되던 버그).
+    if (response.status === 401 && !retried && accessToken !== null) {
+      const refreshed = await refreshAccessTokenOnce(this.baseUrl);
+      if (refreshed) {
+        return this.request<T>(path, init, true);
+      }
     }
 
     const payload = await parseApiResponse<T>(response);
