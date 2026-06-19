@@ -2,7 +2,7 @@
 
 AXIS 서비스의 React 대시보드입니다. 전략기획 담당자가 매일 아침 여는 이슈 브리핑 화면, AI 대화형 검색, Peer사 모니터링 뷰를 담당합니다.
 
-> 전체 프로젝트 개요는 [axis-infra](https://github.com/skala-ai-13/axis-infra)를 참조하세요.
+> 전체 프로젝트 개요는 [axis-infra](https://github.com/SKALA-AXis/axis-infra)를 참조하세요.
 
 ---
 
@@ -19,7 +19,7 @@ AXIS 서비스의 React 대시보드입니다. 전략기획 담당자가 매일 
 | 스타일 | Tailwind CSS + Radix UI (shadcn/ui 계열) |
 | 타입 자동 생성 | openapi-typescript (`src/types/api.ts`) |
 | 린트 | ESLint |
-| 테스트 | 미도입 (`npm run test` = placeholder) — 도입 계획: axis-infra structure-tasks/axis-frontend.md 2-F4 |
+| 테스트 | Vitest (`npm run test` = `vitest run`) — 점진 도입 중 |
 
 ---
 
@@ -47,30 +47,49 @@ src/
 
 ## 로컬 개발 세팅
 
-> 💡 **빠른 시작 (전체 스택)**: backend + ai + frontend 를 한 번에 cluster DB 와 함께 띄우려면 [`axis-infra` 의 `make up-cluster`](../axis-infra/README.md#mode-a--cluster-db--docker-compose--권장) — port-forward + docker compose 자동.
-> 아래 절차는 frontend 만 host 에서 빠르게 iterate (Vite HMR) 하는 경우. backend 는 별도 (`make up-cluster` 또는 `./gradlew bootRun`) 로 띄워둬야 함.
+### 사전 요구사항
+
+- **Node.js 20+** & npm
+- 프론트는 `/api` 를 backend 로 프록시하므로 **backend(:8080)가 떠 있어야** 합니다(아래 둘 중 하나).
+
+### 가장 쉬운 길 — 전체 스택 한 번에 (클러스터 불필요)
+
+`axis-infra` 의 docker compose 로 backend·ai·frontend·DB 를 모두 띄웁니다(프론트는 :3000 으로 서빙):
 
 ```bash
-# 1. 레포 클론
-git clone https://github.com/skala-ai-13/axis-frontend.git
+cd ../axis-infra && cp .env.local.example .env    # OPENAI_API_KEY 채움
+docker compose --profile local up -d --build        # → http://localhost:3000
+```
+
+자세히: [axis-infra/README](https://github.com/SKALA-AXis/axis-infra)
+
+### 프론트만 호스트에서 (Vite HMR)
+
+backend(:8080)가 떠 있는 상태에서 프론트만 직접 실행해 빠르게 iterate:
+
+```bash
+# 1. 레포 클론 (axis-infra 와 형제 디렉토리로)
+git clone https://github.com/SKALA-AXis/axis-frontend.git
 cd axis-frontend
 
-# 2. 환경변수 설정
+# 2. 환경변수 — 기본값(빈 VITE_API_BASE_URL)이면 Vite proxy 가 /api 를 :8080 으로 전달
 cp .env.example .env
-# VITE_API_BASE_URL=http://localhost:8080
 
 # 3. 의존성 설치
 npm install
 
-# 4. 타입 자동 생성 (axis-infra 레포가 같은 레벨에 있어야 함)
+# 4. (openapi.yaml 변경 시) 타입 재생성 — axis-infra 가 형제 디렉토리에 있어야 함
 npx openapi-typescript ../axis-infra/api/openapi.yaml -o src/types/api.ts
 
-# 5. 개발 서버 실행
+# 5. 개발 서버 (포트 3100)
 npm run dev
 
-# 6. 브라우저 확인
-open http://localhost:3000
+# 6. 브라우저
+open http://localhost:3100
 ```
+
+> backend 가 :8080 이 아니면 `.env` 의 `VITE_API_PROXY_TARGET` 로 지정하세요.
+> **팀 개발자**(SKALA EKS 접근 시): `cd ../axis-infra && make up-cluster` 로 공용 클러스터 백엔드에 붙일 수 있습니다.
 
 ---
 
@@ -100,26 +119,32 @@ npx openapi-typescript ../axis-infra/api/openapi.yaml -o src/types/api.ts
 ## 개발 명령어
 
 ```bash
-npm run dev          # 개발 서버 (포트 3000)
-npm run build        # 프로덕션 빌드
+npm run dev          # 개발 서버 (포트 3100, Vite HMR)
+npm run build        # 프로덕션 빌드 (tsc && vite build)
 npm run type-check   # tsc --noEmit
 npm run lint         # ESLint
-npm run test         # ⚠️ placeholder (테스트 미도입 — 'No tests yet')
-npm run preview      # 빌드 결과 미리보기
+npm run test         # vitest run
+npm run preview      # 빌드 결과 미리보기 (포트 3101)
 ```
+
+> ⚠️ **로컬 `npm run build` 가 멈춘 듯 보일 때**: 일부 환경에서 Vite(esbuild) minify 단계가 CPU 0%로 멈추는 현상이 있습니다(코드 문제 아님). 검증만 빠르게 하려면 `npx vite build --minify false`, 정식 풀빌드는 CI 가 수행합니다.
 
 ---
 
 ## 환경 변수
 
-```bash
-# 로컬 개발
-VITE_API_BASE_URL=http://localhost:8080
+`.env.example` 참고 (커밋 금지). 로컬 기본값이면 추가 설정 없이 동작합니다.
 
-# 운영 (SKALA EKS ALB endpoint)
-VITE_API_BASE_URL=http://skala3-team13-axis-alb-1349892737.ap-northeast-2.elb.amazonaws.com
-# (P8 에서 사용자 도메인 발급 시 https://axis.skala25a.project.skala-ai.com 패턴으로)
+```bash
+# 로컬 개발(권장): 비워두면 Vite dev proxy 가 /api 를 backend(:8080)로 전달
+VITE_API_BASE_URL=
+
+# (선택) backend 가 :8080 이 아닐 때만 proxy 대상 지정
+VITE_API_PROXY_TARGET=http://127.0.0.1:8080
 ```
+
+- **브라우저가 backend 를 직접 호출**(프록시 우회)하게 하려면 `VITE_API_BASE_URL` 에 절대 URL 을 넣습니다. 이때 backend CORS 에 dev origin(`http://localhost:3100`)이 허용돼야 합니다.
+- **운영**: nginx 가 `/api` 를 처리하므로 보통 빈 값으로 빌드합니다.
 
 ---
 
